@@ -1,6 +1,6 @@
 
 import numpy as np
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple
 from collections import defaultdict
 
 def iou(boxA: np.ndarray, boxB: np.ndarray) -> float:
@@ -83,9 +83,10 @@ class TrajectoryTracker:
         return [tr["id"] for tr in self.tracks if tr["age"] == 0]
     
     def get_statistics(self) -> Dict:
+        traj_dict = self.get_track_trajectories()
         return {
-            "total_tracks": self.next_id,
+            "total_tracks": len(traj_dict),
             "active_tracks": len([tr for tr in self.tracks if tr["age"] == 0]),
-            "trajectory_points": len(self.trajectories),
+            "trajectory_points": sum(len(v) for v in traj_dict.values()),
             "frames_processed": len(self.trajectories_by_frame)
         }
