@@ -57,16 +57,28 @@ class TrafficAnalysisPipeline:
             "fps": self.fps,
             "inference_stats": self.inference.get_model_info(),
             "tracking_stats": tracking_stats,
-            "conflict_analysis": conflict_analysis
+            "conflict_analysis": conflict_analysis,
+            "trajectories": trajectories_dict
         }
         return results
 
     def save_results(self, results: Dict, filename: str = "analysis_results.json") -> str:
         import os
         os.makedirs(self.output_dir, exist_ok=True)
+
+        safe = dict(results)
+        safe_traj = {}
+        for tid, traj in results["trajectories"].items():
+            safe_traj[int(tid)] = [
+                [int(p[0]), int(p[1]), float(p[2]), float(p[3]),
+                 float(p[4]), float(p[5]), int(p[6]), float(p[7])]
+                for p in traj
+            ]
+        safe["trajectories"] = safe_traj
+
         filepath = f"{self.output_dir}/{filename}"
         with open(filepath, 'w') as f:
-            json.dump(results, f, indent=2)
+            json.dump(safe, f, indent=2)
         print(f"Results saved to {filepath}")
         return filepath
 
