@@ -1,0 +1,24 @@
+{
+  "corners": {
+    "top_left": [
+      100,
+      100
+    ],
+    "top_right": [
+      1500,
+      100
+    ],
+    "bottom_left": [
+      100,
+      700
+    ],
+    "bottom_right": [
+      1500,
+      700
+    ]
+  },
+  "configuration": {
+    "cell_size": 50,
+    "naming_style": "CELL_{col}_{row}"
+  }
+}

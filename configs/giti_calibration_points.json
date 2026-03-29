@@ -1,0 +1,91 @@
+{
+  "metadata": {
+    "timestamp": "2024-02-22",
+    "description": "G-ITI Intersection Calibration Points",
+    "coordinate_system": "Northing, Easting, Elevation (feet)",
+    "origin": "Point 1 (222006.49, 730911.81, 197)",
+    "total_points": 6,
+    "image_size": "1600x720",
+    "camera_used": "Mobile Phone"
+  },
+  "calibration_points": [
+    {
+      "id": 1,
+      "description": "Origin - Bottom-left corner",
+      "pixel": {
+        "x": 947,
+        "y": 715
+      },
+      "world": {
+        "northing": 222006.49,
+        "easting": 730911.81,
+        "elevation_ft": 197
+      }
+    },
+    {
+      "id": 2,
+      "description": "Point 2",
+      "pixel": {
+        "x": 194,
+        "y": 217
+      },
+      "world": {
+        "northing": 222005.64,
+        "easting": 730910.2,
+        "elevation_ft": 186
+      }
+    },
+    {
+      "id": 3,
+      "description": "Point 3",
+      "pixel": {
+        "x": 1455,
+        "y": 274
+      },
+      "world": {
+        "northing": 222007.06,
+        "easting": 730910.7,
+        "elevation_ft": 188
+      }
+    },
+    {
+      "id": 4,
+      "description": "Point 4",
+      "pixel": {
+        "x": 1136,
+        "y": 155
+      },
+      "world": {
+        "northing": 222006.68,
+        "easting": 730910.26,
+        "elevation_ft": 184
+      }
+    },
+    {
+      "id": 5,
+      "description": "Point 5",
+      "pixel": {
+        "x": 714,
+        "y": 221
+      },
+      "world": {
+        "northing": 222006.3,
+        "easting": 730910.37,
+        "elevation_ft": 188
+      }
+    },
+    {
+      "id": 6,
+      "description": "Point 6",
+      "pixel": {
+        "x": 997,
+        "y": 124
+      },
+      "world": {
+        "northing": 222006.49,
+        "easting": 730910.12,
+        "elevation_ft": 185
+      }
+    }
+  ]
+}
