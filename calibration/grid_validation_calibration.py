@@ -7,6 +7,30 @@ import os
 from matplotlib import pyplot as plt
 from sklearn.model_selection import KFold
 
+# =============================================================================
+# SCIENTIFIC NOTE:
+# -----------------------------------------------------------------------------
+# This script validates a grid-based homography under an *ideal* pinhole + planar
+# assumption with Gaussian survey noise. It does NOT explicitly model:
+#   - Lens radial/tangential distortion (k1, k2, p1, p2, ...),
+#   - Strong non-planarity of the scene,
+#   - Anisotropic or correlated survey biases beyond the simple Gaussian model.
+#
+# For real deployment on traffic cameras, a recommended architecture is:
+#   1) Calibrate camera intrinsics and distortion using cv2.calibrateCamera()
+#      on a checkerboard / calibration grid (estimate K, distortion coeffs).
+#   2) Undistort pixel coordinates of detections with cv2.undistortPoints().
+#   3) Fit the ground-plane homography H on UNDISTORTED points only.
+#   4) Validate against independent surveyed checkpoints not used in fitting.
+#
+# The separate script:
+#   calibration/grid_validation_calibration_realistic_test.py
+# simulates lens distortion, plane bias, and anisotropic survey noise to study
+# how a pure homography degrades under realistic artefacts. It is intended as a
+# stress-test and not as the primary calibration pipeline.
+# =============================================================================
+
+
 print("="*70)
 print("GRID-BASED CALIBRATION WITH PROPER VALIDATION")
 print("="*70)
