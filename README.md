@@ -5,9 +5,16 @@ AI-powered system for analyzing vehicle behavior and surrogate safety metrics at
 ## Project Structure
 
 - Grid_&_trajectory/ - Spatial grid mapping and PET computation
+- calibration/ - Camera calibration files
 - configs/ - Grid and calibration configurations
+- traffic_diffusion/ - Diffusion-based trajectory and safety modules
+  - trajectory_diffusion.py - Conditional trajectory diffusion model
+  - pet_safety_metrics.py - PET/risk metric summarization
+  - episode_reward.py - Episode reward calculation from safety metrics
 - bev_mapper.py - Bird's Eye View transformation
 - giti_bev_calib.py - Homography calibration
+- traffic_analyzer.py - Traffic analysis and conflict processing pipeline
+- README.md - Project documentation
 
 ## Key Features
 
