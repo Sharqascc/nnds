@@ -68,9 +68,6 @@ class TrajDiffusionDatasetNorm(Dataset):
 dataset = TrajDiffusionDatasetNorm(inputs_norm, targets_norm, centers)
 loader = DataLoader(dataset, batch_size=32, shuffle=True, drop_last=True)
 
-batch = next(iter(loader))
-print("past batch:", batch["past"].shape)
-print("future batch:", batch["future"].shape)
 
 Tf = targets_norm.shape[1]
 
@@ -231,5 +228,3 @@ def quick_sample_test():
     print("first sample, first 3 steps:")
     print(future_sample_world[0, :3].cpu().numpy())
 
-if __name__ == "__main__":
-    quick_sample_test()
