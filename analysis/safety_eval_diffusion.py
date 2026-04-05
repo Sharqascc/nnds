@@ -215,18 +215,32 @@ def eval_safety_over_loader(
 # -----------------------------
 # 3) Entry point (wire your model here)
 # -----------------------------
+# -----------------------------
+# 3) Entry point (wire your model here)
+# -----------------------------
 
-def sample_future_fn_stub(batch, num_samples=20):
-    raise NotImplementedError("Plug in your sample_future_denorm-based function here.")
+import torch
+import numpy as np
+from traffic_diffusion.model_and_sampler import sample_future_denorm
+
+def sample_future_fn(batch, num_samples=20, checkpoint_path="checkpoints/traj_diffusion_best.pt"):
+    """
+    Wrapper around the clean sampler module.
+
+    Returns:
+      samples_world: (num_samples, B, T_future, 4)
+    """
+    return sample_future_denorm(batch, checkpoint_path=checkpoint_path, num_samples=num_samples)
 
 def main():
     csv_path = "outputs/petevents_bev.csv"
     ds, dl = make_loader(csv_path, batch_size=32, Th=8, shuffle=False)
     df_pet = ds.df
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    # TODO: replace this stub with your real sampler
     def sample_fn(batch, num_samples=20):
-        return sample_future_fn_stub(batch, num_samples=num_samples)
+        # batch tensors are moved to device inside eval_safety_over_loader
+        return sample_future_fn(batch, num_samples=num_samples, checkpoint_path="checkpoints/traj_diffusion_best.pt")
 
     eval_safety_over_loader(
         loader=dl,
@@ -234,11 +248,11 @@ def main():
         sample_future_fn=sample_fn,
         scale=ds.scale,
         out_csv_path="outputs/safety_eval_diffusion.csv",
-        num_samples=20,
-        d_thresh=1.0,
+        num_samples=100,
+        d_thresh=1.5,
         dt=0.0333,
         max_batches=None,
-        device="cuda",
+        device=device,
     )
 
 if __name__ == "__main__":
