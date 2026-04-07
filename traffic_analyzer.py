@@ -178,7 +178,7 @@ class CompleteTrafficAnalyzer:
             'uncertainty': speed_results['speed_std']
         }
 
-def main():
+def run_demo():
     """Main execution function"""
     print("="*60)
     print("🚗 TRAFFIC ANALYSIS SYSTEM")
@@ -221,6 +221,89 @@ def main():
     
     return analyzer, speed_results, metrics
 
+
+from pathlib import Path
+import argparse
+import pandas as pd
+from grid_trajectory.sam3_grid_pet import run_sam3_grid_pet
+
+def run_video_to_pet(
+    video_path: str,
+    bev_config_path: str = "configs/bev_config.json",
+    grid_config_path: str = "configs/GITI_grid_config.json",
+    sam3_weights_path: str = "sam3.pt",
+    out_csv_path: str = "outputs/petevents_bev.csv",
+    pet_threshold: float = 2.0,
+):
+    """
+    Video -> SAM3 detections -> grid -> BEV -> PET events CSV.
+    """
+    project_root = str(Path(".").resolve())
+
+    result = run_sam3_grid_pet(
+        project_root=project_root,
+        video_rel_path=str(Path(video_path)),
+        sam3_rel_path=str(Path(sam3_weights_path)),
+        grid_rel_path=str(Path(grid_config_path)),
+        bev_rel_path=str(Path(bev_config_path)),
+        output_name="sam3_grid_pet_run",
+        conf=0.25,
+        pet_threshold=pet_threshold,
+    )
+
+    pet_events = result.get("pet_events", [])
+    out_path = Path(out_csv_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    rows = []
+    for idx, e in enumerate(pet_events):
+        rows.append(
+            dict(
+                event_id=idx,
+                cell_id=e["cell_id"],
+                obj_i=e["obj_i"],
+                obj_j=e["obj_j"],
+                t_exit_i=e["t_exit_i"],
+                t_entry_j=e["t_entry_j"],
+                PET=e["PET"],
+            )
+        )
+
+    df = pd.DataFrame(rows)
+    df.to_csv(out_path, index=False)
+    print(f"Wrote {len(df)} PET events to {out_path}")
+    return out_path
+
+def parse_args():
+    p = argparse.ArgumentParser(description="Video -> BEV grid -> PET events CSV")
+    p.add_argument("--video", help="Path to input video (relative to repo)")
+    p.add_argument("--bev-config", default="configs/bev_config.json")
+    p.add_argument("--grid-config", default="configs/GITI_grid_config.json")
+    p.add_argument("--sam3-weights", default="sam3.pt")
+    p.add_argument("--out-csv", default="outputs/petevents_bev.csv")
+    p.add_argument("--pet-threshold", type=float, default=2.0)
+    p.add_argument(
+        "--demo",
+        action="store_true",
+        help="Run existing synthetic CompleteTrafficAnalyzer demo instead",
+    )
+    # parse_known_args avoids crashing on Jupyter's extra -f arguments
+    return p.parse_known_args()[0]
+
+def cli_main():
+    args = parse_args()
+    if args.demo or args.video is None:
+        analyzer, speed_results, metrics = run_demo()
+        print("\\n✅ DEMO COMPLETED!")
+    else:
+        run_video_to_pet(
+            video_path=args.video,
+            bev_config_path=args.bev_config,
+            grid_config_path=args.grid_config,
+            sam3_weights_path=args.sam3_weights,
+            out_csv_path=args.out_csv,
+            pet_threshold=args.pet_threshold,
+        )
+
 if __name__ == "__main__":
-    analyzer, speed_results, metrics = main()
-    print("\n✅ ALL TESTS PASSED!")
+    cli_main()
