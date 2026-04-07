@@ -1,5 +1,9 @@
 PYTHON ?= python
 PROJECT_ROOT := $(shell pwd)
+VIDEO ?= videos/traffic_video.mp4
+SAM3_WEIGHTS ?= sam3.pt
+OUT_CSV ?= outputs/petevents_bev.csv
+PET_THRESHOLD ?= 2.0
 
 .PHONY: help install dev env grid pet diffusion-train diffusion-eval diffusion-notebook smoke clean
 
@@ -24,7 +28,7 @@ dev: install
 
 # === Video → Grid/PET pipeline ===
 grid pet:
-	PYTHONPATH=. $(PYTHON) traffic_analyzer.py
+	PYTHONPATH=. $(PYTHON) traffic_analyzer.py --video $(VIDEO) --sam3-weights $(SAM3_WEIGHTS) --out-csv $(OUT_CSV) --pet-threshold $(PET_THRESHOLD)
 
 # === Diffusion training & evaluation ===
 
