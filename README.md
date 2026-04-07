@@ -47,7 +47,44 @@ New experiments should generally:
 - PET (Post-Encroachment Time) Computation
 - Conflict Detection
 
-## Usage
+## 
+Development setup
+-----------------
+
+Recommended environment:
+
+- Python 3.10+ (Colab is fine for experiments)
+- Install dependencies with:
+
+```bash
+pip install -r requirements.txt
+```
+
+Typical developer workflow:
+
+```bash
+git clone https://github.com/Sharqascc/nnds.git
+cd nnds
+pip install -r requirements.txt
+```
+
+Repository conventions
+----------------------
+
+- `Grid_&_trajectory/` is the preferred path for current grid / PET logic.
+- `code/Grid_&_trajectory/` should be treated as legacy/compatibility code unless a migration is explicitly being performed.
+- `traffic_analyzer.py` is the main end-to-end entry point for video-to-PET processing.
+- `analysis/` contains evaluation-oriented scripts.
+- `traffic_diffusion/` contains reusable model, sampling, and safety modules.
+- `outputs/` stores generated experiment artifacts and evaluation CSV files.
+
+For new research work:
+1. Prefer adding reusable logic inside `traffic_diffusion/` or `Grid_&_trajectory/`.
+2. Keep one-off experiment runners inside `analysis/`.
+3. Write generated artifacts into `outputs/` with stable, descriptive filenames.
+
+
+Usage
 
 Videos and outputs stored on Google Drive.
 Code and configs stored on GitHub.
