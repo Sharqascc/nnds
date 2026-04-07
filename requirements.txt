@@ -5,4 +5,4 @@ opencv-python
 matplotlib
 scipy
 torch
-tqdm
+tqdm\npytest\n
