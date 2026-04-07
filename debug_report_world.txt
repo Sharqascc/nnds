@@ -1,2 +1,0 @@
-debug_report_world not available yet.
-Error: name 'debug_report_world' is not defined
