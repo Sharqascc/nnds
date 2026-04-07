@@ -4,6 +4,29 @@ AI-powered system for analyzing vehicle behavior and surrogate safety metrics at
 
 ## Project Structure
 
+
+Entry points
+------------
+
+For developers, the main scripts to run the pipeline are:
+
+- **Grid / PET extraction**
+  - `traffic_analyzer.py` – end-to-end traffic analysis on video (detection, BEV, grid, conflict extraction, PET computation).
+  - `Grid_&_trajectory/` – core grid and trajectory logic used by `traffic_analyzer.py` (new work should prefer this path over `code/Grid_&_trajectory/`).
+
+- **Diffusion training**
+  - `traffic_diffusion/train_trajectory_diffusion.py` – trains the conditional trajectory diffusion model on PET events (`outputs/petevents_bev.csv`) using the original Tf=9, 2-agent setup.
+  - `traffic_diffusion/training_utils.py` – reusable helpers for data cleaning, loader creation, and training loops, primarily for notebook / experimental runs.
+
+- **Diffusion safety evaluation**
+  - `analysis/safety_eval_diffusion.py` – batch PET/TTC evaluation using the saved diffusion checkpoint (`checkpoints/traj_diffusion_best.pt`), writing `outputs/safety_eval_diffusion.csv`.
+  - `analysis/safety_eval_diffusion_notebook.py` – notebook-friendly variant that retrains, samples futures, and produces `outputs/safety_events_diffusion_model.csv` and `outputs/safety_eval_diffusion_summary.csv`.
+
+New experiments should generally:
+1. Use `traffic_analyzer.py` to generate PET events and grid-based safety data.
+2. Use the diffusion scripts above to train and evaluate counterfactual futures on those PET events.
+
+
 - Grid_&_trajectory/ - Spatial grid mapping and PET computation
 - calibration/ - Camera calibration files
 - configs/ - Grid and calibration configurations
