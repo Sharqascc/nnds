@@ -64,3 +64,29 @@ In Colab or a similar environment:
 ```
 
 The evaluation uses `checkpoints/traj_diffusion_best.pt` and `outputs/petevents_bev.csv` and produces `outputs/safety_eval_diffusion.csv` with per-event diffusion-based safety statistics.
+
+### Notebook-friendly diffusion pipeline
+
+For iterative experiments and Colab runs, this repo also includes a notebook-style pipeline:
+
+- `traffic_diffusion/training_utils.py` – data cleaning/normalization, loader creation, and a reusable `train_diffusion_model` helper.
+- `traffic_diffusion/sampling_utils.py` – utilities to load a trained diffusion checkpoint and sample counterfactual futures over the evaluation loader.
+- `analysis/safety_eval_diffusion_notebook.py` – end-to-end script that:
+  - builds cleaned train/eval loaders from the PET event dataset,
+  - trains the conditional trajectory diffusion model and saves `checkpoints/traj_diffusion_best.pt`,
+  - samples future trajectories for evaluation events,
+  - constructs an event-level PET/risk table,
+  - summarizes safety using `traffic_diffusion/pet_safety_metrics.py` (`compute_safety_metrics`) and writes:
+    - `outputs/safety_events_diffusion_model.csv`
+    - `outputs/safety_eval_diffusion_summary.csv`.
+
+To run this pipeline in Colab:
+
+```bash
+%cd /content
+!git clone https://github.com/Sharqascc/nnds.git
+%cd nnds
+!PYTHONPATH=. python analysis/safety_eval_diffusion_notebook.py
+```
+
+This workflow mirrors the original `analysis/safety_eval_diffusion.py` evaluation but is structured for quicker iteration and integration in notebook-based experiments.
