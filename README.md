@@ -2,6 +2,49 @@
 
 AI-powered system for analyzing vehicle behavior and surrogate safety metrics at unsignalized intersections.
 
+
+## Quickstart
+
+Use the repository with the new Make targets or with direct Python entry points.
+
+```bash
+git clone https://github.com/Sharqascc/nnds.git
+cd nnds
+make install
+```
+
+### Run video to PET pipeline
+
+```bash
+make grid
+# or
+PYTHONPATH=. python traffic_analyzer.py
+```
+
+### Train diffusion model
+
+```bash
+make diffusion-train
+# or
+PYTHONPATH=. python traffic_diffusion/train_trajectory_diffusion.py
+```
+
+### Evaluate diffusion safety
+
+```bash
+make diffusion-eval
+# or
+PYTHONPATH=. python analysis/safety_eval_diffusion.py
+```
+
+### Run notebook-style end-to-end diffusion evaluation
+
+```bash
+make diffusion-notebook
+# or
+PYTHONPATH=. python analysis/safety_eval_diffusion_notebook.py
+```
+
 ## Project Structure
 
 - `Grid_&_trajectory/` - Spatial grid mapping and PET computation
