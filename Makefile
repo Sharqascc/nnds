@@ -1,7 +1,7 @@
 PYTHON ?= python
 PROJECT_ROOT := $(shell pwd)
 
-.PHONY: help install dev env grid pet diffusion-train diffusion-eval diffusion-notebook clean
+.PHONY: help install dev env grid pet diffusion-train diffusion-eval diffusion-notebook smoke clean
 
 help:
 	@echo "NNDS make targets:"
@@ -36,6 +36,9 @@ diffusion-eval:
 
 diffusion-notebook:
 	PYTHONPATH=. $(PYTHON) analysis/safety_eval_diffusion_notebook.py
+
+smoke:
+	PYTHONPATH=. $(PYTHON) -m pytest -q tests/test_repo_smoke.py
 
 clean:
 	rm -rf __pycache__ */__pycache__ .pytest_cache
