@@ -49,7 +49,6 @@ PYTHONPATH=. python analysis/safety_eval_diffusion_notebook.py
 - `Grid_&_trajectory/` - Spatial grid mapping and PET computation
 - `analysis/` - Evaluation and research scripts
 - `calibration/` - Camera calibration files
-- `code/Grid_&_trajectory/` - Legacy or compatibility grid code
 - `configs/` - Grid and calibration configurations
 - `outputs/` - Generated experiment artifacts and evaluation CSV files
 - `traffic_diffusion/` - Diffusion-based trajectory and safety modules
@@ -60,21 +59,19 @@ PYTHONPATH=. python analysis/safety_eval_diffusion_notebook.py
 
 ## Entry points
 
-For developers, the main scripts to run the pipeline are:
-
 ### Grid / PET extraction
 
 - `traffic_analyzer.py` - End-to-end traffic analysis on video, including detection, BEV transformation, grid construction, conflict extraction, and PET computation.
-- `Grid_&_trajectory/` - Core grid and trajectory logic used by `traffic_analyzer.py`. New work should prefer this path over `code/Grid_&_trajectory/`.
+- `Grid_&_trajectory/` - Core grid and trajectory logic used by `traffic_analyzer.py`.
 
 ### Diffusion training
 
-- `traffic_diffusion/train_trajectory_diffusion.py` - Trains the conditional trajectory diffusion model on PET events from `outputs/petevents_bev.csv` using the original `Tf = 9`, 2-agent setup.
-- `traffic_diffusion/training_utils.py` - Reusable helpers for data cleaning, loader creation, and training loops for notebook and experimental runs.
+- `traffic_diffusion/train_trajectory_diffusion.py` - Trains the conditional trajectory diffusion model on PET events from `outputs/petevents_bev.csv`.
+- `traffic_diffusion/training_utils.py` - Reusable helpers for data cleaning, loader creation, and training loops.
 
 ### Diffusion safety evaluation
 
-- `analysis/safety_eval_diffusion.py` - Batch PET/TTC evaluation using the saved checkpoint `checkpoints/traj_diffusion_best.pt`, writing `outputs/safety_eval_diffusion.csv`.
+- `analysis/safety_eval_diffusion.py` - Batch PET/TTC evaluation using a saved diffusion checkpoint and writes `outputs/safety_eval_diffusion.csv`.
 - `analysis/safety_eval_diffusion_notebook.py` - Notebook-friendly variant that retrains, samples futures, and produces:
   - `outputs/safety_events_diffusion_model.csv`
   - `outputs/safety_eval_diffusion_summary.csv`
@@ -84,10 +81,10 @@ For developers, the main scripts to run the pipeline are:
 - SAM3 video segmentation
 - Spatial grid zone analysis
 - Bird's Eye View world-coordinate mapping
-- PET (Post-Encroachment Time) computation
+- PET computation
 - Conflict detection
 - Diffusion-based trajectory modeling
-- Safety evaluation with PET and TTC
+- PET and TTC safety evaluation
 
 ## Development setup
 
@@ -112,8 +109,7 @@ pip install -r requirements.txt
 
 ## Repository conventions
 
-- `Grid_&_trajectory/` is the preferred path for current grid and PET logic.
-- `code/Grid_&_trajectory/` should be treated as legacy or compatibility code unless a migration is explicitly being performed.
+- `Grid_&_trajectory/` is the canonical location for grid and PET logic.
 - `traffic_analyzer.py` is the main end-to-end entry point for video-to-PET processing.
 - `analysis/` contains evaluation-oriented scripts.
 - `traffic_diffusion/` contains reusable model, sampling, and safety modules.
@@ -121,7 +117,7 @@ pip install -r requirements.txt
 
 For new research work:
 
-1. Prefer adding reusable logic inside `traffic_diffusion/` or `Grid_&_trajectory/`.
+1. Prefer reusable logic inside `traffic_diffusion/` or `Grid_&_trajectory/`.
 2. Keep one-off experiment runners inside `analysis/`.
 3. Write generated artifacts into `outputs/` with stable, descriptive filenames.
 
@@ -135,9 +131,9 @@ This repository includes a trajectory diffusion model and PET/TTC-based safety e
 
 ### Components
 
-- `traffic_diffusion/train_trajectory_diffusion.py` - Trains a conditional trajectory diffusion model on PET-event futures using `outputs/petevents_bev.csv`. Futures are normalized around the last past position and fixed to a horizon of `Tf = 9` steps for two agents (`traj_shape = (9, 2, 2)`).
-- `traffic_diffusion/model_and_sampler.py` - Loads diffusion checkpoints such as `checkpoints/traj_diffusion_best.pt` and samples counterfactual futures given past trajectories.
-- `analysis/safety_eval_diffusion.py` - Iterates over all PET events, samples multiple futures per event, and computes true PET, real minimum TTC, diffusion-based TTC statistics, and sampled-event fractions, writing results to `outputs/safety_eval_diffusion.csv`.
+- `traffic_diffusion/train_trajectory_diffusion.py` - Trains a conditional trajectory diffusion model on PET-event futures using `outputs/petevents_bev.csv`.
+- `traffic_diffusion/model_and_sampler.py` - Loads diffusion checkpoints and samples counterfactual futures given past trajectories.
+- `analysis/safety_eval_diffusion.py` - Iterates over PET events, samples multiple futures per event, and computes PET and TTC statistics.
 
 ### Running the original safety evaluation
 
@@ -152,11 +148,11 @@ PYTHONPATH=. python analysis/safety_eval_diffusion.py
 
 For iterative experiments and Colab runs, this repository also includes a notebook-style pipeline:
 
-- `traffic_diffusion/training_utils.py` - Data cleaning and normalization, loader creation, and reusable training helpers
+- `traffic_diffusion/training_utils.py` - Data cleaning, normalization, loader creation, and reusable training helpers
 - `traffic_diffusion/sampling_utils.py` - Utilities to load a trained checkpoint and sample counterfactual futures
 - `analysis/safety_eval_diffusion_notebook.py` - End-to-end notebook-oriented script that:
   - builds cleaned train and eval loaders
-  - trains the diffusion model and saves `checkpoints/traj_diffusion_best.pt`
+  - trains the diffusion model and saves a checkpoint
   - samples future trajectories for evaluation events
   - constructs an event-level PET and risk table
   - summarizes safety using `traffic_diffusion/pet_safety_metrics.py`
