@@ -46,7 +46,7 @@ PYTHONPATH=. python analysis/safety_eval_diffusion_notebook.py
 
 ## Project Structure
 
-- `Grid_&_trajectory/` - Spatial grid mapping and PET computation
+- `grid_trajectory/` - Spatial grid mapping and PET computation
 - `analysis/` - Evaluation and research scripts
 - `calibration/` - Camera calibration files
 - `configs/` - Grid and calibration configurations
@@ -62,7 +62,7 @@ PYTHONPATH=. python analysis/safety_eval_diffusion_notebook.py
 ### Grid / PET extraction
 
 - `traffic_analyzer.py` - End-to-end traffic analysis on video, including detection, BEV transformation, grid construction, conflict extraction, and PET computation.
-- `Grid_&_trajectory/` - Core grid and trajectory logic used by `traffic_analyzer.py`.
+- `grid_trajectory/` - Core grid and trajectory logic used by `traffic_analyzer.py`.
 
 ### Diffusion training
 
@@ -109,7 +109,7 @@ pip install -r requirements.txt
 
 ## Repository conventions
 
-- `Grid_&_trajectory/` is the canonical location for grid and PET logic.
+- `grid_trajectory/` is the canonical location for grid and PET logic.
 - `traffic_analyzer.py` is the main end-to-end entry point for video-to-PET processing.
 - `analysis/` contains evaluation-oriented scripts.
 - `traffic_diffusion/` contains reusable model, sampling, and safety modules.
@@ -117,7 +117,7 @@ pip install -r requirements.txt
 
 For new research work:
 
-1. Prefer reusable logic inside `traffic_diffusion/` or `Grid_&_trajectory/`.
+1. Prefer reusable logic inside `traffic_diffusion/` or `grid_trajectory/`.
 2. Keep one-off experiment runners inside `analysis/`.
 3. Write generated artifacts into `outputs/` with stable, descriptive filenames.
 

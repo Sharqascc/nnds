@@ -3,9 +3,9 @@
 ## Code organization
 
 - Put reusable diffusion logic inside `traffic_diffusion/`.
-- Put reusable grid and PET logic inside `Grid_&_trajectory/`.
+- Put reusable grid and PET logic inside `grid_trajectory/`.
 - Put experiment or evaluation runners inside `analysis/`.
-- Treat `code/Grid_&_trajectory/` as legacy unless you are explicitly migrating code.
+- Treat `code/grid_trajectory/` as legacy unless you are explicitly migrating code.
 
 ## Outputs
 
