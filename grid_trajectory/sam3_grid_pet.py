@@ -1,7 +1,7 @@
 import os, cv2, numpy as np, json
 from ultralytics.models.sam import SAM3VideoSemanticPredictor
-from spatial_grid import SpatialGrid
-from pet_grid import TrajectoryLogger, compute_pet
+from grid_trajectory.spatial_grid import SpatialGrid
+from grid_trajectory.pet_grid import TrajectoryLogger, compute_pet
 from bev_mapper import BEVMapper
 
 def run_sam3_grid_pet(
