@@ -1,14 +1,3 @@
-videos/
-*.mp4
-*.avi
-outputs/
-*.pt
-*.pth
-__pycache__/
-.DS_Store
-.ipynb_checkpoints/
-*.ipynb
-
 # Generated pipeline outputs
-outputs/
+outputs/*
 !outputs/.gitkeep
