@@ -8,3 +8,7 @@ __pycache__/
 .DS_Store
 .ipynb_checkpoints/
 *.ipynb
+
+# Generated pipeline outputs
+outputs/
+!outputs/.gitkeep
