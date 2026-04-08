@@ -61,7 +61,10 @@ def run_sam3_grid_pet(
     frame_count = 0
     det_count_total = 0
 
+    MAX_FRAMES = 300  # temporary frame cap for debugging
     for frame_idx, res in enumerate(results_gen):
+        if frame_idx >= MAX_FRAMES:
+            break
         frame_count += 1
 
         boxes = getattr(res, "boxes", None)
