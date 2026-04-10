@@ -1,9 +1,9 @@
 numpy
 pandas
-pyarrow
 opencv-python
-matplotlib
-scipy
 torch
+torchvision
+ultralytics
+matplotlib
 tqdm
-pytest
+scipy
