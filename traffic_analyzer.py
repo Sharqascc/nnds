@@ -7,7 +7,6 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from grid_trajectory.sam3_grid_pet import run_sam3_grid_pet
 
 warnings.filterwarnings("ignore")
 
@@ -299,6 +298,14 @@ def run_video_to_pet(
 
     Returns the DataFrame of PET events for convenience.
     """
+    try:
+        from grid_trajectory.sam3_grid_pet import run_sam3_grid_pet
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "Missing dependency for video pipeline. Install required packages "
+            "for SAM3/Ultralytics before running video mode."
+        ) from exc
+
     project_root = str(Path(".").resolve())
 
     result = run_sam3_grid_pet(
@@ -339,7 +346,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Video → SAM3 + grid → BEV → PET events pipeline"
     )
-    parser.add_argument("--video", required=True, help="Input video path")
+    parser.add_argument("--video", default=None, help="Input video path")
     parser.add_argument(
         "--bev-config",
         default="configs/bev_config.json",
@@ -376,9 +383,13 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+
     if args.demo:
         run_demo()
         return
+
+    if not args.video:
+        raise SystemExit("error: --video is required unless --demo is used")
 
     run_video_to_pet(
         video_path=args.video,
