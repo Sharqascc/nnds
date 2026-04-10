@@ -1,0 +1,32 @@
+# gate_config.yaml - Virtual gate definitions for volume counting
+
+gates:
+  - name: "West_Gate"
+    start: [210, 170]
+    end: [450, 150]
+    color: [255, 0, 0]
+    entry_side: "right"
+
+  - name: "SouthWest_Gate"
+    start: [205, 211]
+    end: [143, 375]
+    color: [0, 255, 0]
+    entry_side: "right"
+
+  - name: "South_Gate"
+    start: [125, 420]
+    end: [840, 710]
+    color: [0, 0, 255]
+    entry_side: "right"
+
+  - name: "East_Gate"
+    start: [1455, 255]
+    end: [925, 625]
+    color: [255, 255, 0]
+    entry_side: "left"
+
+  - name: "North_Gate"
+    start: [1460, 240]
+    end: [840, 190]
+    color: [255, 0, 255]
+    entry_side: "left"
