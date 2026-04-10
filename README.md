@@ -46,33 +46,33 @@ PYTHONPATH=. python analysis/safety_eval_diffusion_notebook.py
 
 ## Project Structure
 
-- `grid_trajectory/` - Spatial grid mapping and PET computation
-- `analysis/` - Evaluation and research scripts
-- `calibration/` - Camera calibration files
-- `configs/` - Grid and calibration configurations
-- `outputs/` - Generated experiment artifacts and evaluation CSV files
-- `traffic_diffusion/` - Diffusion-based trajectory and safety modules
-- `bev_mapper.py` - Bird's Eye View transformation
-- `giti_bev_calib.py` - Homography calibration
-- `traffic_analyzer.py` - Traffic analysis and conflict processing pipeline
-- `traj_diffusion_normalized.py` - Normalized diffusion experiment script
+- `grid_trajectory/` – Spatial grid mapping and PET computation
+- `analysis/` – Evaluation and research scripts
+- `calibration/` – Camera calibration files
+- `configs/` – Grid and calibration configurations
+- `outputs/` – Generated experiment artifacts and evaluation CSV files
+- `traffic_diffusion/` – Diffusion-based trajectory and safety modules
+- `bev_mapper.py` – Bird's Eye View transformation
+- `giti_bev_calib.py` – Homography calibration
+- `traffic_analyzer.py` – Traffic analysis and conflict processing pipeline
+- `traj_diffusion_normalized.py` – Normalized diffusion experiment script
 
 ## Entry points
 
 ### Grid / PET extraction
 
-- `traffic_analyzer.py` - End-to-end traffic analysis on video, including detection, BEV transformation, grid construction, conflict extraction, and PET computation.
-- `grid_trajectory/` - Core grid and trajectory logic used by `traffic_analyzer.py`.
+- `traffic_analyzer.py` – End-to-end traffic analysis on video, including detection, BEV transformation, grid construction, conflict extraction, and PET computation.
+- `grid_trajectory/` – Core grid and trajectory logic used by `traffic_analyzer.py`.
 
 ### Diffusion training
 
-- `traffic_diffusion/train_trajectory_diffusion.py` - Trains the conditional trajectory diffusion model on PET events from `outputs/petevents_bev.csv`.
-- `traffic_diffusion/training_utils.py` - Reusable helpers for data cleaning, loader creation, and training loops.
+- `traffic_diffusion/train_trajectory_diffusion.py` – Trains the conditional trajectory diffusion model on PET events from `outputs/petevents_bev.csv`.
+- `traffic_diffusion/training_utils.py` – Reusable helpers for data cleaning, loader creation, and training loops.
 
 ### Diffusion safety evaluation
 
-- `analysis/safety_eval_diffusion.py` - Batch PET/TTC evaluation using a saved diffusion checkpoint and writes `outputs/safety_eval_diffusion.csv`.
-- `analysis/safety_eval_diffusion_notebook.py` - Notebook-friendly variant that retrains, samples futures, and produces:
+- `analysis/safety_eval_diffusion.py` – Batch PET/TTC evaluation using a saved diffusion checkpoint and writes `outputs/safety_eval_diffusion.csv`.
+- `analysis/safety_eval_diffusion_notebook.py` – Notebook-friendly variant that retrains, samples futures, and produces:
   - `outputs/safety_events_diffusion_model.csv`
   - `outputs/safety_eval_diffusion_summary.csv`
 
@@ -123,15 +123,15 @@ For new research work:
 
 ## Usage
 
-Code and configs are maintained on GitHub, while the default public demo video is hosted on Hugging Face.
+Code and configs are maintained on GitHub, while the default public demo video is hosted on Hugging Face. [page:77]
 
 ### Default demo video (Hugging Face)
 
 The canonical example video for `traffic_analyzer.py` lives in a dataset repo:
 
-- Dataset: `https://huggingface.co/datasets/sharqascc/traffic-video-dataset`
+- Dataset: <https://huggingface.co/datasets/sharqascc/traffic-video-dataset>
 - Video file (web view):  
-  `https://huggingface.co/datasets/sharqascc/traffic-video-dataset/blob/main/videos/traffic_video.mp4`
+  <https://huggingface.co/datasets/sharqascc/traffic-video-dataset/blob/main/videos/traffic_video.mp4>
 
 For scripts and Colab, use the `resolve` URL so the file is downloaded directly:
 
@@ -143,18 +143,17 @@ wget -O videos/traffic_video.mp4 \
 PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
 ```
 
-Larger private or experimental videos can still be stored on Google Drive, but all public examples in this repo are expected to work with the Hugging Face–hosted demo video by default.
-
+Larger private or experimental videos can still be stored on Google Drive, but all public examples in this repo are expected to work with the Hugging Face–hosted demo video by default. [page:77]
 
 ## Diffusion-based Safety Evaluation
 
-This repository includes a trajectory diffusion model and PET/TTC-based safety evaluation on PET events extracted from the grid pipeline.
+This repository includes a trajectory diffusion model and PET/TTC-based safety evaluation on PET events extracted from the grid pipeline. [page:77]
 
 ### Components
 
-- `traffic_diffusion/train_trajectory_diffusion.py` - Trains a conditional trajectory diffusion model on PET-event futures using `outputs/petevents_bev.csv`.
-- `traffic_diffusion/model_and_sampler.py` - Loads diffusion checkpoints and samples counterfactual futures given past trajectories.
-- `analysis/safety_eval_diffusion.py` - Iterates over PET events, samples multiple futures per event, and computes PET and TTC statistics.
+- `traffic_diffusion/train_trajectory_diffusion.py` – Trains a conditional trajectory diffusion model on PET-event futures using `outputs/petevents_bev.csv`.
+- `traffic_diffusion/model_and_sampler.py` – Loads diffusion checkpoints and samples counterfactual futures given past trajectories.
+- `analysis/safety_eval_diffusion.py` – Iterates over PET events, samples multiple futures per event, and computes PET and TTC statistics. [page:77]
 
 ### Running the original safety evaluation
 
@@ -167,11 +166,11 @@ PYTHONPATH=. python analysis/safety_eval_diffusion.py
 
 ### Notebook-friendly diffusion pipeline
 
-For iterative experiments and Colab runs, this repository also includes a notebook-style pipeline:
+For iterative experiments and Colab runs, this repository also includes a notebook-style pipeline: [page:77]
 
-- `traffic_diffusion/training_utils.py` - Data cleaning, normalization, loader creation, and reusable training helpers
-- `traffic_diffusion/sampling_utils.py` - Utilities to load a trained checkpoint and sample counterfactual futures
-- `analysis/safety_eval_diffusion_notebook.py` - End-to-end notebook-oriented script that:
+- `traffic_diffusion/training_utils.py` – Data cleaning, normalization, loader creation, and reusable training helpers
+- `traffic_diffusion/sampling_utils.py` – Utilities to load a trained checkpoint and sample counterfactual futures
+- `analysis/safety_eval_diffusion_notebook.py` – End-to-end notebook-oriented script that:
   - builds cleaned train and eval loaders
   - trains the diffusion model and saves a checkpoint
   - samples future trajectories for evaluation events
