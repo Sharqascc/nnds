@@ -123,7 +123,28 @@ For new research work:
 
 ## Usage
 
-Videos and outputs are typically stored on Google Drive, while code and configs are maintained on GitHub.
+Code and configs are maintained on GitHub, while the default public demo video is hosted on Hugging Face.
+
+### Default demo video (Hugging Face)
+
+The canonical example video for `traffic_analyzer.py` lives in a dataset repo:
+
+- Dataset: `https://huggingface.co/datasets/sharqascc/traffic-video-dataset`
+- Video file (web view):  
+  `https://huggingface.co/datasets/sharqascc/traffic-video-dataset/blob/main/videos/traffic_video.mp4`
+
+For scripts and Colab, use the `resolve` URL so the file is downloaded directly:
+
+```bash
+mkdir -p videos
+wget -O videos/traffic_video.mp4 \
+  "https://huggingface.co/datasets/sharqascc/traffic-video-dataset/resolve/main/videos/traffic_video.mp4"
+
+PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
+```
+
+Larger private or experimental videos can still be stored on Google Drive, but all public examples in this repo are expected to work with the Hugging Face–hosted demo video by default.
+
 
 ## Diffusion-based Safety Evaluation
 
