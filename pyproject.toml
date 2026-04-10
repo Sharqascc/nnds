@@ -1,0 +1,16 @@
+[project]
+name = "nnds"
+version = "0.1.0"
+description = "Non-motorized and heterogeneous traffic safety analysis (research code)"
+requires-python = ">=3.10"
+authors = [
+  { name = "ASCC Sharq 786" }
+]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+addopts = [
+  "-ra",  # show extra summary info
+]
