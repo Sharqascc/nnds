@@ -144,7 +144,11 @@ class RobustTracker:
                 self.next_id += 1
                 det["track_id"] = tid
 
-            # Mark as observed in this frame
+            if tid in self.tracks and "centroid" in self.tracks[tid]:
+                det["prev_centroid"] = self.tracks[tid].get("centroid")
+            elif tid in self.tracks and "prev_centroid" in self.tracks[tid]:
+                det["prev_centroid"] = self.tracks[tid].get("prev_centroid")
+
             det["missed"] = 0
             updated_tracks[tid] = det
 
