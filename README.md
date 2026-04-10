@@ -17,7 +17,7 @@ make install
 ```bash
 make grid
 # or
-PYTHONPATH=. python traffic_analyzer.py
+PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
 ```
 
 ### Train diffusion model
@@ -105,6 +105,7 @@ Typical developer workflow:
 git clone https://github.com/Sharqascc/nnds.git
 cd nnds
 pip install -r requirements.txt
+PYTHONPATH=. pytest
 ```
 
 ## Repository conventions
