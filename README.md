@@ -146,6 +146,28 @@ PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
 
 Larger private or experimental videos can still be stored on Google Drive, but all public examples in this repo are expected to work with the Hugging Face–hosted demo video by default. [page:77]
 
+### SAM3 model weights
+
+The SAM3 video segmentation model used by `traffic_analyzer.py` is not committed to this repo.
+It must be downloaded separately from Hugging Face:
+
+- Model repo: https://huggingface.co/sharqascc/sam3-traffic-model
+- Checkpoint file: `sam3.pt`
+
+For Colab or scripts, download it into the repo root so the default path `/content/nnds/sam3.pt` works:
+
+```bash
+cd /content/nnds
+wget -O sam3.pt \
+  "https://huggingface.co/sharqascc/sam3-traffic-model/resolve/main/sam3.pt"
+```
+
+Then run:
+
+```bash
+PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
+```
+
 ## Diffusion-based Safety Evaluation
 
 This repository includes a trajectory diffusion model and PET/TTC-based safety evaluation on PET events extracted from the grid pipeline. [page:77]
