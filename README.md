@@ -105,7 +105,7 @@ Typical developer workflow:
 git clone https://github.com/Sharqascc/nnds.git
 cd nnds
 pip install -r requirements.txt
-PYTHONPATH=. pytest
+python -m pytest
 ```
 
 ## Repository conventions
@@ -124,7 +124,7 @@ For new research work:
 
 ## Usage
 
-Code and configs are maintained on GitHub, while the default public demo video is hosted on Hugging Face. [page:77]
+Code and configs are maintained on GitHub, while the default public demo video is hosted on Hugging Face.
 
 ### Default demo video (Hugging Face)
 
@@ -137,6 +137,7 @@ The canonical example video for `traffic_analyzer.py` lives in a dataset repo:
 For scripts and Colab, use the `resolve` URL so the file is downloaded directly:
 
 ```bash
+cd /content/nnds
 mkdir -p videos
 wget -O videos/traffic_video.mp4 \
   "https://huggingface.co/datasets/sharqascc/traffic-video-dataset/resolve/main/videos/traffic_video.mp4"
@@ -144,14 +145,14 @@ wget -O videos/traffic_video.mp4 \
 PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
 ```
 
-Larger private or experimental videos can still be stored on Google Drive, but all public examples in this repo are expected to work with the Hugging Face–hosted demo video by default. [page:77]
+Larger private or experimental videos can still be stored on Google Drive, but all public examples in this repo are expected to work with the Hugging Face–hosted demo video by default.
 
 ### SAM3 model weights
 
 The SAM3 video segmentation model used by `traffic_analyzer.py` is not committed to this repo.
 It must be downloaded separately from Hugging Face:
 
-- Model repo: https://huggingface.co/sharqascc/sam3-traffic-model
+- Model repo: <https://huggingface.co/sharqascc/sam3-traffic-model>
 - Checkpoint file: `sam3.pt`
 
 For Colab or scripts, download it into the repo root so the default path `/content/nnds/sam3.pt` works:
@@ -170,13 +171,13 @@ PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
 
 ## Diffusion-based Safety Evaluation
 
-This repository includes a trajectory diffusion model and PET/TTC-based safety evaluation on PET events extracted from the grid pipeline. [page:77]
+This repository includes a trajectory diffusion model and PET/TTC-based safety evaluation on PET events extracted from the grid pipeline.
 
 ### Components
 
 - `traffic_diffusion/train_trajectory_diffusion.py` – Trains a conditional trajectory diffusion model on PET-event futures using `outputs/petevents_bev.csv`.
 - `traffic_diffusion/model_and_sampler.py` – Loads diffusion checkpoints and samples counterfactual futures given past trajectories.
-- `analysis/safety_eval_diffusion.py` – Iterates over PET events, samples multiple futures per event, and computes PET and TTC statistics. [page:77]
+- `analysis/safety_eval_diffusion.py` – Iterates over PET events, samples multiple futures per event, and computes PET and TTC statistics.
 
 ### Running the original safety evaluation
 
@@ -189,7 +190,7 @@ PYTHONPATH=. python analysis/safety_eval_diffusion.py
 
 ### Notebook-friendly diffusion pipeline
 
-For iterative experiments and Colab runs, this repository also includes a notebook-style pipeline: [page:77]
+For iterative experiments and Colab runs, this repository also includes a notebook-style pipeline:
 
 - `traffic_diffusion/training_utils.py` – Data cleaning, normalization, loader creation, and reusable training helpers
 - `traffic_diffusion/sampling_utils.py` – Utilities to load a trained checkpoint and sample counterfactual futures
