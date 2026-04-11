@@ -149,25 +149,36 @@ Larger private or experimental videos can still be stored on Google Drive, but a
 
 ### SAM3 model weights
 
-The SAM3 video segmentation model used by `traffic_analyzer.py` is not committed to this repo.
-It must be downloaded separately from Hugging Face:
+SAM3 model weights (private, HF token required)
+The SAM3 video segmentation model used by traffic_analyzer.py is stored in a private Hugging Face repo and is not committed to this repo. You must download it with your own Hugging Face access token.
 
-- Model repo: <https://huggingface.co/sharqascc/sam3-traffic-model>
-- Checkpoint file: `sam3.pt`
+Create a read token at: https://huggingface.co/settings/tokens
 
-For Colab or scripts, download it into the repo root so the default path `/content/nnds/sam3.pt` works:
+In Colab or your shell, set it:
+```bash
+export HF_TOKEN="your_hf_token_here"
+```
 
+Download the checkpoint into the repo root so the default path /content/nnds/sam3.pt works:
 ```bash
 cd /content/nnds
-wget -O sam3.pt \
-  "https://huggingface.co/sharqascc/sam3-traffic-model/resolve/main/sam3.pt"
+wget --header="Authorization: Bearer $HF_TOKEN"
+-O sam3.pt
+"https://huggingface.co/sharqascc/sam3-traffic-model/resolve/main/sam3.pt"
+```
+
+Verify:
+```bash
+ls -lh sam3.pt
 ```
 
 Then run:
-
 ```bash
 PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
 ```
+If sam3.pt is 0 bytes, the download failed (likely missing/invalid token).
+
+
 
 ## Diffusion-based Safety Evaluation
 
