@@ -5,7 +5,7 @@ gates:
     start: [210, 170]
     end: [450, 150]
     color: [255, 0, 0]
-    entry_side: "left"
+    entry_side: "right"
 
   - name: "SouthWest_Gate"
     start: [205, 211]
@@ -29,4 +29,4 @@ gates:
     start: [1460, 240]
     end: [840, 190]
     color: [255, 0, 255]
-    entry_side: "right"
+    entry_side: "left"
