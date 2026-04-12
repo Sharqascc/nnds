@@ -334,23 +334,21 @@ class TrafficVolumeCounter:
             f"Time: {self._format_time(frame_idx, fps)}",
             f"TOTAL ENTRY: {total_in}",
             f"TOTAL EXIT : {total_out}",
-            ""
+            "",
         ]
 
         for gate in self.gates.values():
-            lines.append(
-                f"{gate.name}: IN {gate.entry_count} | OUT {gate.exit_count}"
-            )
+            lines.append(f"{gate.name}: IN {gate.entry_count} | OUT {gate.exit_count}")
 
         if self.last_event:
             lines.append("")
             lines.append(f"LAST EVENT: {self.last_event}")
 
         font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 0.62
-        thickness = 2
-        line_h = 25
-        pad = 12
+        font_scale = 0.5
+        thickness = 1
+        line_h = 18
+        pad = 10
 
         text_widths = []
         for text in lines:
@@ -359,25 +357,25 @@ class TrafficVolumeCounter:
             (tw, th), _ = cv2.getTextSize(text, font, font_scale, thickness)
             text_widths.append(tw)
 
-        panel_w = min(max(text_widths, default=260) + 36, w - 20)
+        panel_w = min(max(text_widths, default=220) + 26, w - 20)
         panel_h = min(line_h * len(lines) + 2 * pad, h - 20)
 
-        x1, y1 = 10, 10
-        x2, y2 = x1 + panel_w, y1 + panel_h
+        x2, y2 = w - 10, h - 10
+        x1, y1 = x2 - panel_w, y2 - panel_h
 
         overlay = frame.copy()
         cv2.rectangle(overlay, (x1, y1), (x2, y2), (20, 20, 20), -1)
-        frame = cv2.addWeighted(overlay, 0.60, frame, 0.40, 0)
-        cv2.rectangle(frame, (x1, y1), (x2, y2), (220, 220, 220), 2)
+        frame = cv2.addWeighted(overlay, 0.65, frame, 0.35, 0)
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (220, 220, 220), 1)
 
-        y = y1 + pad + 10
+        y = y1 + pad + 6
         for text in lines:
             if text == "":
                 y += line_h // 2
                 continue
 
             color = (255, 255, 255)
-            x_text = x1 + 12
+            x_text = x1 + 10
 
             if text.startswith("TOTAL ENTRY"):
                 color = (80, 255, 80)
@@ -387,8 +385,8 @@ class TrafficVolumeCounter:
                 gate_name = text.split(":")[0]
                 gate = self.gates.get(gate_name)
                 if gate is not None:
-                    cv2.rectangle(frame, (x1 + 10, y - 12), (x1 + 20, y - 2), gate.color, -1)
-                    x_text = x1 + 28
+                    cv2.rectangle(frame, (x1 + 8, y - 10), (x1 + 16, y - 2), gate.color, -1)
+                    x_text = x1 + 22
             elif text.startswith("LAST EVENT"):
                 color = (0, 255, 255)
 
