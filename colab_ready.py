@@ -4,7 +4,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 # 0) CONFIG – EDIT THIS ONLY
-GITHUB_TOKEN = "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"        # GitHub PAT with access to Sharqascc/nnds
+GITHUB_TOKEN = "      "        # GitHub PAT with access to Sharqascc/nnds
 assert GITHUB_TOKEN != "YOUR_GITHUB_PAT_HERE", "Set GITHUB_TOKEN"
 
 # 1) Clone or update repo on feat/video-to-pet-pipeline
