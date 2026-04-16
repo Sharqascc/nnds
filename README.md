@@ -2,6 +2,8 @@
 
 AI-powered system for analyzing vehicle behavior and surrogate safety metrics at unsignalized intersections.
 
+> Note: The versioned PET sample and Colab bootstrap described below are introduced on the `feat/video-to-pet-pipeline` branch and will appear on `main` after this branch is merged.
+
 ---
 
 ## Quickstart
@@ -22,7 +24,9 @@ make grid
 PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
 ```
 
-This runs the end-to-end grid/PET pipeline on a video, computes PET events, and writes them to `outputs/petevents_bev.csv` by default. A canonical 30-frame PET events sample derived from the HF demo video is versioned at:
+This runs the end-to-end grid/PET pipeline on a video, computes PET events, and writes them to `outputs/petevents_bev.csv` by default.
+
+A canonical 30-frame PET events sample, derived from the HF demo video, is versioned at:
 
 - `docs/data_samples/petevents_bev_demo.csv`
 
@@ -70,6 +74,8 @@ For Google Colab, use a single bootstrap script to prepare the environment. This
 - installs Python dependencies
 - downloads the default demo video into `videos/traffic_video.mp4`
 - downloads `sam3.pt` into the repo root only if it is missing
+
+Both the demo video and SAM3 weights are hosted publicly on Hugging Face; no HF token is required. [page:32]
 
 ### One-cell Colab bootstrap
 
@@ -160,17 +166,11 @@ print("!cd /content/nnds && PYTHONPATH=. python traffic_analyzer.py "
       "--video videos/traffic_video.mp4")
 ```
 
-Then run:
+Then run the pipeline:
 
 ```bash
 !cd /content/nnds && PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
 ```
-
-Notes:
-
-- `sam3.pt` is only downloaded if it is missing in the current runtime.
-- Hosted Colab runtimes are ephemeral, so new runtimes may need to re-download large files.
-- The demo video and SAM3 weights are hosted publicly on Hugging Face; no HF token is required. [page:32]
 
 ---
 
@@ -195,7 +195,7 @@ Notes:
 ### Grid / PET extraction
 
 - `traffic_analyzer.py` – End-to-end traffic analysis on video, including detection, BEV transformation, grid construction, conflict extraction, and PET computation.
-- `grid_trajectory/` – Core grid and trajectory logic used by `traffic_analyzer.py`.
+- `grid_trajectory/` – Core grid and trajectory logic used by `traffic_analyzer.py`. [page:32]
 
 ### Diffusion training
 
