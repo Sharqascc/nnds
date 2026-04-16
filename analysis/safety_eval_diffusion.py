@@ -233,7 +233,7 @@ def sample_future_fn(batch, num_samples=20, checkpoint_path="checkpoints/traj_di
     return sample_future_denorm(batch, checkpoint_path=checkpoint_path, num_samples=num_samples)
 
 def main():
-    csv_path = "outputs/petevents_bev.csv"
+    csv_path = "docs/data_samples/petevents_bev_demo.csv"
     ds, dl = make_loader(csv_path, batch_size=32, Th=8, shuffle=False)
     df_pet = ds.df
     device = "cuda" if torch.cuda.is_available() else "cpu"
