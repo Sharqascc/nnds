@@ -77,7 +77,7 @@ def build_training_tensors(csv_path, Th=8):
 
 
 def train(
-    csv_path="outputs/petevents_bev.csv",
+    csv_path="docs/data_samples/petevents_bev_demo.csv",
     checkpoint_dir="checkpoints",
     Th=8,
     batch_size=32,
