@@ -1,5 +1,3 @@
-
-
 ===== FILE: .github/workflows/ci.yml =====
 name: CI
 
@@ -30,9 +28,11 @@ jobs:
     - name: Run tests
       run: |
         PYTHONPATH=. pytest
-
-
-
+===== FILE: .gitignore =====
+__pycache__/
+*.pyc
+patch.diff
+outputs/
 ===== FILE: CONTRIBUTING.md =====
 # Contributing
 
@@ -62,9 +62,62 @@ Use clear, scoped commit messages, for example:
 - `Add diffusion sampling utility`
 - `Document notebook safety pipeline`
 - `Refactor PET event preprocessing`
+===== FILE: Makefile =====
+PYTHON ?= python
+PROJECT_ROOT := $(shell pwd)
+VIDEO ?= videos/traffic_video.mp4
+SAM3_WEIGHTS ?= sam3.pt
+DEMO_CSV ?= docs/data_samples/petevents_bev_demo.csv
+OUT_CSV ?= outputs/petevents_bev.csv
+PET_THRESHOLD ?= 2.0
 
+.PHONY: help install dev grid pet diffusion-train diffusion-eval diffusion-notebook smoke clean
 
+help:
+	@echo "NNDS make targets:"
+	@echo "  make install            # Install Python deps"
+	@echo "  make dev                # Install deps + set PYTHONPATH"
+	@echo "  make grid               # Run traffic_analyzer grid + PET pipeline"
+	@echo "  make pet                # Alias for grid (video-to-PET)"
+	@echo "  make diffusion-train    # Train trajectory diffusion model"
+	@echo "  make diffusion-eval     # Batch safety evaluation with saved checkpoint"
+	@echo "  make diffusion-notebook # Notebook-style end-to-end diffusion eval"
+	@echo "  make smoke              # Run smoke tests"
+	@echo "  make clean              # Remove common temporary artifacts"
 
+install:
+	$(PYTHON) -m pip install --upgrade pip
+	$(PYTHON) -m pip install -r requirements.txt
+
+dev: install
+	@echo "Exporting PYTHONPATH for local shell sessions:"
+	@echo "  export PYTHONPATH=$(PROJECT_ROOT):$$PYTHONPATH"
+
+# === Video → Grid/PET pipeline ===
+
+grid pet:
+	PYTHONPATH=. $(PYTHON) traffic_analyzer.py \
+		--video $(VIDEO) \
+		--sam3-weights $(SAM3_WEIGHTS) \
+		--out-csv $(OUT_CSV) \
+		--pet-threshold $(PET_THRESHOLD)
+
+# === Diffusion training & evaluation ===
+
+diffusion-train:
+	PYTHONPATH=. $(PYTHON) traffic_diffusion/train_trajectory_diffusion.py
+
+diffusion-eval:
+	PYTHONPATH=. $(PYTHON) analysis/safety_eval_diffusion.py
+
+diffusion-notebook:
+	PYTHONPATH=. $(PYTHON) analysis/safety_eval_diffusion_notebook.py
+
+smoke:
+	PYTHONPATH=. $(PYTHON) -m pytest -q tests/test_repo_smoke.py
+
+clean:
+	rm -rf __pycache__ */__pycache__ .pytest_cache
 ===== FILE: README.md =====
 # NNDS: Non-motorized and Heterogeneous Traffic Safety Analysis
 
@@ -292,12 +345,7 @@ PYTHONPATH=. python analysis/safety_eval_diffusion_notebook.py
 ## License
 
 MIT
-
-
-
 ===== FILE: analysis/__init__.py =====
-
-
 
 ===== FILE: analysis/pet_diffusion_analysis.py =====
 
@@ -424,9 +472,6 @@ def compare_realPET_samplePET(df_pet_path, batch, sample_future_fn, scale,
         print(f"{r[0]:7d} | {r[1]:12.6f} | {str(r[2]):20} | {str(r[3]):22}")
 
     return records
-
-
-
 ===== FILE: analysis/safety_eval_diffusion.py =====
 import os
 import numpy as np
@@ -663,7 +708,7 @@ def sample_future_fn(batch, num_samples=20, checkpoint_path="checkpoints/traj_di
     return sample_future_denorm(batch, checkpoint_path=checkpoint_path, num_samples=num_samples)
 
 def main():
-    csv_path = "outputs/petevents_bev.csv"
+    csv_path = "docs/data_samples/petevents_bev_demo.csv"
     ds, dl = make_loader(csv_path, batch_size=32, Th=8, shuffle=False)
     df_pet = ds.df
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -687,9 +732,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
 ===== FILE: analysis/safety_eval_diffusion_notebook.py =====
 
 import numpy as np
@@ -773,9 +815,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
 ===== FILE: bev_mapper.py =====
 import numpy as np
 
@@ -806,9 +845,6 @@ class BEVMapper:
         u = int((X - self.bev_x_min) / self.mpp_x)
         v = int((Y - self.bev_y_min) / self.mpp_y)
         return u, v
-
-
-
 ===== FILE: calibration/grid_validation_calibration.py =====
 # grid_validation_calibration.py
 
@@ -1188,9 +1224,6 @@ print("  This script validates the GRID METHOD under a SIMULATED measurement mod
 print("  For real deployment, replace synthetic world_pts_noisy with real surveyed GCPs,")
 print("  and keep the same train/val + CV evaluation logic.")
 print("\n✅ PIPELINE-READY (SIMULATION LEVEL) – NEXT STEP: REAL GCP INTEGRATION")
-
-
-
 ===== FILE: calibration/monte_carlo_calibration_benchmark.py =====
 
 import numpy as np
@@ -1384,9 +1417,6 @@ if __name__ == "__main__":
         summarize("P3P (RANSAC wrapper)", mae_P3P)
     else:
         print("P3P (RANSAC wrapper): not available / all inf")
-
-
-
 ===== FILE: calibration/monte_carlo_calibration_notes.md =====
 
 # Monte Carlo Calibration Benchmark – Paper Notes
@@ -1429,9 +1459,6 @@ Metric: mean absolute error (MAE) in world (X,Y) over all 324 points.
 - Report effect size (Cohen’s d) for Homography vs PnP (expected to be “huge”).
 - Include a boxplot figure comparing MAE distributions for all methods.
 - Main claim: when 3D survey coordinates are available, explicit pose estimation plus ray–plane intersection clearly outperforms direct planar homography under realistic calibration artifacts, and is robust to modest ground non-planarity.
-
-
-
 ===== FILE: configs/GITI_grid_config.json =====
 {
   "corners": {
@@ -1457,8 +1484,6 @@ Metric: mean absolute error (MAE) in world (X,Y) over all 324 points.
     "naming_style": "CELL_{col}_{row}"
   }
 }
-
-
 ===== FILE: configs/bev_config.json =====
 {
   "H_pixel_to_world": [
@@ -1489,8 +1514,6 @@ Metric: mean absolute error (MAE) in world (X,Y) over all 324 points.
     800
   ]
 }
-
-
 ===== FILE: configs/gate_config.yaml =====
 # gate_config.yaml - Virtual gate definitions for volume counting
 
@@ -1524,9 +1547,6 @@ gates:
     end: [840, 190]
     color: [255, 0, 255]
     entry_side: "left"
-
-
-
 ===== FILE: configs/giti_calibration_points.json =====
 {
   "metadata": {
@@ -1619,1443 +1639,71 @@ gates:
     }
   ]
 }
-
-
-===== FILE: docs/code_dumps/pipeline_code_dump_2026-04-16.txt =====
-
-
-===== FILE: .github/workflows/ci.yml =====
-name: CI
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        pip install pytest
-
-    - name: Run tests
-      run: |
-        PYTHONPATH=. pytest
-
-
-
-===== FILE: CONTRIBUTING.md =====
-# Contributing
-
-## Code organization
-
-- Put reusable diffusion logic inside `traffic_diffusion/`.
-- Put reusable grid and PET logic inside `grid_trajectory/`.
-- Put experiment or evaluation runners inside `analysis/`.
-- Treat `code/grid_trajectory/` as legacy unless you are explicitly migrating code.
-
-## Outputs
-
-- Write generated CSV, plots, and artifacts into `outputs/`.
-- Use stable, descriptive filenames so downstream scripts can reference them reliably.
-
-## Research workflow
-
-1. Generate PET events from the traffic analysis pipeline.
-2. Train or evaluate the diffusion model on those events.
-3. Save reproducible artifacts in `outputs/`.
-4. Update `README.md` when adding new canonical entry points or workflows.
-
-## Commit style
-
-Use clear, scoped commit messages, for example:
-
-- `Add diffusion sampling utility`
-- `Document notebook safety pipeline`
-- `Refactor PET event preprocessing`
-
-
-
-===== FILE: README.md =====
-# NNDS: Non-motorized and Heterogeneous Traffic Safety Analysis
-
-AI-powered system for analyzing vehicle behavior and surrogate safety metrics at unsignalized intersections.
-
-## Quickstart
-
-Use the repository with the Make targets or with direct Python entry points.
-
-```bash
-git clone https://github.com/Sharqascc/nnds.git
-cd nnds
-make install
-```
-
-### Run video to PET pipeline
-
-```bash
-make grid
-# or
-PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
-```
-
-### Train diffusion model
-
-```bash
-make diffusion-train
-# or
-PYTHONPATH=. python traffic_diffusion/train_trajectory_diffusion.py
-```
-
-### Evaluate diffusion safety
-
-```bash
-make diffusion-eval
-# or
-PYTHONPATH=. python analysis/safety_eval_diffusion.py
-```
-
-### Run notebook-style end-to-end diffusion evaluation
-
-```bash
-make diffusion-notebook
-# or
-PYTHONPATH=. python analysis/safety_eval_diffusion_notebook.py
-```
-
-## Project Structure
-
-- `grid_trajectory/` – Spatial grid mapping and PET computation
-- `analysis/` – Evaluation and research scripts
-- `calibration/` – Camera calibration files
-- `configs/` – Grid and calibration configurations
-- `outputs/` – Generated experiment artifacts and evaluation CSV files
-- `traffic_diffusion/` – Diffusion-based trajectory and safety modules
-- `bev_mapper.py` – Bird's Eye View transformation
-- `giti_bev_calib.py` – Homography calibration
-- `traffic_analyzer.py` – Traffic analysis and conflict processing pipeline
-- `traj_diffusion_normalized.py` – Normalized diffusion experiment script
-
-## Entry points
-
-### Grid / PET extraction
-
-- `traffic_analyzer.py` – End-to-end traffic analysis on video, including detection, BEV transformation, grid construction, conflict extraction, and PET computation.
-- `grid_trajectory/` – Core grid and trajectory logic used by `traffic_analyzer.py`.
-
-### Diffusion training
-
-- `traffic_diffusion/train_trajectory_diffusion.py` – Trains the conditional trajectory diffusion model on PET events from `outputs/petevents_bev.csv`.
-- `traffic_diffusion/training_utils.py` – Reusable helpers for data cleaning, loader creation, and training loops.
-
-### Diffusion safety evaluation
-
-- `analysis/safety_eval_diffusion.py` – Batch PET/TTC evaluation using a saved diffusion checkpoint and writes `outputs/safety_eval_diffusion.csv`.
-- `analysis/safety_eval_diffusion_notebook.py` – Notebook-friendly variant that retrains, samples futures, and produces:
-  - `outputs/safety_events_diffusion_model.csv`
-  - `outputs/safety_eval_diffusion_summary.csv`
-
-## Key Features
-
-- SAM3 video segmentation
-- Spatial grid zone analysis
-- Bird's Eye View world-coordinate mapping
-- PET computation
-- Conflict detection
-- Diffusion-based trajectory modeling
-- PET and TTC safety evaluation
-
-## Development setup
-
-Recommended environment:
-
-- Python 3.10+
-- Google Colab for experiments, or a local Python environment
-
-Install dependencies with:
-
-```bash
-pip install -r requirements.txt
-```
-
-Typical developer workflow:
-
-```bash
-git clone https://github.com/Sharqascc/nnds.git
-cd nnds
-pip install -r requirements.txt
-python -m pytest
-```
-
-## Repository conventions
-
-- `grid_trajectory/` is the canonical location for grid and PET logic.
-- `traffic_analyzer.py` is the main end-to-end entry point for video-to-PET processing.
-- `analysis/` contains evaluation-oriented scripts.
-- `traffic_diffusion/` contains reusable model, sampling, and safety modules.
-- `outputs/` stores generated experiment artifacts and evaluation CSV files.
-
-For new research work:
-
-1. Prefer reusable logic inside `traffic_diffusion/` or `grid_trajectory/`.
-2. Keep one-off experiment runners inside `analysis/`.
-3. Write generated artifacts into `outputs/` with stable, descriptive filenames.
-
-## Usage
-
-Code and configs are maintained on GitHub, while the default public demo video is hosted on Hugging Face.
-
-### Default demo video (Hugging Face)
-
-The canonical example video for `traffic_analyzer.py` lives in a dataset repo:
-
-- Dataset: <https://huggingface.co/datasets/sharqascc/traffic-video-dataset>
-- Video file (web view):  
-  <https://huggingface.co/datasets/sharqascc/traffic-video-dataset/blob/main/videos/traffic_video.mp4>
-
-For scripts and Colab, use the `resolve` URL so the file is downloaded directly:
-
-```bash
-cd /content/nnds
-mkdir -p videos
-wget -O videos/traffic_video.mp4 \
-  "https://huggingface.co/datasets/sharqascc/traffic-video-dataset/resolve/main/videos/traffic_video.mp4"
-
-PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
-```
-
-Larger private or experimental videos can still be stored on Google Drive, but all public examples in this repo are expected to work with the Hugging Face–hosted demo video by default.
-
-### SAM3 model weights
-
-SAM3 model weights (private, HF token required)
-The SAM3 video segmentation model used by traffic_analyzer.py is stored in a private Hugging Face repo and is not committed to this repo. You must download it with your own Hugging Face access token.
-
-Create a read token at: https://huggingface.co/settings/tokens
-
-In Colab or your shell, set it:
-```bash
-export HF_TOKEN="your_hf_token_here"
-```
-
-Download the checkpoint into the repo root so the default path /content/nnds/sam3.pt works:
-```bash
-cd /content/nnds
-wget --header="Authorization: Bearer $HF_TOKEN"
--O sam3.pt
-"https://huggingface.co/sharqascc/sam3-traffic-model/resolve/main/sam3.pt"
-```
-
-Verify:
-```bash
-ls -lh sam3.pt
-```
-
-Then run:
-```bash
-PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
-```
-If sam3.pt is 0 bytes, the download failed (likely missing/invalid token).
-
-
-
-## Diffusion-based Safety Evaluation
-
-This repository includes a trajectory diffusion model and PET/TTC-based safety evaluation on PET events extracted from the grid pipeline.
-
-### Components
-
-- `traffic_diffusion/train_trajectory_diffusion.py` – Trains a conditional trajectory diffusion model on PET-event futures using `outputs/petevents_bev.csv`.
-- `traffic_diffusion/model_and_sampler.py` – Loads diffusion checkpoints and samples counterfactual futures given past trajectories.
-- `analysis/safety_eval_diffusion.py` – Iterates over PET events, samples multiple futures per event, and computes PET and TTC statistics.
-
-### Running the original safety evaluation
-
-```bash
-cd /content
-git clone https://github.com/Sharqascc/nnds.git
-cd nnds
-PYTHONPATH=. python analysis/safety_eval_diffusion.py
-```
-
-### Notebook-friendly diffusion pipeline
-
-For iterative experiments and Colab runs, this repository also includes a notebook-style pipeline:
-
-- `traffic_diffusion/training_utils.py` – Data cleaning, normalization, loader creation, and reusable training helpers
-- `traffic_diffusion/sampling_utils.py` – Utilities to load a trained checkpoint and sample counterfactual futures
-- `analysis/safety_eval_diffusion_notebook.py` – End-to-end notebook-oriented script that:
-  - builds cleaned train and eval loaders
-  - trains the diffusion model and saves a checkpoint
-  - samples future trajectories for evaluation events
-  - constructs an event-level PET and risk table
-  - summarizes safety using `traffic_diffusion/pet_safety_metrics.py`
-
-Run it in Colab with:
-
-```bash
-cd /content
-git clone https://github.com/Sharqascc/nnds.git
-cd nnds
-PYTHONPATH=. python analysis/safety_eval_diffusion_notebook.py
-```
-
-## License
-
-MIT
-
-
-
-===== FILE: analysis/__init__.py =====
-
-
-
-===== FILE: analysis/pet_diffusion_analysis.py =====
-
-import ast
-import numpy as np
-import pandas as pd
-import torch
-
-def parse_traj(cell):
-    try:
-        return np.array(ast.literal_eval(cell), dtype=float)
-    except Exception:
-        return None
-
-def compute_pet_like_metrics(batch, sample_future_fn, scale, noise_scale=0.01, d_thresh=1.0):
-    B = batch["past"].shape[0]
-
-    past_norm   = batch["past"]
-    future_norm = batch["future"]
-
-    past_world   = past_norm * scale
-    real_world   = future_norm * scale
-    sample_world = sample_future_fn(batch, max_B=B, noise_scale=noise_scale)
-
-    real_np   = real_world.cpu().numpy()
-    sample_np = sample_world.cpu().numpy()
-
-    pet_pairs = []
-
-    for b in range(B):
-        real_traj   = real_np[b]
-        sample_traj = sample_np[b]
-
-        real_dist   = np.linalg.norm(real_traj[:, 0:2]   - real_traj[:, 2:4],   axis=-1)
-        sample_dist = np.linalg.norm(sample_traj[:, 0:2] - sample_traj[:, 2:4], axis=-1)
-
-        def first_hit(dist):
-            idxs = np.where(dist < d_thresh)[0]
-            if len(idxs) == 0:
-                return None
-            return float(idxs[0])
-
-        pet_real   = first_hit(real_dist)
-        pet_sample = first_hit(sample_dist)
-
-        pet_pairs.append((pet_real, pet_sample))
-
-    reals = [p[0] for p in pet_pairs if p[0] is not None]
-    samps = [p[1] for p in pet_pairs if p[1] is not None]
-    both  = [p for p in pet_pairs if p[0] is not None and p[1] is not None]
-
-    print("=== PET-like metrics (per example, in future steps) ===")
-    print("d_thresh:", d_thresh)
-    print(f"num examples in batch: {len(pet_pairs)}")
-    print(f"real PET defined in:   {len(reals)} examples")
-    print(f"sample PET defined in: {len(samps)} examples")
-    print(f"both defined in:       {len(both)} examples")
-
-    if both:
-        diffs = [p[1] - p[0] for p in both]
-        print(f"mean(sample PET - real PET): {np.mean(diffs):.3f}")
-        print(f"std(sample PET - real PET):  {np.std(diffs):.3f}")
-
-    print("\nExample PET pairs (real, sample) for first 5 examples:")
-    for i, (pr, ps) in enumerate(pet_pairs[:5]):
-        print(f"  idx {i}: real={pr}, sample={ps}")
-
-    return pet_pairs
-
-
-def compare_realPET_samplePET(df_pet_path, batch, sample_future_fn, scale,
-                              noise_scale=0.01, d_thresh=1.0):
-    df_pet = pd.read_csv(df_pet_path)
-    print("df_pet rows:", len(df_pet))
-
-    idxs = batch["idx"].cpu().numpy()
-    B = len(idxs)
-
-    future_norm = batch["future"]
-    real_world   = future_norm * scale
-    sample_world = sample_future_fn(batch, max_B=B, noise_scale=noise_scale)
-
-    real_np   = real_world.cpu().numpy()
-    sample_np = sample_world.cpu().numpy()
-
-    records = []
-
-    for b in range(B):
-        row_idx = int(idxs[b])
-        true_pet = float(df_pet.loc[row_idx, "PET"])
-
-        real_traj   = real_np[b]
-        sample_traj = sample_np[b]
-
-        real_dist   = np.linalg.norm(real_traj[:, 0:2]   - real_traj[:, 2:4],   axis=-1)
-        sample_dist = np.linalg.norm(sample_traj[:, 0:2] - sample_traj[:, 2:4], axis=-1)
-
-        def first_hit(dist):
-            idxs_local = np.where(dist < d_thresh)[0]
-            if len(idxs_local) == 0:
-                return None
-            return float(idxs_local[0])
-
-        pet_like_real   = first_hit(real_dist)
-        pet_like_sample = first_hit(sample_dist)
-
-        records.append((row_idx, true_pet, pet_like_real, pet_like_sample))
-
-    print("=== Real PET (CSV) vs PET-like (steps) from real vs sample ===")
-    print(f"d_thresh: {d_thresh}")
-    print(f"batch size: {B}")
-    both = [r for r in records if r[3] is not None]
-    if both:
-        diffs = [r[3] - r[2] for r in both if r[2] is not None]
-        if diffs:
-            print(f"sample-real PET-like step diff (where both defined): "
-                  f"mean={np.mean(diffs):.3f}, std={np.std(diffs):.3f}")
-    else:
-        print("No examples where sample PET-like is defined.")
-
-    print("\nFirst 5 examples:")
-    print("row_idx | true PET (s) | PET-like real (steps) | PET-like sample (steps)")
-    for r in records[:5]:
-        print(f"{r[0]:7d} | {r[1]:12.6f} | {str(r[2]):20} | {str(r[3]):22}")
-
-    return records
-
-
-
-===== FILE: analysis/safety_eval_diffusion.py =====
-import os
-import numpy as np
-import pandas as pd
-import torch
-
-from torch.utils.data import Dataset, DataLoader
-
-# -----------------------------
-# 1) Dataset from petevents_bev.csv
-# -----------------------------
-
-def parse_traj_txy(cell):
-    arr = np.array(eval(cell), dtype=float)   # (T,3): t,x,y
-    return arr[:, 0], arr[:, 1:3]
-
-class TrajDiffusionDatasetNorm(Dataset):
-    def __init__(self, csv_path, Th=8):
-        df = pd.read_csv(csv_path)
-
-        t_i_list, xy_i_list, xy_j_list = [], [], []
-        lengths = []
-
-        for ci, cj in zip(df["world_traj_i"], df["world_traj_j"]):
-            t_i, xy_i = parse_traj_txy(ci)
-            t_j, xy_j = parse_traj_txy(cj)
-            T = min(len(t_i), len(t_j))
-            if T < 2:
-                continue
-            lengths.append(T)
-            t_i_list.append(t_i[:T])
-            xy_i_list.append(xy_i[:T])
-            xy_j_list.append(xy_j[:T])
-
-        if not lengths:
-            raise RuntimeError("No valid trajectories found in CSV")
-
-        T_max = max(lengths)
-        traj_list = []
-
-        for xy_i, xy_j in zip(xy_i_list, xy_j_list):
-            T = min(len(xy_i), T_max)
-            pad_len = T_max - T
-            xy_i_p = np.pad(xy_i[:T], ((0, pad_len), (0, 0)), mode="edge")
-            xy_j_p = np.pad(xy_j[:T], ((0, pad_len), (0, 0)), mode="edge")
-            traj_list.append(np.concatenate([xy_i_p, xy_j_p], axis=-1))
-
-        traj_all = np.stack(traj_list, axis=0)   # (N, T_max, 4)
-
-        N, T, D = traj_all.shape
-        Th = min(Th, T // 2)
-        inputs_np = traj_all[:, :Th, :]
-        future_np = traj_all[:, Th:, :]
-
-        centers = inputs_np[:, -1, 0:2]
-
-        inputs_norm = inputs_np.copy()
-        targets_norm = future_np.copy()
-
-        for k in range(N):
-            cx, cy = centers[k]
-            inputs_norm[k, :, 0:4] -= np.array([cx, cy, cx, cy])
-            targets_norm[k, :, 0:4] -= np.array([cx, cy, cx, cy])
-
-        scale = 1.0
-        inputs_norm /= scale
-        targets_norm /= scale
-
-        self.inputs = torch.from_numpy(inputs_norm).float()
-        self.targets = torch.from_numpy(targets_norm).float()
-        self.centers = torch.from_numpy(centers).float()
-        self.scale = scale
-        self.df = df.reset_index(drop=True)
-
-    def __len__(self):
-        return self.inputs.shape[0]
-
-    def __getitem__(self, idx):
-        return {
-            "idx": idx,
-            "past": self.inputs[idx],
-            "future": self.targets[idx],
-            "center": self.centers[idx],
-        }
-
-def make_loader(csv_path, batch_size=32, Th=8, shuffle=False):
-    ds = TrajDiffusionDatasetNorm(csv_path, Th=Th)
-    dl = DataLoader(ds, batch_size=batch_size, shuffle=shuffle, drop_last=False)
-    return ds, dl
-
-# -----------------------------
-# 2) PET / TTC helpers
-# -----------------------------
-
-def first_below_threshold(dist_seq, thresh):
-    idxs = np.where(dist_seq < thresh)[0]
-    if len(idxs) == 0:
-        return None
-    return float(idxs[0])
-
-def compute_ttc_seq(pos1, pos2, dt, d_thresh=1.0, eps=1e-6):
-    v1 = (pos1[1:] - pos1[:-1]) / dt
-    v2 = (pos2[1:] - pos2[:-1]) / dt
-    v_rel = v2 - v1
-    p_rel = pos2[:-1] - pos1[:-1]
-
-    ttc = []
-    for p, v in zip(p_rel, v_rel):
-        vr2 = float(np.dot(v, v))
-        if vr2 < eps:
-            ttc.append(None)
-            continue
-        t_star = -float(np.dot(p, v)) / vr2
-        if t_star <= 0:
-            ttc.append(None)
-            continue
-        d_min = float(np.linalg.norm(p + t_star * v))
-        if d_min < d_thresh:
-            ttc.append(t_star)
-        else:
-            ttc.append(None)
-    return ttc
-
-@torch.no_grad()
-def eval_safety_over_loader(
-    loader,
-    df_pet,
-    sample_future_fn,
-    scale=1.0,
-    out_csv_path="outputs/safety_eval_diffusion.csv",
-    num_samples=20,
-    d_thresh=1.0,
-    dt=0.0333,
-    max_batches=None,
-    device="cuda",
-):
-    os.makedirs(os.path.dirname(out_csv_path), exist_ok=True)
-
-    all_records = []
-
-    for b_idx, batch in enumerate(loader):
-        if max_batches is not None and b_idx >= max_batches:
-            break
-
-        for k in batch:
-            if isinstance(batch[k], torch.Tensor):
-                batch[k] = batch[k].to(device)
-
-        B = batch["future"].shape[0]
-        future_world = batch["future"] * scale
-        future_np = future_world.cpu().numpy()
-
-        samples_np = sample_future_fn(batch, num_samples=num_samples)  # (S,B,T,D)
-
-        for i in range(B):
-            row_idx = int(batch["idx"][i].item())
-
-            true_pet = None
-            if "PET" in df_pet.columns and row_idx < len(df_pet):
-                true_pet = float(df_pet.loc[row_idx, "PET"])
-
-            real_traj = future_np[i]
-            p1_real = real_traj[:, 0:2]
-            p2_real = real_traj[:, 2:4]
-
-            dist_real = np.linalg.norm(p1_real - p2_real, axis=-1)
-            pet_like_real = first_below_threshold(dist_real, d_thresh)
-
-            ttc_seq_real = compute_ttc_seq(p1_real, p2_real, dt, d_thresh=d_thresh)
-            real_ttc_vals = [t for t in ttc_seq_real if t is not None]
-            min_ttc_real = min(real_ttc_vals) if real_ttc_vals else None
-
-            pet_samples = []
-            ttc_samples = []
-
-            for s in range(num_samples):
-                sample_traj = samples_np[s, i]
-                p1_s = sample_traj[:, 0:2]
-                p2_s = sample_traj[:, 2:4]
-
-                dist_s = np.linalg.norm(p1_s - p2_s, axis=-1)
-                pet_s = first_below_threshold(dist_s, d_thresh)
-                pet_samples.append(pet_s)
-
-                ttc_seq_s = compute_ttc_seq(p1_s, p2_s, dt, d_thresh=d_thresh)
-                ttc_vals_s = [t for t in ttc_seq_s if t is not None]
-                ttc_s = min(ttc_vals_s) if ttc_vals_s else None
-                ttc_samples.append(ttc_s)
-
-            def finite_vals(xs):
-                return [x for x in xs if x is not None]
-
-            pet_s_f = finite_vals(pet_samples)
-            ttc_s_f = finite_vals(ttc_samples)
-
-            rec = {
-                "idx": row_idx,
-                "true_PET": true_pet,
-                "real_pet_like_step": pet_like_real,
-                "real_min_TTC": min_ttc_real,
-                "sample_pet_like_step_mean": float(np.mean(pet_s_f)) if pet_s_f else None,
-                "sample_pet_like_step_std": float(np.std(pet_s_f)) if pet_s_f else None,
-                "sample_min_TTC_mean": float(np.mean(ttc_s_f)) if ttc_s_f else None,
-                "sample_min_TTC_std": float(np.std(ttc_s_f)) if ttc_s_f else None,
-                "sample_pet_defined_frac": len(pet_s_f) / num_samples,
-                "sample_ttc_defined_frac": len(ttc_s_f) / num_samples,
-            }
-            all_records.append(rec)
-
-        print(f"Processed batch {b_idx+1}, total records: {len(all_records)}")
-
-    df_out = pd.DataFrame.from_records(all_records)
-    df_out.to_csv(out_csv_path, index=False)
-    print("Saved safety eval to:", out_csv_path)
-
-# -----------------------------
-# 3) Entry point (wire your model here)
-# -----------------------------
-# -----------------------------
-# 3) Entry point (wire your model here)
-# -----------------------------
-
-import torch
-import numpy as np
-from traffic_diffusion.model_and_sampler import sample_future_denorm
-
-def sample_future_fn(batch, num_samples=20, checkpoint_path="checkpoints/traj_diffusion_best.pt"):
-    """
-    Wrapper around the clean sampler module.
-
-    Returns:
-      samples_world: (num_samples, B, T_future, 4)
-    """
-    return sample_future_denorm(batch, checkpoint_path=checkpoint_path, num_samples=num_samples)
-
-def main():
-    csv_path = "outputs/petevents_bev.csv"
-    ds, dl = make_loader(csv_path, batch_size=32, Th=8, shuffle=False)
-    df_pet = ds.df
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    def sample_fn(batch, num_samples=20):
-        # batch tensors are moved to device inside eval_safety_over_loader
-        return sample_future_fn(batch, num_samples=num_samples, checkpoint_path="checkpoints/traj_diffusion_best.pt")
-
-    eval_safety_over_loader(
-        loader=dl,
-        df_pet=df_pet,
-        sample_future_fn=sample_fn,
-        scale=ds.scale,
-        out_csv_path="outputs/safety_eval_diffusion.csv",
-        num_samples=100,
-        d_thresh=1.5,
-        dt=0.0333,
-        max_batches=None,
-        device=device,
-    )
-
-if __name__ == "__main__":
-    main()
-
-
-
-===== FILE: analysis/safety_eval_diffusion_notebook.py =====
-
-import numpy as np
-import pandas as pd
-import torch
-from pathlib import Path
-from traffic_diffusion.training_utils import build_clean_dataloaders, create_model, train_diffusion_model
-from traffic_diffusion.sampling_utils import load_eval_model, sample_future
-from traffic_diffusion.pet_safety_metrics import compute_safety_metrics
-
-ROOT = Path(__file__).resolve().parents[1]
-OUTPUT_DIR = ROOT / "outputs"
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-def main():
-    from traffic_diffusion.trajectory_diffusion import load_trajdiff_dataset
-
-    raw_dataset, meta_df = load_trajdiff_dataset(ROOT)
-
-    train_loader, eval_loader, train_dataset, eval_dataset, stats = \
-        build_clean_dataloaders(raw_dataset, batch_size=14, T=15, N=1, F=4)
-
-    model = create_model(device, T=15, N=1, F=4, cond_dim=4)
-    best_ckpt, last_ckpt, history = train_diffusion_model(
-        model, train_loader, device,
-        num_epochs=50,
-        save_dir=str(ROOT / "checkpoints"),
-    )
-
-    hist_df = pd.DataFrame(history)
-    hist_df.to_csv(OUTPUT_DIR / "training_history.csv", index=False)
-
-    eval_model = load_eval_model(best_ckpt, device, T=15, N=1, F=4, cond_dim=4)
-    samples = sample_future(eval_model, eval_loader, device, T=15, N=1, F=4,
-                            num_samples=10, num_steps=100)
-
-    if samples is None:
-        raise RuntimeError("No samples produced.")
-
-    S, B_total, D = samples.shape
-    df_samples = pd.DataFrame(samples[0])
-    df_samples.to_csv(OUTPUT_DIR / "safety_eval_diffusion_simple.csv", index=False)
-
-    eval_indices = eval_dataset.indices if hasattr(eval_dataset, "indices") else eval_dataset.dataset.indices
-    meta_eval = meta_df.iloc[eval_indices].reset_index(drop=True)
-
-    B_eval = df_samples.shape[0]
-    traj_pred = df_samples.to_numpy(dtype=np.float32).reshape(B_eval, 15, 1, 4)
-
-    records = []
-    for i in range(B_eval):
-        meta_i = meta_eval.iloc[i]
-        pet_model = float(meta_i.get("PET", np.nan))
-        if np.isfinite(pet_model):
-            risk_model = float(np.clip(1.0 - pet_model, 0.0, 1.0))
-        else:
-            risk_model = 0.0
-
-        records.append({
-            "idx": int(i),
-            "obj_i": meta_i.get("obj_i", None),
-            "obj_j": meta_i.get("obj_j", None),
-            "cell_id": meta_i.get("cell_id", None),
-            "PET": pet_model,
-            "risk_score": risk_model,
-            "severity_evt": (
-                "critical" if pet_model < 0.5
-                else "high" if pet_model < 1.0
-                else "medium"
-            ) if np.isfinite(pet_model) else None,
-        })
-
-    df_events_model = pd.DataFrame(records)
-    df_events_model.to_csv(OUTPUT_DIR / "safety_events_diffusion_model.csv", index=False)
-
-    summary_model = compute_safety_metrics(df_events_model)
-    df_summary_model = pd.DataFrame([summary_model])
-    df_summary_model.to_csv(OUTPUT_DIR / "safety_eval_diffusion_summary.csv", index=False)
-
-if __name__ == "__main__":
-    main()
-
-
-
-===== FILE: bev_mapper.py =====
-import numpy as np
-
-class BEVMapper:
-    def __init__(self, H_pixel_to_world, bev_bounds, bev_resolution):
-        self.H = np.asarray(H_pixel_to_world, dtype=np.float32)
-
-        self.bev_x_min = float(bev_bounds["x_min"])
-        self.bev_x_max = float(bev_bounds["x_max"])
-        self.bev_y_min = float(bev_bounds["y_min"])
-        self.bev_y_max = float(bev_bounds["y_max"])
-
-        self.bev_w, self.bev_h = map(int, bev_resolution)
-        self.mpp_x = (self.bev_x_max - self.bev_x_min) / self.bev_w
-        self.mpp_y = (self.bev_y_max - self.bev_y_min) / self.bev_h
-
-    def pixel_to_world(self, p):
-        x, y = p
-        v = np.array([x, y, 1.0], dtype=np.float32)
-        w = self.H @ v
-        if w[2] == 0:
-            return None
-        w /= w[2]
-        return float(w[0]), float(w[1])
-
-    def world_to_bev(self, world_xy):
-        X, Y = world_xy
-        u = int((X - self.bev_x_min) / self.mpp_x)
-        v = int((Y - self.bev_y_min) / self.mpp_y)
-        return u, v
-
-
-
-===== FILE: calibration/grid_validation_calibration.py =====
-# grid_validation_calibration.py
-
-import json
-import numpy as np
-import cv2
-import os
-from matplotlib import pyplot as plt
-from sklearn.model_selection import KFold
-
-# =============================================================================
-# SCIENTIFIC NOTE:
-# -----------------------------------------------------------------------------
-# This script validates a grid-based homography under an *ideal* pinhole + planar
-# assumption with Gaussian survey noise. It does NOT explicitly model:
-#   - Lens radial/tangential distortion (k1, k2, p1, p2, ...),
-#   - Strong non-planarity of the scene,
-#   - Anisotropic or correlated survey biases beyond the simple Gaussian model.
-#
-# For real deployment on traffic cameras, a recommended architecture is:
-#   1) Calibrate camera intrinsics and distortion using cv2.calibrateCamera()
-#      on a checkerboard / calibration grid (estimate K, distortion coeffs).
-#   2) Undistort pixel coordinates of detections with cv2.undistortPoints().
-#   3) Fit the ground-plane homography H on UNDISTORTED points only.
-#   4) Validate against independent surveyed checkpoints not used in fitting.
-#
-# The separate script:
-#   calibration/grid_validation_calibration_realistic_test.py
-# simulates lens distortion, plane bias, and anisotropic survey noise to study
-# how a pure homography degrades under realistic artefacts. It is intended as a
-# stress-test and not as the primary calibration pipeline.
-# =============================================================================
-
-
-print("="*70)
-print("GRID-BASED CALIBRATION WITH PROPER VALIDATION")
-print("="*70)
-
-# -------------------------------------------------------------------
-# CONFIG
-# -------------------------------------------------------------------
-project_root = "/content/drive/MyDrive/shared_pipeline/4D_tracking_project"
-
-ACTIVA_LENGTH_METERS = 1.833
-GRID_COLS = 27
-GRID_ROWS = 12
-EXPECTED_WORLD_WIDTH = GRID_COLS * ACTIVA_LENGTH_METERS
-EXPECTED_WORLD_HEIGHT = GRID_ROWS * ACTIVA_LENGTH_METERS
-
-# Simulated measurement noise (STD in meters)
-NOISE_STD_DEV = 0.025
-
-# Cross‑validation
-N_SPLITS = 5
-RANDOM_SEED = 42
-np.random.seed(RANDOM_SEED)
-
-print("\nPHYSICAL PARAMETERS")
-print("-------------------")
-print(f"  Activa length: {ACTIVA_LENGTH_METERS} m")
-print(f"  Grid: {GRID_COLS} x {GRID_ROWS}")
-print(f"  Expected coverage: {EXPECTED_WORLD_WIDTH:.1f} m x {EXPECTED_WORLD_HEIGHT:.1f} m")
-print(f"  Expected area: {EXPECTED_WORLD_WIDTH * EXPECTED_WORLD_HEIGHT:.0f} m²")
-print(f"  Simulated measurement noise: σ={NOISE_STD_DEV*100:.1f} cm")
-
-# -------------------------------------------------------------------
-# LOAD GRID CORNERS (IMAGE SPACE)
-# -------------------------------------------------------------------
-print("\nLOADING GRID CONFIG (IMAGE CORNERS)")
-print("-----------------------------------")
-grid_cfg_path = os.path.join(project_root, "configs/GITI_grid_config.json")
-with open(grid_cfg_path) as f:
-    grid_config = json.load(f)
-
-corners = grid_config["corners"]
-x_min_px = corners["top_left"][0]
-x_max_px = corners["top_right"][0]
-y_min_px = corners["top_left"][1]
-y_max_px = corners["bottom_left"][1]
-x_range_px = x_max_px - x_min_px
-y_range_px = y_max_px - y_min_px
-
-print(f"  X range: {x_min_px} to {x_max_px} = {x_range_px}px")
-print(f"  Y range: {y_min_px} to {y_max_px} = {y_range_px}px")
-
-pixels_per_meter_x = x_range_px / EXPECTED_WORLD_WIDTH
-pixels_per_meter_y = y_range_px / EXPECTED_WORLD_HEIGHT
-pixels_per_meter = 0.5 * (pixels_per_meter_x + pixels_per_meter_y)
-
-print("\nPIXELS PER METER ESTIMATE")
-print("-------------------------")
-print(f"  X: {pixels_per_meter_x:.2f} px/m")
-print(f"  Y: {pixels_per_meter_y:.2f} px/m")
-print(f"  Average: {pixels_per_meter:.2f} px/m")
-
-# -------------------------------------------------------------------
-# GENERATE SYNTHETIC GRID + NOISE (SIMULATION OF FIELD MEASUREMENTS)
-# -------------------------------------------------------------------
-print(f"\nGENERATING {GRID_COLS * GRID_ROWS} GRID POINTS WITH NOISE (SIMULATION)")
-print("------------------------------------------------------------------------")
-
-pixel_pts = []
-world_pts_noisy = []
-world_pts_true = []
-
-for row_idx in range(GRID_ROWS):
-    for col_idx in range(GRID_COLS):
-        # Ideal pixel position on the image plane (uniform in pixel space)
-        px = x_min_px + (col_idx / (GRID_COLS - 1)) * x_range_px if GRID_COLS > 1 else x_min_px
-        py = y_min_px + (row_idx / (GRID_ROWS - 1)) * y_range_px if GRID_ROWS > 1 else y_min_px
-
-        # Ideal world offset in meters (using simple planar mapping)
-        world_offset_x = (px - x_min_px) / pixels_per_meter_x
-        world_offset_y = (py - y_min_px) / pixels_per_meter_y
-
-        # Store "true" world coordinates (no noise) – this is the hidden ground truth
-        world_pts_true.append([world_offset_x, world_offset_y])
-
-        # Simulate measurement error in world coordinates (what surveyor would give)
-        noise_x = np.random.normal(0, NOISE_STD_DEV)
-        noise_y = np.random.normal(0, NOISE_STD_DEV)
-        wx_measured = world_offset_x + noise_x
-        wy_measured = world_offset_y + noise_y
-
-        pixel_pts.append([px, py])
-        world_pts_noisy.append([wx_measured, wy_measured])
-
-pixel_pts = np.array(pixel_pts, dtype=np.float32)
-world_pts_noisy = np.array(world_pts_noisy, dtype=np.float32)
-world_pts_true = np.array(world_pts_true, dtype=np.float32)
-
-N_POINTS = len(pixel_pts)
-print(f"  Generated {N_POINTS} pixel–world correspondences (with simulated measurement noise)")
-
-# -------------------------------------------------------------------
-# TRAIN / VALIDATION SPLIT (NO MORE CIRCULAR VALIDATION)
-# -------------------------------------------------------------------
-VAL_RATIO = 0.15
-val_size = int(N_POINTS * VAL_RATIO)
-train_size = N_POINTS - val_size
-
-indices = np.arange(N_POINTS)
-np.random.shuffle(indices)
-
-train_idx = indices[:train_size]
-val_idx = indices[train_size:]
-
-pixel_train = pixel_pts[train_idx]
-world_train_noisy = world_pts_noisy[train_idx]
-
-pixel_val = pixel_pts[val_idx]
-world_val_true = world_pts_true[val_idx]   # validate against TRUE world, not noisy
-
-print("\nTRAIN / VALIDATION SPLIT")
-print("------------------------")
-print(f"  Train points: {len(pixel_train)}")
-print(f"  Val points:   {len(pixel_val)} (held-out, uses TRUE world coords for evaluation)")
-
-# -------------------------------------------------------------------
-# ESTIMATE HOMOGRAPHY FROM TRAIN SET ONLY
-# -------------------------------------------------------------------
-print("\nESTIMATING HOMOGRAPHY ON TRAIN SET (RANSAC)")
-print("-------------------------------------------")
-H_grid, mask_train = cv2.findHomography(
-    pixel_train,
-    world_train_noisy[:, :2],
-    cv2.RANSAC,
-    ransacReprojThreshold=2.0,
-    confidence=0.99,
-    maxIters=5000
-)
-
-train_inliers = mask_train.ravel().astype(bool)
-train_inlier_ratio = np.mean(train_inliers)
-print(f"  Train inliers: {train_inliers.sum()}/{len(train_inliers)} ({train_inlier_ratio:.1%})")
-
-# -------------------------------------------------------------------
-# EVALUATE ON TRAIN (NOISY WORLD) VS VALIDATION (TRUE WORLD)
-# -------------------------------------------------------------------
-def reprojection_errors(pixel_points, world_points_target, H):
-    # Compute reprojection error (in meters) from pixel points to target world coords.
-    projected = cv2.perspectiveTransform(pixel_points.reshape(-1, 1, 2), H).reshape(-1, 2)
-    errs = np.linalg.norm(projected - world_points_target[:, :2], axis=1)
-    return errs, projected
-
-# 1) Train error (relative to noisy measured world coords)
-train_errors, train_projected = reprojection_errors(pixel_train, world_train_noisy, H_grid)
-train_mae = np.mean(train_errors[train_inliers])
-train_std = np.std(train_errors[train_inliers])
-
-# 2) Validation error (relative to TRUE world coords – independent)
-val_errors, val_projected = reprojection_errors(pixel_val, world_val_true, H_grid)
-val_mae = np.mean(val_errors)
-val_std = np.std(val_errors)
-
-print("\nERROR METRICS")
-print("-------------")
-print(f"  TRAIN (fit to noisy survey data):")
-print(f"    MAE: {train_mae:.4f} m ({train_mae*100:.2f} cm)")
-print(f"    Std: {train_std:.4f} m ({train_std*100:.2f} cm)")
-
-print(f"\n  VALIDATION (independent TRUE world coordinates):")
-print(f"    MAE: {val_mae:.4f} m ({val_mae*100:.2f} cm)")
-print(f"    Std: {val_std:.4f} m ({val_std*100:.2f} cm)")
-
-# -------------------------------------------------------------------
-# K-FOLD CROSS-VALIDATION ON FULL SYNTHETIC GRID (AGAINST TRUE WORLD)
-# -------------------------------------------------------------------
-print("\nK-FOLD CROSS-VALIDATION (AGAINST TRUE WORLD)")
-print("--------------------------------------------")
-kf = KFold(n_splits=N_SPLITS, shuffle=True, random_state=RANDOM_SEED)
-
-cv_maes = []
-cv_stds = []
-
-for fold, (train_idx_cv, val_idx_cv) in enumerate(kf.split(pixel_pts), start=1):
-    pix_train_cv = pixel_pts[train_idx_cv]
-    world_train_cv_noisy = world_pts_noisy[train_idx_cv]
-    pix_val_cv = pixel_pts[val_idx_cv]
-    world_val_cv_true = world_pts_true[val_idx_cv]
-
-    H_cv, mask_cv = cv2.findHomography(
-        pix_train_cv,
-        world_train_cv_noisy[:, :2],
-        cv2.RANSAC,
-        ransacReprojThreshold=2.0,
-        confidence=0.99,
-        maxIters=5000
-    )
-    val_errs_cv, _ = reprojection_errors(pix_val_cv, world_val_cv_true, H_cv)
-    cv_maes.append(np.mean(val_errs_cv))
-    cv_stds.append(np.std(val_errs_cv))
-
-    print(f"  Fold {fold}: MAE={cv_maes[-1]:.4f} m ({cv_maes[-1]*100:.2f} cm), "
-          f"Std={cv_stds[-1]:.4f} m ({cv_stds[-1]*100:.2f} cm)")
-
-cv_mae_mean = np.mean(cv_maes)
-cv_mae_std = np.std(cv_maes)
-print("\n  CROSS-VALIDATION SUMMARY:")
-print(f"    Mean MAE: {cv_mae_mean:.4f} m ({cv_mae_mean*100:.2f} cm)")
-print(f"    MAE Std:  {cv_mae_std:.4f} m ({cv_mae_std*100:.2f} cm)")
-
-# -------------------------------------------------------------------
-# LOAD ORIGINAL 6-POINT CALIBRATION FOR REFERENCE
-# -------------------------------------------------------------------
-print("\nLOADING ORIGINAL 6-POINT CALIBRATION")
-print("------------------------------------")
-orig_calib_path = os.path.join(project_root, "configs/giti_calibration_points.json")
-with open(orig_calib_path) as f:
-    orig_calib_data = json.load(f)
-
-orig_pixel_pts = []
-orig_world_pts = []
-
-for p in orig_calib_data["calibration_points"]:
-    orig_pixel_pts.append([p["pixel"]["x"], p["pixel"]["y"]])
-    orig_world_pts.append([p["world"]["easting"], p["world"]["northing"]])
-
-orig_pixel_pts = np.array(orig_pixel_pts, dtype=np.float32)
-orig_world_pts = np.array(orig_world_pts, dtype=np.float32)
-
-H_orig, mask_orig = cv2.findHomography(
-    orig_pixel_pts,
-    orig_world_pts[:, :2],
-    cv2.RANSAC,
-    ransacReprojThreshold=2.0
-)
-
-orig_projected = cv2.perspectiveTransform(
-    orig_pixel_pts.reshape(-1, 1, 2),
-    H_orig
-).reshape(-1, 2)
-
-orig_errors = np.linalg.norm(orig_projected - orig_world_pts[:, :2], axis=1)
-orig_inliers = mask_orig.ravel().astype(bool)
-mae_orig = np.mean(orig_errors[orig_inliers])
-std_orig = np.std(orig_errors[orig_inliers])
-max_error_orig = np.max(orig_errors[orig_inliers])
-
-orig_area = (orig_world_pts[:, 0].max() - orig_world_pts[:, 0].min()) * \
-            (orig_world_pts[:, 1].max() - orig_world_pts[:, 1].min())
-grid_area = EXPECTED_WORLD_WIDTH * EXPECTED_WORLD_HEIGHT
-
-print(f"  Original points: {len(orig_pixel_pts)}")
-print(f"  Original MAE:    {mae_orig:.4f} m ({mae_orig*100:.2f} cm)")
-print(f"  Original area:   {orig_area:.1f} m² vs Grid area: {grid_area:.1f} m²")
-
-# -------------------------------------------------------------------
-# COMPARISON TABLE
-# -------------------------------------------------------------------
-print("\n" + "="*70)
-print("COMPARISON (SIMULATION-BASED GRID VS ORIGINAL 6-POINT)")
-print("="*70)
-
-print("\nMetric                | Original (6 pts)     | Grid (324 pts, sim)")
-print("-------------------------------------------------------------------")
-print(f"Points used           | {len(orig_pixel_pts):<20d} | {N_POINTS:<20d}")
-print(f"Area covered (m²)     | {orig_area:<20.1f} | {grid_area:<20.1f}")
-print(f"MAE (self-residual)   | {mae_orig:<20.4f} | {train_mae:<20.4f}")
-print(f"Std (self-residual)   | {std_orig:<20.4f} | {train_std:<20.4f}")
-print(f"Val MAE (TRUE world)  | {'N/A':<20}       | {val_mae:<20.4f}")
-print(f"CV MAE mean (TRUE)    | {'N/A':<20}       | {cv_mae_mean:<20.4f}")
-
-print("\nNOTE:")
-print("  - 'Self-residual' = error on the same points used for fitting (optimistic).")
-print("  - 'Val MAE / CV MAE' = error on held-out points w.r.t TRUE world coordinates (scientifically meaningful).")
-
-# -------------------------------------------------------------------
-# VISUALIZATION
-# -------------------------------------------------------------------
-print("\nCREATING VISUALIZATION...")
-fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-
-# 1) Original 6-point world layout
-ax = axes[0, 0]
-ax.scatter(orig_world_pts[:, 0], orig_world_pts[:, 1],
-           c='red', s=200, marker='o', alpha=0.7, edgecolors='darkred', linewidth=2)
-ax.set_xlabel('X (m)')
-ax.set_ylabel('Y (m)')
-ax.set_title(f'Original (6 pts): MAE={mae_orig:.3f} m', fontweight='bold')
-ax.grid(True, alpha=0.3)
-ax.axis('equal')
-
-# 2) Grid true world layout (color = val error if it was in val set)
-ax = axes[0, 1]
-colors = np.zeros(N_POINTS)
-colors[val_idx] = np.interp(val_errors, (val_errors.min(), val_errors.max()), (0.2, 1.0))
-scatter = ax.scatter(world_pts_true[:, 0], world_pts_true[:, 1],
-                     c=colors, s=40, cmap='Reds', alpha=0.8)
-ax.set_xlabel('X (m)')
-ax.set_ylabel('Y (m)')
-ax.set_title('Grid TRUE world points (val pts darker = higher error)', fontweight='bold')
-ax.grid(True, alpha=0.3)
-ax.axis('equal')
-cbar = plt.colorbar(scatter, ax=ax)
-cbar.set_label('Relative validation error (scaled)', fontsize=10)
-
-# 3) Validation error histogram (TRUE world)
-ax = axes[1, 0]
-ax.hist(val_errors, bins=30, color='blue', alpha=0.7, edgecolor='black')
-ax.axvline(val_mae, color='red', linestyle='--', linewidth=2, label=f'MAE={val_mae:.3f} m')
-ax.set_xlabel('Validation reprojection error (m)')
-ax.set_ylabel('Frequency')
-ax.set_title('Validation error distribution (TRUE world)', fontweight='bold')
-ax.grid(True, alpha=0.3)
-ax.legend()
-
-# 4) Cross-validation MAE per fold
-ax = axes[1, 1]
-fold_ids = np.arange(1, N_SPLITS + 1)
-ax.bar(fold_ids, np.array(cv_maes) * 100.0, color='green', alpha=0.7, edgecolor='black')
-for i, mae_cv in enumerate(cv_maes, start=1):
-    ax.text(i, mae_cv*100.0 + 0.05, f"{mae_cv*100:.2f} cm",
-            ha='center', va='bottom', fontsize=9, fontweight='bold')
-ax.set_xlabel('Fold')
-ax.set_ylabel('MAE (cm)')
-ax.set_title('K-fold CV (MAE on TRUE world)', fontweight='bold')
-ax.grid(True, axis='y', alpha=0.3)
-
-plt.tight_layout()
-fig_path = os.path.join(project_root, "calibration_validation_grid_vs_original.png")
-plt.savefig(fig_path, dpi=300, bbox_inches='tight')
-plt.show()
-
-# -------------------------------------------------------------------
-# SAVE HOMOGRAPHY FOR PIPELINE USE
-# -------------------------------------------------------------------
-H_path = os.path.join(project_root, "H_grid_simulation_validated.npy")
-np.save(H_path, H_grid)
-
-print("\nSAVED ARTIFACTS")
-print("---------------")
-print(f"  Homography (simulation-based, validated): {H_path}")
-print(f"  Visualization: {fig_path}")
-print("\nIMPORTANT:")
-print("  This script validates the GRID METHOD under a SIMULATED measurement model.")
-print("  For real deployment, replace synthetic world_pts_noisy with real surveyed GCPs,")
-print("  and keep the same train/val + CV evaluation logic.")
-print("\n✅ PIPELINE-READY (SIMULATION LEVEL) – NEXT STEP: REAL GCP INTEGRATION")
-
-
-
-===== FILE: calibration/monte_carlo_calibration_benchmark.py =====
-
-import numpy as np
-import cv2
-
-IMG_W, IMG_H = 1920, 1080
-
-fx, fy = 1600.0, 1600.0
-cx, cy = IMG_W / 2.0, IMG_H / 2.0
-K = np.array([[fx, 0.0, cx],
-              [0.0, fy, cy],
-              [0.0, 0.0, 1.0]], dtype=np.float32)
-
-dist_coeffs = np.array([-0.12, 0.02, 0.0, 0.0, 0.0], dtype=np.float32)
-
-NX, NY = 27, 12
-W_X, W_Y = 49.5, 22.0
-x_coords = np.linspace(0.0, W_X, NX)
-y_coords = np.linspace(0.0, W_Y, NY)
-XX, YY = np.meshgrid(x_coords, y_coords)
-ZW = np.zeros_like(XX)
-world_points_true = np.stack([XX.ravel(), YY.ravel(), ZW.ravel()], axis=1).astype(np.float32)
-
-sigma_px_x = 2.0
-sigma_px_y = 3.0
-rho_noise = 0.83
-plane_bias_cm = 1.5
-
-def make_example_pose():
-    rvec = np.array([0.4, 0.0, 0.0], dtype=np.float32)
-    R, _ = cv2.Rodrigues(rvec)
-    t = np.array([[0.0], [-15.0], [25.0]], dtype=np.float32)
-    return R, t
-
-def project_points(world_pts, R, t, K, dist):
-    rvec, _ = cv2.Rodrigues(R)
-    img_pts, _ = cv2.projectPoints(world_pts, rvec, t, K, dist)
-    return img_pts.reshape(-1, 2)
-
-R_true, t_true = make_example_pose()
-
-def add_plane_bias(world_pts, bias_cm=1.5):
-    bias_m = bias_cm / 100.0
-    wp = world_pts.copy()
-    x_range = np.ptp(wp[:, 0])
-    x_norm = (wp[:, 0] - wp[:, 0].min()) / max(1e-6, x_range)
-    wp[:, 2] = x_norm * bias_m
-    return wp
-
-def add_anisotropic_noise_2d(points_2d, rng, sx, sy, rho):
-    N = points_2d.shape[0]
-    cov = np.array([[sx**2, rho * sx * sy],
-                    [rho * sx * sy, sy**2]], dtype=np.float32)
-    noise = rng.multivariate_normal(mean=[0.0, 0.0], cov=cov, size=N)
-    return points_2d + noise.astype(np.float32)
-
-def mae_world(pred, gt):
-    return float(np.mean(np.linalg.norm(pred - gt, axis=1)))
-
-def world_from_pnp(R, t, K, dist, img_pts):
-    img_pts_undist = cv2.undistortPoints(img_pts.reshape(-1, 1, 2), K, dist)
-    img_pts_undist = img_pts_undist.reshape(-1, 2)
-    rays_cam = np.concatenate(
-        [img_pts_undist, np.ones((img_pts_undist.shape[0], 1), dtype=np.float32)],
-        axis=1
-    )
-    R_inv = R.T
-    t = t.reshape(3)
-    cam_center_world = -R_inv @ t
-    pts_world = []
-    for d_cam in rays_cam:
-        d_world = R_inv @ d_cam
-        if abs(d_world[2]) < 1e-6:
-            pts_world.append([np.nan, np.nan])
-            continue
-        s = -cam_center_world[2] / d_world[2]
-        P_world = cam_center_world + s * d_world
-        pts_world.append(P_world[:2])
-    return np.array(pts_world, dtype=np.float32)
-
-def estimate_homography(world_pts, img_pts):
-    src = img_pts.astype(np.float32)
-    dst = world_pts[:, :2].astype(np.float32)
-    H, mask = cv2.findHomography(src, dst, cv2.RANSAC, 3.0)
-    return H, mask
-
-def apply_homography(H, img_pts):
-    pts = img_pts.astype(np.float32)
-    pts_h = cv2.convertPointsToHomogeneous(pts).reshape(-1, 3).T
-    mapped = H @ pts_h
-    mapped = (mapped[:2] / mapped[2]).T
-    return mapped
-
-def solve_pnp_world_error(world_pts, img_pts, method_flag):
-    obj = world_pts.reshape(-1, 1, 3).astype(np.float32)
-    img = img_pts.reshape(-1, 1, 2).astype(np.float32)
-    ok, rvec, tvec = cv2.solvePnP(obj, img, K, dist_coeffs, flags=method_flag)
-    if not ok:
-        return np.inf, None, None
-    R_est, _ = cv2.Rodrigues(rvec)
-    world_est = world_from_pnp(R_est, tvec, K, dist_coeffs, img_pts)
-    mae = mae_world(world_est, world_points_true[:, :2])
-    return mae, R_est, tvec
-
-def solve_pnp_Z0_world_error(world_pts, img_pts, method_flag):
-    wp = world_pts.copy()
-    wp[:, 2] = 0.0
-    return solve_pnp_world_error(wp, img_pts, method_flag)
-
-def solve_p3p_ransac_world_error(world_pts, img_pts, iterations=200, sample_size=4):
-    if not hasattr(cv2, "SOLVEPNP_P3P"):
-        return np.inf
-    obj_all = world_pts.astype(np.float32)
-    img_all = img_pts.astype(np.float32)
-    N = obj_all.shape[0]
-    best_mae = np.inf
-    for _ in range(iterations):
-        idx = np.random.choice(N, size=sample_size, replace=False)
-        obj_sample = obj_all[idx].reshape(-1, 1, 3)
-        img_sample = img_all[idx].reshape(-1, 1, 2)
-        ok, rvec, tvec = cv2.solvePnP(
-            obj_sample, img_sample, K, dist_coeffs, flags=cv2.SOLVEPNP_P3P
-        )
-        if not ok:
-            continue
-        R_est, _ = cv2.Rodrigues(rvec)
-        world_est = world_from_pnp(R_est, tvec, K, dist_coeffs, img_all)
-        mae = mae_world(world_est, world_points_true[:, :2])
-        if mae < best_mae:
-            best_mae = mae
-    return best_mae
-
-def run_single_trial(seed=0):
-    rng = np.random.default_rng(seed)
-    world_points_biased = add_plane_bias(world_points_true, plane_bias_cm)
-    img_points_ideal = project_points(world_points_biased, R_true, t_true, K, dist_coeffs)
-    img_points_noisy = add_anisotropic_noise_2d(
-        img_points_ideal, rng, sigma_px_x, sigma_px_y, rho_noise
-    )
-
-    H_biased, _ = estimate_homography(world_points_biased, img_points_noisy)
-    pred_world_h_biased = apply_homography(H_biased, img_points_noisy)
-    mae_h_true_biased = mae_world(pred_world_h_biased, world_points_true[:, :2])
-
-    H_Z0, _ = estimate_homography(world_points_true, img_points_noisy)
-    pred_world_h_Z0 = apply_homography(H_Z0, img_points_noisy)
-    mae_h_true_Z0 = mae_world(pred_world_h_Z0, world_points_true[:, :2])
-
-    mae_pnp_iter, _, _ = solve_pnp_world_error(
-        world_points_biased, img_points_noisy, cv2.SOLVEPNP_ITERATIVE
-    )
-
-    mae_pnp_iter_Z0, _, _ = solve_pnp_Z0_world_error(
-        world_points_biased, img_points_noisy, cv2.SOLVEPNP_ITERATIVE
-    )
-
-    mae_p3p = solve_p3p_ransac_world_error(world_points_biased, img_points_noisy)
-    return mae_h_true_biased, mae_h_true_Z0, mae_pnp_iter, mae_pnp_iter_Z0, mae_p3p
-
-def run_monte_carlo(num_trials=50):
-    mae_H_biased, mae_H_Z0, mae_PNP, mae_PNP_Z0, mae_P3P = [], [], [], [], []
-    for s in range(num_trials):
-        h_b, h_z0, p, pz0, p3p = run_single_trial(seed=s)
-        mae_H_biased.append(h_b)
-        mae_H_Z0.append(h_z0)
-        mae_PNP.append(p)
-        mae_PNP_Z0.append(pz0)
-        mae_P3P.append(p3p)
-    return (
-        np.array(mae_H_biased),
-        np.array(mae_H_Z0),
-        np.array(mae_PNP),
-        np.array(mae_PNP_Z0),
-        np.array(mae_P3P),
-    )
-
-def summarize(name, arr):
-    mean = float(np.nanmean(arr))
-    std = float(np.nanstd(arr))
-    print(f"{name}: mean = {mean:.4f} m, std = {std:.4f} m")
-
-if __name__ == "__main__":
-    NUM_TRIALS = 50
-    print(f"=== Monte Carlo results over {NUM_TRIALS} trials ===")
-    mae_H_biased, mae_H_Z0, mae_PNP, mae_PNP_Z0, mae_P3P = run_monte_carlo(NUM_TRIALS)
-    summarize("Homography (biased world)", mae_H_biased)
-    summarize("Homography (Z=0 world)", mae_H_Z0)
-    summarize("PnP ITERATIVE (biased Z)", mae_PNP)
-    summarize("PnP ITERATIVE (Z=0)", mae_PNP_Z0)
-    if np.isfinite(mae_P3P).any():
-        summarize("P3P (RANSAC wrapper)", mae_P3P)
-    else:
-        print("P3P (RANSAC wrapper): not available / all inf")
-
-
-
-===== FILE: calibration/monte_carlo_calibration_notes.md =====
-
-# Monte Carlo Calibration Benchmark – Paper Notes
-
-## Study goal
-Evaluate whether planar homography is sufficient for ground-plane coordinate recovery in traffic-camera calibration, or whether PnP-based camera pose estimation with 3D survey points yields significantly better accuracy under realistic non-idealities (distortion, noisy survey, slight non-planarity).
-
-## Experimental setup
-- Synthetic traffic-like scene with a 49.5 × 22 m ground grid sampled at 27 × 12 points (324 world points).
-- Camera at ~25 m height, tilted towards the ground; 1920 × 1080 image resolution.
-- Intrinsics: focal length ≈ 1600 px, principal point at image center; radial distortion k1 = -0.12.
-- Ground non-ideality: linear Z-bias of 1.5 cm across X to mimic imperfect planarity.
-- Image-space perturbations: anisotropic Gaussian noise with σx = 2 px, σy = 3 px, ρ = 0.83.
-- Monte Carlo: 50 trials, new noise per trial, fixed camera/world geometry.
-
-## Methods
-- Homography (biased world): H from noisy image points to biased 2D world (with 1.5 cm Z-slope baked in).
-- Homography (Z=0 world): H from same images to ideal Z=0 world; fair planar baseline vs PnP(Z=0).
-- PnP ITERATIVE (biased Z): full 3D world (with Z-bias) + 324 points → solvePnP → ray–plane intersection to z=0.
-- PnP ITERATIVE (Z=0): same but with all survey Z forced to 0; tests sensitivity to small non-planarity.
-- P3P + RANSAC: minimal P3P solver inside simple RANSAC over 4-point subsets; evaluate best hypothesis on all points.
-
-Metric: mean absolute error (MAE) in world (X,Y) over all 324 points.
-
-## Key results (example run, 50 trials)
-- Homography (biased):   0.3228 ± 0.0077 m
-- Homography (Z=0):      0.3228 ± 0.0077 m
-- PnP ITERATIVE (biased): 0.0731 ± 0.0026 m
-- PnP ITERATIVE (Z=0):    0.0724 ± 0.0027 m
-- P3P + RANSAC:           0.0782 ± 0.0037 m
-
-## Interpretation
-- Homography MAE ≈ 32 cm and is identical for biased vs Z=0 targets, so its dominant limitations are projective mapping and distortion rather than small Z-bias.
-- PnP reduces MAE to ≈ 7.3 cm, a ~4.4× improvement over homography, with very low variance.
-- PnP(biased) vs PnP(Z=0) differ by ~0.07 cm (~1%), showing practical invariance to a 1.5 cm plane bias at 25 m height.
-- P3P+RANSAC is slightly worse (~7–8% higher MAE) than full iterative PnP, consistent with minimal vs overdetermined solvers.
-
-## For the paper
-- Report paired t-tests: Homography vs PnP (strongly significant, tiny p-value), and PnP(biased) vs PnP(Z=0) (non-significant).
-- Report effect size (Cohen’s d) for Homography vs PnP (expected to be “huge”).
-- Include a boxplot figure comparing MAE distributions for all methods.
-- Main claim: when 3D survey coordinates are available, explicit pose estimation plus ray–plane intersection clearly outperforms direct planar homography under realistic calibration artifacts, and is robust to modest ground non-planarity.
-
-
-
+===== FILE: docs/data_samples/petevents_bev_demo.csv =====
+event_id,pet,frame,track_a,track_b,conflict_type
+0,,,,,
+1,,,,,
+2,,,,,
+3,,,,,
+4,,,,,
+5,,,,,
+6,,,,,
+7,,,,,
+8,,,,,
+9,,,,,
+10,,,,,
+11,,,,,
+12,,,,,
+13,,,,,
+14,,,,,
+15,,,,,
+16,,,,,
+17,,,,,
+18,,,,,
+19,,,,,
+20,,,,,
+21,,,,,
+22,,,,,
+23,,,,,
+24,,,,,
+25,,,,,
+26,,,,,
+27,,,,,
+28,,,,,
+29,,,,,
+30,,,,,
+31,,,,,
+32,,,,,
+33,,,,,
+34,,,,,
+35,,,,,
+36,,,,,
+37,,,,,
+38,,,,,
+39,,,,,
+40,,,,,
+41,,,,,
+42,,,,,
+43,,,,,
+44,,,,,
+45,,,,,
+46,,,,,
+47,,,,,
+48,,,,,
+49,,,,,
+50,,,,,
+51,,,,,
+52,,,,,
+53,,,,,
+54,,,,,
+55,,,,,
+56,,,,,
+57,,,,,
+58,,,,,
+59,,,,,
+60,,,,,
+61,,,,,
+62,,,,,
 ===== FILE: gate_counter.py =====
 import logging
 from dataclasses import dataclass, field
@@ -3553,9 +2201,6 @@ class TrafficVolumeCounter:
 
         logger.info("Traffic volume result: %s", result)
         return result
-
-
-
 ===== FILE: giti_bev_calib.py =====
 import json
 import numpy as np
@@ -3581,14 +2226,8 @@ def load_giti_homography(json_path):
 
     H, mask = cv2.findHomography(pts_pix, pts_world, cv2.RANSAC, ransacReprojThreshold=5.0)
     return H, mask, pts_world
-
-
-
 ===== FILE: grid_trajectory/__init__.py =====
 # grid_trajectory package
-
-
-
 ===== FILE: grid_trajectory/pet_grid.py =====
 from collections import defaultdict
 
@@ -3684,9 +2323,6 @@ def compute_pet(intervals, pet_threshold=2.0):
                         ))
 
     return pet_events
-
-
-
 ===== FILE: grid_trajectory/sam3_grid_pet.py =====
 import os, cv2, numpy as np, json
 from ultralytics.models.sam import SAM3VideoSemanticPredictor
@@ -3812,9 +2448,6 @@ def run_sam3_grid_pet(
         intervals=intervals,
         pet_events=pet_events,
     )
-
-
-
 ===== FILE: grid_trajectory/spatial_grid.py =====
 import json
 import cv2
@@ -3901,8 +2534,7 @@ class SpatialGrid:
                 cv2.putText(overlay, label, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.8, line_color, 2)
 
         return cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0)
-
-
+===== FILE: outputs/.gitkeep =====
 
 ===== FILE: pyproject.toml =====
 [project]
@@ -3921,9 +2553,6 @@ python_files = ["test_*.py", "*_test.py"]
 addopts = [
   "-ra",  # show extra summary info
 ]
-
-
-
 ===== FILE: requirements.txt =====
 numpy
 pandas
@@ -3934,9 +2563,6 @@ ultralytics
 matplotlib
 tqdm
 scipy
-
-
-
 ===== FILE: tests/test_configs_smoke.py =====
 import json
 from pathlib import Path
@@ -3966,9 +2592,6 @@ def test_all_json_configs_parse():
         except Exception as exc:
             raise AssertionError(f"Failed to parse JSON config: {cfg}") from exc
         assert isinstance(data, dict) or isinstance(data, list)
-
-
-
 ===== FILE: tests/test_diffusion_smoke.py =====
 from pathlib import Path
 import importlib.util
@@ -3996,9 +2619,6 @@ def test_training_utils_importable():
     assert spec is not None
     assert spec.loader is not None
     spec.loader.exec_module(module)
-
-
-
 ===== FILE: tests/test_imports_smoke.py =====
 import importlib
 
@@ -4012,9 +2632,6 @@ def test_core_modules_importable():
     _can_import("traffic_diffusion.training_utils")
     _can_import("traffic_diffusion.model_and_sampler")
     _can_import("analysis.safety_eval_diffusion")
-
-
-
 ===== FILE: tests/test_repo_smoke.py =====
 from pathlib import Path
 import importlib.util
@@ -4066,9 +2683,6 @@ def test_diffusion_data_files_present():
     ]
     missing = [p for p in expected if not (ROOT / p).exists()]
     assert not missing, f"Missing diffusion data files: {missing}"
-
-
-
 ===== FILE: tests/test_traffic_analyzer_cli.py =====
 import pytest
 import traffic_analyzer
@@ -4108,9 +2722,6 @@ def test_main_demo_runs(monkeypatch):
 
     traffic_analyzer.main()
     assert called["demo"] is True
-
-
-
 ===== FILE: traffic_analyzer.py =====
 import argparse
 import warnings
@@ -4517,22 +3128,16 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
-
 ===== FILE: traffic_diffusion/__init__.py =====
 
-
-
+===== FILE: traffic_diffusion/data/trajdiff_meta.parquet =====
+[BINARY OR NON-UTF8 FILE SKIPPED]
 ===== FILE: traffic_diffusion/episode_reward.py =====
 
 def episode_reward_from_metrics(m, w_risk=1.0, w_count=0.0005):
     risk_term = w_risk * m["risk_mean"]
     count_term = w_count * m["n_events"]
     return -(risk_term + count_term)
-
-
-
 ===== FILE: traffic_diffusion/model_and_sampler.py =====
 import torch
 import numpy as np
@@ -4611,9 +3216,6 @@ def sample_future_denorm(batch, checkpoint_path: str, num_samples: int = 1,
 
     samples_np = np.stack(samples, axis=0)  # (S, B, Tf, 4)
     return samples_np
-
-
-
 ===== FILE: traffic_diffusion/pet_safety_metrics.py =====
 
 import pandas as pd
@@ -4632,9 +3234,6 @@ def compute_safety_metrics(df: pd.DataFrame) -> dict:
         out["high_or_worse_share"] = None
     out["safety_score"] = 1.0 - out["risk_mean"]
     return out
-
-
-
 ===== FILE: traffic_diffusion/sampling_utils.py =====
 
 import numpy as np
@@ -4676,9 +3275,6 @@ def sample_future(model, loader, device, T=15, N=1, F=4,
     if not all_samples:
         return None
     return np.concatenate(all_samples, axis=1)  # (S, total_B, T*N*F)
-
-
-
 ===== FILE: traffic_diffusion/train_trajectory_diffusion.py =====
 import os
 import ast
@@ -4759,7 +3355,7 @@ def build_training_tensors(csv_path, Th=8):
 
 
 def train(
-    csv_path="outputs/petevents_bev.csv",
+    csv_path="docs/data_samples/petevents_bev_demo.csv",
     checkpoint_dir="checkpoints",
     Th=8,
     batch_size=32,
@@ -4846,9 +3442,6 @@ def train(
 
 if __name__ == "__main__":
     train()
-
-
-
 ===== FILE: traffic_diffusion/training_utils.py =====
 
 import torch
@@ -4968,9 +3561,6 @@ def train_diffusion_model(model, train_loader, device,
     print("Best checkpoint:", best_ckpt_path)
     print("Last checkpoint:", last_ckpt_path)
     return str(best_ckpt_path), str(last_ckpt_path), history
-
-
-
 ===== FILE: traffic_diffusion/trajectory_diffusion.py =====
 
 import torch
@@ -5064,9 +3654,6 @@ class TrajectoryDiffusionModel(nn.Module):
             x = (1 / torch.sqrt(alpha)) * (x - ((1 - alpha) / torch.sqrt(1 - alpha_bar)) * noise_pred) + torch.sqrt(beta) * z
 
         return x.view(b, self.T, self.N, self.F)
-
-
-
 ===== FILE: traj_diffusion_normalized.py =====
 import numpy as np
 import torch
@@ -5297,5 +3884,4 @@ def quick_sample_test():
     print("sampled future (world) shape:", future_sample_world.shape)
     print("first sample, first 3 steps:")
     print(future_sample_world[0, :3].cpu().numpy())
-
 

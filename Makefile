@@ -2,6 +2,7 @@ PYTHON ?= python
 PROJECT_ROOT := $(shell pwd)
 VIDEO ?= videos/traffic_video.mp4
 SAM3_WEIGHTS ?= sam3.pt
+DEMO_CSV ?= docs/data_samples/petevents_bev_demo.csv
 OUT_CSV ?= outputs/petevents_bev.csv
 PET_THRESHOLD ?= 2.0
 
