@@ -1,11 +1,8 @@
-Here’s a **complete, cleaned-up README** you can copy–paste in one go, with your `--max-frames` work and Colab flow integrated:
-
-```markdown
 # NNDS: Non-motorized and Heterogeneous Traffic Safety Analysis
 
 AI-powered system for analyzing vehicle behavior and surrogate safety metrics at unsignalized intersections.
 
-> **Note**: The `--max-frames` speed/debug option and the Colab bootstrap script are introduced on the `feat/video-to-pet-pipeline` branch and will appear on `main` after that branch is merged.
+> **Note**: The `--max-frames` speed/debug option and the Colab bootstrap script were introduced on the `feat/video-to-pet-pipeline` branch and are now available on `main` after merging.
 
 ---
 
@@ -46,37 +43,6 @@ PYTHONPATH=. python traffic_analyzer.py \
 ```
 
 This processes only the first `N` frames, which is useful for rapid iteration and debugging.
-
-### Train diffusion model
-
-```bash
-make diffusion-train
-# or
-PYTHONPATH=. python traffic_diffusion/train_trajectory_diffusion.py
-```
-
-By default, the diffusion training script expects PET events in `outputs/petevents_bev.csv`; you may also point it to the canonical sample:
-
-```bash
-PYTHONPATH=. python traffic_diffusion/train_trajectory_diffusion.py \
-  --csv-path docs/data_samples/petevents_bev_demo.csv
-```
-
-### Evaluate diffusion safety
-
-```bash
-make diffusion-eval
-# or
-PYTHONPATH=. python analysis/safety_eval_diffusion.py
-```
-
-### Run notebook-style end-to-end diffusion evaluation
-
-```bash
-make diffusion-notebook
-# or
-PYTHONPATH=. python analysis/safety_eval_diffusion_notebook.py
-```
 
 ---
 
@@ -285,7 +251,7 @@ For new research work:
 
 1. Prefer reusable logic inside `traffic_diffusion/` or `grid_trajectory/`.  
 2. Keep one‑off experiment runners inside `analysis/`.  
-3. Write generated artifacts into `outputs/` with stable, descriptive filenames.  
+3. Write generated artifacts into `outputs` with stable, descriptive filenames.  
 
 ---
 
@@ -297,9 +263,9 @@ Code and configs are maintained on GitHub, while the default public demo video a
 
 The canonical example video for `traffic_analyzer.py` lives in a dataset repo:
 
-- Dataset: https://huggingface.co/datasets/sharqascc/traffic-video-dataset  
+- Dataset: <https://huggingface.co/datasets/sharqascc/traffic-video-dataset>  
 - Video file (web view):  
-  https://huggingface.co/datasets/sharqascc/traffic-video-dataset/blob/main/videos/traffic_video.mp4  
+  <https://huggingface.co/datasets/sharqascc/traffic-video-dataset/blob/main/videos/traffic_video.mp4>  
 
 For scripts and Colab, use the `resolve` URL so the file is downloaded directly:
 
@@ -387,6 +353,3 @@ PYTHONPATH=. python analysis/safety_eval_diffusion_notebook.py
 ## License
 
 MIT
-```
-
-You can paste this entire block into `README.md` and push; it integrates your `--max-frames` feature and Colab bootstrap in a clean, standardized way.
