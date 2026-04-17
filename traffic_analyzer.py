@@ -284,8 +284,6 @@ def run_demo() -> tuple[CompleteTrafficAnalyzer, Dict[str, Any], Dict[str, float
 
 
 # ======================== Video → PET CLI ========================
-
-
 def run_video_to_pet(
     video_path: str,
     bev_config_path: str = "configs/bev_config.json",
@@ -296,7 +294,6 @@ def run_video_to_pet(
     max_frames: int | None = None,
 ) -> pd.DataFrame:
     """Video → SAM3 detections → grid → BEV → PET events CSV.
-
     Returns the DataFrame of PET events for convenience.
     """
     try:
@@ -308,7 +305,6 @@ def run_video_to_pet(
         ) from exc
 
     project_root = str(Path(".").resolve())
-
     result = run_sam3_grid_pet(
         project_root=project_root,
         video_rel_path=str(Path(video_path)),
@@ -320,8 +316,8 @@ def run_video_to_pet(
         pet_threshold=pet_threshold,
         max_frames=max_frames,
     )
-
     pet_events = result.get("pet_events", [])
+
     out_path = Path(out_csv_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -342,7 +338,6 @@ def run_video_to_pet(
     df.to_csv(out_path, index=False)
     print(f"✅ Saved {len(df)} PET events to {out_path}")
     return df
-
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -412,3 +407,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
