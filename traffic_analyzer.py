@@ -293,6 +293,7 @@ def run_video_to_pet(
     sam3_weights_path: str = "sam3.pt",
     out_csv_path: str = "outputs/petevents_bev.csv",
     pet_threshold: float = 2.0,
+    max_frames: int | None = None,
 ) -> pd.DataFrame:
     """Video → SAM3 detections → grid → BEV → PET events CSV.
 
@@ -324,6 +325,7 @@ def run_video_to_pet(
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     rows: list[dict[str, Any]] = []
+    max_frames: int | None = None,
     for idx, e in enumerate(pet_events):
         rows.append(
             {
@@ -377,6 +379,12 @@ def parse_args() -> argparse.Namespace:
         "--demo",
         action="store_true",
         help="Run internal calibration/speed demo instead of video pipeline",
+    )
+    parser.add_argument(
+        "--max-frames",
+        type=int,
+        default=None,
+        help="Process only the first N frames",
     )
     return parser.parse_args()
 
