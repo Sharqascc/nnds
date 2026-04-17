@@ -314,6 +314,7 @@ def run_video_to_pet(
         output_name="sam3_grid_pet_run",
         conf=0.25,
         pet_threshold=pet_threshold,
+        max_frames=max_frames,
     )
     pet_events = result.get("pet_events", [])
 
@@ -321,7 +322,6 @@ def run_video_to_pet(
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     rows: list[dict[str, Any]] = []
-    max_frames: int | None = None,
     for idx, e in enumerate(pet_events):
         rows.append(
             {
@@ -401,6 +401,7 @@ def main() -> None:
         sam3_weights_path=args.sam3_weights,
         out_csv_path=args.out_csv,
         pet_threshold=args.pet_threshold,
+        max_frames=args.max_frames,
     )
 
 
