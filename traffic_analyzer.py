@@ -293,6 +293,7 @@ def run_video_to_pet(
     sam3_weights_path: str = "sam3.pt",
     out_csv_path: str = "outputs/petevents_bev.csv",
     pet_threshold: float = 2.0,
+    max_frames: int | None = None,
 ) -> pd.DataFrame:
     """Video → SAM3 detections → grid → BEV → PET events CSV.
 
@@ -317,6 +318,7 @@ def run_video_to_pet(
         output_name="sam3_grid_pet_run",
         conf=0.25,
         pet_threshold=pet_threshold,
+        max_frames=max_frames,
     )
 
     pet_events = result.get("pet_events", [])
@@ -378,6 +380,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Run internal calibration/speed demo instead of video pipeline",
     )
+    parser.add_argument(
+        "--max-frames",
+        type=int,
+        default=None,
+        help="Process only the first N frames",
+    )
     return parser.parse_args()
 
 
@@ -398,6 +406,7 @@ def main() -> None:
         sam3_weights_path=args.sam3_weights,
         out_csv_path=args.out_csv,
         pet_threshold=args.pet_threshold,
+        max_frames=args.max_frames,
     )
 
 
