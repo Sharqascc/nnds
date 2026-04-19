@@ -5,7 +5,6 @@ from grid_trajectory.pet_grid import TrajectoryLogger, compute_pet
 from bev_mapper import BEVMapper
 
 def run_sam3_grid_pet(
-    max_frames=None,
     project_root="/content/drive/MyDrive/shared_pipeline/4D_tracking_project",
     video_rel_path="videos/traffic_video_50frames.mp4",
     sam3_rel_path="sam3.pt",
@@ -14,6 +13,7 @@ def run_sam3_grid_pet(
     output_name="sam3_grid_pet_run",
     conf=0.25,
     pet_threshold=2.0,
+    max_frames: int | None = None,
 ):
     video_path  = os.path.join(project_root, video_rel_path)
     sam3_path   = os.path.join(project_root, sam3_rel_path)
@@ -62,10 +62,8 @@ def run_sam3_grid_pet(
     frame_count = 0
     det_count_total = 0
 
-    effective_max_frames = max_frames if max_frames is not None else 30
     for frame_idx, res in enumerate(results_gen):
-        if frame_idx >= effective_max_frames:
-            print(f"⏹️  Stopped at frame {frame_idx} (max_frames={effective_max_frames})")
+        if max_frames is not None and frame_idx >= max_frames:
             break
         frame_count += 1
 
