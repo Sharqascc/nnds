@@ -326,15 +326,29 @@ def run_video_to_pet(
         rows.append(
             {
                 "event_id": idx,
-                "pet": e.get("pet"),
-                "frame": e.get("frame_idx"),
-                "track_a": e.get("track_a"),
-                "track_b": e.get("track_b"),
-                "conflict_type": e.get("conflict_type"),
+                # PET in seconds from sam3_grid_pet
+                "pet": e.get("PET"),
+                # frame index not provided; keep as None for now
+                "frame": None,
+                # track IDs from SAM3/grid pipeline
+                "track_a": e.get("obj_i"),
+                "track_b": e.get("obj_j"),
+                # grid cell ID as conflict label
+                "conflict_type": e.get("cell_id"),
+                # BEV world trajectories (t, x, y)
+                "world_traj_i": e.get("world_traj_i"),
+                "world_traj_j": e.get("world_traj_j"),
             }
         )
 
-    df = pd.DataFrame(rows)
+    df = pd.DataFrame(
+        rows,
+        columns=[
+            "event_id", "pet", "frame",
+            "track_a", "track_b", "conflict_type",
+            "world_traj_i", "world_traj_j",
+        ],
+    )
     df.to_csv(out_path, index=False)
     print(f"✅ Saved {len(df)} PET events to {out_path}")
     return df
