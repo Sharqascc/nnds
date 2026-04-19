@@ -46,7 +46,7 @@ world_traj_i	BEV/world trajectory for actor i as (t, x, y) list
 world_traj_j	BEV/world trajectory for actor j as (t, x, y) list
 These PET CSVs are used as input to downstream diffusion training and safety evaluation.
 
-Summarize PET results
+PET summary and grid hotspot analysis
 After generating a PET CSV (e.g. outputs/petevents_bev.csv or outputs/petevents_bev_test.csv), you can print a quick PET distribution and grid hotspot counts with:
 
 bash
@@ -54,11 +54,120 @@ PYTHONPATH=. python analysis/pet_summary.py \
   --csv-path outputs/petevents_bev.csv
 This script reports:
 
-pet statistics (count, mean, percentiles, etc.).
+PET statistics (count, mean, percentiles, etc.).
 
 Counts of events per conflict_type grid cell.
 
 This provides a research‑friendly description of temporal and spatial risk for a given video.
+
+Visualization utilities
+The repository includes small, reusable visualization modules under analysis/visualization/ for PET conflicts, grid overlays, and diffusion diagnostics.
+
+BEV PET conflict plots
+analysis/visualization/pet_event_plots.py provides helpers to visualize PET events in BEV/world coordinates.
+
+Typical Colab usage:
+
+python
+import os
+os.chdir("/content/nnds")
+
+from analysis.visualization.pet_event_plots import (
+    load_pet_csv,
+    compute_timing_from_traj,
+    plot_conflict_event,
+)
+
+df = load_pet_csv("outputs/petevents_bev_test.csv")
+df = compute_timing_from_traj(df)
+
+# Show a single conflict
+plot_conflict_event(df, event_id=0)
+
+# Save a gallery of the first few conflicts
+import os
+os.makedirs("outputs/visualizations", exist_ok=True)
+
+for eid in df["event_id"].head(10):
+    plot_conflict_event(
+        df,
+        event_id=int(eid),
+        save_path=f"outputs/visualizations/conflict_{int(eid):03d}.png",
+    )
+These plots show both actors’ trajectories, closest-approach point, grid cell, and PET value in seconds.
+
+Video grid overlays and conflict cells
+analysis/visualization/video_overlays.py provides utilities to draw the grid overlay and highlight conflict cells directly on raw video frames using SpatialGrid.
+
+Example:
+
+python
+from analysis.visualization.video_overlays import save_conflict_frame
+
+video_path = "videos/traffic_video.mp4"
+grid_config_path = "configs/GITI_grid_config.json"
+
+# Example cell_id and frame index (e.g., from a PET event and fps * t_exit_i)
+cell_id = "CELL_T_2"
+frame_idx = 50
+
+save_conflict_frame(
+    video_path,
+    grid_config_path,
+    cell_id,
+    frame_idx,
+    out_path="outputs/visualizations/conflict_frame_000.png",
+)
+This produces a frame with the neon grid overlay and the selected conflict cell highlighted, useful for qualitative inspection and paper figures.
+
+Diffusion PET visualization
+analysis/visualization/pet_diffusion_plots.py works together with analysis/pet_diffusion_analysis.py to visualize PET-like metrics for diffusion-based trajectory modeling.
+
+Core analysis functions (existing):
+
+analysis/pet_diffusion_analysis.compute_pet_like_metrics(batch, sample_future_fn, scale, noise_scale, d_thresh)
+
+analysis/pet_diffusion_analysis.compare_realPET_samplePET(df_pet_path, batch, sample_future_fn, scale, noise_scale, d_thresh)
+
+Visualization helpers:
+
+python
+from analysis.pet_diffusion_analysis import (
+    compute_pet_like_metrics,
+    compare_realPET_samplePET,
+)
+
+from analysis.visualization.pet_diffusion_plots import (
+    plot_pet_like_histogram,
+    plot_true_vs_pet_like,
+    plot_true_vs_sample_delta,
+)
+
+# Assuming batch, sample_future_fn, and scale are defined by the diffusion code
+pet_pairs = compute_pet_like_metrics(batch, sample_future_fn, scale)
+
+records = compare_realPET_samplePET(
+    df_pet_path="outputs/petevents_bev_test.csv",
+    batch=batch,
+    sample_future_fn=sample_future_fn,
+    scale=scale,
+)
+
+plot_pet_like_histogram(
+    pet_pairs,
+    out_path="outputs/visualizations/diffusion_pet_like_hist.png",
+)
+
+plot_true_vs_pet_like(
+    records,
+    out_path="outputs/visualizations/diffusion_true_vs_pet_like.png",
+)
+
+plot_true_vs_sample_delta(
+    records,
+    out_path="outputs/visualizations/diffusion_true_vs_delta_steps.png",
+)
+These plots help compare true PET values with PET-like metrics derived from real and sampled trajectories, supporting diffusion-based safety evaluation.
 
 Colab setup (recommended)
 For Google Colab, use the single‑cell bootstrap script below to prepare the environment. It:
@@ -160,8 +269,7 @@ if sam3_path.exists():
 print("\nTo run the pipeline now:")
 print("!cd /content/nnds && PYTHONPATH=. python traffic_analyzer.py "
       "--video videos/traffic_video.mp4")
-Then run the pipeline:
-
+Run the pipeline in Colab
 bash
 !cd /content/nnds && PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
 Use frame limiting for debugging:
@@ -172,15 +280,18 @@ bash
   --out-csv outputs/petevents_bev_test.csv \
   --pet-threshold 2.0 \
   --max-frames 30
-And summarize PETs:
+Summarize PETs:
 
 bash
 !cd /content/nnds && PYTHONPATH=. python analysis/pet_summary.py \
   --csv-path outputs/petevents_bev_test.csv
 Project Structure
+
 grid_trajectory/ – Spatial grid mapping and PET computation
 
-analysis/ – Evaluation and research scripts (pet_summary.py, diffusion safety eval, etc.)
+analysis/ – Evaluation and research scripts (pet_summary.py, diffusion safety eval, PET visualization, etc.)
+
+analysis/visualization/ – Visualization helpers for PET conflicts, video overlays, and diffusion PET plots
 
 calibration/ – Camera calibration files
 
@@ -221,6 +332,7 @@ outputs/safety_events_diffusion_model.csv
 outputs/safety_eval_diffusion_summary.csv
 
 Key Features
+
 SAM3 video segmentation
 
 Spatial grid zone analysis
@@ -234,6 +346,8 @@ Conflict detection
 Diffusion-based trajectory modeling
 
 PET and TTC safety evaluation
+
+PET and diffusion visualization utilities (BEV plots, video overlays, PET-like diagnostics)
 
 Development setup
 Recommended environment:
@@ -254,11 +368,14 @@ cd nnds
 pip install -r requirements.txt
 python -m pytest
 Repository conventions
+
 grid_trajectory/ is the canonical location for grid and PET logic.
 
 traffic_analyzer.py is the main end-to-end entry point for video-to-PET processing.
 
-analysis/ contains evaluation-oriented scripts (including pet_summary.py).
+analysis/ contains evaluation-oriented scripts (including pet_summary.py and diffusion safety eval).
+
+analysis/visualization/ contains reusable plotting utilities for PET conflicts and diffusion analysis.
 
 traffic_diffusion/ contains reusable model, sampling, and safety modules.
 
@@ -278,12 +395,11 @@ Usage
 Code and configs are maintained on GitHub, while the default public demo video and SAM3 weights are hosted on Hugging Face.
 
 Default demo video (Hugging Face)
-The canonical example video for traffic_analyzer.py lives in a dataset repo:
-
-Dataset: <https://huggingface.co/datasets/sharqascc/traffic-video-dataset>
+Dataset:
+https://huggingface.co/datasets/sharqascc/traffic-video-dataset
 
 Video file (web view):
-<https://huggingface.co/datasets/sharqascc/traffic-video-dataset/blob/main/videos/traffic_video.mp4>
+https://huggingface.co/datasets/sharqascc/traffic-video-dataset/blob/main/videos/traffic_video.mp4
 
 For scripts and Colab, use the resolve URL so the file is downloaded directly:
 
@@ -292,6 +408,7 @@ cd /content/nnds
 mkdir -p videos
 wget -O videos/traffic_video.mp4 \
   "https://huggingface.co/datasets/sharqascc/traffic-video-dataset/resolve/main/videos/traffic_video.mp4"
+
 PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
 Larger private or experimental videos can still be stored on Google Drive, but all public examples in this repo are expected to work with the Hugging Face–hosted demo video by default.
 
@@ -300,24 +417,20 @@ The SAM3 video segmentation model used by traffic_analyzer.py is stored in a Hug
 
 For Colab users, the Colab bootstrap script above downloads sam3.pt automatically into the repository root if it is missing.
 
-If you want to download it manually:
+Manual download:
 
 bash
 cd /content/nnds
 wget -O sam3.pt \
   "https://huggingface.co/sharqascc/sam3-traffic-model/resolve/main/sam3.pt"
-Verify:
-
-bash
 ls -lh sam3.pt
-Then run:
 
-bash
 PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
 Diffusion-based Safety Evaluation
 This repository includes a trajectory diffusion model and PET/TTC-based safety evaluation on PET events extracted from the grid pipeline.
 
-Components
+Components:
+
 traffic_diffusion/train_trajectory_diffusion.py – Trains a conditional trajectory diffusion model on PET-event futures using outputs/petevents_bev.csv or a sample file such as docs/data_samples/petevents_bev_demo.csv.
 
 traffic_diffusion/model_and_sampler.py – Loads diffusion checkpoints and samples counterfactual futures given past trajectories.
