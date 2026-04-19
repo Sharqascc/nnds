@@ -1,7 +1,7 @@
 NNDS: Non-motorized and Heterogeneous Traffic Safety Analysis
 AI-powered system for analyzing vehicle behavior and surrogate safety metrics at unsignalized intersections.
 
-Note: The --max-frames speed/debug option and the Colab bootstrap script were introduced on the feat/video-to-pet-pipeline branch and are now available on main after syncing the CLI wiring.
+Note: The --max-frames speed/debug option and the Colab bootstrap script are now available on main and support the video→PET pipeline used in the diffusion experiments.
 
 Quickstart
 Use the repository with the Make targets or with direct Python entry points.
@@ -32,6 +32,34 @@ PYTHONPATH=. python traffic_analyzer.py \
   --max-frames 30
 This processes only the first N frames, which is useful for rapid iteration and debugging.
 
+PET CSV columns
+The default PET CSV written by traffic_analyzer.py contains:
+
+column	description
+event_id	Integer conflict index
+pet	Post Encroachment Time (seconds)
+frame	Approximate frame index (optional, may be NaN)
+track_a	Track ID of actor i (from SAM3/grid pipeline)
+track_b	Track ID of actor j
+conflict_type	Grid cell ID where conflict is detected (e.g. CELL_C_1)
+world_traj_i	BEV/world trajectory for actor i as (t, x, y) list
+world_traj_j	BEV/world trajectory for actor j as (t, x, y) list
+These PET CSVs are used as input to downstream diffusion training and safety evaluation.
+
+Summarize PET results
+After generating a PET CSV (e.g. outputs/petevents_bev.csv or outputs/petevents_bev_test.csv), you can print a quick PET distribution and grid hotspot counts with:
+
+bash
+PYTHONPATH=. python analysis/pet_summary.py \
+  --csv-path outputs/petevents_bev.csv
+This script reports:
+
+pet statistics (count, mean, percentiles, etc.).
+
+Counts of events per conflict_type grid cell.
+
+This provides a research‑friendly description of temporal and spatial risk for a given video.
+
 Colab setup (recommended)
 For Google Colab, use the single‑cell bootstrap script below to prepare the environment. It:
 
@@ -43,7 +71,7 @@ installs Python dependencies
 
 downloads the default demo video into videos/traffic_video.mp4
 
-downloads sam3.pt into the repo root if missing
+downloads sam3.pt into the repo root if it is missing
 
 Both the demo video and SAM3 weights are hosted publicly on Hugging Face; no HF token is required.
 
@@ -61,7 +89,6 @@ from urllib.parse import quote
 
 # 0) CONFIG – EDIT THIS ONLY IF YOU NEED A PRIVATE FORK
 GITHUB_TOKEN = "YOUR_GITHUB_PAT_HERE"  # GitHub PAT with access to Sharqascc/nnds
-
 assert GITHUB_TOKEN != "YOUR_GITHUB_PAT_HERE", "Set GITHUB_TOKEN"
 
 # 1) Clone or update repo (main branch or your preferred branch)
@@ -145,44 +172,49 @@ bash
   --out-csv outputs/petevents_bev_test.csv \
   --pet-threshold 2.0 \
   --max-frames 30
+And summarize PETs:
+
+bash
+!cd /content/nnds && PYTHONPATH=. python analysis/pet_summary.py \
+  --csv-path outputs/petevents_bev_test.csv
 Project Structure
-grid_trajectory/ – spatial grid mapping and PET computation
+grid_trajectory/ – Spatial grid mapping and PET computation
 
-analysis/ – evaluation and research scripts
+analysis/ – Evaluation and research scripts (pet_summary.py, diffusion safety eval, etc.)
 
-calibration/ – camera calibration files
+calibration/ – Camera calibration files
 
-configs/ – grid and calibration configurations
+configs/ – Grid and calibration configurations
 
-outputs/ – generated experiment artifacts and evaluation CSV files (ignored by git)
+outputs/ – Generated experiment artifacts and evaluation CSV files (ignored by git)
 
-docs/data_samples/ – versioned sample artifacts (e.g., petevents_bev_demo.csv)
+docs/data_samples/ – Versioned sample artifacts (e.g., petevents_bev_demo.csv)
 
-traffic_diffusion/ – diffusion‑based trajectory and safety modules
+traffic_diffusion/ – Diffusion-based trajectory and safety modules
 
 bev_mapper.py – Bird’s Eye View transformation
 
-giti_bev_calib.py – homography calibration
+giti_bev_calib.py – Homography calibration
 
-traffic_analyzer.py – end‑to‑end traffic analysis and conflict processing pipeline
+traffic_analyzer.py – End-to-end traffic analysis and conflict processing pipeline
 
-traj_diffusion_normalized.py – normalized diffusion experiment script
+traj_diffusion_normalized.py – Normalized diffusion experiment script
 
 Entry points
 Grid / PET extraction
-traffic_analyzer.py – end‑to‑end traffic analysis on video, including detection, BEV transformation, grid construction, conflict extraction, and PET computation.
+traffic_analyzer.py – End-to-end traffic analysis on video, including detection, BEV transformation, grid construction, conflict extraction, and PET computation.
 
-grid_trajectory/ – core grid and trajectory logic used by traffic_analyzer.py.
+grid_trajectory/ – Core grid and trajectory logic used by traffic_analyzer.py.
 
 Diffusion training
-traffic_diffusion/train_trajectory_diffusion.py – trains the conditional trajectory diffusion model on PET events from outputs/petevents_bev.csv or a sample file like docs/data_samples/petevents_bev_demo.csv.
+traffic_diffusion/train_trajectory_diffusion.py – Trains the conditional trajectory diffusion model on PET events from outputs/petevents_bev.csv or a sample file like docs/data_samples/petevents_bev_demo.csv.
 
-traffic_diffusion/training_utils.py – reusable helpers for data cleaning, loader creation, and training loops.
+traffic_diffusion/training_utils.py – Reusable helpers for data cleaning, loader creation, and training loops.
 
 Diffusion safety evaluation
-analysis/safety_eval_diffusion.py – batch PET/TTC evaluation using a saved diffusion checkpoint and writes outputs/safety_eval_diffusion.csv.
+analysis/safety_eval_diffusion.py – Batch PET/TTC evaluation using a saved diffusion checkpoint and writes outputs/safety_eval_diffusion.csv.
 
-analysis/safety_eval_diffusion_notebook.py – notebook‑friendly variant that retrains, samples futures, and produces:
+analysis/safety_eval_diffusion_notebook.py – Notebook-friendly variant that retrains, samples futures, and produces:
 
 outputs/safety_events_diffusion_model.csv
 
@@ -193,13 +225,13 @@ SAM3 video segmentation
 
 Spatial grid zone analysis
 
-Bird’s Eye View world‑coordinate mapping
+Bird’s Eye View world-coordinate mapping
 
 PET computation
 
 Conflict detection
 
-Diffusion‑based trajectory modeling
+Diffusion-based trajectory modeling
 
 PET and TTC safety evaluation
 
@@ -224,9 +256,9 @@ python -m pytest
 Repository conventions
 grid_trajectory/ is the canonical location for grid and PET logic.
 
-traffic_analyzer.py is the main end‑to‑end entry point for video‑to‑PET processing.
+traffic_analyzer.py is the main end-to-end entry point for video-to-PET processing.
 
-analysis/ contains evaluation‑oriented scripts.
+analysis/ contains evaluation-oriented scripts (including pet_summary.py).
 
 traffic_diffusion/ contains reusable model, sampling, and safety modules.
 
@@ -238,9 +270,9 @@ For new research work:
 
 Prefer reusable logic inside traffic_diffusion/ or grid_trajectory/.
 
-Keep one‑off experiment runners inside analysis/.
+Keep one-off experiment runners inside analysis/.
 
-Write generated artifacts into outputs with stable, descriptive filenames.
+Write generated artifacts into outputs/ with stable, descriptive filenames.
 
 Usage
 Code and configs are maintained on GitHub, while the default public demo video and SAM3 weights are hosted on Hugging Face.
@@ -283,14 +315,14 @@ Then run:
 bash
 PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
 Diffusion-based Safety Evaluation
-This repository includes a trajectory diffusion model and PET/TTC‑based safety evaluation on PET events extracted from the grid pipeline.
+This repository includes a trajectory diffusion model and PET/TTC-based safety evaluation on PET events extracted from the grid pipeline.
 
 Components
-traffic_diffusion/train_trajectory_diffusion.py – trains a conditional trajectory diffusion model on PET‑event futures using outputs/petevents_bev.csv or a sample file such as docs/data_samples/petevents_bev_demo.csv.
+traffic_diffusion/train_trajectory_diffusion.py – Trains a conditional trajectory diffusion model on PET-event futures using outputs/petevents_bev.csv or a sample file such as docs/data_samples/petevents_bev_demo.csv.
 
-traffic_diffusion/model_and_sampler.py – loads diffusion checkpoints and samples counterfactual futures given past trajectories.
+traffic_diffusion/model_and_sampler.py – Loads diffusion checkpoints and samples counterfactual futures given past trajectories.
 
-analysis/safety_eval_diffusion.py – iterates over PET events, samples multiple futures per event, and computes PET and TTC statistics.
+analysis/safety_eval_diffusion.py – Iterates over PET events, samples multiple futures per event, and computes PET and TTC statistics.
 
 Running the original safety evaluation
 bash
@@ -299,13 +331,13 @@ git clone https://github.com/Sharqascc/nnds.git
 cd nnds
 PYTHONPATH=. python analysis/safety_eval_diffusion.py
 Notebook-friendly diffusion pipeline
-For iterative experiments and Colab runs, this repository also includes a notebook‑oriented pipeline:
+For iterative experiments and Colab runs, this repository also includes a notebook-oriented pipeline:
 
-traffic_diffusion/training_utils.py – data cleaning, normalization, loader creation, and reusable training helpers
+traffic_diffusion/training_utils.py – Data cleaning, normalization, loader creation, and reusable training helpers
 
-traffic_diffusion/sampling_utils.py – utilities to load a trained checkpoint and sample counterfactual futures
+traffic_diffusion/sampling_utils.py – Utilities to load a trained checkpoint and sample counterfactual futures
 
-analysis/safety_eval_diffusion_notebook.py – end‑to‑end notebook‑oriented script that:
+analysis/safety_eval_diffusion_notebook.py – End-to-end notebook-oriented script that:
 
 builds cleaned train and eval loaders
 
@@ -313,7 +345,7 @@ trains the diffusion model and saves a checkpoint
 
 samples future trajectories for evaluation events
 
-constructs an event‑level PET and risk table
+constructs an event-level PET and risk table
 
 summarizes safety using traffic_diffusion/pet_safety_metrics.py
 
@@ -325,4 +357,4 @@ git clone https://github.com/Sharqascc/nnds.git
 cd nnds
 PYTHONPATH=. python analysis/safety_eval_diffusion_notebook.py
 License
-MIT
+MIT.
