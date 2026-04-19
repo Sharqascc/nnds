@@ -1,87 +1,68 @@
-# NNDS: Non-motorized and Heterogeneous Traffic Safety Analysis
-
+NNDS: Non-motorized and Heterogeneous Traffic Safety Analysis
 AI-powered system for analyzing vehicle behavior and surrogate safety metrics at unsignalized intersections.
 
-> Note: The versioned PET sample and Colab bootstrap described below are introduced on the `feat/video-to-pet-pipeline` branch and will appear on `main` after this branch is merged.
+Note: The --max-frames speed/debug option and the Colab bootstrap script were introduced on the feat/video-to-pet-pipeline branch and are now available on main.
 
----
-
-## Quickstart
-
+Quickstart
 Use the repository with the Make targets or with direct Python entry points.
 
-```bash
+bash
 git clone https://github.com/Sharqascc/nnds.git
 cd nnds
 make install
-```
-
-### Run video to PET pipeline
-
-```bash
+Run video-to-PET pipeline
+bash
 make grid
 # or
 PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
-```
+This runs the end-to-end grid/PET pipeline on a video, computes PET events, and writes them to outputs/petevents_bev.csv by default.
 
-This runs the end-to-end grid/PET pipeline on a video, computes PET events, and writes them to `outputs/petevents_bev.csv` by default.
+A canonical 30‑frame PET events sample, derived from the HF demo video, is versioned at:
 
-A canonical 30-frame PET events sample, derived from the HF demo video, is versioned at:
+docs/data_samples/petevents_bev_demo.csv
 
-- `docs/data_samples/petevents_bev_demo.csv`
+You can use this sample directly for quick diffusion experiments without recomputing PETs.
 
-You can use this sample directly for quick diffusion experiments without recomputing PETs. [page:57]
+Run video with frame limit (debug / fast tests)
+bash
+PYTHONPATH=. python traffic_analyzer.py \
+  --video videos/traffic_video.mp4 \
+  --out-csv outputs/petevents_bev_test.csv \
+  --pet-threshold 2.0 \
+  --max-frames 30
+This processes only the first N frames, which is useful for rapid iteration and debugging. The test CSV has columns:
 
-### Train diffusion model
+event_id: integer conflict index
 
-```bash
-make diffusion-train
-# or
-PYTHONPATH=. python traffic_diffusion/train_trajectory_diffusion.py
-```
+pet: PET in seconds
 
-By default, the diffusion training script expects PET events in `outputs/petevents_bev.csv`; you may also point it to the canonical sample:
+frame: approximate frame index (optional / may be NaN)
 
-```bash
-PYTHONPATH=. python traffic_diffusion/train_trajectory_diffusion.py \
-  --csv-path docs/data_samples/petevents_bev_demo.csv
-```
+track_a, track_b: SAM3/grid track IDs of the two actors
 
-### Evaluate diffusion safety
+conflict_type: grid cell ID (e.g., CELL_C_1)
 
-```bash
-make diffusion-eval
-# or
-PYTHONPATH=. python analysis/safety_eval_diffusion.py
-```
+world_traj_i, world_traj_j: BEV/world trajectories as (t, x, y) lists per actor
 
-### Run notebook-style end-to-end diffusion evaluation
+Colab setup (recommended)
+For Google Colab, use the single‑cell bootstrap script below to prepare the environment. It:
 
-```bash
-make diffusion-notebook
-# or
-PYTHONPATH=. python analysis/safety_eval_diffusion_notebook.py
-```
+clones or updates the nnds repository
 
----
+switches to the desired branch (defaults to main)
 
-## Colab setup (recommended)
+installs Python dependencies
 
-For Google Colab, use a single bootstrap script to prepare the environment. This:
+downloads the default demo video into videos/traffic_video.mp4
 
-- clones or updates the `nnds` repository
-- switches to the desired branch
-- installs Python dependencies
-- downloads the default demo video into `videos/traffic_video.mp4`
-- downloads `sam3.pt` into the repo root only if it is missing
+downloads sam3.pt into the repo root if missing
 
-Both the demo video and SAM3 weights are hosted publicly on Hugging Face; no HF token is required. [page:32]
+Both the demo video and SAM3 weights are hosted publicly on Hugging Face; no HF token is required.
 
-### One-cell Colab bootstrap
-
+One-cell Colab bootstrap
 Paste this into a fresh Colab cell:
 
-```python
+python
 # NNDS Colab bootstrap: clone, install, download demo video + SAM3
 
 import os
@@ -92,7 +73,6 @@ from urllib.parse import quote
 
 # 0) CONFIG – EDIT THIS ONLY IF YOU NEED A PRIVATE FORK
 GITHUB_TOKEN = "YOUR_GITHUB_PAT_HERE"  # GitHub PAT with access to Sharqascc/nnds
-
 assert GITHUB_TOKEN != "YOUR_GITHUB_PAT_HERE", "Set GITHUB_TOKEN"
 
 # 1) Clone or update repo (main branch or your preferred branch)
@@ -164,201 +144,196 @@ if sam3_path.exists():
 print("\nTo run the pipeline now:")
 print("!cd /content/nnds && PYTHONPATH=. python traffic_analyzer.py "
       "--video videos/traffic_video.mp4")
-```
-
 Then run the pipeline:
 
-```bash
+bash
 !cd /content/nnds && PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
-```
+Use frame limiting for debugging:
 
----
+bash
+!cd /content/nnds && PYTHONPATH=. python traffic_analyzer.py \
+  --video videos/traffic_video.mp4 \
+  --out-csv outputs/petevents_bev_test.csv \
+  --pet-threshold 2.0 \
+  --max-frames 30
+Project Structure
+grid_trajectory/ – Spatial grid mapping and PET computation
 
-## Project Structure
+analysis/ – Evaluation and research scripts
 
-- `grid_trajectory/` – Spatial grid mapping and PET computation
-- `analysis/` – Evaluation and research scripts
-- `calibration/` – Camera calibration files
-- `configs/` – Grid and calibration configurations
-- `outputs/` – Generated experiment artifacts and evaluation CSV files (ignored by git)
-- `docs/data_samples/` – Versioned sample artifacts (e.g., `petevents_bev_demo.csv`)
-- `traffic_diffusion/` – Diffusion-based trajectory and safety modules
-- `bev_mapper.py` – Bird's Eye View transformation
-- `giti_bev_calib.py` – Homography calibration
-- `traffic_analyzer.py` – Traffic analysis and conflict processing pipeline
-- `traj_diffusion_normalized.py` – Normalized diffusion experiment script [page:32][page:57]
+calibration/ – Camera calibration files
 
----
+configs/ – Grid and calibration configurations
 
-## Entry points
+outputs/ – Generated experiment artifacts and evaluation CSV files (ignored by git)
 
-### Grid / PET extraction
+docs/data_samples/ – Versioned sample artifacts (e.g., petevents_bev_demo.csv)
 
-- `traffic_analyzer.py` – End-to-end traffic analysis on video, including detection, BEV transformation, grid construction, conflict extraction, and PET computation.
-- `grid_trajectory/` – Core grid and trajectory logic used by `traffic_analyzer.py`. [page:32]
+traffic_diffusion/ – Diffusion-based trajectory and safety modules
 
-### Diffusion training
+bev_mapper.py – Bird’s Eye View transformation
 
-- `traffic_diffusion/train_trajectory_diffusion.py` – Trains the conditional trajectory diffusion model on PET events from `outputs/petevents_bev.csv` or a sample file like `docs/data_samples/petevents_bev_demo.csv`. [page:32][page:57]
-- `traffic_diffusion/training_utils.py` – Reusable helpers for data cleaning, loader creation, and training loops.
+giti_bev_calib.py – Homography calibration
 
-### Diffusion safety evaluation
+traffic_analyzer.py – End-to-end traffic analysis and conflict processing pipeline
 
-- `analysis/safety_eval_diffusion.py` – Batch PET/TTC evaluation using a saved diffusion checkpoint and writes `outputs/safety_eval_diffusion.csv`.
-- `analysis/safety_eval_diffusion_notebook.py` – Notebook-friendly variant that retrains, samples futures, and produces:
-  - `outputs/safety_events_diffusion_model.csv`
-  - `outputs/safety_eval_diffusion_summary.csv`
+traj_diffusion_normalized.py – Normalized diffusion experiment script
 
----
+Entry points
+Grid / PET extraction
+traffic_analyzer.py – End-to-end traffic analysis on video, including detection, BEV transformation, grid construction, conflict extraction, and PET computation.
 
-## Key Features
+grid_trajectory/ – Core grid and trajectory logic used by traffic_analyzer.py.
 
-- SAM3 video segmentation
-- Spatial grid zone analysis
-- Bird's Eye View world-coordinate mapping
-- PET computation
-- Conflict detection
-- Diffusion-based trajectory modeling
-- PET and TTC safety evaluation [page:32]
+Diffusion training
+traffic_diffusion/train_trajectory_diffusion.py – Trains the conditional trajectory diffusion model on PET events from outputs/petevents_bev.csv or a sample file like docs/data_samples/petevents_bev_demo.csv.
 
----
+traffic_diffusion/training_utils.py – Reusable helpers for data cleaning, loader creation, and training loops.
 
-## Development setup
+Diffusion safety evaluation
+analysis/safety_eval_diffusion.py – Batch PET/TTC evaluation using a saved diffusion checkpoint and writes outputs/safety_eval_diffusion.csv.
 
+analysis/safety_eval_diffusion_notebook.py – Notebook-friendly variant that retrains, samples futures, and produces:
+
+outputs/safety_events_diffusion_model.csv
+
+outputs/safety_eval_diffusion_summary.csv
+
+Key Features
+SAM3 video segmentation
+
+Spatial grid zone analysis
+
+Bird’s Eye View world-coordinate mapping
+
+PET computation
+
+Conflict detection
+
+Diffusion-based trajectory modeling
+
+PET and TTC safety evaluation
+
+Development setup
 Recommended environment:
 
-- Python 3.10+
-- Google Colab for experiments, or a local Python environment
+Python 3.10+
+
+Google Colab for experiments, or a local Python environment
 
 Install dependencies with:
 
-```bash
+bash
 pip install -r requirements.txt
-```
-
 Typical developer workflow:
 
-```bash
+bash
 git clone https://github.com/Sharqascc/nnds.git
 cd nnds
 pip install -r requirements.txt
 python -m pytest
-```
+Repository conventions
+grid_trajectory/ is the canonical location for grid and PET logic.
 
----
+traffic_analyzer.py is the main end-to-end entry point for video-to-PET processing.
 
-## Repository conventions
+analysis/ contains evaluation-oriented scripts.
 
-- `grid_trajectory/` is the canonical location for grid and PET logic.
-- `traffic_analyzer.py` is the main end-to-end entry point for video-to-PET processing.
-- `analysis/` contains evaluation-oriented scripts.
-- `traffic_diffusion/` contains reusable model, sampling, and safety modules.
-- `outputs/` stores generated experiment artifacts and evaluation CSV files and is ignored by git.
-- `docs/data_samples/` contains small, versioned sample artifacts (like `petevents_bev_demo.csv`) for reproducible experiments. [page:57]
+traffic_diffusion/ contains reusable model, sampling, and safety modules.
+
+outputs/ stores generated experiment artifacts and evaluation CSV files and is ignored by git.
+
+docs/data_samples/ contains small, versioned sample artifacts (like petevents_bev_demo.csv) for reproducible experiments.
 
 For new research work:
 
-1. Prefer reusable logic inside `traffic_diffusion/` or `grid_trajectory/`.
-2. Keep one-off experiment runners inside `analysis/`.
-3. Write generated artifacts into `outputs/` with stable, descriptive filenames.
+Prefer reusable logic inside traffic_diffusion/ or grid_trajectory/.
 
----
+Keep one-off experiment runners inside analysis/.
 
-## Usage
+Write generated artifacts into outputs/ with stable, descriptive filenames.
 
-Code and configs are maintained on GitHub, while the default public demo video and SAM3 weights are hosted on Hugging Face. [page:32]
+Usage
+Code and configs are maintained on GitHub, while the default public demo video and SAM3 weights are hosted on Hugging Face.
 
-### Default demo video (Hugging Face)
+Default demo video (Hugging Face)
+The canonical example video for traffic_analyzer.py lives in a dataset repo:
 
-The canonical example video for `traffic_analyzer.py` lives in a dataset repo:
+Dataset: <https://huggingface.co/datasets/sharqascc/traffic-video-dataset>
 
-- Dataset: <https://huggingface.co/datasets/sharqascc/traffic-video-dataset>
-- Video file (web view):  
-  <https://huggingface.co/datasets/sharqascc/traffic-video-dataset/blob/main/videos/traffic_video.mp4>
+Video file (web view):
+<https://huggingface.co/datasets/sharqascc/traffic-video-dataset/blob/main/videos/traffic_video.mp4>
 
-For scripts and Colab, use the `resolve` URL so the file is downloaded directly:
+For scripts and Colab, use the resolve URL so the file is downloaded directly:
 
-```bash
+bash
 cd /content/nnds
 mkdir -p videos
 wget -O videos/traffic_video.mp4 \
   "https://huggingface.co/datasets/sharqascc/traffic-video-dataset/resolve/main/videos/traffic_video.mp4"
 PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
-```
+Larger private or experimental videos can still be stored on Google Drive, but all public examples in this repo are expected to work with the Hugging Face–hosted demo video by default.
 
-Larger private or experimental videos can still be stored on Google Drive, but all public examples in this repo are expected to work with the Hugging Face–hosted demo video by default. [page:32]
+SAM3 model weights
+The SAM3 video segmentation model used by traffic_analyzer.py is stored in a Hugging Face model repo and is not committed to this repo.
 
-### SAM3 model weights
-
-The SAM3 video segmentation model used by `traffic_analyzer.py` is stored in a Hugging Face model repo and is not committed to this repo. [page:32]
-
-For Colab users, the Colab bootstrap script above downloads `sam3.pt` automatically into the repository root if it is missing.
+For Colab users, the Colab bootstrap script above downloads sam3.pt automatically into the repository root if it is missing.
 
 If you want to download it manually:
 
-```bash
+bash
 cd /content/nnds
 wget -O sam3.pt \
   "https://huggingface.co/sharqascc/sam3-traffic-model/resolve/main/sam3.pt"
-```
-
 Verify:
 
-```bash
+bash
 ls -lh sam3.pt
-```
-
 Then run:
 
-```bash
+bash
 PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
-```
+Diffusion-based Safety Evaluation
+This repository includes a trajectory diffusion model and PET/TTC-based safety evaluation on PET events extracted from the grid pipeline.
 
----
+Components
+traffic_diffusion/train_trajectory_diffusion.py – Trains a conditional trajectory diffusion model on PET-event futures using outputs/petevents_bev.csv or a sample file such as docs/data_samples/petevents_bev_demo.csv.
 
-## Diffusion-based Safety Evaluation
+traffic_diffusion/model_and_sampler.py – Loads diffusion checkpoints and samples counterfactual futures given past trajectories.
 
-This repository includes a trajectory diffusion model and PET/TTC-based safety evaluation on PET events extracted from the grid pipeline. [page:32]
+analysis/safety_eval_diffusion.py – Iterates over PET events, samples multiple futures per event, and computes PET and TTC statistics.
 
-### Components
-
-- `traffic_diffusion/train_trajectory_diffusion.py` – Trains a conditional trajectory diffusion model on PET-event futures using `outputs/petevents_bev.csv` or a sample file such as `docs/data_samples/petevents_bev_demo.csv`. [page:32][page:57]
-- `traffic_diffusion/model_and_sampler.py` – Loads diffusion checkpoints and samples counterfactual futures given past trajectories.
-- `analysis/safety_eval_diffusion.py` – Iterates over PET events, samples multiple futures per event, and computes PET and TTC statistics.
-
-### Running the original safety evaluation
-
-```bash
+Running the original safety evaluation
+bash
 cd /content
 git clone https://github.com/Sharqascc/nnds.git
 cd nnds
 PYTHONPATH=. python analysis/safety_eval_diffusion.py
-```
+Notebook-friendly diffusion pipeline
+For iterative experiments and Colab runs, this repository also includes a notebook-oriented pipeline:
 
-### Notebook-friendly diffusion pipeline
+traffic_diffusion/training_utils.py – Data cleaning, normalization, loader creation, and reusable training helpers
 
-For iterative experiments and Colab runs, this repository also includes a notebook-style pipeline:
+traffic_diffusion/sampling_utils.py – Utilities to load a trained checkpoint and sample counterfactual futures
 
-- `traffic_diffusion/training_utils.py` – Data cleaning, normalization, loader creation, and reusable training helpers
-- `traffic_diffusion/sampling_utils.py` – Utilities to load a trained checkpoint and sample counterfactual futures
-- `analysis/safety_eval_diffusion_notebook.py` – End-to-end notebook-oriented script that:
-  - builds cleaned train and eval loaders
-  - trains the diffusion model and saves a checkpoint
-  - samples future trajectories for evaluation events
-  - constructs an event-level PET and risk table
-  - summarizes safety using `traffic_diffusion/pet_safety_metrics.py`
+analysis/safety_eval_diffusion_notebook.py – End-to-end notebook-oriented script that:
+
+builds cleaned train and eval loaders
+
+trains the diffusion model and saves a checkpoint
+
+samples future trajectories for evaluation events
+
+constructs an event-level PET and risk table
+
+summarizes safety using traffic_diffusion/pet_safety_metrics.py
 
 Run it in Colab with:
 
-```bash
+bash
 cd /content
 git clone https://github.com/Sharqascc/nnds.git
 cd nnds
 PYTHONPATH=. python analysis/safety_eval_diffusion_notebook.py
-```
-
----
-
-## License
-
-MIT
+License
+MIT.
