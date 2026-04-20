@@ -149,6 +149,122 @@ python analysis/safety_eval_diffusion.py --checkpoint checkpoints/diffusion_ckpt
 ```
 
 
+
+
+## Pipeline Architecture
+
+The NNDS system implements a multi-stage pipeline that transforms raw intersection video into quantitative safety metrics and diffusion-based trajectory predictions.
+
+### Phase 1: Video Input & Preprocessing
+
+| Component | File | Description |
+|-----------|------|-------------|
+| Input video | `videos/` | Raw traffic video (e.g., `traffic_video.mp4`) |
+| Demo video | HF dataset | Public demo hosted at `sharqascc/traffic-video-dataset` |
+| Frame limiting | `--max-frames` | Debug/fast-test mode for rapid iteration |
+
+### Phase 2: SAM3 Video Segmentation
+
+| Component | File | Description |
+|-----------|------|-------------|
+| SAM3 weights | `sam3.pt` | Downloaded from HF model repo `sharqascc/sam3-traffic-model` |
+| Segmentation | `traffic_analyzer.py` | SAM3 segments actors (vehicles, NMTs) per frame |
+| Actor tracking | — | Track IDs assigned to segmented actors across frames |
+
+### Phase 3: BEV Transformation & Calibration
+
+| Component | File | Description |
+|-----------|------|-------------|
+| Homography calibration | `giti_bev_calib.py` | Computes camera-to-world homography matrix |
+| BEV mapper | `bev_mapper.py` | Transforms image-plane detections to world/BEV coordinates |
+| World coordinates | — | Outputs (t, x, y) trajectories in meters |
+
+### Phase 4: Grid Mapping & Trajectory Construction
+
+| Component | File | Description |
+|-----------|------|-------------|
+| Spatial grid | `grid_trajectory/spatial_grid.py` | Defines intersection grid zones (CELL_* identifiers) |
+| PET grid logic | `grid_trajectory/pet_grid.py` | Computes grid cell assignments per actor per frame |
+| SAM3-grid integration | `grid_trajectory/sam3_grid_pet.py` | Combines SAM3 output with grid + PET logic |
+| Trajectory dataset | `traffic_diffusion/data/` | `trajdiff_inputs.npy`, `trajdiff_targets.npy`, `trajdiff_meta.parquet` |
+
+### Phase 5: PET Conflict Extraction
+
+| Component | File | Description |
+|-----------|------|-------------|
+| End-to-end pipeline | `traffic_analyzer.py` | Orchestrates SAM3 → BEV → Grid → PET |
+| PET computation | `grid_trajectory/` | Computes Post Encroachment Time per actor pair |
+| Output CSV | `outputs/petevents_bev.csv` | Conflict events with PET, trajectories, grid cells |
+| Gate counter | `gate_counter.py` | Counts actors passing through grid gates |
+| Research runner | `analysis/research_run.py` | Batch video processing with max-frames support |
+
+### Phase 6: Analysis & Visualization
+
+| Component | File | Description |
+|-----------|------|-------------|
+| PET summary | `analysis/pet_summary.py` | PET statistics, percentiles, grid hotspot counts |
+| Conflict plots | `analysis/visualization/pet_event_plots.py` | BEV conflict visualizations with trajectories |
+| Video overlays | `analysis/visualization/video_overlays.py` | Grid overlay + conflict cell highlights on video frames |
+| Safety eval (diffusion) | `analysis/safety_eval_diffusion.py` | Batch PET/TTC evaluation with diffusion checkpoint |
+| Notebook pipeline | `analysis/safety_eval_diffusion_notebook.py` | Train → Sample → Evaluate in one script |
+
+### Phase 7: Diffusion-Based Trajectory Modeling
+
+| Component | File | Description |
+|-----------|------|-------------|
+| Diffusion model | `traffic_diffusion/trajectory_diffusion.py` | Conditional trajectory diffusion model |
+| Training script | `traffic_diffusion/train_trajectory_diffusion.py` | Trains on PET-event futures |
+| Model & sampler | `traffic_diffusion/model_and_sampler.py` | Checkpoint loading + counterfactual future sampling |
+| Training utils | `traffic_diffusion/training_utils.py` | Data cleaning, loaders, training loop helpers |
+| Sampling utils | `traffic_diffusion/sampling_utils.py` | Load checkpoint and sample futures for eval events |
+| PET safety metrics | `traffic_diffusion/pet_safety_metrics.py` | Compute PET/TTC from sampled trajectories |
+| Episode reward | `traffic_diffusion/episode_reward.py` | Reward functions for trajectory quality assessment |
+| PET diffusion analysis | `analysis/pet_diffusion_analysis.py` | Compare real PET vs PET-like from diffusion |
+| Diffusion plots | `analysis/visualization/pet_diffusion_plots.py` | Histograms, true-vs-predicted, delta-step plots |
+
+### Pipeline Data Flow
+
+```
+[videos/traffic_video.mp4]
+        │
+        ▼
+┌─────────────────────────────┐
+│  Phase 2: SAM3 Segmentation │ → sam3.pt (HF model)
+│  (actor masks + track IDs)  │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│  Phase 3: BEV Transform     │ → giti_bev_calib.py, bev_mapper.py
+│  (image → world coordinates)│
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│  Phase 4: Grid + Trajectory │ → grid_trajectory/
+│  (grid cells + (t,x,y) traj)│
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│  Phase 5: PET Extraction    │ → outputs/petevents_bev.csv
+│  (conflict events + PETs)   │
+└──────────────┬──────────────┘
+               │
+        ┌──────┴──────┐
+        ▼             ▼
+┌──────────────┐  ┌───────────────────────┐
+│ Phase 6:     │  │ Phase 7:              │
+│ Analysis     │  │ Diffusion Modeling    │
+│ & Viz        │  │ (train + sample + eval)│
+│              │  │                       │
+│ pet_summary  │  │ train_trajectory_     │
+│ video_overlay│  │ diffusion.py          │
+│ conflict_plot│  │ model_and_sampler.py  │
+│ safety_eval  │  │ pet_safety_metrics.py │
+└──────────────┘  └───────────────────────┘
+```
+
 Quickstart
 Use the repository with the Make targets or with direct Python entry points.
 
