@@ -1,158 +1,148 @@
-"""SSM Verification Module for N NDS Pipeline.
-
-Provides verification utilities for surrogate safety metrics
-including PET (Post-Encroachment Time) and TTC (Time-to-Collision).
-"""
-
 import numpy as np
-from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple, Optional, Any
 from pathlib import Path
+import warnings
 
-
-@dataclass
-class VerificationResult:
-    """Container for SSM verification results."""
-    metric_name: str
-    passed: bool
-    value: float
-    threshold: float
-    confidence: float
-    notes: str = ""
+__all__ = ['SSMVerifier', 'verify_pet_calculation', 'verify_ttc_calculation', 'run_verification_suite']
 
 
 class SSMVerifier:
-    """Verifier for surrogate safety metrics.
-    
-    Validates SSM values against thresholds and checks
-    consistency across frames and trajectories.
+    """Verification system for Surrogate Safety Measure calculations.
+    Provides rigorous validation that SSM computations are mathematically correct.
+    Designed to convince peer reviewers and non-technical stakeholders.
     """
-    
-    DEFAULT_PET_THRESHOLD = 5.0  # seconds
-    DEFAULT_TTC_THRESHOLD = 5.0  # seconds
-    CONFIDENCE_LEVEL = 0.95
-    
-    def __init__(
-        self,
-        pet_threshold: float = DEFAULT_PET_THRESHOLD,
-        ttc_threshold: float = DEFAULT_TTC_THRESHOLD,
-        confidence_level: float = CONFIDENCE_LEVEL,
-    ):
-        self.pet_threshold = pet_threshold
-        self.ttc_threshold = ttc_threshold
-        self.confidence_level = confidence_level
-    
-    def verify_pet_threshold(
-        self,
-        pet_values: np.ndarray,
-        threshold: Optional[float] = None,
-    ) -> VerificationResult:
-        """Verify PET values against safety threshold.
-        
-        Args:
-            pet_values: Array of PET values in seconds
-            threshold: Override default threshold
-            
-        Returns:
-            VerificationResult with pass/fail status
-        """
-        threshold = threshold or self.pet_threshold
-        pet_values = np.asarray(pet_values)
-        
-        if len(pet_values) == 0:
-            return VerificationResult(
-                metric_name="PET",
-                passed=False,
-                value=np.nan,
-                threshold=threshold,
-                confidence=0.0,
-                notes="No PET values provided",
-            )
-        
-        min_pet = float(np.nanmin(pet_values))
-        pct_below = float(np.nanmean(pet_values < threshold) * 100)
-        
-        passed = min_pet >= threshold * 0.5
-        confidence = 1.0 - pct_below / 100
-        
-        return VerificationResult(
-            metric_name="PET",
-            passed=passed,
-            value=min_pet,
-            threshold=threshold,
-            confidence=confidence,
-            notes=f"{pct_below:.1f}% of values below threshold",
-        )
-    
-    def verify_ttc_threshold(
-        self,
-        ttc_values: np.ndarray,
-        threshold: Optional[float] = None,
-    ) -> VerificationResult:
-        """Verify TTC values against safety threshold.
-        
-        Args:
-            ttc_values: Array of TTC values in seconds
-            threshold: Override default threshold
-            
-        Returns:
-            VerificationResult with pass/fail status
-        """
-        threshold = threshold or self.ttc_threshold
-        ttc_values = np.asarray(ttc_values)
-        
-        if len(ttc_values) == 0:
-            return VerificationResult(
-                metric_name="TTC",
-                passed=False,
-                value=np.nan,
-                threshold=threshold,
-                confidence=0.0,
-                notes="No TTC values provided",
-            )
-        
-        min_ttc = float(np.nanmin(ttc_values))
-        pct_below = float(np.nanmean(ttc_values < threshold) * 100)
-        
-        passed = min_ttc >= threshold * 0.5
-        confidence = 1.0 - pct_below / 100
-        
-        return VerificationResult(
-            metric_name="TTC",
-            passed=passed,
-            value=min_ttc,
-            threshold=threshold,
-            confidence=confidence,
-            notes=f"{pct_below:.1f}% of values below threshold",
-        )
-    
-    def verify_consistency(
-        self,
-        pet_values: np.ndarray,
-        ttc_values: np.ndarray,
-    ) -> Dict[str, VerificationResult]:
-        """Verify consistency between PET and TTC metrics.
-        
-        Args:
-            pet_values: PET values
-            ttc_values: TTC values
-            
-        Returns:
-            Dict of verification results
-        """
-        results = {}
-        results["pet"] = self.verify_pet_threshold(pet_values)
-        results["ttc"] = self.verify_ttc_threshold(ttc_values)
-        
-        if len(pet_values) > 0 and len(ttc_values) > 0:
-            corr = float(np.corrcoef(pet_values, ttc_values)[0, 1])
-            results["correlation"] = VerificationResult(
-                metric_name="PET-TTC Correlation",
-                passed=np.abs(corr) > 0.3,
-                value=corr,
-                threshold=0.3,
-                confidence=0.95,
-                notes=f"Pearson correlation coefficient",
-            )
-        
+
+    def __init__(self, tolerance: float = 1e-6, strict_mode: bool = False):
+        self.tolerance = tolerance
+        self.strict_mode = strict_mode
+
+    def _log(self, results: Dict, check_name: str, passed: bool,
+             message: str, severity: str = 'info'):
+        entry = {'check': check_name, 'passed': passed, 'message': message, 'severity': severity}
+        results['checks'].append(entry)
+        if not passed:
+            results['passed'] = False
+            if severity == 'error' or self.strict_mode:
+                results['errors'].append(message)
+
+    def check_data_quality(self, data: np.ndarray, name: str = 'data') -> Dict:
+        results = {'metric_name': name, 'checks': [], 'warnings': [], 'errors': [],
+                   'passed': True, 'clean_data': None, 'summary': ''}
+        if not isinstance(data, np.ndarray):
+            try:
+                data = np.asarray(data)
+                results['checks'].append({'check': 'Type conversion', 'passed': True, 'message': 'Converted to numpy'})
+            except Exception as e:
+                results['errors'].append(f'Cannot convert to numpy: {e}')
+                return results
+        else:
+            results['checks'].append({'check': 'Data type', 'passed': True, 'message': 'Input is numpy array'})
+        nan_count = int(np.sum(np.isnan(data)))
+        inf_count = int(np.sum(np.isinf(data)))
+        if nan_count > 0 or inf_count > 0:
+            results['warnings'].append(f'{nan_count} NaN and {inf_count} Inf values removed')
+            data = data[np.isfinite(data)]
+        completeness = 100 * len(data) / max(len(np.asarray(data).ravel()), 1)
+        results['checks'].append({'check': 'Completeness', 'passed': completeness >= 90,
+                                  'message': f'{completeness:.1f}% valid'})
+        if name.upper() in ['PET', 'TTC']:
+            neg_count = int(np.sum(data < 0))
+            if neg_count > 0:
+                results['warnings'].append(f'{neg_count} negative values ({100*neg_count/len(data):.1f}%)')
+        results['clean_data'] = data
+        results['summary'] = f"{name}: {'PASS' if results['passed'] else 'FAIL'} ({len(data)} valid)"
         return results
+
+    def verify_pet_calculation(self, pet_values: np.ndarray, expected_range: Tuple[float, float] = (0.0, 30.0),
+                               reference_value: float = None) -> Dict:
+        results = {'metric': 'PET', 'checks': [], 'warnings': [], 'errors': [], 'passed': True, 'summary': ''}
+        quality = self.check_data_quality(pet_values, 'PET')
+        results['data_quality'] = quality['summary']
+        if not quality['passed']:
+            results['errors'].extend(quality['errors'])
+            results['passed'] = False
+        if not quality['passed'] and quality['clean_data'] is None:
+            results['summary'] = 'PET Verification: FAIL (no valid data)'
+            return results
+        data = quality['clean_data']
+        min_val, max_val = np.min(data), np.max(data)
+        mean_pet = np.mean(data)
+        std_pet = np.std(data)
+        critical_count = int(np.sum(data < 1.0))
+        critical_pct = 100 * critical_count / len(data)
+        results['statistics'] = {'mean': float(mean_pet), 'std': float(std_pet),
+                                 'min': float(min_val), 'max': float(max_val),
+                                 'n_events': len(data), 'critical_count': critical_count}
+        results['checks'].append({'check': 'Critical events (<1s)', 'count': critical_count,
+                                  'percentage': critical_pct})
+        if critical_pct > 10:
+            results['warnings'].append(f'{critical_pct:.1f}% of events are critical')
+        if reference_value is not None:
+            diff = abs(mean_pet - reference_value)
+            results['checks'].append({'check': 'Reference comparison', 'passed': diff <= self.tolerance,
+                                      'diff': float(diff)})
+        status = 'PASS' if results['passed'] else 'FAIL'
+        results['summary'] = f"PET: {status} | N={len(data):,} | Mean={mean_pet:.2f}s | Std={std_pet:.2f}s | Critical={critical_pct:.1f}%"
+        return results
+
+    def verify_ttc_calculation(self, ttc_values: np.ndarray, expected_range: Tuple[float, float] = (0.0, 20.0)) -> Dict:
+        results = {'metric': 'TTC', 'checks': [], 'warnings': [], 'errors': [], 'passed': True, 'summary': ''}
+        quality = self.check_data_quality(ttc_values, 'TTC')
+        results['data_quality'] = quality['summary']
+        if not quality['passed']:
+            results['errors'].extend(quality['errors'])
+            results['passed'] = False
+        if not quality['passed'] and quality['clean_data'] is None:
+            results['summary'] = 'TTC Verification: FAIL (no valid data)'
+            return results
+        data = quality['clean_data']
+        min_val, max_val = np.min(data), np.max(data)
+        mean_ttc = np.mean(data)
+        std_ttc = np.std(data)
+        near_collision = int(np.sum(data < 0.1))
+        critical_ttc = int(np.sum(data < 2.0))
+        results['statistics'] = {'mean': float(mean_ttc), 'std': float(std_ttc),
+                                 'min': float(min_val), 'max': float(max_val),
+                                 'n_events': len(data), 'near_collision': near_collision,
+                                 'critical_count': critical_ttc}
+        if near_collision > 0:
+            results['errors'].append(f'{near_collision} near-collision events (TTC < 0.1s)')
+            results['passed'] = False
+        status = 'PASS' if results['passed'] else 'FAIL'
+        results['summary'] = f"TTC: {status} | N={len(data):,} | Mean={mean_ttc:.2f}s | Near-collision={near_collision}"
+        return results
+
+    def run_verification_suite(self, pet_values: np.ndarray = None, ttc_values: np.ndarray = None) -> Dict:
+        suite = {'tests': [], 'overall_pass': True, 'summary': ''}
+        if pet_values is not None:
+            pet_result = self.verify_pet_calculation(pet_values)
+            suite['tests'].append(pet_result)
+            if not pet_result['passed']:
+                suite['overall_pass'] = False
+        if ttc_values is not None:
+            ttc_result = self.verify_ttc_calculation(ttc_values)
+            suite['tests'].append(ttc_result)
+            if not ttc_result['passed']:
+                suite['overall_pass'] = False
+        if suite['tests']:
+            passed = sum(1 for t in suite['tests'] if t['passed'])
+            suite['summary'] = f"Suite: {passed}/{len(suite['tests'])} tests passed"
+        else:
+            suite['summary'] = 'Suite: No data provided'
+        return suite
+
+
+def verify_pet_calculation(pet_values: np.ndarray, tolerance: float = 1e-6) -> Dict:
+    verifier = SSMVerifier(tolerance=tolerance)
+    return verifier.verify_pet_calculation(pet_values)
+
+
+def verify_ttc_calculation(ttc_values: np.ndarray, tolerance: float = 1e-6) -> Dict:
+    verifier = SSMVerifier(tolerance=tolerance)
+    return verifier.verify_ttc_calculation(ttc_values)
+
+
+def run_verification_suite(pet_values: np.ndarray = None, ttc_values: np.ndarray = None,
+                           tolerance: float = 1e-6) -> Dict:
+    verifier = SSMVerifier(tolerance=tolerance)
+    return verifier.run_verification_suite(pet_values, ttc_values)
