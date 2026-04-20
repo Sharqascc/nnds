@@ -1,150 +1,105 @@
-"""Reproducibility Audit Module.
-
-Tracks environment state, package versions, and file hashes
-to ensure experiment reproducibility.
-"""
-
+import os
+import sys
 import hashlib
 import json
-import os
-import subprocess
-import sys
-from dataclasses import dataclass, field, asdict
 from datetime import datetime
+from typing import Dict, Any, Optional
 from pathlib import Path
-from typing import Any, Dict, List, Optional
 
-
-@dataclass
-class AuditReport:
-    """Reproducibility audit report."""
-    timestamp: str
-    environment: Dict[str, Any]
-    packages: Dict[str, str]
-    file_hashes: Dict[str, str]
-    git_info: Optional[Dict[str, str]] = None
-    reproducible: bool = True
-    mismatches: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+__all__ = ['ReproducibilityAuditor', 'audit_environment', 'hash_file', 'generate_audit_report']
 
 
 class ReproducibilityAuditor:
-    """Auditor for experiment reproducibility.
-    
-    Captures environment state, package versions, file hashes,
-    and git commit info for reproducibility verification.
+    """Systematic reproducibility auditing for research pipelines.
+    Captures environment state for exact reproduction of SSM analysis results.
     """
-    
+
     def __init__(self):
-        self._session_packages: Optional[Dict[str, str]] = None
-        self._start_time: Optional[str] = None
-    
-    def start_session(self, config: Optional[Dict] = None) -> None:
-        """Start a reproducibility audit session."""
-        self._start_time = datetime.utcnow().isoformat()
-        self._session_packages = self._get_package_versions()
-        self._config = config
-    
-    def _get_package_versions(self) -> Dict[str, str]:
-        """Get current package versions."""
-        import importlib
-        key_packages = ['numpy', 'torch', 'torchvision', 'opencv_python',
-                        'pandas', 'matplotlib', 'scikit_learn', 'scipy']
-        versions = {}
-        for pkg in key_packages:
-            try:
-                mod = importlib.import_module(pkg)
-                versions[pkg] = getattr(mod, '__version__', 'unknown')
-            except ImportError:
-                versions[pkg] = 'not_installed'
-        return versions
-    
-    def _get_git_info(self, repo_path: str = '.') -> Optional[Dict[str, str]]:
-        """Get git repository information."""
-        try:
-            result = subprocess.run(
-                ['git', '-C', repo_path, 'rev-parse', 'HEAD'],
-                capture_output=True, text=True, check=True
-            )
-            commit = result.stdout.strip()
-            result = subprocess.run(
-                ['git', '-C', repo_path, 'branch', '--show-current'],
-                capture_output=True, text=True, check=True
-            )
-            branch = result.stdout.strip()
-            return {'commit': commit, 'branch': branch}
-        except (subprocess.SubprocessError, FileNotFoundError):
-            return None
-    
-    def _get_environment_info(self) -> Dict[str, Any]:
-        """Get environment information."""
-        return {
+        self.session_start = None
+        self.session_data = {}
+
+    def start_session(self, config: Optional[Dict] = None):
+        self.session_start = datetime.now().isoformat()
+        self.session_data = {
+            'session_start': self.session_start,
             'python_version': sys.version,
             'platform': sys.platform,
+            'hostname': os.uname().nodename if hasattr(os, 'uname') else 'unknown',
             'cpu_count': os.cpu_count(),
-            'start_time': self._start_time,
-            'config': self._config,
+            'config': config or {},
+            'inputs': {},
+            'outputs': {},
+            'environment': self._get_package_versions(),
+            'git_info': self._get_git_info()
         }
-    
-    def generate_report(
-        self,
-        save_path: Optional[str] = None,
-        files_to_hash: Optional[List[str]] = None,
-    ) -> AuditReport:
-        """Generate a full reproducibility audit report.
-        
-        Args:
-            save_path: Optional path to save JSON report
-            files_to_hash: Optional list of files to hash
-            
-        Returns:
-            AuditReport with all reproducibility information
-        """
-        file_hashes = {}
-        if files_to_hash:
-            for fpath in files_to_hash:
-                file_hashes[fpath] = hash_file(fpath)
-        
-        report = AuditReport(
-            timestamp=self._start_time or datetime.utcnow().isoformat(),
-            environment=self._get_environment_info(),
-            packages=self._session_packages or {},
-            file_hashes=file_hashes,
-            git_info=self._get_git_info(),
-        )
-        
+
+    def _get_package_versions(self) -> Dict[str, str]:
+        versions = {}
+        for pkg in ['numpy', 'scipy', 'matplotlib', 'pandas', 'torch', 'tensorflow', 'statsmodels']:
+            try:
+                mod = __import__(pkg.replace('-', '_'))
+                versions[pkg] = getattr(mod, '__version__', 'unknown')
+            except ImportError:
+                pass
+        return versions
+
+    def _get_git_info(self) -> Dict[str, str]:
+        try:
+            import subprocess
+            result = subprocess.run(['git', 'rev-parse', 'HEAD'], capture_output=True, text=True, timeout=5)
+            commit = result.stdout.strip() if result.returncode == 0 else 'unknown'
+            result = subprocess.run(['git', 'branch', '--show-current'], capture_output=True, text=True, timeout=5)
+            branch = result.stdout.strip() if result.returncode == 0 else 'unknown'
+            return {'commit': commit, 'branch': branch}
+        except Exception:
+            return {'commit': 'unknown', 'branch': 'unknown'}
+
+    def log_input(self, name: str, path: str):
+        checksum = self._hash_file(path)
+        size = os.path.getsize(path) if os.path.exists(path) else 0
+        self.session_data['inputs'][name] = {'path': path, 'checksum': checksum, 'size_bytes': size}
+
+    def log_output(self, name: str, path: str):
+        checksum = self._hash_file(path)
+        size = os.path.getsize(path) if os.path.exists(path) else 0
+        self.session_data['outputs'][name] = {'path': path, 'checksum': checksum, 'size_bytes': size}
+
+    def _hash_file(self, path: str) -> str:
+        try:
+            with open(path, 'rb') as f:
+                return hashlib.sha256(f.read()).hexdigest()[:16]
+        except Exception:
+            return 'unavailable'
+
+    def generate_report(self, save_path: Optional[str] = None) -> Dict:
+        report = {'title': 'NNDS Pipeline Reproducibility Audit', 'generated_at': datetime.now().isoformat(),
+                  'session': self.session_data}
         if save_path:
-            Path(save_path).parent.mkdir(parents=True, exist_ok=True)
             with open(save_path, 'w') as f:
-                json.dump(asdict(report), f, indent=2, default=str)
-        
+                json.dump(report, f, indent=2, default=str)
         return report
-    
-    def check_reproducibility(
-        self,
-        saved_packages: Dict[str, str],
-    ) -> Dict[str, Any]:
-        """Check if current environment matches a saved state.
-        
-        Args:
-            saved_packages: Previously saved package versions
-            
-        Returns:
-            Dict with 'reproducible' bool and 'mismatches' list
-        """
-        current = self._get_package_versions()
+
+    def verify_reproducibility(self, saved_report_path: str) -> Dict:
+        with open(saved_report_path) as f:
+            saved = json.load(f)
         mismatches = []
-        for pkg, ver in saved_packages.items():
-            if pkg in current and current[pkg] != ver:
-                mismatches.append(f"{pkg}: {ver} vs {current[pkg]}")
-        return {
-            'reproducible': len(mismatches) == 0,
-            'mismatches': mismatches,
-        }
+        if saved['session']['python_version'] != sys.version:
+            mismatches.append('Python version differs')
+        saved_pkgs = saved['session'].get('environment', {})
+        current_pkgs = self._get_package_versions()
+        for pkg, ver in saved_pkgs.items():
+            if pkg in current_pkgs and current_pkgs[pkg] != ver:
+                mismatches.append(f"{pkg}: {ver} vs {current_pkgs[pkg]}")
+        return {'reproducible': len(mismatches) == 0, 'mismatches': mismatches}
+
+
+def audit_environment(save_path: Optional[str] = None) -> Dict:
+    auditor = ReproducibilityAuditor()
+    auditor.start_session()
+    return auditor.generate_report(save_path)
 
 
 def hash_file(path: str) -> str:
-    """Compute SHA256 hash of a file."""
     try:
         with open(path, 'rb') as f:
             return hashlib.sha256(f.read()).hexdigest()[:16]
@@ -152,19 +107,7 @@ def hash_file(path: str) -> str:
         return 'unavailable'
 
 
-def audit_environment(save_path: Optional[str] = None) -> Dict:
-    """Convenience function for quick environment audit."""
-    auditor = ReproducibilityAuditor()
-    auditor.start_session()
-    report = auditor.generate_report(save_path)
-    return asdict(report)
-
-
-def generate_audit_report(
-    config: Optional[Dict] = None,
-    save_path: Optional[str] = None,
-) -> AuditReport:
-    """Generate an audit report with optional config."""
+def generate_audit_report(config: Optional[Dict] = None, save_path: Optional[str] = None) -> Dict:
     auditor = ReproducibilityAuditor()
     auditor.start_session(config)
     return auditor.generate_report(save_path)

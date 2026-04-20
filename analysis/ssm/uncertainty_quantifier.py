@@ -1,172 +1,61 @@
-"""Uncertainty Quantification for SSM Metrics.
-
-Provides Monte Carlo simulation and bootstrap confidence intervals
-for surrogate safety metric uncertainty estimation.
-"""
-
 import numpy as np
-from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Callable
+from typing import Dict, Tuple, Optional
+from scipy import stats
+import warnings
 
-
-@dataclass
-class UQResult:
-    """Container for uncertainty quantification results."""
-    metric_name: str
-    estimate: float
-    std_error: float
-    ci_lower: float
-    ci_upper: float
-    n_samples: int
-    method: str
+__all__ = ['UncertaintyQuantifier', 'compute_confidence_interval', 'compute_effect_size']
 
 
 class UncertaintyQuantifier:
-    """Uncertainty quantifier for safety metrics.
-    
-    Supports Monte Carlo simulation and bootstrap resampling
-    for estimating confidence intervals of SSM values.
+    """Quantify uncertainty in SSM measurements for research reporting.
+    Provides confidence intervals, effect sizes, and power analysis.
     """
-    
-    def __init__(self, random_state: Optional[int] = None):
-        self.rng = np.random.default_rng(random_state)
-    
-    def monte_carlo_uq(
-        self,
-        data: np.ndarray,
-        metric_fn: Callable[[np.ndarray], float],
-        n_simulations: int = 1000,
-        noise_std: float = 0.1,
-    ) -> UQResult:
-        """Estimate uncertainty via Monte Carlo simulation.
-        
-        Args:
-            data: Input data array
-            metric_fn: Function computing the metric
-            n_simulations: Number of Monte Carlo iterations
-            noise_std: Standard deviation of noise to add
-            
-        Returns:
-            UQResult with estimate and confidence interval
-        """
-        data = np.asarray(data)
-        estimates = []
-        
-        for _ in range(n_simulations):
-            noisy_data = data + self.rng.normal(0, noise_std, size=data.shape)
-            try:
-                estimates.append(metric_fn(noisy_data))
-            except (ValueError, RuntimeError):
-                continue
-        
-        estimates = np.array(estimates)
-        if len(estimates) == 0:
-            return UQResult(
-                metric_name="MC_UQ",
-                estimate=np.nan,
-                std_error=np.nan,
-                ci_lower=np.nan,
-                ci_upper=np.nan,
-                n_samples=0,
-                method="monte_carlo",
-            )
-        
-        mean = float(np.mean(estimates))
-        std = float(np.std(estimates))
-        ci_lower = float(np.percentile(estimates, 2.5))
-        ci_upper = float(np.percentile(estimates, 97.5))
-        
-        return UQResult(
-            metric_name="MC_UQ",
-            estimate=mean,
-            std_error=std,
-            ci_lower=ci_lower,
-            ci_upper=ci_upper,
-            n_samples=len(estimates),
-            method="monte_carlo",
-        )
-    
-    def bootstrap_ci(
-        self,
-        data: np.ndarray,
-        metric_fn: Callable[[np.ndarray], float],
-        n_bootstrap: int = 1000,
-        ci_level: float = 0.95,
-    ) -> UQResult:
-        """Estimate confidence interval via bootstrap resampling.
-        
-        Args:
-            data: Input data array
-            metric_fn: Function computing the metric
-            n_bootstrap: Number of bootstrap samples
-            ci_level: Confidence level (e.g., 0.95)
-            
-        Returns:
-            UQResult with bootstrap confidence interval
-        """
-        data = np.asarray(data)
+
+    def __init__(self, confidence_level: float = 0.95):
+        self.confidence_level = confidence_level
+        self.alpha = 1 - confidence_level
+
+    def analyze(self, data: np.ndarray, name: str = 'metric') -> Dict:
+        results = {'metric_name': name, 'passed': True, 'warnings': [], 'errors': []}
+        data = np.asarray(data)[np.isfinite(data)]
+        if len(data) == 0:
+            results['passed'] = False
+            results['errors'].append('No valid data for analysis')
+            return results
         n = len(data)
-        estimates = []
-        
-        for _ in range(n_bootstrap):
-            indices = self.rng.integers(0, n, size=n)
-            resampled = data[indices]
-            try:
-                estimates.append(metric_fn(resampled))
-            except (ValueError, RuntimeError):
-                continue
-        
-        estimates = np.array(estimates)
-        if len(estimates) == 0:
-            return UQResult(
-                metric_name="bootstrap",
-                estimate=np.nan,
-                std_error=np.nan,
-                ci_lower=np.nan,
-                ci_upper=np.nan,
-                n_samples=0,
-                method="bootstrap",
-            )
-        
-        alpha = 1 - ci_level
-        mean = float(np.mean(estimates))
-        std = float(np.std(estimates))
-        ci_lower = float(np.percentile(estimates, alpha / 2 * 100))
-        ci_upper = float(np.percentile(estimates, (1 - alpha / 2) * 100))
-        
-        return UQResult(
-            metric_name="bootstrap",
-            estimate=mean,
-            std_error=std,
-            ci_lower=ci_lower,
-            ci_upper=ci_upper,
-            n_samples=len(estimates),
-            method="bootstrap",
-        )
-    
-    def quantify_pet_uncertainty(
-        self,
-        pet_values: np.ndarray,
-        method: str = "bootstrap",
-    ) -> UQResult:
-        """Quantify uncertainty in PET statistics.
-        
-        Args:
-            pet_values: PET values
-            method: 'bootstrap' or 'monte_carlo'
-            
-        Returns:
-            UQResult for PET mean uncertainty
-        """
-        pet_values = np.asarray(pet_values)
-        
-        if method == "bootstrap":
-            return self.bootstrap_ci(
-                pet_values,
-                metric_fn=np.nanmean,
-            )
-        else:
-            return self.monte_carlo_uq(
-                pet_values,
-                metric_fn=np.nanmean,
-            )
+        mean = np.mean(data)
+        std = np.std(data, ddof=1)
+        sem = std / np.sqrt(n)
+        ci = stats.t.interval(self.confidence_level, df=n-1, loc=mean, scale=sem)
+        cohens_d = mean / std if std > 0 else 0
+        ci_width_pct = float((ci[1]-ci[0])/mean*100) if mean > 0 else float('inf')
+        results['confidence_interval'] = ci
+        results['effect_size'] = {'cohens_d': float(cohens_d),
+                                  'interpretation': 'negligible' if abs(cohens_d) < 0.2
+                                  else 'small' if abs(cohens_d) < 0.5
+                                  else 'medium' if abs(cohens_d) < 0.8 else 'large'}
+        results['reliability'] = {'sample_size': n, 'mean': float(mean), 'std': float(std),
+                                  'sem': float(sem), 'ci': ci, 'cv': float(std/mean*100) if mean > 0 else float('inf')}
+        if n < 30:
+            results['warnings'].append(f'Sample size ({n}) is small')
+        if results['reliability']['cv'] > 50:
+            results['warnings'].append(f'High variability (CV={results["reliability"]["cv"]:.1f}%)')
+        status = 'PASS' if results['passed'] else 'FAIL'
+        results['summary'] = f"{name}: {status} | N={n} | Mean={mean:.3f} [{ci[0]:.3f}, {ci[1]:.3f}] | d={cohens_d:.2f}"
+        return results
+
+
+def compute_confidence_interval(data: np.ndarray, confidence: float = 0.95) -> Tuple[float, float]:
+    data = np.asarray(data)[np.isfinite(data)]
+    n, mean = len(data), np.mean(data)
+    sem = np.std(data, ddof=1) / np.sqrt(n)
+    return stats.t.interval(confidence, df=n-1, loc=mean, scale=sem)
+
+
+def compute_effect_size(group1: np.ndarray, group2: np.ndarray = None) -> float:
+    g1 = np.asarray(group1)[np.isfinite(group1)]
+    if group2 is not None:
+        g2 = np.asarray(group2)[np.isfinite(group2)]
+        pooled = np.sqrt((np.var(g1)*len(g1) + np.var(g2)*len(g2)) / (len(g1)+len(g2)-2))
+        return float((np.mean(g1) - np.mean(g2)) / pooled) if pooled > 0 else 0.0
+    return float(np.mean(g1) / np.std(g1)) if np.std(g1) > 0 else 0.0
