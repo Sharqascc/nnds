@@ -315,6 +315,189 @@ plot_true_vs_sample_delta(
 )
 These plots help compare true PET values with PET-like metrics derived from real and sampled trajectories, supporting diffusion-based safety evaluation.
 
+## Industry-Standard Visualization & Surrogate Safety Metrics
+
+The NNDS visualization suite produces publication-ready figures that comply with peer-reviewed journal requirements (IEEE Transactions on ITS, Accident Analysis & Prevention, NHTSA, FHWA) for traffic safety analysis and surrogate safety measure reporting.
+
+### Surrogate Safety Measures (SSM)
+
+The following SSMs are computed and visualized:
+
+| Metric | Description | Safety Threshold | Reference |
+|--------|-------------|-----------------|------------|
+| **PET** (Post-Encroachment Time) | Time difference between one road user leaving a conflict zone and another entering | < 1.5s: critical, < 3.0s: potential | Allen et al. (1977) |
+| **TTC** (Time-To-Collision) | Estimated time to collision if current trajectories are maintained | < 2.0s: critical, < 5.0s: potential | Hyd'en (1987) |
+| **DRAC** (Deceleration Rate to Avoid Collision) | Required deceleration to avoid a collision | > 3.37 m/s'2: unsafe | NHTSA guidelines |
+| **Gap** | Temporal/spatial gap between conflicting road users | < 2.0s: inadequate | AASHTO |
+
+### Visualization Standards
+
+All figures follow IEEE Transactions on Intelligent Transportation Systems formatting guidelines:
+
+- **Resolution**: 300 DPI minimum for print publication
+- **Font**: 10-12pt serif (Times New Roman or Computer Modern) for labels; sans-serif for titles
+- **Color**: Colorblind-safe palettes (Viridis, Plasma, or tab10 with annotations)
+- **Dimensions**: Single-column (3.375 in) or double-column (6.875 in) for two-column layouts
+- **File format**: PNG (raster) or SVG/PDF (vector) for journal submission
+- **Annotations**: Conflict zones highlighted; PET values shown with units (seconds)
+- **Legends**: Descriptive labels with metric definitions on first use
+
+### PET Distribution Plot
+
+Publication-ready histogram with overlaid severity zones (critical < 1.5s, potential < 3.0s, safe >= 3.0s) and KDE curve:
+
+```python
+from analysis.visualization.industry_standard_viz import IndustryStandardSafetyViz
+viz = IndustryStandardSafetyViz()
+
+# Load PET events
+df = viz.load_pet_csv("outputs/petevents_bev.csv")
+
+# Generate PET distribution figure
+fig = viz.plot_pet_distribution(
+    df,
+    out_path="outputs/figures/pet_distribution.png",
+    dpi=300,
+    figsize=(6.875, 4.5),  # double-column width
+)
+```
+
+**Output**: Histogram with color-coded severity bands, fitted KDE curve, summary statistics table (mean, median, percentiles, count), and threshold lines.
+
+### Severity Classification Report
+
+Tabular summary of PET events by severity level following NHTSA SSM classification:
+
+```python
+# Generate severity report
+report = viz.generate_severity_report(df)
+report.to_csv("outputs/figures/severity_report.csv", index=False)
+print(report.to_markdown())
+```
+
+| Severity | PET Range (s) | Count | Percentage | Description |
+|----------|---------------|-------|------------|-------------|
+| Critical | PET < 1.5 | N | X% | Imminent collision risk |
+| Potential | 1.5 <= PET < 3.0 | N | X% | Elevated conflict risk |
+| Safe | PET >= 3.0 | N | X% | Normal interaction |
+
+### Comparative Safety Analysis
+
+Side-by-side comparison of real vs. diffusion-sampled PET distributions with statistical tests:
+
+```python
+# Comparative analysis (real PET vs. diffusion-sampled)
+real_df = viz.load_pet_csv("outputs/petevents_bev.csv")
+sampled_df = viz.load_sampled_pet("outputs/safety_eval_diffusion.csv")
+
+fig = viz.plot_comparative_analysis(
+    real_df, sampled_df,
+    out_path="outputs/figures/comparative_safety.png",
+    statistical_test="ks_test"  # Kolmogorov-Smirnov test
+)
+```
+
+**Output**: Dual-panel figure showing real vs. sampled PET distributions with KS test p-value, effect size (Cohen's d), and 95% confidence intervals.
+
+### Grid-Based Risk Heatmap
+
+BEV grid cell risk intensity map following FHWA intersection safety guidelines:
+
+```python
+# Generate grid risk heatmap
+fig = viz.plot_grid_risk_heatmap(
+    df,
+    grid_config="configs/GITI_grid_config.json",
+    out_path="outputs/figures/grid_risk_heatmap.png",
+    metric="pet_mean"  # or "event_count", "pet_min"
+)
+```
+
+**Output**: Overhead BEV view with grid cells colored by mean PET (red = critical, yellow = potential, green = safe), cell ID labels, and conflict event density contours.
+
+### Temporal Risk Analysis
+
+Time-series of PET events showing temporal patterns in intersection safety:
+
+```python
+# Temporal analysis
+fig = viz.plot_temporal_risk(
+    df,
+    out_path="outputs/figures/temporal_risk.png",
+    bin_size="5min",  # or "10min", "30min"
+    aggregate="mean"  # or "min", "count"
+)
+```
+
+**Output**: Time-series plot with PET values over time, rolling mean trend line, peak risk periods annotated, and traffic volume overlay.
+
+### Conflict Event Diagram
+
+Individual conflict event visualization with trajectories, closest-approach point, and PET value:
+
+```python
+# Single conflict event diagram
+viz.plot_conflict_event(
+    df,
+    event_id=0,
+    out_path="outputs/figures/conflict_event_000.png",
+    show_grid=True,
+    show_trajectories=True,
+    show_closest_approach=True
+)
+```
+
+**Output**: BEV diagram showing both actor trajectories, grid cell boundaries, conflict zone highlighted, closest-approach point marked, and PET value annotated.
+
+### Citation-Ready Figure Export
+
+Export all figures in journal-ready formats:
+
+```python
+# Batch export all visualizations
+viz.export_journal_figures(
+    df,
+    output_dir="outputs/journal_figures/",
+    formats=["png", "svg", "pdf"],  # raster + vector
+    dpi=300,
+    include_summary_table=True
+)
+```
+
+**Output directory structure**:
+```
+outputs/journal_figures/
+├── pet_distribution.png
+├── pet_distribution.svg
+├── severity_report.csv
+├── comparative_safety.png
+├── grid_risk_heatmap.png
+├── temporal_risk.png
+├── conflict_event_000.png
+└── figure_captions.txt  # Auto-generated captions for each figure
+```
+
+### Reproducibility & Version Control
+
+All visualization code is versioned and reproducible:
+
+```bash
+# Generate all figures with one command
+PYTHONPATH=. python analysis/visualization/industry_standard_viz.py \
+    --csv-path outputs/petevents_bev.csv \
+    --grid-config configs/GITI_grid_config.json \
+    --output-dir outputs/journal_figures/ \
+    --dpi 300
+```
+
+### References
+
+- Allen, B. L., Shin, B. T., & Cooper, P. J. (1977). Analysis of traffic conflicts and collisions. *Transportation Research Record*, 667, 67-74.
+- Hyd'en, C. (1987). The development of a method for traffic safety evaluation: The Swedish Traffic Conflicts Technique. *Bulletin Lund Institute of Technology*, 70.
+- NHTSA. (2020). *Surrogate Safety Assessment Model and Validation: Final Report*. FHWA-HRT-08-051.
+- FHWA. (2019). *Intersection Safety: A Manual for Practitioners*. FHWA-SA-19-010.
+- IEEE Transactions on Intelligent Transportation Systems. (2024). *Author Guidelines*. IEEE ITSS Society.
+
 Colab setup (recommended)
 For Google Colab, use the single‑cell bootstrap script below to prepare the environment. It:
 
