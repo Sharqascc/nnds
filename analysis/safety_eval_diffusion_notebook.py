@@ -11,12 +11,63 @@ ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_DIR = ROOT / "outputs"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+src_path = "/content/nnds/outputs/petevents_20_frames_test.csv"
+
+
+
+
+def load_trajdiff_dataset(root: Path, src_path: str):
+    """Load PET events CSV into a raw_dataset suitable for build_clean_dataloaders.
+
+    raw_dataset is a list of (trajectory_tensor_flat, condition_tensor).
+    All trajectories are padded/truncated to fixed length T_TARGET.
+    """
+    import ast
+    import torch
+    import pandas as pd
+
+    T_TARGET = 15  # must match T used in build_clean_dataloaders/create_model
+    N = 1
+    F = 4
+
+    df = pd.read_csv(src_path)
+    raw_dataset = []
+
+    for _, row in df.iterrows():
+        traj_i = ast.literal_eval(row["world_traj_i"])
+        # traj_i is list of (t, x, y)
+        if len(traj_i) == 0:
+            continue
+
+        # Build trajectory tensor (T_TARGET, 1, 4)
+        traj_tensor = torch.zeros(T_TARGET, N, F, dtype=torch.float32)
+
+        # Fill with as many steps as we have, up to T_TARGET
+        for t_idx, (t, x, y) in enumerate(traj_i[:T_TARGET]):
+            traj_tensor[t_idx, 0, 0] = float(t)
+            traj_tensor[t_idx, 0, 1] = float(x)
+            traj_tensor[t_idx, 0, 2] = float(y)
+            traj_tensor[t_idx, 0, 3] = 1.0  # dummy feature
+
+        # Condition: start & end positions of actor i (from available steps)
+        t0, x0, y0 = traj_i[0]
+        t1, x1, y1 = traj_i[-1]
+        cond_tensor = torch.tensor(
+            [x0, y0, x1, y1],
+            dtype=torch.float32
+        )
+
+        # Flatten trajectory to (T*N*F,) so all have same length
+        traj_flat = traj_tensor.view(-1)
+        raw_dataset.append((traj_flat, cond_tensor))
+
+    meta_df = df
+    return raw_dataset, meta_df
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def main():
-    from traffic_diffusion.trajectory_diffusion import load_trajdiff_dataset
-
-    raw_dataset, meta_df = load_trajdiff_dataset(ROOT)
+    raw_dataset, meta_df = load_trajdiff_dataset(ROOT, src_path)
 
     train_loader, eval_loader, train_dataset, eval_dataset, stats = \
         build_clean_dataloaders(raw_dataset, batch_size=14, T=15, N=1, F=4)
@@ -24,7 +75,7 @@ def main():
     model = create_model(device, T=15, N=1, F=4, cond_dim=4)
     best_ckpt, last_ckpt, history = train_diffusion_model(
         model, train_loader, device,
-        num_epochs=50,
+        num_epochs=1,
         save_dir=str(ROOT / "checkpoints"),
     )
 
