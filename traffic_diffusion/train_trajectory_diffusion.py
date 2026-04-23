@@ -1,3 +1,4 @@
+
 import os
 import ast
 import numpy as np
@@ -77,11 +78,11 @@ def build_training_tensors(csv_path, Th=8):
 
 
 def train(
-    csv_path="docs/data_samples/petevents_bev_demo.csv",
+    csv_path="outputs/petevents_20_frames_test.csv",
     checkpoint_dir="checkpoints",
     Th=8,
     batch_size=32,
-    epochs=50,
+    epochs=1,
     lr=1e-3,
     num_steps=1000,
 ):
