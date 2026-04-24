@@ -1,6 +1,14 @@
 __pycache__/
 *.pyc
 patch.diff
-outputs/
+
+# Ignore heavy model + raw videos
 sam3.pt
 videos/
+
+# Ignore everything in outputs by default…
+outputs/*
+
+# …but keep CSVs (and optionally a README) tracked
+!outputs/*.csv
+!outputs/README.md
