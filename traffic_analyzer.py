@@ -292,6 +292,7 @@ def run_video_to_pet(
     out_csv_path: str = "outputs/petevents_bev.csv",
     pet_threshold: float = 2.0,
     max_frames: int | None = None,
+    debug_video_path: str | None = None,
 ) -> pd.DataFrame:
     """Video → SAM3 detections → grid → BEV → PET events CSV.
     Returns the DataFrame of PET events for convenience.
@@ -315,6 +316,7 @@ def run_video_to_pet(
         conf=0.25,
         pet_threshold=pet_threshold,
         max_frames=max_frames,
+        debug_video_rel_path=str(Path(debug_video_path)) if debug_video_path else None,
     )
     pet_events = result.get("pet_events", [])
 
@@ -352,6 +354,7 @@ def run_video_to_pet(
     df.to_csv(out_path, index=False)
     print(f"✅ Saved {len(df)} PET events to {out_path}")
     return df
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -395,6 +398,11 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Process only the first N frames",
     )
+    parser.add_argument(
+        "--debug-video",
+        default=None,
+        help="Optional debug output video path (e.g. outputs/debug_5frames.mp4)",
+    )
     return parser.parse_args()
 
 
@@ -416,9 +424,9 @@ def main() -> None:
         out_csv_path=args.out_csv,
         pet_threshold=args.pet_threshold,
         max_frames=args.max_frames,
+        debug_video_path=args.debug_video,
     )
 
 
 if __name__ == "__main__":
     main()
-
