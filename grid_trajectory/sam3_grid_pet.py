@@ -14,6 +14,7 @@ def run_sam3_grid_pet(
     conf=0.25,
     pet_threshold=2.0,
     max_frames: int | None = None,
+    debug_video_rel_path: str | None = None,
 ):
     video_path  = os.path.join(project_root, video_rel_path)
     sam3_path   = os.path.join(project_root, sam3_rel_path)
@@ -23,14 +24,25 @@ def run_sam3_grid_pet(
     output_root = os.path.join(project_root, "outputs")
     os.makedirs(output_root, exist_ok=True)
 
+    # Open once for FPS / size and to support VideoWriter
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS) or 25
     ret, frame0 = cap.read()
-    cap.release()
     if not ret:
+        cap.release()
         raise RuntimeError("Could not read first frame for grid/BEV initialization.")
 
     h0, w0 = frame0.shape[:2]
+
+    # Optional debug video writer
+    writer = None
+    if debug_video_rel_path is not None:
+        debug_video_path = os.path.join(project_root, debug_video_rel_path)
+        os.makedirs(os.path.dirname(debug_video_path), exist_ok=True)
+
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        writer = cv2.VideoWriter(debug_video_path, fourcc, fps, (w0, h0))
+
     grid = SpatialGrid(grid_config)
 
     with open(bev_config, "r") as f:
@@ -69,10 +81,15 @@ def run_sam3_grid_pet(
 
         boxes = getattr(res, "boxes", None)
         if boxes is None or boxes.xyxy is None:
+            # still write raw frame if you want a continuous video
+            if writer is not None and hasattr(res, "orig_img"):
+                writer.write(res.orig_img)
             continue
 
         xyxy = boxes.xyxy.detach().cpu().numpy()
         if xyxy.size == 0:
+            if writer is not None and hasattr(res, "orig_img"):
+                writer.write(res.orig_img)
             continue
 
         track_ids = getattr(boxes, "id", None)
@@ -81,7 +98,8 @@ def run_sam3_grid_pet(
         else:
             track_ids = np.arange(len(xyxy))
 
-        h, w = res.orig_img.shape[:2]
+        frame = res.orig_img.copy()
+        h, w = frame.shape[:2]
         det_count_total += len(xyxy)
 
         for k, box in enumerate(xyxy):
@@ -91,6 +109,20 @@ def run_sam3_grid_pet(
             x2 = max(0, min(x2, w - 1))
             y2 = max(0, min(y2, h - 1))
 
+            # draw detection + track id on frame for debug video
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.putText(
+                frame,
+                f"ID {int(track_ids[k])}",
+                (x1, max(y1 - 5, 0)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (0, 255, 0),
+                1,
+                cv2.LINE_AA,
+            )
+
+            # bottom-center point
             cx = (x1 + x2) / 2.0
             cy = float(y2)
 
@@ -111,6 +143,13 @@ def run_sam3_grid_pet(
                 world_x=wx,
                 world_y=wy,
             )
+
+        if writer is not None:
+            writer.write(frame)
+
+    cap.release()
+    if writer is not None:
+        writer.release()
 
     intervals = traj_logger.build_intervals()
     pet_events = compute_pet(intervals, pet_threshold=pet_threshold)
