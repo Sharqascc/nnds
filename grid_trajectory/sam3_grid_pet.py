@@ -24,7 +24,7 @@ def run_sam3_grid_pet(
     output_root = os.path.join(project_root, "outputs")
     os.makedirs(output_root, exist_ok=True)
 
-    # Open once for FPS / size and to support VideoWriter
+    # Open video once for FPS/size and to support VideoWriter
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS) or 25
     ret, frame0 = cap.read()
@@ -39,7 +39,6 @@ def run_sam3_grid_pet(
     if debug_video_rel_path is not None:
         debug_video_path = os.path.join(project_root, debug_video_rel_path)
         os.makedirs(os.path.dirname(debug_video_path), exist_ok=True)
-
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         writer = cv2.VideoWriter(debug_video_path, fourcc, fps, (w0, h0))
 
@@ -80,16 +79,17 @@ def run_sam3_grid_pet(
         frame_count += 1
 
         boxes = getattr(res, "boxes", None)
+        frame = res.orig_img.copy()
+
         if boxes is None or boxes.xyxy is None:
-            # still write raw frame if you want a continuous video
-            if writer is not None and hasattr(res, "orig_img"):
-                writer.write(res.orig_img)
+            if writer is not None:
+                writer.write(frame)
             continue
 
         xyxy = boxes.xyxy.detach().cpu().numpy()
         if xyxy.size == 0:
-            if writer is not None and hasattr(res, "orig_img"):
-                writer.write(res.orig_img)
+            if writer is not None:
+                writer.write(frame)
             continue
 
         track_ids = getattr(boxes, "id", None)
@@ -98,7 +98,6 @@ def run_sam3_grid_pet(
         else:
             track_ids = np.arange(len(xyxy))
 
-        frame = res.orig_img.copy()
         h, w = frame.shape[:2]
         det_count_total += len(xyxy)
 
@@ -109,7 +108,7 @@ def run_sam3_grid_pet(
             x2 = max(0, min(x2, w - 1))
             y2 = max(0, min(y2, h - 1))
 
-            # draw detection + track id on frame for debug video
+            # Draw detection + track id on frame for debug
             cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
             cv2.putText(
                 frame,
@@ -122,7 +121,6 @@ def run_sam3_grid_pet(
                 cv2.LINE_AA,
             )
 
-            # bottom-center point
             cx = (x1 + x2) / 2.0
             cy = float(y2)
 
