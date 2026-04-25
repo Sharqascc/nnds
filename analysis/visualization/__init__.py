@@ -11,6 +11,7 @@ Provides industry-standard plots for Surrogate Safety Measures (SSM):
 - Conflict density maps
 - Diffusion model evaluation plots
 - Individual conflict event visualization
+- Video frame overlays with trajectories
 
 Features:
 - Journal-ready styling (300 DPI, serif fonts, proper sizing)
@@ -19,6 +20,7 @@ Features:
 - Statistical annotations (p-values, regression, effect sizes)
 - Configurable safety thresholds
 - APA/IEEE compliant formatting
+- Video generation (MP4 output)
 
 Compliant with:
 - Transportation Research Board (TRB) standards
@@ -59,6 +61,15 @@ from .pet_event_plots import (
     get_class_default
 )
 
+# Import video overlay functions
+from .video_overlays import (
+    VideoOverlayPlotter,
+    overlay_conflict_frame,
+    generate_conflict_video,
+    create_before_during_after,
+    save_conflict_frame
+)
+
 __all__ = [
     # SSM Analysis - Main plotter class
     'SSMPlotter',
@@ -88,9 +99,16 @@ __all__ = [
     'plot_conflict_event',
     'plot_multiple_events',
     'get_class_default',
+
+    # Video Overlay Visualization
+    'VideoOverlayPlotter',
+    'overlay_conflict_frame',
+    'generate_conflict_video',
+    'create_before_during_after',
+    'save_conflict_frame',
 ]
 
-__version__ = '2.2.0'  # Updated for event plotting
+__version__ = '2.3.0'  # Updated for video overlays
 
 
 # Quick usage examples
@@ -399,13 +417,196 @@ fig = plotter.plot_conflict_event(
 )
 
 
+VIDEO OVERLAY VISUALIZATION
+============================
+
+21. Single Frame with Trajectories (Quick)
+-------------------------------------------
+from analysis.visualization import overlay_conflict_frame
+
+# Simple trajectory overlay on one frame
+trajectories = [
+    [(0, 100, 200), (0.1, 105, 205), ...],  # Track 1
+    [(0, 300, 400), (0.1, 295, 395), ...]   # Track 2
+]
+
+frame = overlay_conflict_frame(
+    video_path='videos/traffic_video.mp4',
+    frame_idx=1234,
+    trajectories=trajectories,
+    pet_value=0.8,
+    save_path='outputs/video_frames/frame_1234.png'
+)
+
+22. Complete Video Frame with All Overlays
+-------------------------------------------
+from analysis.visualization import VideoOverlayPlotter
+from grid_trajectory.spatial_grid import SpatialGrid
+
+plotter = VideoOverlayPlotter(dpi=300, colorblind_safe=True)
+grid = SpatialGrid('configs/GITI_grid_config.json')
+
+frame = plotter.overlay_conflict_frame(
+    video_path='videos/traffic_video.mp4',
+    frame_idx=1234,
+    trajectories=trajectories,
+    track_ids=[42, 57],
+    pet_value=0.75,
+    conflict_center=(320, 240),  # Conflict location
+    grid=grid,
+    cell_id='G_A_3'
+)
+
+plotter.save_frame(frame, 'paper_figures/fig5_video_frame.png')
+
+23. Generate Conflict Event Video (MP4)
+----------------------------------------
+from analysis.visualization import generate_conflict_video
+
+# Create MP4 video of conflict event
+generate_conflict_video(
+    video_path='videos/traffic_video.mp4',
+    frame_range=(1200, 1300),  # 100 frames (3.3 seconds at 30fps)
+    trajectories=trajectories,
+    output_path='paper_supplements/video_S1_conflict.mp4'
+)
+
+24. Before/During/After Sequence for Paper
+-------------------------------------------
+from analysis.visualization import create_before_during_after
+
+# 3-panel figure showing conflict evolution
+create_before_during_after(
+    video_path='videos/traffic_video.mp4',
+    before_idx=1200,   # 1 second before
+    during_idx=1230,   # At closest approach
+    after_idx=1260,    # 1 second after
+    trajectories=trajectories,
+    save_path='paper_figures/fig6_conflict_sequence.png'
+)
+
+25. Advanced: Custom Video Overlays
+------------------------------------
+from analysis.visualization import VideoOverlayPlotter
+
+plotter = VideoOverlayPlotter(
+    dpi=300,
+    colorblind_safe=True,
+    font_scale=0.8,
+    line_thickness=3,
+    show_grid=True,
+    grid_alpha=0.4
+)
+
+# Overlay trajectories with bounding boxes
+frame = plotter.overlay_trajectories(
+    frame,
+    trajectories=trajectories,
+    track_ids=[42, 57],
+    show_arrows=True
+)
+
+# Add bounding boxes
+boxes = [(100, 200, 150, 250), (300, 400, 350, 450)]
+frame = plotter.overlay_bounding_boxes(
+    frame,
+    boxes=boxes,
+    track_ids=[42, 57]
+)
+
+# Add conflict statistics
+frame = plotter.overlay_conflict_info(
+    frame,
+    pet_value=0.75,
+    ttc_value=1.2,
+    frame_number=1234,
+    timestamp=41.13,
+    position='top-left'
+)
+
+# Add conflict zone
+frame = plotter.overlay_conflict_zone(
+    frame,
+    center=(320, 240),
+    radius=50
+)
+
+plotter.save_frame(frame, 'outputs/complete_overlay.png')
+
+26. Batch Process Video Frames
+-------------------------------
+from analysis.visualization import VideoOverlayPlotter
+import pandas as pd
+
+df = pd.read_csv('outputs/petevents_bev_30frames.csv')
+plotter = VideoOverlayPlotter(dpi=300)
+
+# Process top 10 critical events
+for idx, row in df.nsmallest(10, 'pet').iterrows():
+    frame = plotter.overlay_conflict_frame(
+        video_path='videos/traffic_video.mp4',
+        frame_idx=int(row['frame']),
+        trajectories=[row['traj_i'], row['traj_j']],
+        track_ids=[row['track_a'], row['track_b']],
+        pet_value=row['pet']
+    )
+
+    plotter.save_frame(
+        frame,
+        f'outputs/video_frames/event_{row["event_id"]:04d}.png'
+    )
+
+27. Video Comparison (Real vs Diffusion)
+-----------------------------------------
+from analysis.visualization import VideoOverlayPlotter
+import numpy as np
+
+plotter = VideoOverlayPlotter(dpi=300)
+
+# Real trajectories
+real_frame = plotter.overlay_trajectories(
+    frame.copy(),
+    real_trajectories,
+    track_ids=[1, 2]
+)
+
+# Diffusion-generated trajectories
+sampled_frame = plotter.overlay_trajectories(
+    frame.copy(),
+    sampled_trajectories,
+    track_ids=[1, 2]
+)
+
+# Combine side-by-side
+comparison = np.hstack([real_frame, sampled_frame])
+plotter.save_frame(comparison, 'paper_figures/fig7_real_vs_diffusion_video.png')
+
+28. Generate Video Supplement with Statistics
+----------------------------------------------
+from analysis.visualization import VideoOverlayPlotter
+
+plotter = VideoOverlayPlotter(dpi=300)
+
+# Generate video with full overlays
+plotter.generate_conflict_video(
+    video_path='videos/traffic_video.mp4',
+    frame_range=(1200, 1300),
+    trajectories=trajectories,
+    track_ids=[42, 57],
+    pet_value=0.75,
+    output_path='paper_supplements/video_S2_annotated.mp4',
+    fps=30
+)
+
+
 Output Formats
 ==============
 All plots automatically save in:
 - PNG (high-res raster, 300 DPI)
-- PDF (vector graphics for LaTeX/Word)
+- PDF (vector graphics for LaTeX/Word) [where applicable]
+- MP4 (video output with H.264 codec)
 
-Both formats are journal-ready and submission-compliant.
+All formats are journal-ready and submission-compliant.
 
 
 Module Organization
@@ -413,6 +614,7 @@ Module Organization
 - industry_standard_viz.py: General SSM analysis plots
 - pet_diffusion_plots.py: Diffusion model evaluation plots
 - pet_event_plots.py: Individual conflict event visualization
+- video_overlays.py: Video frame overlays and MP4 generation
 
 All modules use:
 - Colorblind-safe Okabe-Ito palette
