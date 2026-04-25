@@ -9,6 +9,7 @@ Provides industry-standard plots for Surrogate Safety Measures (SSM):
 - Correlation heatmaps
 - Temporal density heatmaps
 - Conflict density maps
+- Diffusion model evaluation plots
 
 Features:
 - Journal-ready styling (300 DPI, serif fonts, proper sizing)
@@ -24,6 +25,7 @@ Compliant with:
 - Accident Analysis & Prevention journal requirements
 """
 
+# Import SSM visualization functions
 from .industry_standard_viz import (
     SSMPlotter,
     plot_pet_distribution,
@@ -36,11 +38,21 @@ from .industry_standard_viz import (
     plot_temporal_heatmap
 )
 
+# Import diffusion model evaluation functions
+from .pet_diffusion_plots import (
+    DiffusionPETPlotter,
+    plot_pet_like_histogram,
+    plot_true_vs_pet_like,
+    plot_true_vs_sample_delta,
+    plot_residual_analysis,
+    plot_bland_altman
+)
+
 __all__ = [
-    # Main plotter class
+    # SSM Analysis - Main plotter class
     'SSMPlotter',
     
-    # Individual plot functions
+    # SSM Analysis - Individual plot functions
     'plot_pet_distribution',
     'plot_ttc_time_series',
     'plot_severity_scatter',
@@ -49,15 +61,26 @@ __all__ = [
     'plot_cumulative_distribution',
     'plot_correlation_heatmap',
     'plot_temporal_heatmap',
+    
+    # Diffusion Model Evaluation
+    'DiffusionPETPlotter',
+    'plot_pet_like_histogram',
+    'plot_true_vs_pet_like',
+    'plot_true_vs_sample_delta',
+    'plot_residual_analysis',
+    'plot_bland_altman',
 ]
 
-__version__ = '2.0.0'
+__version__ = '2.1.0'  # Updated version
 
 
 # Quick usage examples
 __doc_examples__ = """
 Quick Start Examples
 ====================
+
+SSM ANALYSIS PLOTS
+==================
 
 1. Basic PET Distribution
 --------------------------
@@ -164,6 +187,81 @@ fig = plot_cumulative_distribution(
     save_path='outputs/ecdf.png'
 )
 
+
+DIFFUSION MODEL EVALUATION
+===========================
+
+9. PET-like Error Distribution
+-------------------------------
+from analysis.visualization import plot_pet_like_histogram
+
+# pet_pairs = [(real_steps, sample_steps), ...]
+fig = plot_pet_like_histogram(
+    pet_pairs=pet_pairs,
+    bins=30,
+    show_stats=True,
+    save_path='outputs/diffusion/error_histogram.png'
+)
+
+10. Ground Truth vs Generated
+------------------------------
+from analysis.visualization import plot_true_vs_pet_like
+
+# records = [(idx, true_pet_sec, real_steps, sample_steps), ...]
+fig = plot_true_vs_pet_like(
+    records=records,
+    add_regression=True,
+    save_path='outputs/diffusion/scatter.png'
+)
+
+11. Generation Error Analysis
+------------------------------
+from analysis.visualization import plot_true_vs_sample_delta
+
+fig = plot_true_vs_sample_delta(
+    records=records,
+    add_trend=True,
+    save_path='outputs/diffusion/error_vs_truth.png'
+)
+
+12. Residual Diagnostics
+-------------------------
+from analysis.visualization import plot_residual_analysis
+
+# Complete diagnostic suite (4 plots in one figure)
+fig = plot_residual_analysis(
+    records=records,
+    save_path='outputs/diffusion/residuals.png'
+)
+
+13. Bland-Altman Agreement
+---------------------------
+from analysis.visualization import plot_bland_altman
+
+# Agreement analysis between real and sampled
+fig = plot_bland_altman(
+    records=records,
+    save_path='outputs/diffusion/bland_altman.png'
+)
+
+14. Complete Diffusion Evaluation Suite
+----------------------------------------
+from analysis.visualization import DiffusionPETPlotter
+
+plotter = DiffusionPETPlotter(
+    style='default',
+    dpi=300,
+    save_pdf=True  # Save both PNG and PDF
+)
+
+# Generate all plots at once
+plotter.plot_all(
+    pet_pairs=pet_pairs,
+    records=records,
+    out_dir='outputs/diffusion_eval'
+)
+
+
 Output Formats
 ==============
 All plots automatically save in:
@@ -171,4 +269,16 @@ All plots automatically save in:
 - PDF (vector graphics for LaTeX/Word)
 
 Both formats are journal-ready and submission-compliant.
+
+
+Module Organization
+===================
+- industry_standard_viz.py: General SSM analysis plots
+- pet_diffusion_plots.py: Diffusion model evaluation plots
+
+Both modules use:
+- Colorblind-safe Okabe-Ito palette
+- Publication-quality styling (300 DPI)
+- Statistical annotations
+- Configurable parameters
 """
