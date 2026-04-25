@@ -6,6 +6,7 @@ uncertainty quantification, and validation utilities.
 Complies with:
 - FHWA traffic safety analysis standards
 - Statistical verification best practices
+- APA reporting guidelines
 - Research reproducibility requirements
 """
 
@@ -18,19 +19,15 @@ from .ssm_verification import (
     compare_with_reference
 )
 
-# Only import if uncertainty_quantifier.py exists
-try:
-    from .uncertainty_quantifier import (
-        UncertaintyQuantifier,
-        monte_carlo_uq,
-        bootstrap_ci
-    )
-    _HAS_UQ = True
-except ImportError:
-    _HAS_UQ = False
-    UncertaintyQuantifier = None
-    monte_carlo_uq = None
-    bootstrap_ci = None
+from .uncertainty_quantifier import (
+    UncertaintyQuantifier,
+    bootstrap_ci,
+    monte_carlo_uq,
+    compute_confidence_interval,
+    compute_effect_size,
+    compute_sample_size,
+    sensitivity_analysis
+)
 
 
 __all__ = [
@@ -41,14 +38,15 @@ __all__ = [
     'verify_drac_calculation',
     'run_verification_suite',
     'compare_with_reference',
+    
+    # Uncertainty Quantification
+    'UncertaintyQuantifier',
+    'bootstrap_ci',
+    'monte_carlo_uq',
+    'compute_confidence_interval',
+    'compute_effect_size',
+    'compute_sample_size',
+    'sensitivity_analysis',
 ]
 
-# Add UQ exports if available
-if _HAS_UQ:
-    __all__.extend([
-        'UncertaintyQuantifier',
-        'monte_carlo_uq',
-        'bootstrap_ci',
-    ])
-
-__version__ = '2.0.0'  # Updated for new verification suite
+__version__ = '2.0.0'
