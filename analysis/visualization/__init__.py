@@ -10,6 +10,7 @@ Provides industry-standard plots for Surrogate Safety Measures (SSM):
 - Temporal density heatmaps
 - Conflict density maps
 - Diffusion model evaluation plots
+- Individual conflict event visualization
 
 Features:
 - Journal-ready styling (300 DPI, serif fonts, proper sizing)
@@ -48,10 +49,20 @@ from .pet_diffusion_plots import (
     plot_bland_altman
 )
 
+# Import conflict event visualization functions
+from .pet_event_plots import (
+    EventPlotter,
+    load_pet_csv,
+    compute_timing_from_traj,
+    plot_conflict_event,
+    plot_multiple_events,
+    get_class_default
+)
+
 __all__ = [
     # SSM Analysis - Main plotter class
     'SSMPlotter',
-    
+
     # SSM Analysis - Individual plot functions
     'plot_pet_distribution',
     'plot_ttc_time_series',
@@ -61,7 +72,7 @@ __all__ = [
     'plot_cumulative_distribution',
     'plot_correlation_heatmap',
     'plot_temporal_heatmap',
-    
+
     # Diffusion Model Evaluation
     'DiffusionPETPlotter',
     'plot_pet_like_histogram',
@@ -69,9 +80,17 @@ __all__ = [
     'plot_true_vs_sample_delta',
     'plot_residual_analysis',
     'plot_bland_altman',
+
+    # Conflict Event Visualization
+    'EventPlotter',
+    'load_pet_csv',
+    'compute_timing_from_traj',
+    'plot_conflict_event',
+    'plot_multiple_events',
+    'get_class_default',
 ]
 
-__version__ = '2.1.0'  # Updated version
+__version__ = '2.2.0'  # Updated for event plotting
 
 
 # Quick usage examples
@@ -262,6 +281,124 @@ plotter.plot_all(
 )
 
 
+CONFLICT EVENT VISUALIZATION
+=============================
+
+15. Single Conflict Event (Quick)
+----------------------------------
+from analysis.visualization import plot_conflict_event, load_pet_csv
+
+df = load_pet_csv('outputs/petevents_bev_30frames.csv')
+fig = plot_conflict_event(
+    df,
+    event_id=5,
+    save_path='outputs/events/event_5.png'
+)
+
+16. Event with Velocity Vectors
+--------------------------------
+from analysis.visualization import EventPlotter, compute_timing_from_traj
+
+df = load_pet_csv('outputs/petevents_bev_30frames.csv')
+df = compute_timing_from_traj(df)  # Add timing info
+
+plotter = EventPlotter(dpi=300)
+fig = plotter.plot_conflict_event(
+    df,
+    event_id=5,
+    show_velocities=True,      # Show velocity arrows
+    show_conflict_zone=True,   # Show conflict zone circle
+    save_path='outputs/events/event_5_detailed.png'
+)
+
+17. Batch Plot Critical Events
+-------------------------------
+from analysis.visualization import plot_multiple_events
+
+# Get top 20 most critical events
+critical_events = df.nsmallest(20, 'pet')['event_id'].tolist()
+
+plot_multiple_events(
+    df,
+    event_ids=critical_events,
+    save_dir='outputs/critical_events',
+    dpi=300,
+    save_pdf=True  # Save PNG + PDF for each event
+)
+
+18. Custom Severity Thresholds for Events
+------------------------------------------
+from analysis.visualization import EventPlotter
+
+# Highway-specific thresholds
+plotter = EventPlotter(
+    dpi=300,
+    conflict_zone_radius=3.5,  # Larger for highways
+    thresholds={
+        'critical': 1.0,   # < 1.0s = critical
+        'serious': 2.0,    # 1.0-2.0s = serious
+        'moderate': 3.0,   # 2.0-3.0s = moderate
+        'safe': 7.0        # > 7.0s = safe
+    }
+)
+
+fig = plotter.plot_conflict_event(
+    df,
+    event_id=10,
+    show_velocities=True,
+    save_path='outputs/highway_event_10.png'
+)
+
+19. Custom Vehicle Class Mapper
+--------------------------------
+from analysis.visualization import EventPlotter
+
+def my_class_mapper(track_id):
+    # Map track IDs to vehicle types
+    if track_id < 100:
+        return 'Car'
+    elif track_id < 200:
+        return 'Truck'
+    else:
+        return 'Motorcycle'
+
+plotter = EventPlotter(dpi=300)
+fig = plotter.plot_conflict_event(
+    df,
+    event_id=15,
+    class_mapper=my_class_mapper,
+    save_path='outputs/event_15_classified.png'
+)
+
+20. Generate Event Case Study for Paper
+----------------------------------------
+from analysis.visualization import EventPlotter, compute_timing_from_traj
+
+# For Figure 3 in your paper
+df = load_pet_csv('outputs/petevents_bev_30frames.csv')
+df = compute_timing_from_traj(df)
+
+plotter = EventPlotter(
+    dpi=300,
+    style='journal',
+    font_size=10,
+    conflict_zone_radius=2.0,
+    arrow_scale=3.5
+)
+
+# Most critical event for case study
+most_critical = df.nsmallest(1, 'pet')['event_id'].iloc[0]
+
+fig = plotter.plot_conflict_event(
+    df,
+    event_id=most_critical,
+    show_velocities=True,
+    show_conflict_zone=True,
+    save_path=f'paper_figures/figure3_critical_event_{most_critical}.png',
+    save_pdf=True  # PDF for LaTeX
+)
+
+
 Output Formats
 ==============
 All plots automatically save in:
@@ -275,10 +412,12 @@ Module Organization
 ===================
 - industry_standard_viz.py: General SSM analysis plots
 - pet_diffusion_plots.py: Diffusion model evaluation plots
+- pet_event_plots.py: Individual conflict event visualization
 
-Both modules use:
+All modules use:
 - Colorblind-safe Okabe-Ito palette
 - Publication-quality styling (300 DPI)
 - Statistical annotations
 - Configurable parameters
+- Severity-based color coding
 """
