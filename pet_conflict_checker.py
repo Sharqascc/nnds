@@ -2,8 +2,7 @@
 """
 PET Conflict Checker - Core safety analysis module.
 
-This module is designed to integrate with the existing NNDS pipeline and
-traffic_analyzer.py, by providing:
+Integrates with the NNDS pipeline and traffic_analyzer.py by providing:
 
 - Grid-based PET computation hooks.
 - Trajectory pairing utilities.
@@ -12,16 +11,21 @@ traffic_analyzer.py, by providing:
 
 It intentionally reuses PET values already computed in the pipeline CSV
 instead of re-implementing low-level PET math here.
+
+Now also exposes typed core structures:
+- PETEvent
+- Trajectory
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Tuple, List, Dict, Any, Iterable, Optional
+from typing import Tuple, List, Dict, Any, Iterable, Optional, Sequence
 
 import numpy as np
 import pandas as pd
 
+from nnds.core.types import PETEvent, Trajectory, WorldPoint  # <— NEW import
 
 PET_COLUMN_CANDIDATES = ["pet", "pet_sec", "true_pet_sec", "pet_sample_sec"]
 
@@ -42,21 +46,6 @@ def compute_pet(
     Compute PET given the times at which two agents pass a conflict point.
 
     This is the *conceptual* PET, not a full trajectory-based solver.
-
-    Args:
-        times_a: One or more timestamps (seconds) for agent A at conflict point P.
-        times_b: One or more timestamps (seconds) for agent B at conflict point P.
-
-    Returns:
-        PET in seconds, defined as the absolute time difference between when
-        the two agents leave/enter the conflict point.
-
-        If no overlap / times given, returns np.inf.
-
-    Notes:
-        In the full NNDS pipeline, PET is typically computed earlier (e.g. in
-        grid_trajectory / bev_mapper). This utility exists mainly so that
-        traffic_analyzer.py and other modules have a well-defined PET API.
     """
     ta = np.array(list(times_a), dtype=float)
     tb = np.array(list(times_b), dtype=float)
@@ -64,8 +53,6 @@ def compute_pet(
     if ta.size == 0 or tb.size == 0:
         return np.inf
 
-    # PET is the minimum time difference between their visits to the conflict point.
-    # Example: A passes at 10.0s, B at 12.5s -> PET = 2.5s
     diff_matrix = np.abs(ta[:, None] - tb[None, :])
     return float(diff_matrix.min())
 
@@ -77,36 +64,20 @@ def compute_grid_pet(
 ) -> float:
     """
     Compute PET from two occupancy grids over time.
-
-    Args:
-        grid_a: Boolean or 0/1 array of shape (T, H, W) for agent A.
-        grid_b: Boolean or 0/1 array of shape (T, H, W) for agent B.
-        fps: Frames per second (to convert frame indices to seconds).
-
-    Returns:
-        PET in seconds, or np.inf if there is no sequential encroachment.
-
-    Notes:
-        This is a *basic* implementation using grid overlap over time. The
-        main, authoritative PET values in the pipeline still come from the
-        dedicated safety modules (e.g. grid_trajectory, pet_safety_metrics).
     """
     if grid_a.shape != grid_b.shape:
         raise ValueError("grid_a and grid_b must have the same shape (T, H, W).")
 
     T = grid_a.shape[0]
-    # For each frame, check if either agent occupies any cell (conflict zone union).
     occ_a = grid_a.reshape(T, -1).any(axis=1)
     occ_b = grid_b.reshape(T, -1).any(axis=1)
 
-    # Frames where agent A is in the conflict zone
     t_a = np.where(occ_a)[0]
     t_b = np.where(occ_b)[0]
 
     if t_a.size == 0 or t_b.size == 0:
         return np.inf
 
-    # PET is time difference between their visits
     diff_matrix = np.abs(t_a[:, None] - t_b[None, :])
     frame_gap = diff_matrix.min()
     return float(frame_gap / fps)
@@ -120,15 +91,6 @@ def filter_by_roi(
 ) -> pd.DataFrame:
     """
     Filter events/trajectories by region-of-interest (ROI).
-
-    Args:
-        df: DataFrame with at least x_col and y_col.
-        roi: Dict with keys 'xmin', 'xmax', 'ymin', 'ymax'.
-        x_col: Name of x coordinate column.
-        y_col: Name of y coordinate column.
-
-    Returns:
-        Filtered DataFrame containing only rows inside the ROI.
     """
     required_keys = {"xmin", "xmax", "ymin", "ymax"}
     if not required_keys.issubset(roi.keys()):
@@ -150,18 +112,6 @@ def get_trajectory_pairs(
 ) -> List[Tuple[int, int]]:
     """
     Construct candidate trajectory pairs for conflict analysis.
-
-    Args:
-        df: DataFrame with per-frame positions and IDs.
-        id_col: Column name for track IDs.
-        frame_col: Column name for frame index / time step.
-
-    Returns:
-        List of (id_a, id_b) pairs that co-exist in at least one frame.
-
-    Notes:
-        This is a heuristic pairing function. Many pipelines use a more
-        sophisticated pairing logic in grid_trajectory or pet_safety_metrics.
     """
     pairs: set[Tuple[int, int]] = set()
     grouped = df.groupby(frame_col)[id_col]
@@ -193,12 +143,6 @@ def detect_conflicts(
     """
     Detect traffic conflicts from PET event data.
 
-    Args:
-        df: DataFrame with PET columns created by the NNDS pipeline
-            (e.g. outputs/petevents_bev_*.csv).
-        pet_threshold: PET threshold in seconds for conflict classification.
-        pet_col: Explicit PET column name; if None, inferred.
-
     Returns:
         DataFrame of conflict events with an 'is_conflict' flag.
     """
@@ -213,15 +157,118 @@ def detect_conflicts(
     return conflicts
 
 
+# =====================================================================
+# NEW: Bridge between CSV rows and PETEvent / Trajectory dataclasses
+# =====================================================================
+
+def _row_to_trajectory(
+    traj_data: Any,
+    track_id: int,
+    actor_type: Optional[str] = None,
+    source: Optional[str] = None,
+) -> Trajectory:
+    """
+    Convert a serialized trajectory (e.g. list of [t,x,y] or similar)
+    into a Trajectory dataclass with WorldPoint entries.
+    """
+    # Expect something list-like of (t, x, y); keep it forgiving.
+    points: List[WorldPoint] = []
+    if traj_data is None:
+        return Trajectory(track_id=track_id, points=tuple(points), actor_type=actor_type, source=source)
+
+    for p in traj_data:
+        if len(p) < 3:
+            continue
+        t, x, y = float(p[0]), float(p[1]), float(p[2])
+        points.append(WorldPoint(t=t, x=x, y=y))
+
+    return Trajectory(
+        track_id=track_id,
+        points=tuple(points),
+        actor_type=actor_type,
+        source=source,
+    )
+
+
+def dataframe_to_pet_events(
+    df: pd.DataFrame,
+    pet_col: Optional[str] = None,
+    traj_i_col: str = "world_traj_i",
+    traj_j_col: str = "world_traj_j",
+    event_id_col: str = "event_id",
+    track_a_col: str = "track_a",
+    track_b_col: str = "track_b",
+    conflict_type_col: str = "conflict_type",
+    frame_col: str = "frame",
+) -> List[PETEvent]:
+    """
+    Convert a PET events DataFrame (pipeline CSV) into typed PETEvent objects.
+
+    Any missing optional columns are handled gracefully.
+    """
+    if pet_col is None:
+        pet_col = _find_pet_column(df)
+    if pet_col is None:
+        raise ValueError("No PET column found; cannot convert to PETEvent objects.")
+
+    events: List[PETEvent] = []
+
+    for _, row in df.iterrows():
+        pet_value = float(row[pet_col])
+
+        event_id = int(row[event_id_col]) if event_id_col in df.columns else -1
+        track_a = int(row[track_a_col]) if track_a_col in df.columns else -1
+        track_b = int(row[track_b_col]) if track_b_col in df.columns else -1
+        conflict_type = (
+            str(row[conflict_type_col]) if conflict_type_col in df.columns else "UNKNOWN"
+        )
+        frame = int(row[frame_col]) if frame_col in df.columns and not pd.isna(row[frame_col]) else None
+
+        traj_i_data = row.get(traj_i_col, None)
+        traj_j_data = row.get(traj_j_col, None)
+
+        traj_i = _row_to_trajectory(traj_i_data, track_id=track_a, source="pipeline_csv")
+        traj_j = _row_to_trajectory(traj_j_data, track_id=track_b, source="pipeline_csv")
+
+        # Metadata: keep any extra cols
+        metadata: Dict[str, Any] = {}
+        for col in df.columns:
+            if col in {
+                pet_col,
+                event_id_col,
+                track_a_col,
+                track_b_col,
+                conflict_type_col,
+                frame_col,
+                traj_i_col,
+                traj_j_col,
+            }:
+                continue
+            metadata[col] = row[col]
+
+        events.append(
+            PETEvent(
+                event_id=event_id,
+                pet=pet_value,
+                track_a=track_a,
+                track_b=track_b,
+                conflict_type=conflict_type,
+                world_traj_i=traj_i,
+                world_traj_j=traj_j,
+                frame=frame,
+                metadata=metadata,
+            )
+        )
+
+    return events
+
+
 class PETConflictChecker:
     """
     Main conflict detection class.
 
-    This class is designed to be safely importable and usable from
-    traffic_analyzer.py and other pipeline components.
-
-    It relies on PET values pre-computed by the pipeline and does not
-    try to duplicate low-level SSM implementations.
+    Designed to be safely importable and usable from traffic_analyzer.py
+    and other pipeline components.
     """
 
     def __init__(self, pet_threshold: float = 3.0):
@@ -231,16 +278,18 @@ class PETConflictChecker:
 
     def detect_from_csv(self, csv_path: str) -> pd.DataFrame:
         """
-        Load a PET CSV and return only conflict events.
-
-        Args:
-            csv_path: Path to a PET events CSV, typically in outputs/.
-
-        Returns:
-            DataFrame with conflicts.
+        Load a PET CSV and return only conflict events as a DataFrame.
         """
         df = pd.read_csv(csv_path)
         return detect_conflicts(df, pet_threshold=self.pet_threshold)
+
+    def detect_from_csv_as_events(self, csv_path: str) -> List[PETEvent]:
+        """
+        Load a PET CSV and return conflicts as a list of PETEvent dataclasses.
+        """
+        df = pd.read_csv(csv_path)
+        conflicts_df = detect_conflicts(df, pet_threshold=self.pet_threshold)
+        return dataframe_to_pet_events(conflicts_df)
 
     # --- Pipeline integration hooks (safe stubs) ----------------------------
 
@@ -254,15 +303,6 @@ class PETConflictChecker:
     ) -> Dict[Any, pd.DataFrame]:
         """
         Extract trajectories from a frame-wise DataFrame.
-
-        Args:
-            df: DataFrame with per-frame states.
-            id_col: Track ID column.
-            frame_col: Frame index column.
-            x_col, y_col: Position columns.
-
-        Returns:
-            Dict mapping track_id -> trajectory DataFrame sorted by frame.
         """
         trajs: Dict[Any, pd.DataFrame] = {}
         for tid, sub in df.groupby(id_col):
@@ -275,9 +315,7 @@ class PETConflictChecker:
         id_col: str = "track_id",
         frame_col: str = "frame",
     ) -> List[Tuple[int, int]]:
-        """
-        Instance wrapper around module-level get_trajectory_pairs().
-        """
+        """Instance wrapper around module-level get_trajectory_pairs()."""
         return get_trajectory_pairs(df, id_col=id_col, frame_col=frame_col)
 
     def filter_by_roi(
@@ -287,9 +325,7 @@ class PETConflictChecker:
         x_col: str = "x",
         y_col: str = "y",
     ) -> pd.DataFrame:
-        """
-        Instance wrapper around module-level filter_by_roi().
-        """
+        """Instance wrapper around module-level filter_by_roi()."""
         return filter_by_roi(df, roi=roi, x_col=x_col, y_col=y_col)
 
     # --- Optional high-level video hook ------------------------------------
@@ -302,25 +338,9 @@ class PETConflictChecker:
         """
         Placeholder hook for video -> conflicts.
 
-        In the current NNDS system, `traffic_analyzer.py` is the main
-        entry point from video to PET CSV. To keep this module generic
-        and avoid circular imports, we do not call traffic_analyzer.py
-        directly here.
-
         Recommended pattern:
             1) Run traffic_analyzer.py externally to produce a PET CSV.
             2) Call detect_from_csv() on that CSV.
-
-        This method is kept as a stub so that any existing calls won't
-        crash; it can be implemented later if you want a single-call
-        "video -> conflicts" interface here.
-
-        Args:
-            video_path: Path to input video.
-            sam3_weights: Path to SAM3 weights.
-
-        Returns:
-            Empty DataFrame for now.
         """
         print(
             "⚠️ PETConflictChecker.process_video is a stub.\n"
