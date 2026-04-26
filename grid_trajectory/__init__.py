@@ -12,9 +12,10 @@ This package provides:
 
 from typing import List
 
-# Re-export core classes/functions so consumers can do:
-#   from grid_trajectory import TrajectoryLogger, compute_pet, summarize_pet, SpatialGrid, ...
+# Grid structures
 from .spatial_grid import SpatialGrid  # type: ignore[import]
+
+# PET core utilities
 from .pet_grid import (
     TrajectoryLogger,
     compute_pet,
@@ -25,13 +26,18 @@ from .pet_grid import (
     PETEventType,
     PETSummaryType,
 )
+
+# SAM3 + grid integration (updated)
 from .sam3_grid_pet import (
     build_grid_trajectories,
     extract_pet_from_sam3,
+    SAM3GridPETResult,
+    run_sam3_grid_pet,
+    run_sam3_grid_pet_batch,
 )
-from .trajectory_safety_analyzer import (
-    TrajectorySafetyAnalyzer,
-)
+
+# High-level safety analysis
+from .trajectory_safety_analyzer import TrajectorySafetyAnalyzer
 
 __all__: List[str] = [
     # Types
@@ -39,11 +45,14 @@ __all__: List[str] = [
     "IntervalType",
     "PETEventType",
     "PETSummaryType",
+    "SAM3GridPETResult",
     # Grid / integration
     "SpatialGrid",
     "TrajectoryLogger",
     "build_grid_trajectories",
     "extract_pet_from_sam3",
+    "run_sam3_grid_pet",
+    "run_sam3_grid_pet_batch",
     "TrajectorySafetyAnalyzer",
     # PET utilities
     "compute_pet",
