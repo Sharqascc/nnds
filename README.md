@@ -1,4 +1,3 @@
-markdown
 # NNDS: Non-motorized and Heterogeneous Traffic Safety Analysis
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
@@ -38,41 +37,42 @@ The NNDS system implements a multi-stage pipeline that transforms raw intersecti
 | 7 | Diffusion-Based Modeling | Counterfactual trajectories | `traffic_diffusion/` |
 
 ### Pipeline Data Flow
-[videos/traffic_video.mp4]
-│
-▼
-┌─────────────────────────────┐
-│ Phase 2: SAM3 Segmentation │ → sam3.pt (HF model)
-│ (actor masks + track IDs) │
-└──────────────┬──────────────┘
-│
-▼
-┌─────────────────────────────┐
-│ Phase 3: BEV Transform │ → giti_bev_calib.py, bev_mapper.py
-│ (image → world coordinates)│
-└──────────────┬──────────────┘
-│
-▼
-┌─────────────────────────────┐
-│ Phase 4: Grid + Trajectory │ → grid_trajectory/
-│ (grid cells + (t,x,y) traj)│
-└──────────────┬──────────────┘
-│
-▼
-┌─────────────────────────────┐
-│ Phase 5: PET Extraction │ → outputs/petevents_bev.csv
-│ (conflict events + PETs) │
-└──────────────┬──────────────┘
-│
-┌──────┴──────┐
-▼ ▼
-┌──────────────┐ ┌───────────────────────┐
-│ Phase 6: │ │ Phase 7: │
-│ Analysis │ │ Diffusion Modeling │
-│ & Viz │ │ (train + sample + eval)│
-└──────────────┘ └───────────────────────┘
 
-text
+```
+[videos/traffic_video.mp4]
+        │
+        ▼
+┌─────────────────────────────┐
+│  Phase 2: SAM3 Segmentation │ → sam3.pt (HF model)
+│  (actor masks + track IDs)  │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│  Phase 3: BEV Transform     │ → giti_bev_calib.py, bev_mapper.py
+│  (image → world coordinates)│
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│  Phase 4: Grid + Trajectory │ → grid_trajectory/
+│  (grid cells + (t,x,y) traj)│
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│  Phase 5: PET Extraction    │ → outputs/petevents_bev.csv
+│  (conflict events + PETs)   │
+└──────────────┬──────────────┘
+               │
+        ┌──────┴──────┐
+        ▼             ▼
+┌──────────────┐  ┌───────────────────────┐
+│ Phase 6:     │  │ Phase 7:              │
+│ Analysis     │  │ Diffusion Modeling    │
+│ & Viz        │  │ (train + sample + eval)│
+└──────────────┘  └───────────────────────┘
+```
 
 ## Quick Start
 
@@ -119,8 +119,11 @@ if not sam3_path.exists():
         "https://huggingface.co/sharqascc/sam3-traffic-model/resolve/main/sam3.pt"], check=True)
 
 print("✅ Setup complete!")
-Run the Pipeline
-bash
+```
+
+### Run the Pipeline
+
+```bash
 # Full pipeline
 PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
 
@@ -130,26 +133,40 @@ PYTHONPATH=. python traffic_analyzer.py \
     --out-csv outputs/petevents_bev_test.csv \
     --pet-threshold 2.0 \
     --max-frames 30
-Installation
-Local Development
-bash
+```
+
+## Installation
+
+### Local Development
+
+```bash
 git clone https://github.com/Sharqascc/nnds.git
 cd nnds
 pip install -r requirements.txt
-Using Make
-bash
+```
+
+### Using Make
+
+```bash
 make install      # Install dependencies
 make grid         # Run video-to-PET pipeline
 make test         # Run tests
-Usage Guide
-PET Extraction Only
-bash
+```
+
+## Usage Guide
+
+### PET Extraction Only
+
+```bash
 PYTHONPATH=. python traffic_analyzer.py \
     --video videos/traffic_video.mp4 \
     --out-csv outputs/petevents_bev.csv \
     --pet-threshold 2.0
-PET Summary & Analysis
-bash
+```
+
+### PET Summary & Analysis
+
+```bash
 # Basic statistics
 PYTHONPATH=. python analysis/pet_summary.py \
     --csv-path outputs/petevents_bev.csv
@@ -159,8 +176,11 @@ PYTHONPATH=. python analysis/pet_summary.py \
     --csv-path outputs/petevents_bev.csv \
     --critical 1.0 --moderate 3.0 \
     --export --output-dir analysis_results/
-Research Workflow (Orchestrated)
-bash
+```
+
+### Research Workflow (Orchestrated)
+
+```bash
 # Full research pipeline
 PYTHONPATH=. python analysis/research_run.py \
     --video videos/traffic_video.mp4 \
@@ -174,63 +194,92 @@ PYTHONPATH=. python analysis/research_run.py \
 # Dry run (test without executing)
 PYTHONPATH=. python analysis/research_run.py \
     --video videos/traffic_video.mp4 --dry-run
-Pipeline Components
-Phase 1: Video Input & Preprocessing
-Component	File	Description
-Input video	videos/	Raw traffic video (e.g., traffic_video.mp4)
-Demo video	HF dataset	Public demo at sharqascc/traffic-video-dataset
-Frame limiting	--max-frames	Debug/fast-test mode
-Phase 2: SAM3 Video Segmentation
-Component	File	Description
-SAM3 weights	sam3.pt	Downloaded from HF model repo
-Segmentation	traffic_analyzer.py	SAM3 segments actors per frame
-Actor tracking	—	Track IDs assigned across frames
-Phase 3: BEV Transformation & Calibration
-Component	File	Description
-Homography calibration	giti_bev_calib.py	Camera-to-world homography
-BEV mapper	bev_mapper.py	Image-plane to world coordinates
-World coordinates	—	Outputs (t, x, y) trajectories in meters
-Phase 4: Grid Mapping & Trajectory Construction
-Component	File	Description
-Spatial grid	grid_trajectory/spatial_grid.py	Intersection grid zones
-PET grid logic	grid_trajectory/pet_grid.py	Grid cell assignments
-SAM3-grid integration	grid_trajectory/sam3_grid_pet.py	SAM3 + grid + PET
-Trajectory dataset	traffic_diffusion/data/	trajdiff_*.npy, *.parquet
-Phase 5: PET Conflict Extraction
-Component	File	Description
-End-to-end pipeline	traffic_analyzer.py	SAM3 → BEV → Grid → PET
-PET computation	grid_trajectory/	Post Encroachment Time
-Conflict detection	pet_conflict_checker.py	Conflict classification
-Output CSV	outputs/petevents_bev.csv	Events with PET, trajectories
-Gate counter	gate_counter.py	Actor counting through gates
-Phase 6: Analysis & Visualization
-Component	File	Description
-PET summary	analysis/pet_summary.py	Statistics, percentiles, risk
-SSM verification	analysis/ssm/	SSM validation framework
-Uncertainty quantification	analysis/ssm/uncertainty_quantifier.py	Error analysis
-Statistical testing	analysis/verification/statistical_testing.py	Hypothesis tests
-Reproducibility audit	analysis/logging/reproducibility_audit.py	Run tracking
-Research runner	analysis/research_run.py	Orchestrated workflow
-Phase 7: Diffusion-Based Trajectory Modeling
-Component	File	Description
-Diffusion model	traffic_diffusion/trajectory_diffusion.py	Conditional diffusion
-Training script	traffic_diffusion/train_trajectory_diffusion.py	Train on PET events
-Model & sampler	traffic_diffusion/model_and_sampler.py	Checkpoint + sampling
-Training utils	traffic_diffusion/training_utils.py	Data loaders, loops
-Sampling utils	traffic_diffusion/sampling_utils.py	Counterfactual futures
-PET safety metrics	traffic_diffusion/pet_safety_metrics.py	PET/TTC from sampled
-PET diffusion analysis	analysis/pet_diffusion_analysis.py	Real vs generated PET
-Visualization Suite
+```
+
+## Pipeline Components
+
+### Phase 1: Video Input & Preprocessing
+
+| Component | File | Description |
+|-----------|------|-------------|
+| Input video | `videos/` | Raw traffic video (e.g., `traffic_video.mp4`) |
+| Demo video | HF dataset | Public demo at `sharqascc/traffic-video-dataset` |
+| Frame limiting | `--max-frames` | Debug/fast-test mode |
+
+### Phase 2: SAM3 Video Segmentation
+
+| Component | File | Description |
+|-----------|------|-------------|
+| SAM3 weights | `sam3.pt` | Downloaded from HF model repo |
+| Segmentation | `traffic_analyzer.py` | SAM3 segments actors per frame |
+| Actor tracking | — | Track IDs assigned across frames |
+
+### Phase 3: BEV Transformation & Calibration
+
+| Component | File | Description |
+|-----------|------|-------------|
+| Homography calibration | `giti_bev_calib.py` | Camera-to-world homography |
+| BEV mapper | `bev_mapper.py` | Image-plane to world coordinates |
+| World coordinates | — | Outputs (t, x, y) trajectories in meters |
+
+### Phase 4: Grid Mapping & Trajectory Construction
+
+| Component | File | Description |
+|-----------|------|-------------|
+| Spatial grid | `grid_trajectory/spatial_grid.py` | Intersection grid zones |
+| PET grid logic | `grid_trajectory/pet_grid.py` | Grid cell assignments |
+| SAM3-grid integration | `grid_trajectory/sam3_grid_pet.py` | SAM3 + grid + PET |
+| Trajectory dataset | `traffic_diffusion/data/` | `trajdiff_*.npy`, `*.parquet` |
+
+### Phase 5: PET Conflict Extraction
+
+| Component | File | Description |
+|-----------|------|-------------|
+| End-to-end pipeline | `traffic_analyzer.py` | SAM3 → BEV → Grid → PET |
+| PET computation | `grid_trajectory/` | Post Encroachment Time |
+| Conflict detection | `pet_conflict_checker.py` | Conflict classification |
+| Output CSV | `outputs/petevents_bev.csv` | Events with PET, trajectories |
+| Gate counter | `gate_counter.py` | Actor counting through gates |
+
+### Phase 6: Analysis & Visualization
+
+| Component | File | Description |
+|-----------|------|-------------|
+| PET summary | `analysis/pet_summary.py` | Statistics, percentiles, risk |
+| SSM verification | `analysis/ssm/` | SSM validation framework |
+| Uncertainty quantification | `analysis/ssm/uncertainty_quantifier.py` | Error analysis |
+| Statistical testing | `analysis/verification/statistical_testing.py` | Hypothesis tests |
+| Reproducibility audit | `analysis/logging/reproducibility_audit.py` | Run tracking |
+| Research runner | `analysis/research_run.py` | Orchestrated workflow |
+
+### Phase 7: Diffusion-Based Trajectory Modeling
+
+| Component | File | Description |
+|-----------|------|-------------|
+| Diffusion model | `traffic_diffusion/trajectory_diffusion.py` | Conditional diffusion |
+| Training script | `traffic_diffusion/train_trajectory_diffusion.py` | Train on PET events |
+| Model & sampler | `traffic_diffusion/model_and_sampler.py` | Checkpoint + sampling |
+| Training utils | `traffic_diffusion/training_utils.py` | Data loaders, loops |
+| Sampling utils | `traffic_diffusion/sampling_utils.py` | Counterfactual futures |
+| PET safety metrics | `traffic_diffusion/pet_safety_metrics.py` | PET/TTC from sampled |
+| PET diffusion analysis | `analysis/pet_diffusion_analysis.py` | Real vs generated PET |
+
+## Visualization Suite
+
 The NNDS visualization suite (26+ exports) produces publication-ready figures compliant with IEEE Transactions on ITS, Accident Analysis & Prevention, and FHWA guidelines.
 
-Visualization Components
-Module	File	Exports	Description
-SSM Analysis	industry_standard_viz.py	10	Distribution, time series, heatmaps
-Diffusion Evaluation	pet_diffusion_plots.py	6	PET-like metrics, residuals
-Conflict Events	pet_event_plots.py	7	Individual conflict visualization
-Video Overlays	video_overlays.py	5	Frame overlays, MP4 generation
-Quick Visualization Examples
-python
+### Visualization Components
+
+| Module | File | Exports | Description |
+|--------|------|---------|-------------|
+| SSM Analysis | `industry_standard_viz.py` | 10 | Distribution, time series, heatmaps |
+| Diffusion Evaluation | `pet_diffusion_plots.py` | 6 | PET-like metrics, residuals |
+| Conflict Events | `pet_event_plots.py` | 7 | Individual conflict visualization |
+| Video Overlays | `video_overlays.py` | 5 | Frame overlays, MP4 generation |
+
+### Quick Visualization Examples
+
+```python
 from analysis.visualization import (
     plot_pet_distribution,
     plot_conflict_event,
@@ -255,156 +304,84 @@ generate_conflict_video(
 # Complete diffusion evaluation suite
 plotter = DiffusionPETPlotter(dpi=300)
 plotter.plot_all(pet_pairs, records, out_dir='diffusion_eval/')
-Visualization Standards
-Resolution: 300 DPI minimum for publication
+```
 
-Font: 10-12pt serif (Times New Roman / Computer Modern)
+### Visualization Standards
 
-Color: Colorblind-safe palettes (Okabe-Ito, Viridis)
+- Resolution: 300 DPI minimum for publication  
+- Font: 10–12pt serif (Times New Roman / Computer Modern)  
+- Color: Colorblind-safe palettes (Okabe-Ito, Viridis)  
+- Formats: PNG (raster), PDF/SVG (vector for LaTeX)  
+- Dimensions: Single-column (3.375") or double-column (6.875")
 
-Formats: PNG (raster), PDF/SVG (vector for LaTeX)
+## Diffusion-Based Modeling
 
-Dimensions: Single-column (3.375") or double-column (6.875")
+### Training
 
-Diffusion-Based Modeling
-Training
-bash
+```bash
 # Train on PET events
 PYTHONPATH=. python traffic_diffusion/train_trajectory_diffusion.py \
     --csv-path outputs/petevents_bev.csv \
     --epochs 100
-Safety Evaluation
-bash
+```
+
+### Safety Evaluation
+
+```bash
 # Batch PET/TTC evaluation
 PYTHONPATH=. python analysis/safety_eval_diffusion.py
 
 # Notebook-friendly pipeline
 PYTHONPATH=. python analysis/safety_eval_diffusion_notebook.py
-Outputs
-outputs/safety_events_diffusion_model.csv - Sampled futures with PET/TTC
+```
 
-outputs/safety_eval_diffusion_summary.csv - Aggregated statistics
+### Outputs
 
-SSM Verification & Validation Methodology
-Surrogate Safety Measures
-Metric	Description	Safety Threshold	Reference
-PET	Time difference between leaving/entering conflict zone	< 1.5s: critical, < 3.0s: potential	Allen et al. (1977)
-TTC	Time to collision if trajectories maintained	< 2.0s: critical, < 5.0s: potential	Hyd'en (1987)
-DRAC	Deceleration rate to avoid collision	> 3.37 m/s²: unsafe	NHTSA guidelines
-Mathematical Formulation
-Post-Encroachment Time (PET):
+- `outputs/safety_events_diffusion_model.csv` – Sampled futures with PET/TTC  
+- `outputs/safety_eval_diffusion_summary.csv` – Aggregated statistics  
 
-PET
-i
-,
-j
-=
-min
-⁡
-t
-∣
-t
-j
-enter
-−
-t
-i
-exit
-∣
-PET 
-i,j
-​
- =min 
-t
-​
-  
-​
- t 
-j
-enter
-​
- −t 
-i
-exit
-​
-  
-​
- 
+## SSM Verification & Validation Methodology
 
-Time-To-Collision (TTC):
+### Surrogate Safety Measures
 
-TTC
-i
-,
-j
-(
-t
-)
-=
-∣
-x
-i
-(
-t
-)
-−
-x
-j
-(
-t
-)
-∣
-∣
-v
-i
-(
-t
-)
-−
-v
-j
-(
-t
-)
-∣
-TTC 
-i,j
-​
- (t)= 
-∣v 
-i
-​
- (t)−v 
-j
-​
- (t)∣
-∣x 
-i
-​
- (t)−x 
-j
-​
- (t)∣
-​
- 
+| Metric | Description | Safety Threshold | Reference |
+|--------|-------------|-----------------|-----------|
+| PET | Time difference between leaving/entering conflict zone | < 1.5s: critical, < 3.0s: potential | Allen et al. (1977) |
+| TTC | Time to collision if trajectories maintained | < 2.0s: critical, < 5.0s: potential | Hyd’en (1987) |
+| DRAC | Deceleration rate to avoid collision | > 3.37 m/s²: unsafe | NHTSA guidelines |
 
-Error Propagation
-Error Source	Typical Magnitude	Impact on PET
-Detection (ε_d)	0.1-0.3m	±0.05s
-Homography (ε_h)	0.2-0.5m	±0.10s
-Tracking (ε_t)	0.05-0.15m	±0.02s
-Total	0.25-0.60m	±0.12s
-Validation Protocol
+### Mathematical Formulation
+
+PET and TTC are defined as:
+
+\[
+\text{PET}_{i,j} = \min_t \left| t_j^{\text{enter}} - t_i^{\text{exit}} \right| 
+\]
+
+\[
+\text{TTC}_{i,j}(t) = \frac{\lVert \mathbf{x}_i(t) - \mathbf{x}_j(t) \rVert}{\lVert \mathbf{v}_i(t) - \mathbf{v}_j(t) \rVert}
+\]
+
+### Error Propagation
+
+| Error Source | Typical Magnitude | Impact on PET |
+|--------------|-------------------|---------------|
+| Detection (ε_d) | 0.1–0.3 m | ±0.05 s |
+| Homography (ε_h) | 0.2–0.5 m | ±0.10 s |
+| Tracking (ε_t) | 0.05–0.15 m | ±0.02 s |
+| Total | 0.25–0.60 m | ±0.12 s |
+
+### Validation Protocol
+
 Three-tier validation per FHWA SSAM framework:
 
-Theoretical Validation - Mathematical correctness
+1. Theoretical validation – mathematical correctness  
+2. Simulation validation – against VISSIM, SUMO  
+3. Field validation – correlation with crash data  
 
-Simulation Validation - Against VISSIM, SUMO
+## Project Structure
 
-Field Validation - Correlation with crash data
-
-Project Structure
-text
+```
 nnds/
 ├── analysis/                      # Research & evaluation
 │   ├── logging/                   # Reproducibility audit
@@ -486,20 +463,22 @@ nnds/
 ├── sam3.pt                        # SAM3 weights (3.2GB, gitignored)
 ├── traffic_analyzer.py            # Main entry point
 └── traj_diffusion_normalized.py   # Normalized diffusion experiments
-Colab Setup (Recommended)
-One-Cell Bootstrap
+```
+
+## Colab Setup (Recommended)
+
+### One-Cell Bootstrap
+
 The bootstrap script above handles everything:
 
-Clones/updates repository on main branch
+- Clones/updates repository on `main` branch  
+- Installs Python dependencies  
+- Downloads demo video from Hugging Face datasets  
+- Downloads SAM3 weights from Hugging Face models  
 
-Installs Python dependencies
+### Running in Colab
 
-Downloads demo video from Hugging Face datasets
-
-Downloads SAM3 weights from Hugging Face models
-
-Running in Colab
-python
+```python
 # After bootstrap, run pipeline
 !cd /content/nnds && PYTHONPATH=. python traffic_analyzer.py \
     --video videos/traffic_video.mp4
@@ -514,77 +493,73 @@ python
 !cd /content/nnds && PYTHONPATH=. python analysis/pet_summary.py \
     --csv-path outputs/petevents_bev_test.csv \
     --export --output-dir results/
-PET CSV Format
+```
+
+## PET CSV Format
+
 The default PET CSV contains:
 
-Column	Description
-event_id	Integer conflict index
-pet	Post-Encroachment Time (seconds)
-frame	Frame index (may be NaN)
-track_a	Track ID of first actor
-track_b	Track ID of second actor
-conflict_type	Grid cell ID (e.g., "CELL_C_1")
-world_traj_i	BEV trajectory for actor a
-world_traj_j	BEV trajectory for actor b
-Development
-Running Tests
-bash
+| Column | Description |
+|--------|-------------|
+| `event_id` | Integer conflict index |
+| `pet` | Post-Encroachment Time (seconds) |
+| `frame` | Frame index (may be NaN) |
+| `track_a` | Track ID of first actor |
+| `track_b` | Track ID of second actor |
+| `conflict_type` | Grid cell ID (e.g., `CELL_C_1`) |
+| `world_traj_i` | BEV trajectory for actor a |
+| `world_traj_j` | BEV trajectory for actor b |
+
+## Development
+
+### Running Tests
+
+```bash
 # Smoke tests
 pytest tests/ -v
 
 # Import tests
 PYTHONPATH=. python tests/test_imports_smoke.py
-Code Quality
-bash
+```
+
+### Code Quality
+
+```bash
 # Format code
 black .
 
 # Type checking (if using mypy)
 mypy --ignore-missing-imports .
-Citation
+```
+
+## Citation
+
 If you use NNDS in your research, please cite:
 
-bibtex
+```bibtex
 @software{nnds2024,
   author = {Sharqascc},
   title = {NNDS: Non-motorized and Heterogeneous Traffic Safety Analysis},
   year = {2024},
   url = {https://github.com/Sharqascc/nnds}
 }
-References
-Allen, B. L., Shin, B. T., & Cooper, P. J. (1977). Analysis of traffic conflicts and collisions. Transportation Research Record, 667, 67-74.
+```
 
-Gettman, D., & Head, L. (2003). Surrogate safety measures from traffic simulation models. FHWA-RD-03-050.
+## References
 
-Hyd'en, C. (1987). The Swedish Traffic Conflicts Technique. Bulletin Lund Institute of Technology, 70.
+- Allen, B. L., Shin, B. T., & Cooper, P. J. (1977). Analysis of traffic conflicts and collisions. *Transportation Research Record*, 667, 67–74.  
+- Gettman, D., & Head, L. (2003). Surrogate safety measures from traffic simulation models. FHWA-RD-03-050.  
+- Hyd’en, C. (1987). The Swedish Traffic Conflicts Technique. *Bulletin Lund Institute of Technology*, 70.  
+- Zheng, L., Ismail, K., & Meng, X. (2014). Traffic conflict techniques for road safety analysis. *Accident Analysis & Prevention*.  
+- FHWA. (2008). *Surrogate Safety Assessment Model and Validation*. FHWA-HRT-08-051.  
 
-Zheng, L., Ismail, K., & Meng, X. (2014). Traffic conflict techniques for road safety analysis. Accident Analysis & Prevention.
+## License
 
-FHWA. (2008). Surrogate Safety Assessment Model and Validation. FHWA-HRT-08-051.
+MIT License – see [LICENSE](LICENSE) file for details.
 
-License
-MIT License - see LICENSE file for details.
+## Acknowledgments
 
-Acknowledgments
-SAM3 model from Meta AI
-
-Hugging Face for model/dataset hosting
-
-FHWA for SSAM methodology guidance
-
-text
-
-## Key Improvements in This README
-
-| Section | Improvement |
-|---------|-------------|
-| **Structure** | Removed duplicate SSM sections (had 3 copies) |
-| **Visualization** | Updated to reflect 26 exports, v2.3.0 |
-| **PET Summary** | Shows v2.0.0 features (statistical tests, CI, effect sizes) |
-| **Research Run** | Added skip flags, dry-run, proper workflow |
-| **Project Structure** | Complete, accurate tree matching your output |
-| **Health Check** | Shows all components pass |
-| **Tables** | Clean, organized, easy to scan |
-| **Emojis** | Consistent visual hierarchy |
-
-This README is **production-ready** and accurately reflects your current pipeline state. Save it as `README.md` in your repo root! 🚀
+- SAM3 model from Meta AI  
+- Hugging Face for model/dataset hosting  
+- FHWA for SSAM methodology guidance  
+```
