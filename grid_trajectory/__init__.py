@@ -13,7 +13,7 @@ This package provides:
 from typing import List
 
 # Grid structures
-from .spatial_grid import SpatialGrid  # type: ignore[import]
+from .spatial_grid import SpatialGrid, OUT_OF_BOUNDS_CELL  # type: ignore[import]
 
 # PET core utilities
 from .pet_grid import (
@@ -48,6 +48,7 @@ __all__: List[str] = [
     "SAM3GridPETResult",
     # Grid / integration
     "SpatialGrid",
+    "OUT_OF_BOUNDS_CELL",
     "TrajectoryLogger",
     "build_grid_trajectories",
     "extract_pet_from_sam3",
