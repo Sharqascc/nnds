@@ -26,7 +26,7 @@ Example usage:
     plot_pet_distribution(df['pet'].values, save_path='pet_dist.png')
 """
 
-# Import key classes and functions for convenience
+# Diffusion analysis
 try:
     from .pet_diffusion_analysis import (
         PETDiffusionAnalyzer,
@@ -34,7 +34,7 @@ try:
         compare_realPET_samplePET,
         parse_trajectory,
         compute_error_metrics,
-        perform_statistical_tests
+        perform_statistical_tests,
     )
     _diffusion_available = True
 except ImportError as e:
@@ -42,7 +42,7 @@ except ImportError as e:
     import warnings
     warnings.warn(f"Diffusion analysis module not available: {e}")
 
-# Import visualization sub-package
+# Visualization sub-package
 try:
     from . import visualization
     _viz_available = True
@@ -51,30 +51,43 @@ except ImportError as e:
     import warnings
     warnings.warn(f"Visualization module not available: {e}")
 
+# PET summary analysis
+try:
+    from .pet_summary import PETEventAnalyzer
+    _pet_summary_available = True
+except ImportError as e:
+    _pet_summary_available = False
+    import warnings
+    warnings.warn(f"PET summary module not available: {e}")
+
 # Define what gets exported with "from analysis import *"
 __all__ = [
     # Sub-packages
-    'visualization',
+    "visualization",
 
     # Diffusion analysis
-    'PETDiffusionAnalyzer',
-    'compute_pet_like_metrics',
-    'compare_realPET_samplePET',
-    'parse_trajectory',
-    'compute_error_metrics',
-    'perform_statistical_tests',
+    "PETDiffusionAnalyzer",
+    "compute_pet_like_metrics",
+    "compare_realPET_samplePET",
+    "parse_trajectory",
+    "compute_error_metrics",
+    "perform_statistical_tests",
+
+    # PET summary
+    "PETEventAnalyzer",
 ]
 
 # Module metadata
-__version__ = '1.0.0'
-__author__ = 'NNDS Team'
+__version__ = "1.1.0"
+__author__ = "NNDS Team"
 
-# Status check
+
 def check_installation():
     """Check which analysis modules are available."""
     status = {
-        'diffusion_analysis': _diffusion_available,
-        'visualization': _viz_available
+        "diffusion_analysis": _diffusion_available,
+        "visualization": _viz_available,
+        "pet_summary": _pet_summary_available,
     }
 
     print("=" * 60)
@@ -95,6 +108,8 @@ def check_installation():
             print("   pip install matplotlib seaborn plotly")
         if not _diffusion_available:
             print("   pip install torch scipy pandas")
+        if not _pet_summary_available:
+            print("   pip install pandas scipy numpy")
 
     return status
 
@@ -105,10 +120,10 @@ Quick Start Examples
 ====================
 
 DIFFUSION MODEL EVALUATION
-===========================
+==========================
 
 1. Basic PET-like Metric Computation
--------------------------------------
+------------------------------------
 from analysis import PETDiffusionAnalyzer
 
 analyzer = PETDiffusionAnalyzer(
@@ -156,11 +171,30 @@ tests = perform_statistical_tests(real_pet, sample_pet)
 print(f"Paired t-test p-value: {tests['paired_t_test']['p_value']:.4f}")
 
 
+PET SUMMARY ANALYSIS
+====================
+
+4. PET Event Summary
+--------------------
+from analysis import PETEventAnalyzer
+
+analyzer = PETEventAnalyzer('outputs/petevents_bev_30frames.csv')
+analyzer.print_summary()
+
+# Export full analysis bundle
+exported = analyzer.export_results(
+    output_dir='analysis_results',
+    baseline_csv=Path('traffic_diffusion/data/generated_pet.csv'),
+    fmt='json',
+)
+print(exported)
+
+
 VISUALIZATION
 =============
 
-4. PET Distribution Plot
--------------------------
+5. PET Distribution Plot
+------------------------
 from analysis.visualization import plot_pet_distribution
 import pandas as pd
 
@@ -172,8 +206,8 @@ plot_pet_distribution(
     save_path='outputs/pet_distribution.png'
 )
 
-5. Before/After Comparison
----------------------------
+6. Before/After Comparison
+--------------------------
 from analysis.visualization import plot_comparative_boxplot
 
 plot_comparative_boxplot(
@@ -186,8 +220,8 @@ plot_comparative_boxplot(
     save_path='outputs/comparison.png'
 )
 
-6. Conflict Event Visualization
---------------------------------
+7. Conflict Event Visualization
+-------------------------------
 from analysis.visualization import EventPlotter, load_pet_csv
 
 df = load_pet_csv('outputs/petevents_bev_30frames.csv')
@@ -200,8 +234,8 @@ plotter.plot_conflict_event(
     save_path='outputs/event_5.png'
 )
 
-7. Video Frame Overlay
------------------------
+8. Video Frame Overlay
+----------------------
 from analysis.visualization import VideoOverlayPlotter
 
 plotter = VideoOverlayPlotter(dpi=300, colorblind_safe=True)
@@ -214,8 +248,8 @@ frame = plotter.overlay_conflict_frame(
     save_path='outputs/frame_overlay.png'
 )
 
-8. Diffusion Evaluation Plots
-------------------------------
+9. Diffusion Evaluation Plots
+-----------------------------
 from analysis.visualization import DiffusionPETPlotter
 
 plotter = DiffusionPETPlotter(dpi=300, save_pdf=True)
@@ -229,11 +263,11 @@ plotter.plot_all(
 
 
 COMPLETE ANALYSIS PIPELINE
-===========================
+==========================
 
-9. End-to-End Analysis
+10. End-to-End Analysis
 -----------------------
-from analysis import PETDiffusionAnalyzer
+from analysis import PETDiffusionAnalyzer, PETEventAnalyzer
 from analysis.visualization import (
     plot_pet_distribution,
     EventPlotter,
@@ -241,7 +275,7 @@ from analysis.visualization import (
 )
 import pandas as pd
 
-# 1. Load data
+# 1. Load PET CSV
 df = pd.read_csv('outputs/petevents_bev_30frames.csv')
 
 # 2. Aggregate analysis
@@ -250,29 +284,34 @@ plot_pet_distribution(
     save_path='paper/fig1_distribution.png'
 )
 
-# 3. Diffusion evaluation
-analyzer = PETDiffusionAnalyzer(
+# 3. PET summary + export
+pet_analyzer = PETEventAnalyzer('outputs/petevents_bev_30frames.csv')
+pet_analyzer.print_summary()
+pet_analyzer.export_results(output_dir='paper/pet_analysis')
+
+# 4. Diffusion evaluation
+diff_analyzer = PETDiffusionAnalyzer(
     output_dir='paper/diffusion_eval',
     auto_visualize=True
 )
 
-pet_pairs, df_metrics = analyzer.compute_pet_like_metrics(
+pet_pairs, df_metrics = diff_analyzer.compute_pet_like_metrics(
     batch, sample_fn
 )
 
-records, df_comp = analyzer.compare_with_ground_truth(
+records, df_comp = diff_analyzer.compare_with_ground_truth(
     'outputs/petevents_bev_30frames.csv',
     batch, sample_fn
 )
 
-# 4. Case study visualization
+# 5. Case study visualization
 event_plotter = EventPlotter(dpi=300)
 event_plotter.plot_conflict_event(
     df, event_id=42,
     save_path='paper/fig3_case_study.png'
 )
 
-# 5. Diffusion plots
+# 6. Diffusion plots
 diff_plotter = DiffusionPETPlotter(dpi=300)
 diff_plotter.plot_all(
     pet_pairs, records,
