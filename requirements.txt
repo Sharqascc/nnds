@@ -1,4 +1,9 @@
-# Core numerical and data libraries
+# ============================================================
+# NNDS Core Dependencies
+# Python 3.10+ required
+# ============================================================
+
+# Scientific computing
 numpy==1.26.4
 pandas==2.2.2
 scipy==1.13.1
@@ -9,6 +14,9 @@ matplotlib==3.8.4
 
 # Progress bar
 tqdm==4.66.4
+
+# Configuration file parsing (used by gate_counter, configs)
+PyYAML==6.0.1
 
 # Deep learning stack (PyTorch + vision)
 # NOTE: For GPUs, you may override these with the matching CUDA wheels if needed.
