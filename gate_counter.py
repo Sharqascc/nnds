@@ -1,11 +1,12 @@
 import logging
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Callable
 from datetime import timedelta
+from pathlib import Path
+from typing import Callable, Dict, List, Optional, Tuple, Any
 
 import cv2
 import numpy as np
+import pandas as pd
 import yaml
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,10 @@ class VirtualGate:
     min_frames_between_crossings: int = 10
     history: Dict[int, int] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        if self.min_frames_between_crossings < 1:
+            self.min_frames_between_crossings = 1
+
     def direction(self) -> np.ndarray:
         v = np.array(self.p2, dtype=float) - np.array(self.p1, dtype=float)
         n = np.linalg.norm(v)
@@ -78,7 +83,9 @@ class VirtualGate:
         prev_side = self.signed_distance(prev_pos)
         curr_side = self.signed_distance(curr_pos)
 
-        if prev_side == 0 or curr_side == 0:
+        # Treat near-zero side values as no reliable crossing
+        eps = 1e-6
+        if abs(prev_side) < eps or abs(curr_side) < eps:
             return None
 
         if prev_side * curr_side >= 0:
@@ -118,14 +125,21 @@ class RobustTracker:
     external tracker (e.g. ByteTrack/OC-SORT).
 
     If 'track_id' is missing, assigns a new ID.
-    Keeps tracks alive for up to `max_missing` frames.
+    Keeps tracks alive for up to `max_missing` frames and can drop very old tracks.
     """
     max_missing: int = 30
+    max_track_age_frames: int = 300
     next_id: int = 1
-    tracks: Dict[int, Dict] = field(default_factory=dict)
+    tracks: Dict[int, Dict[str, Any]] = field(default_factory=dict)
+    _frame_counter: int = 0
 
-    def update(self, detections: List[Dict]) -> Dict[int, Dict]:
-        updated_tracks: Dict[int, Dict] = {}
+    def update(
+        self,
+        detections: List[Dict[str, Any]],
+        frame_idx: int = 0,
+    ) -> Dict[int, Dict[str, Any]]:
+        self._frame_counter = frame_idx
+        updated_tracks: Dict[int, Dict[str, Any]] = {}
 
         for det in detections:
             tid = det.get("track_id")
@@ -140,6 +154,7 @@ class RobustTracker:
                 det["prev_centroid"] = self.tracks[tid].get("prev_centroid")
 
             det["missed"] = 0
+            det["last_seen_frame"] = frame_idx
             updated_tracks[tid] = det
 
         for tid, t in self.tracks.items():
@@ -148,9 +163,25 @@ class RobustTracker:
                 if missed <= self.max_missing:
                     t["missed"] = missed
                     updated_tracks[tid] = t
+                # else: drop track silently
 
         self.tracks = updated_tracks
+
+        # Periodic cleanup of very old tracks
+        if self._frame_counter > 0 and self._frame_counter % 100 == 0:
+            self._cleanup_old_tracks()
+
         return self.tracks
+
+    def _cleanup_old_tracks(self) -> None:
+        to_delete: List[int] = []
+        for tid, t in self.tracks.items():
+            last_seen = t.get("last_seen_frame", 0)
+            if self._frame_counter - last_seen > self.max_track_age_frames:
+                to_delete.append(tid)
+
+        for tid in to_delete:
+            self.tracks.pop(tid, None)
 
 
 # -----------------------------
@@ -166,13 +197,25 @@ class TrafficVolumeCounter:
       - optional "track_id"
       - optional "cls"
       - optional "conf"
+
+    Example detector that returns only cars:
+        def car_detector(frame):
+            detections = model(frame)
+            return [d for d in detections if d.get('cls') == 'car']
     """
     videopath: str
     gate_config: Optional[str] = None
     classes_of_interest: Optional[List[str]] = None
     min_confidence: float = 0.25
 
+    # drawing / performance flags
+    draw_stats: bool = True
+    draw_tracks: bool = False
+
     def __post_init__(self) -> None:
+        if not Path(self.videopath).exists():
+            raise FileNotFoundError(f"Video not found: {self.videopath}")
+
         if self.classes_of_interest is None:
             self.classes_of_interest = [
                 "car",
@@ -185,6 +228,11 @@ class TrafficVolumeCounter:
                 "rickshaw",
                 "auto-rickshaw",
             ]
+
+        # normalized class whitelist for fast membership checks
+        self._class_whitelist = {
+            self._normalize_class_name(c) for c in self.classes_of_interest
+        }
 
         self.gates: Dict[str, VirtualGate] = {}
         if self.gate_config is not None:
@@ -204,19 +252,30 @@ class TrafficVolumeCounter:
             end: [450, 150]
             color: [255, 0, 0]      # RGB in YAML
             entry_side: "right"
+            enabled: true
         """
         path = Path(configfile)
         gates: Dict[str, VirtualGate] = {}
 
         if not path.exists():
-            logger.warning("No gate config found at %s", configfile)
+            logger.warning(
+                "Gate config file not found at %s; no gates will be used.",
+                configfile,
+            )
             return gates
 
-        with path.open("r", encoding="utf-8") as f:
-            cfg = yaml.safe_load(f) or {}
+        try:
+            with path.open("r", encoding="utf-8") as f:
+                cfg = yaml.safe_load(f) or {}
+        except yaml.YAMLError as e:
+            logger.error("Failed to parse gate config %s: %s", configfile, e)
+            return gates
 
         items = cfg.get("gates", [])
         for g in items:
+            if g.get("enabled", True) is False:
+                continue
+
             name = g.get("name")
             if not name:
                 continue
@@ -263,7 +322,7 @@ class TrafficVolumeCounter:
             return "object"
         return str(cls_name).strip().lower()
 
-    def _allowed_detection(self, det: Dict) -> bool:
+    def _allowed_detection(self, det: Dict[str, Any]) -> bool:
         conf = float(det.get("conf", 1.0))
         if conf < self.min_confidence:
             return False
@@ -271,9 +330,7 @@ class TrafficVolumeCounter:
         cls_name = det.get("cls", det.get("class_name", "object"))
         cls_name = self._normalize_class_name(cls_name)
 
-        if self.classes_of_interest and cls_name not in {
-            self._normalize_class_name(c) for c in self.classes_of_interest
-        }:
+        if self._class_whitelist and cls_name not in self._class_whitelist:
             return False
 
         centroid = det.get("centroid")
@@ -283,16 +340,24 @@ class TrafficVolumeCounter:
         return True
 
     def _draw_gate_labels(self, vis: np.ndarray) -> None:
+        h, w = vis.shape[:2]
         for gate in self.gates.values():
-            cv2.line(vis, gate.p1, gate.p2, gate.color, 2)
+            # clip gate endpoints to frame bounds
+            p1 = (max(0, min(w - 1, gate.p1[0])), max(0, min(h - 1, gate.p1[1])))
+            p2 = (max(0, min(w - 1, gate.p2[0])), max(0, min(h - 1, gate.p2[1])))
 
-            mx = int((gate.p1[0] + gate.p2[0]) / 2)
-            my = int((gate.p1[1] + gate.p2[1]) / 2)
+            cv2.line(vis, p1, p2, gate.color, 2)
 
-            label = f"{gate.name}"
+            mx = int((p1[0] + p2[0]) / 2)
+            my = int((p1[1] + p2[1]) / 2)
+
+            # Keep label inside frame
+            mx = max(10, min(w - 10, mx))
+            my = max(10, min(h - 10, my))
+
             cv2.putText(
                 vis,
-                label,
+                gate.name,
                 (mx, my),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
@@ -301,7 +366,7 @@ class TrafficVolumeCounter:
                 cv2.LINE_AA,
             )
 
-    def _draw_tracks(self, vis: np.ndarray, tracks: Dict[int, Dict]) -> None:
+    def _draw_tracks(self, vis: np.ndarray, tracks: Dict[int, Dict[str, Any]]) -> None:
         for tid, t in tracks.items():
             c = t.get("centroid")
             if c is None:
@@ -325,7 +390,9 @@ class TrafficVolumeCounter:
                 cv2.LINE_AA,
             )
 
-    def _draw_stats_panel(self, frame: np.ndarray, frame_idx: int, fps: float) -> np.ndarray:
+    def _draw_stats_panel(
+        self, frame: np.ndarray, frame_idx: int, fps: float
+    ) -> np.ndarray:
         h, w = frame.shape[:2]
 
         total_in, total_out = self._compute_totals()
@@ -354,7 +421,7 @@ class TrafficVolumeCounter:
         for text in lines:
             if text == "":
                 continue
-            (tw, th), _ = cv2.getTextSize(text, font, font_scale, thickness)
+            (tw, _), _ = cv2.getTextSize(text, font, font_scale, thickness)
             text_widths.append(tw)
 
         panel_w = min(max(text_widths, default=220) + 26, w - 20)
@@ -385,7 +452,13 @@ class TrafficVolumeCounter:
                 gate_name = text.split(":")[0]
                 gate = self.gates.get(gate_name)
                 if gate is not None:
-                    cv2.rectangle(frame, (x1 + 8, y - 10), (x1 + 16, y - 2), gate.color, -1)
+                    cv2.rectangle(
+                        frame,
+                        (x1 + 8, y - 10),
+                        (x1 + 16, y - 2),
+                        gate.color,
+                        -1,
+                    )
                     x_text = x1 + 22
             elif text.startswith("LAST EVENT"):
                 color = (0, 255, 255)
@@ -407,90 +480,151 @@ class TrafficVolumeCounter:
     # ---------- main processing ----------
     def process_video(
         self,
-        detector: Callable[[np.ndarray], List[Dict]],
+        detector: Callable[[np.ndarray], List[Dict[str, Any]]],
         output_video: Optional[str] = None,
         max_frames: Optional[int] = None,
         log_visual_debug: bool = False,
-    ) -> Dict:
-        cap = cv2.VideoCapture(self.videopath)
-        if not cap.isOpened():
-            raise RuntimeError(f"Could not open video: {self.videopath}")
+        show_progress: bool = False,
+    ) -> Dict[str, Any]:
+        cap: Optional[cv2.VideoCapture] = None
+        out: Optional[cv2.VideoWriter] = None
+        pbar = None
 
-        fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
-        w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        try:
+            cap = cv2.VideoCapture(self.videopath)
+            if not cap.isOpened():
+                raise RuntimeError(f"Could not open video: {self.videopath}")
 
-        if output_video is not None:
-            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-            out = cv2.VideoWriter(output_video, fourcc, fps, (w, h))
-        else:
-            out = None
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            if not fps or fps <= 1e-3:
+                logger.warning(
+                    "FPS not found or invalid in video metadata, defaulting to 25.0"
+                )
+                fps = 25.0
 
-        frame_idx = 0
-        self.last_event = None
+            w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
+            if output_video is not None:
+                fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+                out = cv2.VideoWriter(output_video, fourcc, fps, (w, h))
 
-            frame_idx += 1
-            if max_frames is not None and frame_idx > max_frames:
-                break
+            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            if max_frames is not None:
+                total_frames = min(total_frames, max_frames)
 
-            raw_detections = detector(frame)
-            detections: List[Dict] = []
+            if show_progress:
+                try:
+                    from tqdm.auto import tqdm
+                    pbar = tqdm(total=total_frames, desc="Gate counting")
+                except ImportError:
+                    pbar = None
 
-            for d in raw_detections:
-                if not self._allowed_detection(d):
-                    continue
+            frame_idx = 0
+            self.last_event = None
 
-                d = dict(d)
-                d["frame_idx"] = frame_idx
-                d["cls"] = self._normalize_class_name(d.get("cls", d.get("class_name", "object")))
-                d["conf"] = float(d.get("conf", 1.0))
-                detections.append(d)
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
 
-            tracks = self.tracker.update(detections)
+                frame_idx += 1
+                if max_frames is not None and frame_idx > max_frames:
+                    break
 
-            for tid, t in tracks.items():
-                curr = t.get("centroid")
-                prev = t.get("prev_centroid")
+                raw_detections = detector(frame)
+                detections: List[Dict[str, Any]] = []
 
-                for gate in self.gates.values():
-                    status = gate.check_crossing(prev, curr, tid, frame_idx)
-                    if status is not None:
-                        event = f"{gate.name} {status.upper()} | ID {tid} | {t.get('cls', 'object')}"
-                        self.last_event = event
-                        logger.info("Frame %d: %s", frame_idx, event)
+                for d in raw_detections:
+                    if not self._allowed_detection(d):
+                        continue
 
-                t["prev_centroid"] = curr
+                    d = dict(d)
+                    d["frame_idx"] = frame_idx
+                    d["cls"] = self._normalize_class_name(
+                        d.get("cls", d.get("class_name", "object"))
+                    )
+                    d["conf"] = float(d.get("conf", 1.0))
+                    detections.append(d)
 
-            if out is not None:
-                vis = frame.copy()
+                tracks = self.tracker.update(detections, frame_idx=frame_idx)
 
-                self._draw_gate_labels(vis)
+                for tid, t in tracks.items():
+                    curr = t.get("centroid")
+                    prev = t.get("prev_centroid")
 
-                if log_visual_debug:
-                    self._draw_tracks(vis, tracks)
+                    for gate in self.gates.values():
+                        status = gate.check_crossing(prev, curr, tid, frame_idx)
+                        if status is not None:
+                            event = (
+                                f"{gate.name} {status.upper()} | ID {tid} | "
+                                f"{t.get('cls', 'object')}"
+                            )
+                            self.last_event = event
+                            logger.info("Frame %d: %s", frame_idx, event)
 
-                vis = self._draw_stats_panel(vis, frame_idx=frame_idx, fps=fps)
+                    t["prev_centroid"] = curr
 
-                out.write(vis)
+                if out is not None:
+                    vis = frame.copy()
 
-        cap.release()
-        if out is not None:
-            out.release()
+                    self._draw_gate_labels(vis)
 
-        result = {
-            "gates": {
-                name: {
-                    "entries": g.entry_count,
-                    "exits": g.exit_count,
-                }
-                for name, g in self.gates.items()
+                    if log_visual_debug or self.draw_tracks:
+                        self._draw_tracks(vis, tracks)
+
+                    if self.draw_stats:
+                        vis = self._draw_stats_panel(vis, frame_idx=frame_idx, fps=fps)
+
+                    out.write(vis)
+
+                if pbar is not None:
+                    pbar.update(1)
+
+            total_in, total_out = self._compute_totals()
+            result: Dict[str, Any] = {
+                "total_entries": total_in,
+                "total_exits": total_out,
+                "gates": {
+                    name: {
+                        "entries": g.entry_count,
+                        "exits": g.exit_count,
+                    }
+                    for name, g in self.gates.items()
+                },
             }
-        }
 
-        logger.info("Traffic volume result: %s", result)
-        return result
+            logger.info(
+                "Traffic volume result: total_entries=%d total_exits=%d",
+                result["total_entries"],
+                result["total_exits"],
+            )
+            logger.debug("Traffic volume result detail: %s", result)
+
+            return result
+
+        finally:
+            if cap is not None:
+                cap.release()
+            if out is not None:
+                out.release()
+            if pbar is not None:
+                pbar.close()
+
+    # ---------- results export ----------
+    @staticmethod
+    def save_results(result: Dict[str, Any], path: str | Path) -> None:
+        """Save per-gate counts to CSV for downstream analysis."""
+        path = Path(path)
+        rows = []
+        for name, stats in result.get("gates", {}).items():
+            rows.append(
+                {
+                    "gate": name,
+                    "entries": stats.get("entries", 0),
+                    "exits": stats.get("exits", 0),
+                }
+            )
+        df = pd.DataFrame(rows)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        df.to_csv(path, index=False)
