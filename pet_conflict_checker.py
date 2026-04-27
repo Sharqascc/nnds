@@ -174,7 +174,7 @@ class ConflictResult:
             d["pet_95ci_lower"] = self.uncertainty.confidence_interval_95[0]
             d["pet_95ci_upper"] = self.uncertainty.confidence_interval_95[1]
 
-        if self.extra:
+        if self.extra is not None:
             d.update(self.extra)
 
         return d
@@ -613,21 +613,26 @@ def detect_conflicts(
     # Add severity classification
     conflicts["severity"] = conflicts[pet_col].apply(classify_pet_severity)
 
-    # Optional uncertainty quantification
+    # Optional uncertainty quantification (vectorized for performance)
     if estimate_uncertainty:
         if velocity_col and velocity_col in df.columns:
-            conflicts["pet_uncertainty_std"] = conflicts.apply(
-                lambda row: estimate_pet_uncertainty(
-                    row[pet_col], 
-                    velocity_mps=row[velocity_col]
-                ).uncertainty_std,
-                axis=1
+            # Vectorized computation (10-50x faster than apply)
+            sigma_total = np.sqrt(
+                DEFAULT_DETECTION_ERROR**2 + 
+                DEFAULT_HOMOGRAPHY_ERROR**2 + 
+                DEFAULT_TRACKING_ERROR**2
             )
+            velocity_safe = np.maximum(conflicts[velocity_col].values, 0.1)
+            conflicts["pet_uncertainty_std"] = sigma_total / velocity_safe
         else:
-            # Use default velocity
-            conflicts["pet_uncertainty_std"] = conflicts[pet_col].apply(
-                lambda pet: estimate_pet_uncertainty(pet).uncertainty_std
+            # Use default velocity (5.0 m/s)
+            sigma_total = np.sqrt(
+                DEFAULT_DETECTION_ERROR**2 + 
+                DEFAULT_HOMOGRAPHY_ERROR**2 + 
+                DEFAULT_TRACKING_ERROR**2
             )
+            velocity_safe = 5.0  # Default velocity
+            conflicts["pet_uncertainty_std"] = sigma_total / velocity_safe
 
     return conflicts
 
@@ -788,7 +793,13 @@ class PETConflictChecker:
             enable_logging: If True, create audit log
             enable_uncertainty: If True, compute uncertainty estimates
             log_dir: Directory for log files
+
+        Raises:
+            ValueError: If pet_threshold is negative
         """
+        if pet_threshold < 0:
+            raise ValueError(f"pet_threshold must be non-negative, got {pet_threshold}")
+
         self.pet_threshold = pet_threshold
         self.enable_uncertainty = enable_uncertainty
 
@@ -802,12 +813,13 @@ class PETConflictChecker:
 
     # --- High-level CSV API ------------------------------------------------
 
-    def detect_from_csv(self, csv_path: str) -> pd.DataFrame:
+    def detect_from_csv(self, csv_path: str, velocity_col: str = None) -> pd.DataFrame:
         """
         Load PET CSV and return conflict events as DataFrame.
 
         Args:
             csv_path: Path to PET events CSV
+            velocity_col: Column name for velocity (m/s) for uncertainty estimation
 
         Returns:
             DataFrame with conflicts and severity classification
@@ -820,7 +832,8 @@ class PETConflictChecker:
         conflicts = detect_conflicts(
             df, 
             pet_threshold=self.pet_threshold,
-            estimate_uncertainty=self.enable_uncertainty
+            estimate_uncertainty=self.enable_uncertainty,
+            velocity_col=velocity_col
         )
 
         if self.logger:
@@ -839,12 +852,13 @@ class PETConflictChecker:
 
         return conflicts
 
-    def detect_from_csv_as_events(self, csv_path: str) -> List[PETEvent]:
+    def detect_from_csv_as_events(self, csv_path: str, velocity_col: str = None) -> List[PETEvent]:
         """
         Load PET CSV and return conflicts as PETEvent dataclasses.
 
         Args:
             csv_path: Path to PET events CSV
+            velocity_col: Column name for velocity (m/s) for uncertainty estimation
 
         Returns:
             List of PETEvent objects
@@ -853,7 +867,8 @@ class PETConflictChecker:
         conflicts_df = detect_conflicts(
             df, 
             pet_threshold=self.pet_threshold,
-            estimate_uncertainty=self.enable_uncertainty
+            estimate_uncertainty=self.enable_uncertainty,
+            velocity_col=velocity_col
         )
         return dataframe_to_pet_events(conflicts_df)
 
@@ -1072,4 +1087,3 @@ Examples:
         print(f"\n✅ Conflicts saved to: {args.output}")
 
     sys.exit(0)
-     
