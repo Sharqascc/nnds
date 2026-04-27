@@ -1,23 +1,25 @@
 #!/usr/bin/env python
 # ═══════════════════════════════════════════════════════════════════════════════
-# 🚀 NNDS PIPELINE STRUCTURE VISUALIZER (ENHANCED, PRODUCTION-READY)
-# - Auto-detect root
-# - Safe file size handling
-# - Icons per file type
-# - Optional tqdm progress bar (used internally in helpers if needed)
-# - Search, latest files, health checks
-# - Export to TXT / JSON, baseline diff
-# - CLI arguments
-# - Jupyter/Colab-safe argparse handling
+# 🚀 NNDS PIPELINE STRUCTURE VISUALIZER (GIT BRANCH-AWARE, IMPROVED)
+# - Shows directory structure of a Git branch (default: main) using git ls-tree
+# - Falls back to filesystem tree if --branch is omitted or Git is unavailable
+# - Icons per file type, stats, search, health checks, exports
+# - Safer argv cleaning for notebooks
+# - Git mode includes file sizes and supports search
+# - Smarter ignore patterns and basic caching for filesystem walks
 # ═══════════════════════════════════════════════════════════════════════════════
 
 import os
 import sys
 import json
 import argparse
+import subprocess
+import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Tuple, Any, Optional
+from functools import lru_cache
+
 
 # Optional tqdm (fallback if not installed)
 try:
@@ -110,12 +112,20 @@ def get_icon(path: Path) -> str:
     return ICONS.get(path.suffix.lower(), "📄")
 
 
+def get_icon_from_name(name: str, is_dir: bool) -> str:
+    """Icon from a simple name + flag (for virtual Git tree)."""
+    if is_dir:
+        return "📁"
+    suffix = Path(name).suffix.lower()
+    return ICONS.get(suffix, "📄")
+
+
 def get_file_size_safe(path: Path) -> int:
     """
     Safe file size retrieval.
 
-    - Skips symlinks
-    - Catches PermissionError, OSError, FileNotFoundError
+    Returns 0 on error (permission, missing, etc.), which is treated
+    as "unknown or empty" in the UI.
     """
     try:
         if path.is_symlink():
@@ -126,7 +136,7 @@ def get_file_size_safe(path: Path) -> int:
 
 
 # ───────────────────────────────────────────────────────────────────────────────
-# CORE: DIRECTORY TREE (TEXT + JSON)
+# IGNORE PATTERNS
 # ───────────────────────────────────────────────────────────────────────────────
 
 IGNORE_PATTERNS = [
@@ -139,17 +149,53 @@ IGNORE_PATTERNS = [
 
 
 def should_ignore(path: Path) -> bool:
-    """Return True if this path should be ignored based on IGNORE_PATTERNS."""
-    s = str(path)
-    return any(p in s for p in IGNORE_PATTERNS)
+    """
+    Check if path should be ignored based on path components.
 
+    This avoids false positives like matching '.git' inside '.gitignore'.
+    """
+    parts = path.parts
+    return any(ignore in parts for ignore in IGNORE_PATTERNS)
+
+
+def should_ignore_str(path_str: str) -> bool:
+    """
+    Ignore helper for plain string paths (Git ls-tree output).
+
+    Uses component-based split so '.gitignore' is not treated as '.git'.
+    """
+    parts = path_str.split("/")
+    return any(ignore in parts for ignore in IGNORE_PATTERNS)
+
+
+# ───────────────────────────────────────────────────────────────────────────────
+# FILESYSTEM CACHING
+# ───────────────────────────────────────────────────────────────────────────────
+
+@lru_cache(maxsize=4)
+def get_all_files(root_str: str) -> List[Path]:
+    """
+    Cache all files under root (excluding ignored) to avoid repeated rglob.
+
+    Keyed by resolved root string.
+    """
+    root = Path(root_str)
+    return [
+        p for p in root.rglob("*")
+        if p.is_file() and not should_ignore(p)
+    ]
+
+
+# ───────────────────────────────────────────────────────────────────────────────
+# CORE: DIRECTORY TREE (FILESYSTEM MODE)
+# ───────────────────────────────────────────────────────────────────────────────
 
 def build_tree_lines(
     root: Path,
     max_depth: int = 10,
 ) -> Tuple[List[str], Dict[str, int]]:
     """
-    Build an ASCII tree (text lines) and collect stats.
+    Build an ASCII tree (text lines) and collect stats from filesystem.
 
     Returns:
         lines: list of strings ready to print
@@ -199,16 +245,7 @@ def build_tree_lines(
 
 def build_tree_json(root: Path, max_depth: int = 10) -> Dict[str, Any]:
     """
-    Build a JSON-serializable representation of the directory tree.
-
-    Node format:
-    {
-        "name": "file_or_dir_name",
-        "path": "relative/from/root",
-        "type": "file" | "dir",
-        "size": int,
-        "children": [...]
-    }
+    Build a JSON-serializable representation of the directory tree (filesystem).
     """
     def _node(path: Path, rel: Path, depth: int) -> Dict[str, Any]:
         node: Dict[str, Any] = {
@@ -249,23 +286,286 @@ def build_tree_json(root: Path, max_depth: int = 10) -> Dict[str, Any]:
 
 
 # ───────────────────────────────────────────────────────────────────────────────
-# SEARCH + LATEST FILES
+# GIT HELPERS (REPO CHECK + PATHS + SIZES)
+# ───────────────────────────────────────────────────────────────────────────────
+
+def is_git_repo(path: Path = None) -> bool:
+    """Check if current directory is in a Git repository."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--git-dir"],
+            cwd=path or Path.cwd(),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return result.returncode == 0
+    except FileNotFoundError:
+        return False
+
+
+def stream_paths_from_branch(branch: str):
+    """
+    Generator that yields (path, size) from git ls-tree without loading all lines in memory.
+
+    Uses:
+        git ls-tree -r --long <branch>
+    """
+    if not is_git_repo():
+        print("❌ Not a Git repository")
+        return
+
+    try:
+        proc = subprocess.Popen(
+            ["git", "ls-tree", "-r", "--long", branch],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+        )
+    except FileNotFoundError:
+        print("❌ git executable not found")
+        return
+
+    # Read stdout line by line
+    for line in proc.stdout or []:
+        line = line.rstrip("\n")
+        if not line.strip():
+            continue
+        try:
+            metadata, path = line.split("\t", 1)
+        except ValueError:
+            continue
+        meta_parts = metadata.split()
+        if len(meta_parts) >= 4 and meta_parts[1] == "blob":
+            try:
+                size = int(meta_parts[3])
+            except (ValueError, IndexError):
+                size = 0
+            if not should_ignore_str(path):
+                yield path, size
+
+    proc.wait()
+    if proc.returncode != 0:
+        err = (proc.stderr.read() if proc.stderr else "").strip()
+        if err:
+            print(f"❌ git ls-tree failed for branch '{branch}': {err}")
+
+
+def list_paths_with_sizes_from_branch(branch: str, show_progress: bool = True) -> List[Tuple[str, int]]:
+    """
+    Get paths and their sizes from Git blob objects for a given branch.
+
+    Uses stream_paths_from_branch, with optional tqdm progress for large repos.
+    """
+    # We don't know count upfront without loading all lines, so we just
+    # wrap generator in tqdm if many items accumulate.
+    paths: List[Tuple[str, int]] = []
+
+    if not is_git_repo():
+        print("❌ Not a Git repository")
+        return []
+
+    # First, collect into list, optionally with progress
+    raw_iter = list(stream_paths_from_branch(branch))
+    total = len(raw_iter)
+    if show_progress and TQDM_AVAILABLE and total > 1000:
+        print(f"📊 Processing {total} files from Git...")
+        for path, size in tqdm(raw_iter, desc="Parsing Git tree", unit="files"):
+            paths.append((path, size))
+    else:
+        paths = raw_iter
+
+    return paths
+
+
+# ───────────────────────────────────────────────────────────────────────────────
+# GIT-BRANCH MODE: BUILD VIRTUAL TREE
+# ───────────────────────────────────────────────────────────────────────────────
+
+def build_virtual_tree(paths_with_sizes: List[Tuple[str, int]]) -> Dict[str, Any]:
+    """
+    Build a nested dict representing directories/files from a list of (path, size).
+
+    Root format:
+      {
+        "name": ".",
+        "type": "dir",
+        "children": { "dir": {...}, "file.py": {...}, ... },
+        "size": int
+      }
+    """
+    root = {"name": ".", "type": "dir", "children": {}, "size": 0}
+
+    for path, size in paths_with_sizes:
+        parts = path.split("/")
+        node = root
+        node["size"] += size  # accumulate total size at root
+
+        for i, part in enumerate(parts):
+            is_last = (i == len(parts) - 1)
+            children = node.setdefault("children", {})
+
+            # Conflict: existing node type mismatch
+            if part in children:
+                expected_type = "file" if is_last else "dir"
+                if children[part]["type"] != expected_type:
+                    print(f"⚠️ Conflict in Git tree: {path} (file/dir name collision)")
+                    # Skip this path; cannot represent both cleanly
+                    node = None
+                    break
+            else:
+                children[part] = {
+                    "name": part,
+                    "type": "file" if is_last else "dir",
+                    "children": {} if not is_last else None,
+                    "size": 0,
+                }
+
+            node = children[part]
+            node["size"] += size  # propagate size up dir tree
+
+        # If conflict occurred, node will be None and we skip
+        if node is None:
+            continue
+
+    return root
+
+
+def render_virtual_tree(
+    tree: Dict[str, Any],
+    prefix: str = "",
+    is_last: bool = True,
+    lines: List[str] = None,
+) -> List[str]:
+    """
+    Render the virtual tree (from Git paths) into ASCII lines, including sizes.
+    """
+    if lines is None:
+        lines = []
+
+    name = tree["name"]
+    is_dir = tree["type"] == "dir"
+    icon = get_icon_from_name(name, is_dir)
+
+    # Root ('.') special-case: don't print the dot
+    if name != ".":
+        branch_symbol = "└── " if is_last else "├── "
+        if is_dir:
+            lines.append(f"{prefix}{branch_symbol}{icon} {name}/ ({format_size(tree['size'])})")
+        else:
+            lines.append(f"{prefix}{branch_symbol}{icon} {name} ({format_size(tree['size'])})")
+
+        prefix = prefix + ("    " if is_last else "│   ")
+
+    if is_dir and tree.get("children"):
+        items = sorted(
+            tree["children"].values(),
+            key=lambda x: (x["type"] != "dir", x["name"].lower()),
+        )
+        for idx, child in enumerate(items):
+            render_virtual_tree(
+                child,
+                prefix=prefix,
+                is_last=(idx == len(items) - 1),
+                lines=lines,
+            )
+    return lines
+
+
+def virtual_tree_stats(tree: Dict[str, Any]) -> Dict[str, int]:
+    """
+    Stats (dirs, files, size) from the virtual tree.
+    """
+    dirs = 0
+    files = 0
+
+    def _walk(node: Dict[str, Any]):
+        nonlocal dirs, files
+        if node["type"] == "dir":
+            if node["name"] != ".":
+                dirs += 1
+            for child in (node.get("children") or {}).values():
+                _walk(child)
+        else:
+            files += 1
+
+    _walk(tree)
+    return {"dirs": dirs, "files": files, "size": tree.get("size", 0)}
+
+
+def build_virtual_tree_json(tree: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Convert virtual tree dict (with children as dicts) into JSON-serializable form.
+    """
+    def _convert(node: Dict[str, Any], current_path: List[str]) -> Dict[str, Any]:
+        name = node["name"]
+        is_dir = node["type"] == "dir"
+        path_str = "." if not current_path else "/".join(current_path)
+        result = {
+            "name": name,
+            "path": path_str,
+            "type": "dir" if is_dir else "file",
+            "size": node.get("size", 0),
+            "children": [],
+        }
+        if is_dir and node.get("children"):
+            for child in sorted(
+                node["children"].values(),
+                key=lambda x: (x["type"] != "dir", x["name"].lower()),
+            ):
+                child_path = current_path + [child["name"]] if name != "." else [child["name"]]
+                result["children"].append(_convert(child, child_path))
+        return result
+
+    return _convert(tree, [])
+
+
+def search_git_tree(tree: Dict[str, Any], pattern: str, case_sensitive: bool = False) -> List[str]:
+    """
+    Search for files in virtual Git tree.
+
+    Returns list of paths (relative to repo root in the branch).
+    """
+    results: List[str] = []
+    if not pattern:
+        return results
+
+    patt = pattern if case_sensitive else pattern.lower()
+
+    def _search(node: Dict[str, Any], path: str = ""):
+        name = node["name"]
+        if node["type"] == "file":
+            full_name = f"{path}/{name}" if path else name
+            compare_name = full_name if case_sensitive else full_name.lower()
+            if patt in compare_name:
+                results.append(full_name)
+        elif node.get("children"):
+            new_path = f"{path}/{name}" if path and name != "." else (name if name != "." else "")
+            for child in node["children"].values():
+                _search(child, new_path)
+
+    _search(tree)
+    return results
+
+
+# ───────────────────────────────────────────────────────────────────────────────
+# SEARCH + LATEST FILES (FILESYSTEM MODE ONLY)
 # ───────────────────────────────────────────────────────────────────────────────
 
 def search_files(root: Path, pattern: str, case_sensitive: bool = False) -> List[Path]:
     """
-    Search for files whose names contain 'pattern'.
+    Search for files whose names contain 'pattern' on filesystem.
 
     Returns list of Paths.
     """
     if not pattern:
         return []
-    results: List[Path] = []
     patt = pattern if case_sensitive else pattern.lower()
+    files = get_all_files(str(root.resolve()))
+    results: List[Path] = []
 
-    for p in root.rglob("*"):
-        if should_ignore(p) or not p.is_file():
-            continue
+    for p in files:
         name = p.name if case_sensitive else p.name.lower()
         if patt in name:
             results.append(p)
@@ -274,31 +574,28 @@ def search_files(root: Path, pattern: str, case_sensitive: bool = False) -> List
 
 def latest_files(root: Path, n: int = 5) -> List[Tuple[Path, float]]:
     """
-    Return the n most recently modified files under root.
-
-    Returns list of (Path, mtime).
+    Return the n most recently modified files under root (filesystem).
     """
-    files: List[Tuple[Path, float]] = []
-    for p in root.rglob("*"):
-        if should_ignore(p) or not p.is_file():
-            continue
+    files = get_all_files(str(root.resolve()))
+    items: List[Tuple[Path, float]] = []
+    for p in files:
         try:
             mtime = p.stat().st_mtime
         except (PermissionError, OSError, FileNotFoundError):
             continue
-        files.append((p, mtime))
+        items.append((p, mtime))
 
-    files.sort(key=lambda x: x[1], reverse=True)
-    return files[:n]
+    items.sort(key=lambda x: x[1], reverse=True)
+    return items[:n]
 
 
 # ───────────────────────────────────────────────────────────────────────────────
-# HEALTH CHECKS
+# HEALTH CHECKS (WORKING TREE)
 # ───────────────────────────────────────────────────────────────────────────────
 
 def check_pipeline_health(root: Path) -> List[str]:
     """
-    Verify that critical pipeline files exist and are non-empty.
+    Verify that critical pipeline files exist and are non-empty in current working tree.
 
     Returns list of issue strings (empty if healthy).
     """
@@ -323,36 +620,26 @@ def check_pipeline_health(root: Path) -> List[str]:
             if full.is_file():
                 size = get_file_size_safe(full)
                 if size == 0:
-                    issues.append(f"⚠️ Empty file: {desc} ({rel})")
+                    issues.append(f"⚠️ Empty or unreadable file: {desc} ({rel})")
     return issues
 
 
 # ───────────────────────────────────────────────────────────────────────────────
-# BASELINE COMPARISON
+# BASELINE COMPARISON (FILESYSTEM SNAPSHOT)
 # ───────────────────────────────────────────────────────────────────────────────
 
 def snapshot_structure(root: Path, max_depth: int = 10) -> Dict[str, Any]:
     """
-    Create a flat snapshot of the structure for baseline comparison.
-
-    Returns:
-        {
-          "generated_at": "...",
-          "root": "path",
-          "files": {
-              "relative/path.ext": {
-                  "size": int,
-                  "mtime": float
-              },
-              ...
-          }
-        }
+    Create a flat snapshot of the structure for baseline comparison (filesystem).
     """
     files: Dict[str, Dict[str, Any]] = {}
     for p in root.rglob("*"):
         if should_ignore(p) or not p.is_file():
             continue
-        rel = p.relative_to(root)
+        try:
+            rel = p.relative_to(root)
+        except ValueError:
+            continue
         try:
             st = p.stat()
         except (PermissionError, OSError, FileNotFoundError):
@@ -364,7 +651,7 @@ def snapshot_structure(root: Path, max_depth: int = 10) -> Dict[str, Any]:
 
     return {
         "generated_at": datetime.now().isoformat(),
-        "root": str(root),
+        "root": str(root.resolve()),
         "files": files,
     }
 
@@ -375,13 +662,6 @@ def compare_with_baseline(
 ) -> Dict[str, Any]:
     """
     Compare current snapshot against a baseline JSON file.
-
-    Returns dict with:
-        {
-          "new_files": [...],
-          "deleted_files": [...],
-          "changed_size": [...],
-        }
     """
     if not baseline_path.exists():
         return {
@@ -418,13 +698,13 @@ def compare_with_baseline(
 
 
 # ───────────────────────────────────────────────────────────────────────────────
-# ENHANCED ANALYSIS PRINTER
+# ENHANCED ANALYSIS (FILESYSTEM MODE)
 # ───────────────────────────────────────────────────────────────────────────────
 
 def enhanced_analysis(root: Path):
     """Run additional analysis: latest files, health check, quick hints."""
     print("\n" + "=" * 80)
-    print("🔍 ENHANCED ANALYSIS")
+    print("🔍 ENHANCED ANALYSIS (current working tree)")
     print("=" * 80)
 
     # Latest modified files
@@ -475,13 +755,13 @@ def export_json(tree_json: Dict[str, Any], output_path: Path):
     print(f"✅ Exported JSON structure to: {output_path}")
 
 
-# ───────────────────────────────────────────────────────────────────────────────
+# ────────────────────────────────────────────────────────────────
 # CLI
-# ───────────────────────────────────────────────────────────────────────────────
+# ────────────────────────────────────────────────────────────────
 
 def parse_args(argv: List[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="NNDS Pipeline Directory Visualizer",
+        description="NNDS Pipeline Directory Visualizer (Git branch-aware)",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
@@ -493,7 +773,7 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
         "--depth",
         type=int,
         default=10,
-        help="Max directory depth to traverse",
+        help="Max directory depth to traverse (filesystem mode)",
     )
     parser.add_argument(
         "--output",
@@ -508,12 +788,12 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument(
         "--baseline",
         type=str,
-        help="Compare against baseline JSON snapshot file",
+        help="Compare against baseline JSON snapshot file (filesystem mode)",
     )
     parser.add_argument(
         "--save-baseline",
         type=str,
-        help="Path to save current baseline snapshot JSON",
+        help="Path to save current baseline snapshot JSON (filesystem mode)",
     )
     parser.add_argument(
         "--search",
@@ -528,29 +808,47 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument(
         "--no-enhanced",
         action="store_true",
-        help="Disable enhanced analysis section",
+        help="Disable enhanced analysis section (filesystem mode)",
+    )
+    parser.add_argument(
+        "--branch",
+        type=str,
+        default="main",
+        help="Git branch to visualize (uses git ls-tree; default: main). "
+             "Set empty string ('') or use --no-git to use filesystem mode only.",
+    )
+    parser.add_argument(
+        "--no-git",
+        action="store_true",
+        help="Force filesystem mode, ignore --branch",
     )
     return parser.parse_args(argv)
 
 
 def _clean_argv_for_notebook(args: List[str]) -> List[str]:
     """
-    Remove Jupyter/Colab-injected arguments like:
-        -f /root/.local/share/jupyter/runtime/kernel-XXXX.json
-        or '-f=/root/...'
+    Remove known Jupyter/Colab-injected arguments like:
+        -f /path/to/kernel-XXXX.json
+        --log-level, --debug, etc.
+    Without blindly stripping arbitrary flags.
     """
+    jupyter_flags = {"-f", "--log-level", "--debug"}
     cleaned: List[str] = []
-    skip_next = False
-    for a in args:
-        if skip_next:
-            skip_next = False
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        # Skip -f <value> or -f=<value>
+        if arg in jupyter_flags:
+            if arg == "-f" and i + 1 < len(args) and not args[i + 1].startswith("-"):
+                i += 2
+            else:
+                i += 1
             continue
-        if a == "-f":
-            skip_next = True
+        if arg.startswith("-f="):
+            i += 1
             continue
-        if a.startswith("-f="):
-            continue
-        cleaned.append(a)
+        cleaned.append(arg)
+        i += 1
     return cleaned
 
 
@@ -570,10 +868,35 @@ def main(argv: List[str] = None):
     print("=" * 80)
     print(f"📍 Root: {root}")
     print(f"📅 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    if args.no_git or not args.branch:
+        print("🌿 Git branch: (disabled, using filesystem)")
+    else:
+        print(f"🌿 Git branch (tree source): {args.branch}")
     print("=" * 80)
 
-    # Build tree (text)
-    lines, stats = build_tree_lines(root, max_depth=args.depth)
+    use_branch_mode = bool(args.branch) and not args.no_git
+
+    # ── BRANCH MODE: show structure from Git `main` (or given branch)
+    if use_branch_mode:
+        paths_with_sizes = list_paths_with_sizes_from_branch(args.branch, show_progress=True)
+        if not paths_with_sizes:
+            print(f"❌ Could not read tree for branch '{args.branch}'. "
+                  f"Falling back to filesystem view.\n")
+            use_branch_mode = False
+        else:
+            vtree = build_virtual_tree(paths_with_sizes)
+            lines = [f"📁 {args.branch}/ ({format_size(vtree.get('size', 0))})"]
+            lines = render_virtual_tree(vtree, prefix="", is_last=True, lines=lines)
+            stats = virtual_tree_stats(vtree)
+            tree_json = build_virtual_tree_json(vtree)
+
+    # ── FILESYSTEM MODE (fallback or explicit)
+    if not use_branch_mode:
+        # Clear cache to ensure consistency if root changes between runs
+        get_all_files.cache_clear()
+        # Build tree (text)
+        lines, stats = build_tree_lines(root, max_depth=args.depth)
+        tree_json = build_tree_json(root, max_depth=args.depth)
 
     print("\n📦 Pipeline tree:\n")
     for line in lines:
@@ -586,76 +909,82 @@ def main(argv: List[str] = None):
     print(f"📄 Total Files:       {stats['files']}")
     print(f"💾 Total Size:        {format_size(stats['size'])}")
 
-    # JSON export / snapshot
-    tree_json = build_tree_json(root, max_depth=args.depth)
-
-    if args.output:
-        export_to_file(lines, Path(args.output))
-
+    # JSON export
     if args.json:
         export_json(tree_json, Path(args.json))
 
-    # Baseline snapshot + comparison
-    snapshot = snapshot_structure(root, max_depth=args.depth)
-
-    if args.save_baseline:
-        export_json(snapshot, Path(args.save_baseline))
-
-    if args.baseline:
-        diff = compare_with_baseline(snapshot, Path(args.baseline))
-        print("\n" + "=" * 80)
-        print("🔁 CHANGES SINCE BASELINE")
-        print("=" * 80)
-
-        if "error" in diff:
-            print(diff["error"])
-        else:
-            if diff["new_files"]:
-                print("\n🆕 New files:")
-                for rel in diff["new_files"]:
-                    print(f"  + {rel}")
-            else:
-                print("\n🆕 New files: (none)")
-
-            if diff["deleted_files"]:
-                print("\n🗑️ Deleted files:")
-                for rel in diff["deleted_files"]:
-                    print(f"  - {rel}")
-            else:
-                print("\n🗑️ Deleted files: (none)")
-
-            if diff["changed_size"]:
-                print("\n📏 Size changes:")
-                for rel, old, new in diff["changed_size"]:
-                    print(
-                        f"  ~ {rel}: {format_size(old)} → {format_size(new)}"
-                    )
-            else:
-                print("\n📏 Size changes: (none)")
-
-    # Search
+    # SEARCH (both modes)
     if args.search:
         print("\n" + "=" * 80)
         print(f"🔎 SEARCH RESULTS for pattern: '{args.search}'")
         print("=" * 80)
-        results = search_files(root, args.search, case_sensitive=args.case_sensitive)
-        if not results:
-            print("No matching files found.")
+        if use_branch_mode:
+            results = search_git_tree(vtree, args.search, case_sensitive=args.case_sensitive)
+            if not results:
+                print("No matching files found in Git tree.")
+            else:
+                for rel in results:
+                    print(f"  {rel}")
+                print(f"\nTotal matches: {len(results)}")
         else:
-            for p in results:
-                rel = p.relative_to(root)
-                size = get_file_size_safe(p)
-                print(f"  {rel} ({format_size(size)})")
-            print(f"\nTotal matches: {len(results)}")
+            results = search_files(root, args.search, case_sensitive=args.case_sensitive)
+            if not results:
+                print("No matching files found.")
+            else:
+                for p in results:
+                    rel = p.relative_to(root)
+                    size = get_file_size_safe(p)
+                    print(f"  {rel} ({format_size(size)})")
+                print(f"\nTotal matches: {len(results)}")
 
-    # Enhanced analysis (latest files + health + hints)
-    if not args.no_enhanced:
-        enhanced_analysis(root)
+    # FILESYSTEM-ONLY FEATURES
+    if not use_branch_mode:
+        # Baseline snapshot + comparison
+        snapshot = snapshot_structure(root, max_depth=args.depth)
+
+        if args.save_baseline:
+            export_json(snapshot, Path(args.save_baseline))
+
+        if args.baseline:
+            diff = compare_with_baseline(snapshot, Path(args.baseline))
+            print("\n" + "=" * 80)
+            print("🔁 CHANGES SINCE BASELINE")
+            print("=" * 80)
+
+            if "error" in diff:
+                print(diff["error"])
+            else:
+                if diff["new_files"]:
+                    print("\n🆕 New files:")
+                    for rel in diff["new_files"]:
+                        print(f"  + {rel}")
+                else:
+                    print("\n🆕 New files: (none)")
+
+                if diff["deleted_files"]:
+                    print("\n🗑️ Deleted files:")
+                    for rel in diff["deleted_files"]:
+                        print(f"  - {rel}")
+                else:
+                    print("\n🗑️ Deleted files: (none)")
+
+                if diff["changed_size"]:
+                    print("\n📏 Size changes:")
+                    for rel, old, new in diff["changed_size"]:
+                        print(
+                            f"  ~ {rel}: {format_size(old)} → {format_size(new)}"
+                        )
+                else:
+                    print("\n📏 Size changes: (none)")
+
+        # Enhanced analysis (latest files + health + hints)
+        if not args.no_enhanced:
+            enhanced_analysis(root)
 
     print("\n" + "=" * 80)
     print("✅ PIPELINE STRUCTURE COMPLETE")
     print("=" * 80)
-    print("\n🚀 To run the main pipeline:")
+    print("\n🚀 To run the main pipeline (from current working tree):")
     print("   PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4")
     print()
 
