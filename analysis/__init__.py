@@ -26,7 +26,16 @@ Example usage:
     plot_pet_distribution(df['pet'].values, save_path='pet_dist.png')
 """
 
+from __future__ import annotations
+
+import logging
+from typing import Dict
+
+logger = logging.getLogger(__name__)
+
+# -------------------------------------------------------------------------
 # Diffusion analysis
+# -------------------------------------------------------------------------
 try:
     from .pet_diffusion_analysis import (
         PETDiffusionAnalyzer,
@@ -36,85 +45,132 @@ try:
         compute_error_metrics,
         perform_statistical_tests,
     )
+
     _diffusion_available = True
 except ImportError as e:
     _diffusion_available = False
     import warnings
-    warnings.warn(f"Diffusion analysis module not available: {e}")
 
+    warnings.warn(f"Diffusion analysis module not available: {e}")
+    PETDiffusionAnalyzer = None  # type: ignore[assignment]
+    compute_pet_like_metrics = None  # type: ignore[assignment]
+    compare_realPET_samplePET = None  # type: ignore[assignment]
+    parse_trajectory = None  # type: ignore[assignment]
+    compute_error_metrics = None  # type: ignore[assignment]
+    perform_statistical_tests = None  # type: ignore[assignment]
+
+# -------------------------------------------------------------------------
 # Visualization sub-package
+# -------------------------------------------------------------------------
 try:
     from . import visualization
+
     _viz_available = True
 except ImportError as e:
     _viz_available = False
     import warnings
-    warnings.warn(f"Visualization module not available: {e}")
 
+    warnings.warn(f"Visualization module not available: {e}")
+    visualization = None  # type: ignore[assignment]
+
+# -------------------------------------------------------------------------
 # PET summary analysis
+# -------------------------------------------------------------------------
 try:
     from .pet_summary import PETEventAnalyzer
+
     _pet_summary_available = True
 except ImportError as e:
     _pet_summary_available = False
     import warnings
+
     warnings.warn(f"PET summary module not available: {e}")
+    PETEventAnalyzer = None  # type: ignore[assignment]
 
-# Define what gets exported with "from analysis import *"
-__all__ = [
-    # Sub-packages
-    "visualization",
+# -------------------------------------------------------------------------
+# Public API
+# -------------------------------------------------------------------------
 
-    # Diffusion analysis
-    "PETDiffusionAnalyzer",
-    "compute_pet_like_metrics",
-    "compare_realPET_samplePET",
-    "parse_trajectory",
-    "compute_error_metrics",
-    "perform_statistical_tests",
+__all__ = []
 
-    # PET summary
-    "PETEventAnalyzer",
-]
+# Sub-packages
+if _viz_available:
+    __all__.append("visualization")
+
+# Diffusion analysis
+if _diffusion_available:
+    __all__ += [
+        "PETDiffusionAnalyzer",
+        "compute_pet_like_metrics",
+        "compare_realPET_samplePET",
+        "parse_trajectory",
+        "compute_error_metrics",
+        "perform_statistical_tests",
+    ]
+
+# PET summary
+if _pet_summary_available:
+    __all__.append("PETEventAnalyzer")
+
+# Utility
+__all__.append("check_installation")
 
 # Module metadata
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 __author__ = "NNDS Team"
 
 
-def check_installation():
-    """Check which analysis modules are available."""
+def check_installation(use_logging: bool = True) -> Dict[str, bool]:
+    """
+    Check which analysis modules are available.
+
+    Parameters
+    ----------
+    use_logging : bool
+        If True, log status via logging; otherwise print to stdout.
+
+    Returns
+    -------
+    dict
+        Mapping from module name to availability flag.
+    """
     status = {
         "diffusion_analysis": _diffusion_available,
         "visualization": _viz_available,
         "pet_summary": _pet_summary_available,
     }
 
-    print("=" * 60)
-    print("ANALYSIS MODULE STATUS")
-    print("=" * 60)
+    header = "=" * 60
+    lines = [header, "ANALYSIS MODULE STATUS", header]
 
     for module, available in status.items():
         symbol = "✅" if available else "❌"
-        print(f"{symbol} {module:20s} : {'Available' if available else 'Not available'}")
+        lines.append(f"{symbol} {module:20s} : {'Available' if available else 'Not available'}")
 
-    print("=" * 60)
+    lines.append(header)
 
     if all(status.values()):
-        print("✅ All analysis modules loaded successfully!")
+        lines.append("✅ All analysis modules loaded successfully!")
     else:
-        print("⚠️  Some modules are missing. Install dependencies:")
+        lines.append("⚠️  Some modules are missing. Install dependencies:")
         if not _viz_available:
-            print("   pip install matplotlib seaborn plotly")
+            lines.append("   pip install matplotlib seaborn plotly")
         if not _diffusion_available:
-            print("   pip install torch scipy pandas")
+            lines.append("   pip install torch scipy pandas")
         if not _pet_summary_available:
-            print("   pip install pandas scipy numpy")
+            lines.append("   pip install pandas scipy numpy")
+
+    msg = "\n".join(lines)
+
+    if use_logging:
+        logger.info("\n%s", msg)
+    else:
+        print(msg)
 
     return status
 
 
-# Quick start examples
+# Quick start examples (kept as module-level documentation string)
 __doc_examples__ = """
 Quick Start Examples
 ====================
