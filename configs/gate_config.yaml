@@ -1,32 +1,48 @@
 # gate_config.yaml - Virtual gate definitions for volume counting
 
+meta:
+  coordinate_system: "image_pixels"
+  origin: "top_left"
+  direction: "x_right_y_down"
+  description: "Virtual gates for gate_counter.py tuned to traffic_video.mp4"
+
 gates:
-  - name: "West_Gate"
-    start: [210, 170]
-    end: [450, 150]
-    color: [255, 0, 0]
-    entry_side: "right"
+  - name: "West_Gate"              # Incoming traffic from west leg
+    type: "volume"                 # reserved for future logic (e.g., OD, class-based)
+    mode: "all"                    # all road users; can later be 'motorized', 'non_motorized'
+    start: [210, 170]              # (x1, y1) in image pixels
+    end:   [450, 150]              # (x2, y2) in image pixels
+    color: [255, 0, 0]             # RGB for overlay
+    entry_side: "right"            # crossing from right side of the segment is counted
 
   - name: "SouthWest_Gate"
+    type: "volume"
+    mode: "all"
     start: [205, 211]
-    end: [143, 375]
+    end:   [143, 375]
     color: [0, 255, 0]
     entry_side: "left"
 
   - name: "South_Gate"
+    type: "volume"
+    mode: "all"
     start: [125, 420]
-    end: [840, 710]
+    end:   [840, 710]
     color: [0, 0, 255]
     entry_side: "left"
 
   - name: "East_Gate"
+    type: "volume"
+    mode: "all"
     start: [1455, 255]
-    end: [925, 625]
+    end:   [925, 625]
     color: [255, 255, 0]
     entry_side: "right"
 
   - name: "North_Gate"
+    type: "volume"
+    mode: "all"
     start: [1460, 240]
-    end: [840, 190]
+    end:   [840, 190]
     color: [255, 0, 255]
     entry_side: "left"
