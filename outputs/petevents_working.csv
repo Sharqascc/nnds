@@ -1,0 +1,5 @@
+obj_i,obj_j,cell_id,t_exit_i,t_enter_j,pet,world_traj_i,world_traj_j,severity,event_id
+1,5,CELL_A_1,2.3,5.0,2.7,[],[],moderate,0
+1,5,CELL_B_1,4.8,7.5,2.7,[],[],moderate,1
+2,5,CELL_B_1,5.9,7.5,1.5999999999999996,[],[],moderate,2
+2,4,CELL_B_2,3.5,3.8,0.2999999999999998,[],[],critical,3
