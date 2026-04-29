@@ -388,3 +388,35 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# ============================================================
+# BEVMapper Class - Added for pipeline compatibility
+# ============================================================
+
+class BEVMapper:
+    """Bird's Eye View mapper for coordinate conversion."""
+    
+    def __init__(self, H_pixel_to_world, bev_bounds, bev_resolution):
+        import numpy as np
+        self.H = np.asarray(H_pixel_to_world, dtype=np.float32)
+        self.bev_x_min = float(bev_bounds["x_min"])
+        self.bev_x_max = float(bev_bounds["x_max"])
+        self.bev_y_min = float(bev_bounds["y_min"])
+        self.bev_y_max = float(bev_bounds["y_max"])
+        self.bev_w, self.bev_h = map(int, bev_resolution)
+        self.mpp_x = (self.bev_x_max - self.bev_x_min) / max(self.bev_w, 1)
+        self.mpp_y = (self.bev_y_max - self.bev_y_min) / max(self.bev_h, 1)
+    
+    def pixel_to_world(self, p):
+        import numpy as np
+        try:
+            x, y = p
+            v = np.array([x, y, 1.0], dtype=np.float32)
+            w = self.H @ v
+            if abs(w[2]) < 1e-6:
+                return None
+            w /= w[2]
+            return float(w[0]), float(w[1])
+        except Exception:
+            return None

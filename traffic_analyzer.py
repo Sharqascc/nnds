@@ -435,7 +435,6 @@ def run_video_to_pet(
         conf=0.25,
         pet_threshold=pet_threshold,
         max_frames=max_frames,
-        verbose=show_progress,
     )
     pet_events = result.get("pet_events", [])
 
@@ -588,3 +587,57 @@ __all__ = [
 
 if __name__ == "__main__":
     main()
+
+def run_video_to_pet_fixed(
+    video_path: str,
+    bev_config_path: str = "configs/bev_config.json",
+    grid_config_path: str = "configs/GITI_grid_config.json",
+    sam3_weights_path: str = "sam3.pt",
+    out_csv_path: str = "outputs/petevents_bev.csv",
+    pet_threshold: float = 2.0,
+    max_frames: int = None,
+) -> pd.DataFrame:
+    """Fixed version of run_video_to_pet with correct parameters."""
+    try:
+        from grid_trajectory.sam3_grid_pet import run_sam3_grid_pet
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "Missing dependency for video pipeline. Install required packages "
+            "for SAM3/Ultralytics before running video mode."
+        ) from exc
+
+    project_root = str(Path(".").resolve())
+    
+    # Call with correct parameters (no verbose!)
+    result = run_sam3_grid_pet(
+        project_root=project_root,
+        video_rel_path=str(Path(video_path)),
+        sam3_rel_path=str(Path(sam3_weights_path)),
+        grid_rel_path=str(Path(grid_config_path)),
+        bev_rel_path=str(Path(bev_config_path)),
+        output_name="sam3_grid_pet_run",
+        conf=0.25,
+        pet_threshold=pet_threshold,
+        max_frames=max_frames,
+        show_progress=True
+    )
+
+    pet_events = result.get("pet_events", [])
+    out_path = Path(out_csv_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    rows = []
+    for idx, e in enumerate(pet_events):
+        rows.append({
+            "event_id": idx,
+            "pet": e.get("pet"),
+            "frame": e.get("frame_idx"),
+            "track_a": e.get("track_a"),
+            "track_b": e.get("track_b"),
+            "conflict_type": e.get("conflict_type"),
+        })
+
+    df = pd.DataFrame(rows)
+    df.to_csv(out_path, index=False)
+    print(f"✅ Saved {len(df)} PET events to {out_path}")
+    return df
