@@ -420,3 +420,50 @@ class BEVMapper:
             return float(w[0]), float(w[1])
         except Exception:
             return None
+
+
+# ============================================================================
+# BEVMapper Class - Added for NNDS Pipeline Compatibility
+# ============================================================================
+
+class BEVMapper:
+    """Bird's Eye View mapper for converting between pixel, world, and BEV coordinates."""
+    
+    def __init__(self, H_pixel_to_world, bev_bounds, bev_resolution):
+        import numpy as np
+        self.H = np.asarray(H_pixel_to_world, dtype=np.float32)
+        self.bev_x_min = float(bev_bounds["x_min"])
+        self.bev_x_max = float(bev_bounds["x_max"])
+        self.bev_y_min = float(bev_bounds["y_min"])
+        self.bev_y_max = float(bev_bounds["y_max"])
+        self.bev_w, self.bev_h = map(int, bev_resolution)
+        self.mpp_x = (self.bev_x_max - self.bev_x_min) / max(self.bev_w, 1)
+        self.mpp_y = (self.bev_y_max - self.bev_y_min) / max(self.bev_h, 1)
+    
+    def pixel_to_world(self, p):
+        import numpy as np
+        try:
+            x, y = p
+            v = np.array([x, y, 1.0], dtype=np.float32)
+            w = self.H @ v
+            if abs(w[2]) < 1e-6:
+                return None
+            w /= w[2]
+            return float(w[0]), float(w[1])
+        except Exception:
+            return None
+    
+    def world_to_bev(self, world_xy):
+        try:
+            X, Y = world_xy
+            u = int((X - self.bev_x_min) / self.mpp_x)
+            v = int((Y - self.bev_y_min) / self.mpp_y)
+            return u, v
+        except Exception:
+            return None
+    
+    def pixel_to_bev(self, p):
+        world = self.pixel_to_world(p)
+        if world is None:
+            return None
+        return self.world_to_bev(world)
