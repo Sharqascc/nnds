@@ -1,11 +1,13 @@
-# NNDS Core Dependencies - Flexible versions for compatibility
-numpy>=1.24.0
-pandas>=2.0.0
-scipy>=1.10.0
-opencv-python>=4.8.0
-matplotlib>=3.7.0
-tqdm>=4.66.0
-PyYAML>=6.0
-torch>=2.0.0
-torchvision>=0.15.0
-ultralytics>=8.3.0
+# NNDS Core Dependencies - No version pins, let pip resolve
+# This ensures maximum compatibility with your environment
+
+numpy
+pandas
+scipy
+opencv-python
+matplotlib
+tqdm
+PyYAML
+torch
+torchvision
+ultralytics
