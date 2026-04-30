@@ -503,17 +503,17 @@ def run_video_to_pet(
             {
                 "event_id": idx,
                 # PET in seconds from sam3_grid_pet
-                "pet": e.get("PET", np.inf),
+                "pet": (e.get("PET", e.get("pet", float("inf"))) if isinstance(e, dict) else getattr(e, "PET", getattr(e, "pet", float("inf")))),
                 # frame index not currently provided; keep as None for now
                 "frame": None,
                 # track IDs from SAM3/grid pipeline
-                "track_a": e.get("obj_i", -1),
-                "track_b": e.get("obj_j", -1),
+                "track_a": (e.get("obj_i", -1) if isinstance(e, dict) else getattr(e, "obj_i", -1)),
+                "track_b": (e.get("obj_j", -1) if isinstance(e, dict) else getattr(e, "obj_j", -1)),
                 # grid cell ID as conflict label
-                "conflict_type": e.get("cell_id", "UNKNOWN"),
+                "conflict_type": (e.get("cell_id", "UNKNOWN") if isinstance(e, dict) else getattr(e, "cell_id", "UNKNOWN")),
                 # BEV world trajectories (t, x, y)
-                "world_traj_i": e.get("world_traj_i"),
-                "world_traj_j": e.get("world_traj_j"),
+                "world_traj_i": (e.get("world_traj_i") if isinstance(e, dict) else getattr(e, "world_traj_i", None)),
+                "world_traj_j": (e.get("world_traj_j") if isinstance(e, dict) else getattr(e, "world_traj_j", None)),
             }
         )
 
