@@ -97,7 +97,7 @@ def run_sam3_grid_pet(
     grid_rel_path: str = "configs/GITI_grid_config.json",
     bev_rel_path: str = "configs/bev_config.json",
     output_name: str = "sam3_grid_pet_run",
-    conf: float = 0.25,
+    conf: float = 0.1,
     pet_threshold: float = 2.0,
     max_frames: Optional[int] = None,
     debug_video_rel_path: Optional[str] = None,
