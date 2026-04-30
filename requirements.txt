@@ -1,49 +1,11 @@
-# ============================================================================
-# CORRECTED requirements.txt - Flexible Versions
-# ============================================================================
-
-import os
-
-os.chdir('/content/nnds')
-
-corrected_requirements = '''# ============================================================
-# NNDS Core Dependencies
-# Python 3.10+ required
-# ============================================================
-
-# Scientific computing (minimum versions)
+# NNDS Core Dependencies - Flexible versions for compatibility
 numpy>=1.24.0
 pandas>=2.0.0
 scipy>=1.10.0
-
-# Computer vision and plotting
 opencv-python>=4.8.0
 matplotlib>=3.7.0
-
-# Progress bar
 tqdm>=4.66.0
-
-# Configuration file parsing
 PyYAML>=6.0
-
-# Deep learning stack (let pip/conda resolve compatible versions)
 torch>=2.0.0
 torchvision>=0.15.0
-
-# Detection / segmentation models (latest for SAM3 support)
 ultralytics>=8.3.0
-'''
-
-# Backup old requirements
-if os.path.exists('requirements.txt'):
-    os.rename('requirements.txt', 'requirements_old.txt')
-    print("✅ Backed up old requirements.txt → requirements_old.txt")
-
-# Write new requirements
-with open('requirements.txt', 'w') as f:
-    f.write(corrected_requirements)
-
-print("✅ Created new requirements.txt with flexible versions")
-print("\n📋 New requirements.txt contents:")
-print("-" * 50)
-print(corrected_requirements)

@@ -436,7 +436,7 @@ def run_video_to_pet(
         pet_threshold=pet_threshold,
         max_frames=max_frames,
     )
-    pet_events = result.get("pet_events", [])
+    pet_events = result.pet_events if hasattr(result, "pet_events") else []
 
     out_csv_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -622,7 +622,7 @@ def run_video_to_pet_fixed(
         show_progress=True
     )
 
-    pet_events = result.get("pet_events", [])
+    pet_events = result.pet_events if hasattr(result, "pet_events") else []
     out_path = Path(out_csv_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
