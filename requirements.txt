@@ -1,27 +1,49 @@
-# ============================================================
+# ============================================================================
+# CORRECTED requirements.txt - Flexible Versions
+# ============================================================================
+
+import os
+
+os.chdir('/content/nnds')
+
+corrected_requirements = '''# ============================================================
 # NNDS Core Dependencies
 # Python 3.10+ required
 # ============================================================
 
-# Scientific computing
-numpy==1.26.4
-pandas==2.2.2
-scipy==1.13.1
+# Scientific computing (minimum versions)
+numpy>=1.24.0
+pandas>=2.0.0
+scipy>=1.10.0
 
 # Computer vision and plotting
-opencv-python==4.9.0.80
-matplotlib==3.8.4
+opencv-python>=4.8.0
+matplotlib>=3.7.0
 
 # Progress bar
-tqdm==4.66.4
+tqdm>=4.66.0
 
-# Configuration file parsing (used by gate_counter, configs)
-PyYAML==6.0.1
+# Configuration file parsing
+PyYAML>=6.0
 
-# Deep learning stack (PyTorch + vision)
-# NOTE: For GPUs, you may override these with the matching CUDA wheels if needed.
-torch==2.2.2
-torchvision==0.17.2
+# Deep learning stack (let pip/conda resolve compatible versions)
+torch>=2.0.0
+torchvision>=0.15.0
 
-# Detection / segmentation models
-ultralytics==8.2.14
+# Detection / segmentation models (latest for SAM3 support)
+ultralytics>=8.3.0
+'''
+
+# Backup old requirements
+if os.path.exists('requirements.txt'):
+    os.rename('requirements.txt', 'requirements_old.txt')
+    print("✅ Backed up old requirements.txt → requirements_old.txt")
+
+# Write new requirements
+with open('requirements.txt', 'w') as f:
+    f.write(corrected_requirements)
+
+print("✅ Created new requirements.txt with flexible versions")
+print("\n📋 New requirements.txt contents:")
+print("-" * 50)
+print(corrected_requirements)
