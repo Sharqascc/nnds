@@ -664,3 +664,67 @@ def save_conflict_frame(
 
     plotter.save_frame(output, out_path)
     return out_path
+
+def overlay_full_visualization(frame, frame_num, grid, detections=None, 
+                                conflict_cell=None, pet_value=None, 
+                                vehicle_ids=None, show_grid=True):
+    """
+    Enhanced frame overlay with grid, detections, and IDs.
+    """
+    # Ensure frame is writable
+    frame = frame.copy()
+    
+    # 1. Add GRID overlay
+    if show_grid and grid is not None:
+        frame = grid.draw_overlay(frame, alpha=0.3)
+    
+    # 2. Add SAM3 DETECTIONS
+    if detections is not None:
+        for det in detections:
+            x1, y1, x2, y2 = map(int, det['bbox'])
+            conf = det.get('confidence', 0.5)
+            track_id = det.get('track_id', '?')
+            
+            # Color based on confidence
+            color = (0, int(255 * conf), 0) if conf > 0.5 else (0, 255, 255)
+            
+            # Draw bounding box
+            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+            
+            # Draw ID label
+            label = f"ID:{track_id}"
+            cv2.putText(frame, label, (x1, y1-5),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+    
+    # 3. Highlight CONFLICT CELL
+    if conflict_cell and grid is not None:
+        cell_center = grid.get_cell_center(conflict_cell)
+        if cell_center:
+            cx, cy = cell_center
+            # Draw red circle around conflict zone
+            cv2.circle(frame, (int(cx), int(cy)), 80, (0, 0, 255), 3)
+            cv2.putText(frame, f"CONFLICT: {conflict_cell}", 
+                       (int(cx)-80, int(cy)-90), cv2.FONT_HERSHEY_SIMPLEX, 
+                       0.6, (0, 0, 255), 2)
+    
+    # 4. Add PET INFO PANEL
+    if pet_value is not None:
+        panel_height = 120
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (10, 10), (450, panel_height), (0, 0, 0), -1)
+        frame = cv2.addWeighted(overlay, 0.6, frame, 0.4, 0)
+        
+        info_lines = [
+            f"PET = {pet_value:.3f}s",
+            f"Conflict Cell: {conflict_cell}",
+            f"Vehicles: {vehicle_ids[0]} & {vehicle_ids[1]}" if vehicle_ids else "Vehicles: ? & ?",
+            f"Frame: {frame_num}"
+        ]
+        
+        for i, line in enumerate(info_lines):
+            y_pos = 40 + i * 25
+            color = (0, 0, 255) if "PET" in line and pet_value < 1.5 else (255, 255, 255)
+            cv2.putText(frame, line, (20, y_pos),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+    
+    return frame
