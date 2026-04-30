@@ -394,15 +394,19 @@ def run_video_to_pet(
     pet_threshold: float = 2.0,
     max_frames: int | None = None,
     show_progress: bool = True,
+    detector: str = "sam3",
+    rtdetr_weights_path: Path | str = "rtdetr-l.pt",
 ) -> pd.DataFrame:
-    """Video → SAM3 detections → grid → BEV → PET events CSV.
-    Returns the DataFrame of PET events for convenience.
+    """Video → detections → grid → BEV → PET events CSV (SAM3 or RT-DETR).
+
+    NOTE: RT-DETR path is currently a placeholder and must be implemented.
     """
 
     video_path = Path(video_path)
     bev_config_path = Path(bev_config_path)
     grid_config_path = Path(grid_config_path)
     sam3_weights_path = Path(sam3_weights_path)
+    rtdetr_weights_path = Path(rtdetr_weights_path)
     out_csv_path = Path(out_csv_path)
 
     # Validate inputs early with clear messages
@@ -410,33 +414,67 @@ def run_video_to_pet(
         (video_path, "Video"),
         (bev_config_path, "BEV config"),
         (grid_config_path, "Grid config"),
-        (sam3_weights_path, "SAM3 weights"),
     ]:
         if not path.exists():
             raise FileNotFoundError(f"{name} not found: {path}")
 
-    try:
-        from grid_trajectory.sam3_grid_pet import run_sam3_grid_pet
-    except ModuleNotFoundError as exc:
-        raise ModuleNotFoundError(
-            "Missing dependency for video pipeline. Install required packages "
-            "for SAM3/Ultralytics before running video mode "
-            "(e.g., `pip install ultralytics supervision`)."
-        ) from exc
+    if detector == "sam3":
+        # SAM3 path: validate SAM3 weights and run existing pipeline
+        if not sam3_weights_path.exists():
+            raise FileNotFoundError(f"SAM3 weights not found: {sam3_weights_path}")
 
-    project_root = str(Path(".").resolve())
-    result = run_sam3_grid_pet(
-        project_root=project_root,
-        video_rel_path=str(video_path),
-        sam3_rel_path=str(sam3_weights_path),
-        grid_rel_path=str(grid_config_path),
-        bev_rel_path=str(bev_config_path),
-        output_name="sam3_grid_pet_run",
-        conf=0.25,
-        pet_threshold=pet_threshold,
-        max_frames=max_frames,
-    )
-    pet_events = result.pet_events if hasattr(result, "pet_events") else []
+        try:
+            from grid_trajectory.sam3_grid_pet import run_sam3_grid_pet
+        except ModuleNotFoundError as exc:
+            raise ModuleNotFoundError(
+                "Missing dependency for video pipeline. Install required packages "
+                "for SAM3/Ultralytics before running video mode "
+                "(e.g., `pip install ultralytics supervision`)."
+            ) from exc
+
+        project_root = str(Path(".").resolve())
+        result = run_sam3_grid_pet(
+            project_root=project_root,
+            video_rel_path=str(video_path),
+            sam3_rel_path=str(sam3_weights_path),
+            grid_rel_path=str(grid_config_path),
+            bev_rel_path=str(bev_config_path),
+            output_name="sam3_grid_pet_run",
+            conf=0.25,
+            pet_threshold=pet_threshold,
+            max_frames=max_frames,
+            show_progress=show_progress,
+        )
+        pet_events = result.pet_events if hasattr(result, "pet_events") else []
+
+    else:
+        # RT-DETR path: validate RT-DETR weights and run RT-DETR pipeline
+        if not rtdetr_weights_path.exists():
+            raise FileNotFoundError(f"RT-DETR weights not found: {rtdetr_weights_path}")
+
+        try:
+            from grid_trajectory.rtdetr_grid_pet import run_rtdetr_grid_pet
+        except ModuleNotFoundError as exc:
+            raise ModuleNotFoundError(
+                "Missing dependency for RT-DETR pipeline. "
+                "Implement grid_trajectory.rtdetr_grid_pet.run_rtdetr_grid_pet "
+                "or ensure it is importable."
+            ) from exc
+
+        project_root = str(Path(".").resolve())
+        result = run_rtdetr_grid_pet(
+            project_root=project_root,
+            video_rel_path=str(video_path),
+            rtdetr_rel_path=str(rtdetr_weights_path),
+            grid_rel_path=str(grid_config_path),
+            bev_rel_path=str(bev_config_path),
+            output_name="rtdetr_grid_pet_run",
+            conf=0.25,
+            pet_threshold=pet_threshold,
+            max_frames=max_frames,
+            show_progress=show_progress,
+        )
+        pet_events = result.pet_events if hasattr(result, "pet_events") else []
 
     out_csv_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -497,6 +535,7 @@ def run_video_to_pet(
     return df
 
 
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Video → SAM3 + grid → BEV → PET events pipeline"
@@ -516,6 +555,19 @@ def parse_args() -> argparse.Namespace:
         "--sam3-weights",
         default="sam3.pt",
         help="SAM3 weights checkpoint path",
+    )
+    parser.add_argument(
+        "--detector",
+        type=str,
+        default="sam3",
+        choices=["sam3", "rtdetr"],
+        help="Detection backend: 'sam3' (default) or 'rtdetr' (experimental)",
+    )
+    parser.add_argument(
+        "--rtdetr-weights",
+        type=str,
+        default="rtdetr-l.pt",
+        help="RT-DETR weights path (used when --detector rtdetr)",
     )
     parser.add_argument(
         "--out-csv",
