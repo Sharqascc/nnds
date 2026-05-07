@@ -1,14 +1,77 @@
+# Python
 __pycache__/
-*.pyc
-patch.diff
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# Ignore heavy model + raw videos
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Jupyter/IPython
+.ipynb_checkpoints/
+*.ipynb
+
+# Model weights & large files
+*.pt
+*.pth
+*.ckpt
 sam3.pt
+
+# Raw videos (keep reference only)
 videos/
+!videos/README.md
 
-# Ignore everything in outputs by default…
+# Build artifacts & outputs
 outputs/*
-
-# …but keep CSVs (and optionally a README) tracked
 !outputs/*.csv
 !outputs/README.md
+
+# Temporary/patch files
+patch.diff
+*.tmp
+*.log
+
+# Large datasets
+data/*.npy
+data/*.npz
+!data/README.md
+
+# OS
+.DS_Store
+Thumbs.db
