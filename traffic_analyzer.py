@@ -540,7 +540,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Video → SAM3 + grid → BEV → PET events pipeline (README_TEST_MARKER)"
     )
-    parser.add_argument("--video", default=None, help="Input video path")
+    parser.add_argument("--video", default=None, help="Input video path (Jawad_readme_test)")
     parser.add_argument(
         "--bev-config",
         default="configs/bev_config.json",
