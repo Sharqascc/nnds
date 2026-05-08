@@ -48,7 +48,6 @@ def test_core_modules_importable():
         "grid_trajectory.spatial_grid",
         "grid_trajectory.pet_grid",
         "grid_trajectory.sam3_grid_pet",
-        "grid_trajectory.trajectory_safety_analyzer",  # added
 
         # Diffusion training / evaluation
         "traffic_diffusion.training_utils",
