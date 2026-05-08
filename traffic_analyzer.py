@@ -613,16 +613,19 @@ def main() -> None:
     if not args.video:
         raise SystemExit("error: --video is required unless --demo is used")
 
-    run_video_to_pet(
-        video_path=args.video,
-        bev_config_path=args.bev_config,
-        grid_config_path=args.grid_config,
-        sam3_weights_path=args.sam3_weights,
-        out_csv_path=args.out_csv,
-        pet_threshold=args.pet_threshold,
-        max_frames=args.max_frames,
-        show_progress=not args.no_progress,
-    )
+    try:
+        run_video_to_pet(
+            video_path=args.video,
+            bev_config_path=args.bev_config,
+            grid_config_path=args.grid_config,
+            sam3_weights_path=args.sam3_weights,
+            out_csv_path=args.out_csv,
+            pet_threshold=args.pet_threshold,
+            max_frames=args.max_frames,
+            show_progress=not args.no_progress,
+        )
+    except FileNotFoundError as exc:
+        raise SystemExit(str(exc)) from exc
 
 
 __all__ = [
