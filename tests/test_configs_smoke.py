@@ -86,30 +86,35 @@ def test_bev_config_has_required_fields_and_bounds():
     cfg = _load_json(bev_cfg_path)
     assert isinstance(cfg, dict), "bev_config.json must be a JSON object"
 
-    # Match actual keys: x_min, x_max, y_min, y_max, resolution
-    for key in ["x_min", "x_max", "y_min", "y_max", "resolution"]:
-        assert key in cfg, f"bev_config.json missing required key: '{key}'"
+    # New schema: bev_bounds + bev_resolution
+    bev_bounds = cfg.get("bev_bounds")
+    assert isinstance(bev_bounds, dict), "bev_config.json must have 'bev_bounds' object"
 
-    xmin = float(cfg["x_min"])
-    xmax = float(cfg["x_max"])
-    ymin = float(cfg["y_min"])
-    ymax = float(cfg["y_max"])
-    resolution = cfg["resolution"]
+    for key in ["x_min", "x_max", "y_min", "y_max"]:
+        assert key in bev_bounds, f"bev_bounds missing required key: '{key}'"
+
+    xmin = float(bev_bounds["x_min"])
+    xmax = float(bev_bounds["x_max"])
+    ymin = float(bev_bounds["y_min"])
+    ymax = float(bev_bounds["y_max"])
+
+    resolution = cfg.get("bev_resolution")
+    assert resolution is not None, "bev_config.json must define 'bev_resolution'"
 
     # Basic bounds sanity
     assert xmax > xmin, f"BEV x_max must be > x_min, got x_min={xmin}, x_max={xmax}"
     assert ymax > ymin, f"BEV y_max must be > y_min, got y_min={ymin}, y_max={ymax}"
 
-    # Resolution should be positive and reasonable (scalar or [w, h])
+    # Resolution should be positive and reasonable [w, h]
     if isinstance(resolution, (int, float)):
         assert resolution > 0, f"BEV resolution must be positive, got {resolution}"
     elif isinstance(resolution, (list, tuple)):
-        assert len(resolution) == 2, f"BEV resolution list must be length 2, got {len(resolution)}"
+        assert len(resolution) == 2, f"bev_resolution must be [width, height], got {len(resolution)}"
         assert all(
             isinstance(v, (int, float)) and v > 0 for v in resolution
-        ), f"BEV resolution entries must be positive numbers, got {resolution}"
+        ), f"bev_resolution entries must be positive numbers, got {resolution}"
     else:
-        raise AssertionError(f"Unexpected type for BEV resolution: {type(resolution).__name__}")
+        raise AssertionError(f"Unexpected type for bev_resolution: {type(resolution).__name__}")
 
     # CRITICAL: Check that BEV bounds span a reasonable intersection area
     x_span = xmax - xmin
