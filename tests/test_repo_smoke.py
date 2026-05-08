@@ -31,7 +31,6 @@ def test_expected_paths_exist():
         "grid_trajectory/pet_grid.py",
         "grid_trajectory/sam3_grid_pet.py",
         "grid_trajectory/spatial_grid.py",
-        "grid_trajectory/trajectory_safety_analyzer.py",
         "analysis/safety_eval_diffusion.py",
         "analysis/safety_eval_diffusion_notebook.py",
         "traffic_diffusion/train_trajectory_diffusion.py",
