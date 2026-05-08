@@ -416,6 +416,8 @@ def run_video_to_pet(
         (grid_config_path, "Grid config"),
     ]:
         if not path.exists():
+            if name == "Video":
+                raise FileNotFoundError(f"Video file not found: {path}")
             raise FileNotFoundError(f"{name} not found: {path}")
 
     if detector == "sam3":
