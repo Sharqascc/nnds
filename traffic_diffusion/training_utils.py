@@ -12,7 +12,6 @@ Provides:
 - Integration with nnds.core.types (optional)
 """
 
-from __future__ import annotations
 
 import warnings
 from pathlib import Path
