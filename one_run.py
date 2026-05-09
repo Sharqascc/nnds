@@ -51,20 +51,38 @@ def run(cmd, cwd=None, check=True):
 
 
 def ensure_repo():
-    """Ensure we're in /content/nnds with the repo cloned and on BRANCH."""
-    os.chdir("/content")
-    repo_dir = Path("nnds")
-    if not repo_dir.exists():
-        if GITHUB_TOKEN:
-            repo_url = f"https://{GITHUB_TOKEN}:x-oauth-basic@github.com/{REPO_OWNER}/{REPO_NAME}.git"
-        else:
-            repo_url = f"https://github.com/{REPO_OWNER}/{REPO_NAME}.git"
-        print(f"[INFO] Cloning {repo_url} ...")
-        run(["git", "clone", repo_url, "nnds"])
-    os.chdir(repo_dir)
-    run(["git", "checkout", BRANCH])
-    print("[INFO] Repo at:", os.getcwd())
-    run(["git", "status"])
+    """Ensure we're in an NNDS repo; clone only in Colab when needed."""
+    cwd = Path.cwd()
+
+    # Case 1: already inside a repo checkout
+    if (cwd / "traffic_analyzer.py").exists() and (cwd / "pyproject.toml").exists():
+        print("[INFO] Already in NNDS repository:", cwd)
+        return
+
+    # Case 2: Colab root, clone into /content/nnds
+    if is_colab():
+        os.chdir("/content")
+        repo_dir = Path("nnds")
+        if not repo_dir.exists():
+            if GITHUB_TOKEN:
+                repo_url = f"https://{GITHUB_TOKEN}:x-oauth-basic@github.com/{REPO_OWNER}/{REPO_NAME}.git"
+            else:
+                repo_url = f"https://github.com/{REPO_OWNER}/{REPO_NAME}.git"
+            print(f"[INFO] Cloning {repo_url} ...")
+            run(["git", "clone", repo_url, "nnds"])
+        os.chdir(repo_dir)
+        run(["git", "checkout", BRANCH])
+        print("[INFO] Repo at:", os.getcwd())
+        run(["git", "status"])
+        return
+
+    # Case 3: local, not in repo and not Colab
+    raise RuntimeError(
+        "Not in NNDS repo and not in Colab. "
+        "Please clone the repo first.\n"
+        "  git clone https://github.com/{REPO_OWNER}/{REPO_NAME}.git\n"
+        "then run one_run.py from inside that directory."
+    )
 
 
 def ensure_deps_and_data():
