@@ -501,21 +501,33 @@ def run_video_to_pet(
 
     rows: list[dict[str, Any]] = []
     for idx, e in enumerate(pet_events):
+        if isinstance(e, dict):
+            pet_val = e.get("PET", e.get("pet", float("inf")))
+            frame = e.get("frame_idx", e.get("frame", None))
+            track_a = e.get("obj_i", e.get("track_a", -1))
+            track_b = e.get("obj_j", e.get("track_b", -1))
+            conflict_type = e.get("cell_id", e.get("conflict_type", "UNKNOWN"))
+            world_traj_i = e.get("world_traj_i")
+            world_traj_j = e.get("world_traj_j")
+        else:
+            pet_val = getattr(e, "PET", getattr(e, "pet", float("inf")))
+            frame = getattr(e, "frame_idx", getattr(e, "frame", None))
+            track_a = getattr(e, "obj_i", getattr(e, "track_a", -1))
+            track_b = getattr(e, "obj_j", getattr(e, "track_b", -1))
+            conflict_type = getattr(e, "cell_id", getattr(e, "conflict_type", "UNKNOWN"))
+            world_traj_i = getattr(e, "world_traj_i", None)
+            world_traj_j = getattr(e, "world_traj_j", None)
+
         rows.append(
             {
                 "event_id": idx,
-                # PET in seconds from sam3_grid_pet
-                "pet": (e.get("PET", e.get("pet", float("inf"))) if isinstance(e, dict) else getattr(e, "PET", getattr(e, "pet", float("inf")))),
-                # frame index not currently provided; keep as None for now
-                "frame": None,
-                # track IDs from SAM3/grid pipeline
-                "track_a": (e.get("obj_i", -1) if isinstance(e, dict) else getattr(e, "obj_i", -1)),
-                "track_b": (e.get("obj_j", -1) if isinstance(e, dict) else getattr(e, "obj_j", -1)),
-                # grid cell ID as conflict label
-                "conflict_type": (e.get("cell_id", "UNKNOWN") if isinstance(e, dict) else getattr(e, "cell_id", "UNKNOWN")),
-                # BEV world trajectories (t, x, y)
-                "world_traj_i": (e.get("world_traj_i") if isinstance(e, dict) else getattr(e, "world_traj_i", None)),
-                "world_traj_j": (e.get("world_traj_j") if isinstance(e, dict) else getattr(e, "world_traj_j", None)),
+                "pet": pet_val,
+                "frame": frame,
+                "track_a": track_a,
+                "track_b": track_b,
+                "conflict_type": conflict_type,
+                "world_traj_i": world_traj_i,
+                "world_traj_j": world_traj_j,
             }
         )
 
@@ -600,7 +612,6 @@ def parse_args() -> argparse.Namespace:
     )
     return parser.parse_args()
 
-
 def main() -> None:
     args = parse_args()
 
@@ -644,57 +655,3 @@ __all__ = [
 
 if __name__ == "__main__":
     main()
-
-def run_video_to_pet_fixed(
-    video_path: str,
-    bev_config_path: str = "configs/bev_config.json",
-    grid_config_path: str = "configs/GITI_grid_config.json",
-    sam3_weights_path: str = "sam3.pt",
-    out_csv_path: str = "outputs/petevents_bev.csv",
-    pet_threshold: float = 2.0,
-    max_frames: int = None,
-) -> pd.DataFrame:
-    """Fixed version of run_video_to_pet with correct parameters."""
-    try:
-        from grid_trajectory.sam3_grid_pet import run_sam3_grid_pet
-    except ModuleNotFoundError as exc:
-        raise ModuleNotFoundError(
-            "Missing dependency for video pipeline. Install required packages "
-            "for SAM3/Ultralytics before running video mode."
-        ) from exc
-
-    project_root = str(Path(".").resolve())
-    
-    # Call with correct parameters (no verbose!)
-    result = run_sam3_grid_pet(
-        project_root=project_root,
-        video_rel_path=str(Path(video_path)),
-        sam3_rel_path=str(Path(sam3_weights_path)),
-        grid_rel_path=str(Path(grid_config_path)),
-        bev_rel_path=str(Path(bev_config_path)),
-        output_name="sam3_grid_pet_run",
-        conf=0.25,
-        pet_threshold=pet_threshold,
-        max_frames=max_frames,
-        show_progress=True
-    )
-
-    pet_events = result.pet_events if hasattr(result, "pet_events") else []
-    out_path = Path(out_csv_path)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-
-    rows = []
-    for idx, e in enumerate(pet_events):
-        rows.append({
-            "event_id": idx,
-            "pet": e.get("pet"),
-            "frame": e.get("frame_idx"),
-            "track_a": e.get("track_a"),
-            "track_b": e.get("track_b"),
-            "conflict_type": e.get("conflict_type"),
-        })
-
-    df = pd.DataFrame(rows)
-    df.to_csv(out_path, index=False)
-    print(f"✅ Saved {len(df)} PET events to {out_path}")
-    return df
