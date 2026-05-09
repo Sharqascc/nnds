@@ -12,8 +12,8 @@ import numpy as np
 import pandas as pd
 from diskcache import Cache
 
-from analysis.vlm_schema import VLMSafetyAnalysis, VLMBackend
-from analysis.vlm_backend_stub import EchoStubBackend  # swap to real backend later
+from vlm_schema import VLMSafetyAnalysis, VLMBackend
+from vlm_backend_stub import EchoStubBackend  # swap to real backend later
 
 
 @dataclass
