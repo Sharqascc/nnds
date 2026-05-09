@@ -2,6 +2,7 @@ from pathlib import Path
 import importlib
 import importlib.util
 import warnings
+import sys
 
 import numpy as np
 import pandas as pd
@@ -26,6 +27,7 @@ def _import_from_path(rel_path: str, module_name: str = None):
     assert spec is not None, f"Could not create spec for {rel_path}"
     assert spec.loader is not None, f"No loader for {rel_path}"
     module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
     spec.loader.exec_module(module)
     return module
 
