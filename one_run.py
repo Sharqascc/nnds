@@ -84,7 +84,6 @@ def ensure_repo():
         "then run one_run.py from inside that directory."
     )
 
-
 def ensure_deps_and_data():
     """Install requirements and ensure demo video + SAM3 exist."""
     print("\n[INFO] Installing Python dependencies from requirements.txt ...")
