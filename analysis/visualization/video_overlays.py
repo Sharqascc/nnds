@@ -503,6 +503,128 @@ class VideoOverlayPlotter:
         else:
             cv2.imwrite(save_path, frame, [cv2.IMWRITE_JPEG_QUALITY, 95])
 
+    def compose_inset(
+        self,
+        frame: np.ndarray,
+        inset: np.ndarray,
+        position: str = "bottom-right",
+        scale: float = 0.25,
+        border: int = 4,
+        border_color: Tuple[int, int, int] = (255, 255, 255)
+    ) -> np.ndarray:
+        """
+        Compose an inset image (e.g., BEV view) onto the main frame.
+
+        Args:
+            frame: Main BGR frame.
+            inset: BGR inset image (e.g., top-down BEV plot).
+            position: 'top-left', 'top-right', 'bottom-left', 'bottom-right'.
+            scale: Width of inset as fraction of main frame width.
+            border: Border thickness in pixels.
+            border_color: Border color (BGR).
+
+        Returns:
+            Frame with inset composed.
+        """
+        output = frame.copy()
+        h, w = output.shape[:2]
+
+        # Resize inset to target width
+        target_w = max(int(w * scale), 1)
+        aspect = inset.shape[0] / max(inset.shape[1], 1)
+        target_h = max(int(target_w * aspect), 1)
+
+        inset_resized = cv2.resize(inset, (target_w, target_h), interpolation=cv2.INTER_AREA)
+
+        # Position top-left corner
+        if position == "top-left":
+            x0, y0 = border, border
+        elif position == "top-right":
+            x0, y0 = w - target_w - border, border
+        elif position == "bottom-left":
+            x0, y0 = border, h - target_h - border
+        else:  # bottom-right
+            x0, y0 = w - target_w - border, h - target_h - border
+
+        # Draw border
+        cv2.rectangle(
+            output,
+            (x0 - border, y0 - border),
+            (x0 + target_w + border, y0 + target_h + border),
+            border_color,
+            thickness=border
+        )
+
+        # Paste inset
+        roi = output[y0:y0 + target_h, x0:x0 + target_w]
+        if roi.shape[:2] == inset_resized.shape[:2]:
+            output[y0:y0 + target_h, x0:x0 + target_w] = inset_resized
+
+        return output
+
+
+    def compose_inset(
+        self,
+        frame: np.ndarray,
+        inset: np.ndarray,
+        position: str = "bottom-right",
+        scale: float = 0.25,
+        border: int = 4,
+        border_color: Tuple[int, int, int] = (255, 255, 255)
+    ) -> np.ndarray:
+        """
+        Compose an inset image (e.g., BEV view) onto the main frame.
+
+        Args:
+            frame: Main BGR frame.
+            inset: BGR inset image (e.g., top-down BEV plot).
+            position: 'top-left', 'top-right', 'bottom-left', 'bottom-right'.
+            scale: Width of inset as fraction of main frame width.
+            border: Border thickness in pixels.
+            border_color: Border color (BGR).
+
+        Returns:
+            Frame with inset composed.
+        """
+        output = frame.copy()
+        h, w = output.shape[:2]
+
+        # Resize inset to target width
+        target_w = max(int(w * scale), 1)
+        aspect = inset.shape[0] / max(inset.shape[1], 1)
+        target_h = max(int(target_w * aspect), 1)
+
+        inset_resized = cv2.resize(inset, (target_w, target_h), interpolation=cv2.INTER_AREA)
+
+        # Position top-left corner
+        if position == "top-left":
+            x0, y0 = border, border
+        elif position == "top-right":
+            x0, y0 = w - target_w - border, border
+        elif position == "bottom-left":
+            x0, y0 = border, h - target_h - border
+        else:  # bottom-right
+            x0, y0 = w - target_w - border, h - target_h - border
+
+        # Draw border
+        cv2.rectangle(
+            output,
+            (x0 - border, y0 - border),
+            (x0 + target_w + border, y0 + target_h + border),
+            border_color,
+            thickness=border
+        )
+
+        # Paste inset
+        roi = output[y0:y0 + target_h, x0:x0 + target_w]
+        if roi.shape[:2] == inset_resized.shape[:2]:
+            output[y0:y0 + target_h, x0:x0 + target_w] = inset_resized
+
+        return output
+
+
+
+
     def generate_conflict_video(
         self,
         video_path: str,
@@ -511,7 +633,10 @@ class VideoOverlayPlotter:
         track_ids: Optional[List[int]] = None,
         pet_value: Optional[float] = None,
         output_path: str = 'output/conflict_video.mp4',
-        fps: int = 30
+        fps: int = 30,
+        inset_callback: Optional[callable] = None,
+        inset_position: str = "bottom-right",
+        inset_scale: float = 0.25
     ):
         """
         Generate video of conflict event with overlays.
@@ -524,6 +649,9 @@ class VideoOverlayPlotter:
             pet_value: PET value for annotation
             output_path: Output video path
             fps: Output video FPS
+            inset_callback: Optional function frame_idx -> inset BGR image (e.g., BEV).
+            inset_position: Position of inset ('top-left', 'top-right', 'bottom-left', 'bottom-right').
+            inset_scale: Inset width as fraction of frame width.
         """
         os.makedirs(os.path.dirname(output_path) or '.', exist_ok=True)
 
@@ -543,16 +671,31 @@ class VideoOverlayPlotter:
             if not ret:
                 break
 
-            # Process frame
+            # Base overlay: trajectories (image-plane)
             processed = self.overlay_trajectories(frame, trajectories, track_ids)
 
+            # PET / stats
             if pet_value is not None:
                 processed = self.overlay_conflict_info(
                     processed,
                     pet_value,
                     frame_number=frame_idx,
-                    timestamp=frame_idx / fps
+                    timestamp=frame_idx / float(fps)
                 )
+
+            # Optional inset (e.g., BEV snapshot)
+            if inset_callback is not None:
+                try:
+                    inset_img = inset_callback(frame_idx)
+                    if inset_img is not None:
+                        processed = self.compose_inset(
+                            processed,
+                            inset_img,
+                            position=inset_position,
+                            scale=inset_scale
+                        )
+                except Exception as e:
+                    warnings.warn(f"Inset callback failed at frame {frame_idx}: {e}")
 
             out.write(processed)
 
@@ -560,171 +703,3 @@ class VideoOverlayPlotter:
         out.release()
 
         print(f"✅ Video saved: {output_path}")
-
-
-# Convenience functions
-def overlay_conflict_frame(
-    video_path: str,
-    frame_idx: int,
-    trajectories: List[List[Tuple[float, float, float]]],
-    pet_value: Optional[float] = None,
-    save_path: Optional[str] = None
-) -> np.ndarray:
-    """Quick function to overlay trajectories on a single frame."""
-    plotter = VideoOverlayPlotter()
-    frame = plotter.overlay_conflict_frame(
-        video_path, frame_idx, trajectories, pet_value=pet_value
-    )
-
-    if save_path:
-        plotter.save_frame(frame, save_path)
-
-    return frame
-
-
-def generate_conflict_video(
-    video_path: str,
-    frame_range: Tuple[int, int],
-    trajectories: List[List[Tuple[float, float, float]]],
-    output_path: str = 'output/conflict.mp4'
-):
-    """Quick function to generate conflict video."""
-    plotter = VideoOverlayPlotter()
-    plotter.generate_conflict_video(
-        video_path, frame_range, trajectories, output_path=output_path
-    )
-
-
-def create_before_during_after(
-    video_path: str,
-    before_idx: int,
-    during_idx: int,
-    after_idx: int,
-    trajectories: List[List[Tuple[float, float, float]]],
-    save_path: str = 'output/conflict_sequence.png'
-):
-    """Create 3-panel before/during/after figure."""
-    plotter = VideoOverlayPlotter()
-
-    frames = []
-    for idx in [before_idx, during_idx, after_idx]:
-        frame = plotter.overlay_conflict_frame(video_path, idx, trajectories)
-        frames.append(frame)
-
-    # Concatenate horizontally
-    combined = np.hstack(frames)
-    plotter.save_frame(combined, save_path)
-
-    print(f"✅ Sequence saved: {save_path}")
-
-
-def save_conflict_frame(
-    video_path: str,
-    grid_config_path: str,
-    cell_id: str,
-    frame_idx: int,
-    out_path: str,
-    alpha: float = 0.6
-):
-    """
-    Backward compatible function (original API).
-    Save one video frame with grid and highlighted conflict cell.
-    """
-    if SpatialGrid is None:
-        raise ImportError("SpatialGrid not available")
-
-    grid = SpatialGrid(grid_config_path)
-    plotter = VideoOverlayPlotter(grid_alpha=alpha)
-
-    cap = cv2.VideoCapture(video_path)
-    cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-    ret, frame = cap.read()
-    cap.release()
-
-    if not ret:
-        raise RuntimeError(f"Could not read frame {frame_idx}")
-
-    # Grid overlay
-    output = grid.draw_overlay(frame, alpha=alpha)
-
-    # Highlight cell
-    center = grid.get_cell_center(cell_id)
-    if center:
-        cx, cy = center
-        half = grid.cell_size // 2
-        overlay = output.copy()
-        cv2.rectangle(
-            overlay,
-            (int(cx - half), int(cy - half)),
-            (int(cx + half), int(cy + half)),
-            COLORS_BGR['red'],
-            -1
-        )
-        output = cv2.addWeighted(overlay, 0.3, output, 0.7, 0)
-
-    plotter.save_frame(output, out_path)
-    return out_path
-
-def overlay_full_visualization(frame, frame_num, grid, detections=None, 
-                                conflict_cell=None, pet_value=None, 
-                                vehicle_ids=None, show_grid=True):
-    """
-    Enhanced frame overlay with grid, detections, and IDs.
-    """
-    # Ensure frame is writable
-    frame = frame.copy()
-    
-    # 1. Add GRID overlay
-    if show_grid and grid is not None:
-        frame = grid.draw_overlay(frame, alpha=0.3)
-    
-    # 2. Add SAM3 DETECTIONS
-    if detections is not None:
-        for det in detections:
-            x1, y1, x2, y2 = map(int, det['bbox'])
-            conf = det.get('confidence', 0.5)
-            track_id = det.get('track_id', '?')
-            
-            # Color based on confidence
-            color = (0, int(255 * conf), 0) if conf > 0.5 else (0, 255, 255)
-            
-            # Draw bounding box
-            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-            
-            # Draw ID label
-            label = f"ID:{track_id}"
-            cv2.putText(frame, label, (x1, y1-5),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-    
-    # 3. Highlight CONFLICT CELL
-    if conflict_cell and grid is not None:
-        cell_center = grid.get_cell_center(conflict_cell)
-        if cell_center:
-            cx, cy = cell_center
-            # Draw red circle around conflict zone
-            cv2.circle(frame, (int(cx), int(cy)), 80, (0, 0, 255), 3)
-            cv2.putText(frame, f"CONFLICT: {conflict_cell}", 
-                       (int(cx)-80, int(cy)-90), cv2.FONT_HERSHEY_SIMPLEX, 
-                       0.6, (0, 0, 255), 2)
-    
-    # 4. Add PET INFO PANEL
-    if pet_value is not None:
-        panel_height = 120
-        overlay = frame.copy()
-        cv2.rectangle(overlay, (10, 10), (450, panel_height), (0, 0, 0), -1)
-        frame = cv2.addWeighted(overlay, 0.6, frame, 0.4, 0)
-        
-        info_lines = [
-            f"PET = {pet_value:.3f}s",
-            f"Conflict Cell: {conflict_cell}",
-            f"Vehicles: {vehicle_ids[0]} & {vehicle_ids[1]}" if vehicle_ids else "Vehicles: ? & ?",
-            f"Frame: {frame_num}"
-        ]
-        
-        for i, line in enumerate(info_lines):
-            y_pos = 40 + i * 25
-            color = (0, 0, 255) if "PET" in line and pet_value < 1.5 else (255, 255, 255)
-            cv2.putText(frame, line, (20, y_pos),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
-    
-    return frame
