@@ -19,8 +19,37 @@ warnings.filterwarnings("ignore")
 logger = logging.getLogger(__name__)
 
 
-# ======================== Shared types (Jawad_readme_test)========================
-@dataclass
+def traj_to_worldsample_string(traj):
+    """
+    Convert a trajectory into a semicolon-separated WorldSample string.
+
+    Supported inputs:
+    - iterable of (t, x, y) tuples/lists
+    - iterable of WorldSample-like objects with .t, .x, .y attributes
+    - preformatted string
+    - None / empty
+    """
+    if not traj:
+        return ""
+    if isinstance(traj, str):
+        return traj
+
+    parts = []
+    for sample in traj:
+        if hasattr(sample, "t") and hasattr(sample, "x") and hasattr(sample, "y"):
+            t, x, y = sample.t, sample.x, sample.y
+        elif isinstance(sample, (tuple, list)) and len(sample) >= 3:
+            t, x, y = sample[0], sample[1], sample[2]
+        else:
+            raise TypeError(
+                f"Unsupported trajectory sample type: {type(sample)!r}; "
+                "expected WorldSample-like object or (t, x, y) tuple/list."
+            )
+
+        parts.append(f"WorldSample(t={float(t)}, x={float(x)}, y={float(y)})")
+
+    return "; ".join(parts)
+
 class WorldPoint:
     t: float
     x: float
@@ -518,6 +547,9 @@ def run_video_to_pet(
             world_traj_i = getattr(e, "world_traj_i", None)
             world_traj_j = getattr(e, "world_traj_j", None)
 
+        world_traj_i_str = traj_to_worldsample_string(world_traj_i)
+        world_traj_j_str = traj_to_worldsample_string(world_traj_j)
+
         rows.append(
             {
                 "event_id": idx,
@@ -526,8 +558,8 @@ def run_video_to_pet(
                 "track_a": track_a,
                 "track_b": track_b,
                 "conflict_type": conflict_type,
-                "world_traj_i": world_traj_i,
-                "world_traj_j": world_traj_j,
+                "world_traj_i": world_traj_i_str,
+                "world_traj_j": world_traj_j_str,
             }
         )
 
