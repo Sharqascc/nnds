@@ -550,7 +550,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         thresholds=thresholds,
     )
 
-    analyzer.print_summary(show_risk_buckets=not args.no-risk_buckets)
+    analyzer.print_summary(show_risk_buckets=not args.no_risk_buckets)
     # NOTE: If you get a syntax error here, replace `args.no-risk_buckets`
     # with `args.no_risk_buckets` (underscore), depending on your argparse name.
 
