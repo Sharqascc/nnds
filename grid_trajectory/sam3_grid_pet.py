@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 import logging
 import time
 import json
+from collections import defaultdict
 
 import cv2
 import numpy as np
@@ -173,11 +174,13 @@ def run_sam3_grid_pet(
 
     # Optional debug video writer
     writer: Optional[cv2.VideoWriter] = None
+    combined_width = w0 + 420
+    combined_height = h0
     if debug_video_rel_path is not None:
         debug_video_path = root / debug_video_rel_path
         debug_video_path.parent.mkdir(parents=True, exist_ok=True)
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        writer = cv2.VideoWriter(str(debug_video_path), fourcc, fps, (w0, h0))
+        writer = cv2.VideoWriter(str(debug_video_path), fourcc, fps, (combined_width, combined_height))
 
     # Grid and BEV mapper
     grid = SpatialGrid(str(grid_config))
@@ -193,6 +196,41 @@ def run_sam3_grid_pet(
     )
 
     traj_logger = TrajectoryLogger(fps=fps)
+
+    track_history: Dict[int, List[tuple[int, int]]] = defaultdict(list)
+    world_history: Dict[int, List[tuple[float, float]]] = defaultdict(list)
+
+    bev_w, bev_h = bev_cfg["bev_resolution"]
+
+    def _world_to_bev_pixel(wx: float, wy: float) -> tuple[int, int]:
+        x_min = bev_cfg["bev_bounds"]["x_min"]
+        x_max = bev_cfg["bev_bounds"]["x_max"]
+        y_min = bev_cfg["bev_bounds"]["y_min"]
+        y_max = bev_cfg["bev_bounds"]["y_max"]
+
+        if x_max == x_min or y_max == y_min:
+            return 0, 0
+
+        u = int((wx - x_min) / (x_max - x_min) * (bev_w - 1))
+        v = int((1.0 - (wy - y_min) / (y_max - y_min)) * (bev_h - 1))
+        u = max(0, min(u, bev_w - 1))
+        v = max(0, min(v, bev_h - 1))
+        return u, v
+
+    def _make_bev_canvas() -> np.ndarray:
+        canvas = np.full((bev_h, bev_w, 3), 20, dtype=np.uint8)
+        cv2.rectangle(canvas, (0, 0), (bev_w - 1, bev_h - 1), (120, 120, 120), 2)
+        cv2.putText(
+            canvas,
+            "Bird's Eye View",
+            (20, 30),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.9,
+            (255, 255, 255),
+            2,
+            cv2.LINE_AA,
+        )
+        return canvas
 
     # SAM3 overrides
     overrides = dict(
@@ -271,6 +309,22 @@ def run_sam3_grid_pet(
             det_count_total += len(xyxy)
 
             draw_debug = writer is not None
+            bev_canvas = _make_bev_canvas()
+
+            cls_attr = getattr(boxes, "cls", None)
+            conf_attr = getattr(boxes, "conf", None)
+            cls_ids = cls_attr.detach().cpu().numpy().astype(int) if cls_attr is not None else None
+            confs = conf_attr.detach().cpu().numpy() if conf_attr is not None else None
+
+            names = getattr(res, "names", {}) or {}
+
+            def _cls_name_from_id(cls_id: int) -> str:
+                if isinstance(names, dict):
+                    return str(names.get(cls_id, f"class_{cls_id}"))
+                if isinstance(names, (list, tuple)):
+                    if 0 <= cls_id < len(names):
+                        return str(names[cls_id])
+                return f"class_{cls_id}"
 
             for k, box in enumerate(xyxy):
                 x1, y1, x2, y2 = box.astype(int)
@@ -279,21 +333,33 @@ def run_sam3_grid_pet(
                 x2 = max(0, min(x2, w - 1))
                 y2 = max(0, min(y2, h - 1))
 
+                track_id = int(track_ids[k])
+                cls_name = "obj"
+                if cls_ids is not None and k < len(cls_ids):
+                    cls_name = _cls_name_from_id(int(cls_ids[k]))
+                conf_txt = ""
+                if confs is not None and k < len(confs):
+                    conf_txt = f" {float(confs[k]):.2f}"
+
                 if draw_debug:
                     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                    label = f"{cls_name} ID:{track_id}{conf_txt}"
                     cv2.putText(
                         frame,
-                        f"ID {int(track_ids[k])}",
-                        (x1, max(y1 - 5, 0)),
+                        label,
+                        (x1, max(y1 - 8, 18)),
                         cv2.FONT_HERSHEY_SIMPLEX,
-                        0.5,
+                        0.55,
                         (0, 255, 0),
-                        1,
+                        2,
                         cv2.LINE_AA,
                     )
 
                 cx = (x1 + x2) / 2.0
                 cy = float(y2)
+
+                if draw_debug:
+                    cv2.circle(frame, (int(cx), int(cy)), 4, (0, 200, 255), -1)
 
                 cell_id = grid.get_cell_from_pixels(cx, cy)
                 if isinstance(cell_id, str) and cell_id.upper() == "OUT_OF_BOUNDS":
@@ -301,19 +367,65 @@ def run_sam3_grid_pet(
 
                 world_xy = bev_mapper.pixel_to_world((cx, cy))
                 if world_xy is not None:
-                    wx, wy = world_xy
+                    wx, wy = float(world_xy[0]), float(world_xy[1])
+                    bx, by = _world_to_bev_pixel(wx, wy)
+
+                    world_history[track_id].append((wx, wy))
+                    track_history[track_id].append((bx, by))
+                    if len(track_history[track_id]) > 30:
+                        track_history[track_id].pop(0)
+                    if len(world_history[track_id]) > 30:
+                        world_history[track_id].pop(0)
+
+                    if draw_debug:
+                        pts = np.array(track_history[track_id], dtype=np.int32).reshape(-1, 1, 2)
+                        if len(pts) > 1:
+                            cv2.polylines(bev_canvas, [pts], False, (255, 180, 0), 2)
+                        cv2.circle(bev_canvas, (bx, by), 6, (0, 220, 255), -1)
+                        cv2.putText(
+                            bev_canvas,
+                            f"{cls_name}:{track_id}",
+                            (min(bx + 8, bev_w - 120), max(by - 8, 20)),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.45,
+                            (255, 255, 255),
+                            1,
+                            cv2.LINE_AA,
+                        )
                 else:
                     wx, wy = None, None
 
                 traj_logger.log(
-                    track_id=int(track_ids[k]),
+                    track_id=track_id,
                     frame_idx=frame_idx,
                     cell_id=cell_id,
                     world_x=wx,
                     world_y=wy,
                 )
 
-            if writer is not None:
+            if writer is not None and draw_debug:
+                time_sec = frame_idx / fps if fps > 0 else 0.0
+                cv2.rectangle(frame, (10, 10), (260, 95), (25, 25, 25), -1)
+                cv2.rectangle(frame, (10, 10), (260, 95), (80, 80, 80), 1)
+                cv2.putText(frame, f"Frame: {frame_idx}", (20, 35),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2, cv2.LINE_AA)
+                cv2.putText(frame, f"Time: {time_sec:.2f}s", (20, 62),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2, cv2.LINE_AA)
+                cv2.putText(frame, f"Detections: {len(xyxy)}", (20, 88),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 255, 255), 2, cv2.LINE_AA)
+
+                bev_panel_w = 420
+                bev_panel = np.full((h, bev_panel_w, 3), 30, dtype=np.uint8)
+                inner_w = bev_panel_w - 20
+                scale = min(inner_w / bev_w, (h - 20) / bev_h)
+                resized = cv2.resize(bev_canvas, (int(bev_w * scale), int(bev_h * scale)))
+                y0 = max((h - resized.shape[0]) // 2, 10)
+                x0 = 10
+                bev_panel[y0:y0+resized.shape[0], x0:x0+resized.shape[1]] = resized
+
+                combined = np.hstack([frame, bev_panel])
+                writer.write(combined)
+            elif writer is not None:
                 writer.write(frame)
 
             if show_progress and frame_idx % (50 * frame_stride) == 0:

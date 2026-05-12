@@ -474,6 +474,7 @@ def run_video_to_pet(
             conf=0.25,
             pet_threshold=pet_threshold,
             max_frames=max_frames,
+            debug_video_rel_path="outputs/video_overlays/analyzed_video.mp4",
             show_progress=show_progress,
         )
         pet_events = result.pet_events if hasattr(result, "pet_events") else []
