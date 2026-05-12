@@ -35,7 +35,6 @@ try:
     from grid_trajectory.spatial_grid import SpatialGrid
 except ImportError:
     SpatialGrid = None
-    warnings.warn("SpatialGrid not available - grid overlay disabled")
 
 
 __all__ = [
@@ -111,6 +110,7 @@ class VideoOverlayPlotter:
         self.grid_alpha = grid_alpha
 
         self.font = cv2.FONT_HERSHEY_SIMPLEX
+        self._grid_warning_emitted = False
 
     def _get_severity_color(self, pet_value: float) -> Tuple[int, int, int]:
         """Get BGR color based on PET severity."""
@@ -445,8 +445,16 @@ class VideoOverlayPlotter:
 
         output = frame.copy()
 
+        if self.show_grid and grid is None and not self._grid_warning_emitted:
+            warnings.warn(
+                "SpatialGrid not available; grid overlay disabled.",
+                UserWarning,
+                stacklevel=2,
+            )
+            self._grid_warning_emitted = True
+
         # Grid overlay
-        if grid and self.show_grid:
+        if self.show_grid and grid is not None:
             output = grid.draw_overlay(output, alpha=self.grid_alpha)
 
             if cell_id:
