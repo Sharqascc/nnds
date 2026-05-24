@@ -21,6 +21,11 @@ import argparse
 import json
 import logging
 import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 import traceback
 from dataclasses import dataclass, asdict
 from pathlib import Path
@@ -249,6 +254,42 @@ def evaluate_pet_quality(pet_csv: Path, max_frames: Optional[int]) -> Dict[str, 
     return qa
 
 
+
+def run_detector_benchmark(args: argparse.Namespace, paths: WorkflowPaths, video_path: Path) -> Dict[str, Any]:
+    import copy
+    import time
+
+    benchmark_results: Dict[str, Any] = {}
+    detectors = args.benchmark_detectors_list or ["rtdetr", "sam3"]
+
+    for det in detectors:
+        bench_args = copy.deepcopy(args)
+        bench_args.detector = det
+        bench_args.max_frames = args.benchmark_max_frames
+        bench_args.skip_summary = False
+
+        out_csv = paths.output_dir / f"{video_path.stem}_{det}_benchmark_pet.csv"
+        t0 = time.perf_counter()
+
+        try:
+            run_pet_extraction(bench_args, paths, video_path, out_csv)
+            elapsed = time.perf_counter() - t0
+            qa = evaluate_pet_quality(out_csv, max_frames=bench_args.max_frames)
+
+            benchmark_results[det] = {
+                "status": "ok",
+                "elapsed_sec": round(elapsed, 3),
+                "pet_csv": str(out_csv),
+                "qa": qa,
+            }
+        except Exception as exc:
+            benchmark_results[det] = {
+                "status": "failed",
+                "error": str(exc),
+            }
+
+    return benchmark_results
+
 def run_ground_truth_evaluation(args: argparse.Namespace, paths: WorkflowPaths, pred_csv: Path) -> Dict[str, Any]:
     logger.info("Running ground-truth comparison...")
     out_dir = paths.validation_dir / "ground_truth"
@@ -398,7 +439,12 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--gate-config", default="configs/gate_config.yaml")
     parser.add_argument("--sam3-weights", default="sam3.pt")
     parser.add_argument("--rtdetr-weights", default="rtdetr-l.pt")
-    parser.add_argument("--detector", choices=["sam3", "rtdetr"], default="sam3")
+    parser.add_argument(
+        "--detector",
+        choices=["sam3", "rtdetr"],
+        default="sam3",
+        help="Detection backend: use rtdetr for routine runs; use sam3 for heavy concept-aware segmentation.",
+    )
     parser.add_argument("--imgsz", type=int, default=None)
 
     parser.add_argument("--output-dir", default="outputs")
@@ -422,6 +468,9 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--run-ground-truth-eval", action="store_true")
     parser.add_argument("--run-significance-tests", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--benchmark-detectors", action="store_true")
+    parser.add_argument("--benchmark-max-frames", type=int, default=30)
+    parser.add_argument("--benchmark-detectors-list", nargs="*", default=["sam3"])
 
     parser.add_argument("--conflict-col", default="conflict_type")
     parser.add_argument("--baseline-csv", default=None)
@@ -545,7 +594,13 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         for video_path in videos:
             if not video_path.exists():
                 raise FileNotFoundError(f"Video not found: {video_path}")
-            all_results["videos"][str(video_path)] = run_single_video(args, paths, video_path)
+
+            video_result = run_single_video(args, paths, video_path)
+
+            if args.benchmark_detectors:
+                video_result["detector_benchmark"] = run_detector_benchmark(args, paths, video_path)
+
+            all_results["videos"][str(video_path)] = video_result
 
         manifest_result = WorkflowResult(
             extraction_ran=any(v["extraction_ran"] for v in all_results["videos"].values()),
