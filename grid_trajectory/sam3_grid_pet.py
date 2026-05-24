@@ -20,7 +20,6 @@ from collections import defaultdict
 
 import cv2
 import numpy as np
-from ultralytics.models.sam import SAM3VideoSemanticPredictor
 
 from grid_trajectory.spatial_grid import SpatialGrid
 from grid_trajectory.pet_grid import (
@@ -35,6 +34,18 @@ from bev_mapper import BEVMapper
 
 
 LoggerType = Union[logging.Logger, Any]
+
+
+def _get_sam3_predictor_cls():
+    try:
+        from ultralytics.models.sam import SAM3VideoSemanticPredictor
+    except ImportError as exc:
+        raise ImportError(
+            "run_sam3_grid_pet requires the optional dependency 'ultralytics'. "
+            "Install it before using the SAM3 pipeline."
+        ) from exc
+    return SAM3VideoSemanticPredictor
+
 
 
 @dataclass
@@ -244,6 +255,7 @@ def run_sam3_grid_pet(
         project=str(output_root),
         name=output_name,
     )
+    SAM3VideoSemanticPredictor = _get_sam3_predictor_cls()
     predictor = SAM3VideoSemanticPredictor(overrides=overrides)
 
     # Default concepts if none provided
