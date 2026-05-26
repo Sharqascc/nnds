@@ -30,10 +30,11 @@ jobs:
 
       - name: Update README
         run: |
-          python tools/update_readme.py
+          python scripts/update_readme.py
 
       - name: Commit README if changed
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "docs: auto-update README"
+          branch: main
           file_pattern: README.md
