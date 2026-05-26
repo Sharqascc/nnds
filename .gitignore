@@ -12,3 +12,6 @@ outputs/*
 # …but keep CSVs (and optionally a README) tracked
 !outputs/*.csv
 !outputs/README.md
+
+# Local model weights
+*.pt
