@@ -1,0 +1,12 @@
+{
+  "homography_path": "/content/nnds/calibration/H_from_giti_calibration_points.npy",
+  "source_config": "/content/nnds/configs/giti_calibration_points.json",
+  "shape": [
+    3,
+    3
+  ],
+  "num_points": 6,
+  "inliers": 6,
+  "mae_m": 0.02604166604578495,
+  "max_error_m": 0.0625
+}
