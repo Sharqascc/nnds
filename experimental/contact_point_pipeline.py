@@ -25,6 +25,20 @@ class TrackPoint:
 
 
 class ContactPointPipeline:
+
+def _project_pixel_to_world(self, pixel_x, pixel_y):
+    """Project a single pixel point to world coordinates using loaded homography."""
+    if getattr(self, "H", None) is None:
+        raise RuntimeError("Homography matrix self.H is not loaded")
+    import numpy as np
+    pt = np.array([float(pixel_x), float(pixel_y), 1.0], dtype=float)
+    out = self.H @ pt
+    if not np.isfinite(out).all():
+        raise RuntimeError(f"Non-finite homography output for point {(pixel_x, pixel_y)}: {out}")
+    if abs(out[2]) < 1e-12:
+        raise RuntimeError(f"Homography normalization term too small for point {(pixel_x, pixel_y)}: {out}")
+    return float(out[0] / out[2]), float(out[1] / out[2])
+
     def __init__(
         self,
         model_name: str = "yolo26n-seg.pt",
