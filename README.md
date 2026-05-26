@@ -563,3 +563,12 @@ MIT License – see [LICENSE](LICENSE) file for details.
 - Hugging Face for model/dataset hosting  
 - FHWA for SSAM methodology guidance  
 ```
+
+<!-- AUTO-README-START -->
+## Auto-generated structure
+
+- `experimental/contact_point_pipeline.py` — contact-point projection into world coordinates.
+- `traffic_analyzer.py` — main video-to-PET entry point.
+- `analysis/research_run.py` — orchestrated research workflow.
+
+<!-- AUTO-README-END -->
