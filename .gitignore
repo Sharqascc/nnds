@@ -15,3 +15,5 @@ outputs/*
 
 # Local model weights
 *.pt
+
+*.bak
