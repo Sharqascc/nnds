@@ -133,16 +133,35 @@ class RobustTracker:
     tracks: Dict[int, Dict[str, Any]] = field(default_factory=dict)
     _frame_counter: int = 0
 
-    def update(
-        self,
-        detections: List[Dict[str, Any]],
-        frame_idx: int = 0,
-    ) -> Dict[int, Dict[str, Any]]:
-        self._frame_counter = frame_idx
+    def update(self, detections: List[Dict[str, Any]], frame_idx: int) -> Dict[int, Dict[str, Any]]:
         updated_tracks: Dict[int, Dict[str, Any]] = {}
+        remaining_track_ids = set(self.tracks.keys())
+
+        def _dist(a, b):
+            return float(((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5)
 
         for det in detections:
+            centroid = det.get("centroid")
             tid = det.get("track_id")
+
+            if tid is None and centroid is not None:
+                best_tid = None
+                best_dist = float("inf")
+
+                for existing_tid in list(remaining_track_ids):
+                    prev = self.tracks.get(existing_tid, {}).get("centroid")
+                    if prev is None:
+                        continue
+                    d = _dist(centroid, prev)
+                    if d < best_dist and d <= 75.0:
+                        best_dist = d
+                        best_tid = existing_tid
+
+                if best_tid is not None:
+                    tid = best_tid
+                    det["track_id"] = tid
+                    remaining_track_ids.discard(tid)
+
             if tid is None:
                 tid = self.next_id
                 self.next_id += 1
@@ -156,21 +175,21 @@ class RobustTracker:
             det["missed"] = 0
             det["last_seen_frame"] = frame_idx
             updated_tracks[tid] = det
+            remaining_track_ids.discard(tid)
 
-        for tid, t in self.tracks.items():
-            if tid not in updated_tracks:
-                missed = t.get("missed", 0) + 1
-                if missed <= self.max_missing:
-                    t["missed"] = missed
-                    updated_tracks[tid] = t
-                # else: drop track silently
+        for tid, old in self.tracks.items():
+            if tid in updated_tracks:
+                continue
+
+            missed = int(old.get("missed", 0)) + 1
+            age = frame_idx - int(old.get("last_seen_frame", frame_idx))
+
+            if missed <= self.max_missing and age <= self.max_track_age_frames:
+                keep = dict(old)
+                keep["missed"] = missed
+                updated_tracks[tid] = keep
 
         self.tracks = updated_tracks
-
-        # Periodic cleanup of very old tracks
-        if self._frame_counter > 0 and self._frame_counter % 100 == 0:
-            self._cleanup_old_tracks()
-
         return self.tracks
 
     def _cleanup_old_tracks(self) -> None:
