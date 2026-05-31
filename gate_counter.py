@@ -335,7 +335,12 @@ class TrafficVolumeCounter:
 
         centroid = det.get("centroid")
         if centroid is None or len(centroid) != 2:
-            return False
+            bbox = det.get("bbox")
+            if bbox is None or len(bbox) != 4:
+                return False
+            x1, y1, x2, y2 = bbox
+            centroid = ((float(x1) + float(x2)) / 2.0, (float(y1) + float(y2)) / 2.0)
+            det["centroid"] = centroid
 
         return True
 
@@ -477,6 +482,64 @@ class TrafficVolumeCounter:
 
         return frame
 
+
+    def _normalize_detector_output(
+        self,
+        raw_output: Any,
+    ) -> List[Dict[str, Any]]:
+        """
+        Convert detector outputs into a standard list-of-dicts format.
+
+        Supported inputs:
+        - list[dict]
+        - tuple/list containing Ultralytics Results
+        - single Ultralytics Results object
+        """
+        if raw_output is None:
+            return []
+
+        if isinstance(raw_output, list):
+            if not raw_output:
+                return []
+            if all(isinstance(x, dict) for x in raw_output):
+                return raw_output
+            if len(raw_output) == 1:
+                raw_output = raw_output[0]
+
+        if isinstance(raw_output, dict):
+            return [raw_output]
+
+        if hasattr(raw_output, "boxes"):
+            result = raw_output
+            names = getattr(result, "names", {}) or {}
+            detections: List[Dict[str, Any]] = []
+
+            if result.boxes is None:
+                return detections
+
+            for box in result.boxes:
+                cls_id = int(box.cls[0].item()) if getattr(box, "cls", None) is not None else -1
+                conf = float(box.conf[0].item()) if getattr(box, "conf", None) is not None else 0.0
+                x1, y1, x2, y2 = box.xyxy[0].tolist()
+
+                detections.append(
+                    {
+                        "bbox": [float(x1), float(y1), float(x2), float(y2)],
+                        "class_id": cls_id,
+                        "class_name": names.get(cls_id, str(cls_id)),
+                        "cls": names.get(cls_id, str(cls_id)),
+                        "conf": conf,
+                        "track_id": None,
+                    }
+                )
+            return detections
+
+        raise TypeError(
+            f"Unsupported detector output type: {type(raw_output)!r}. "
+            "Expected list[dict], dict, or Ultralytics Results."
+        )
+
+
     # ---------- main processing ----------
     def process_video(
         self,
@@ -532,7 +595,8 @@ class TrafficVolumeCounter:
                 if max_frames is not None and frame_idx > max_frames:
                     break
 
-                raw_detections = detector(frame)
+                raw_output = detector(frame)
+                raw_detections = self._normalize_detector_output(raw_output)
                 detections: List[Dict[str, Any]] = []
 
                 for d in raw_detections:
