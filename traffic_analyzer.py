@@ -269,6 +269,7 @@ class CompleteTrafficAnalyzer:
             return {"final_speed": 15.0, "speed_std": 2.0}
 
         speeds: List[float] = []
+        debug_rows: List[Dict[str, Any]] = []
         for i in range(1, len(world_positions_arr)):
             dist = float(
                 np.linalg.norm(world_positions_arr[i] - world_positions_arr[i - 1])
