@@ -1,3 +1,11 @@
+GATE_HYSTERESIS = {
+    "West_Gate": {"min_side_mag": 0.10, "min_delta_side": 0.15},
+    "North_Gate": {"min_side_mag": 0.35, "min_delta_side": 0.50},
+    "SouthWest_Gate": {"min_side_mag": 0.50, "min_delta_side": 0.75},
+    "South_Gate": {"min_side_mag": 0.35, "min_delta_side": 0.50},
+    "East_Gate": {"min_side_mag": 0.35, "min_delta_side": 0.50},
+}
+
 import logging
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -89,6 +97,19 @@ class VirtualGate:
             return None
 
         if prev_side * curr_side >= 0:
+            return None
+
+        cfg = GATE_HYSTERESIS.get(
+            self.name,
+            {"min_side_mag": 0.35, "min_delta_side": 0.50},
+        )
+        min_side_mag = cfg["min_side_mag"]
+        min_delta_side = cfg["min_delta_side"]
+
+        if abs(prev_side) < min_side_mag or abs(curr_side) < min_side_mag:
+            return None
+
+        if abs(curr_side - prev_side) < min_delta_side:
             return None
 
         last_frame = self.history.get(track_id, -10**9)
