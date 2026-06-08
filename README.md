@@ -532,18 +532,6 @@ black .
 mypy --ignore-missing-imports .
 ```
 
-## Citation
-
-If you use NNDS in your research, please cite:
-
-```bibtex
-@software{nnds2024,
-  author = {Sharqascc},
-  title = {NNDS: Non-motorized and Heterogeneous Traffic Safety Analysis},
-  year = {2024},
-  url = {https://github.com/Sharqascc/nnds}
-}
-```
 
 ## References
 
@@ -553,9 +541,6 @@ If you use NNDS in your research, please cite:
 - Zheng, L., Ismail, K., & Meng, X. (2014). Traffic conflict techniques for road safety analysis. *Accident Analysis & Prevention*.  
 - FHWA. (2008). *Surrogate Safety Assessment Model and Validation*. FHWA-HRT-08-051.  
 
-## License
-
-MIT License – see [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
