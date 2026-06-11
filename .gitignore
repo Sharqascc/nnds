@@ -19,3 +19,7 @@ outputs/*
 *.bak
 analysis_results_*/
 outputs/*.csv
+models/
+analysis_results_*/
+outputs/*.csv
+SimSun.ttf

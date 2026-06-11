@@ -32,12 +32,15 @@ class VLMEventsAnnotator:
         else:
             try:
                 self.backend = HFVisionLanguageBackend(
-                    model_name="Qwen/Qwen-VL-Chat",
+                    model_name="Qwen/Qwen2-VL-7B-Instruct",
                     device="cuda",
+                    trust_remote_code=True,
                 )
+                print("[VLMEventsAnnotator] Successfully instantiated HFVisionLanguageBackend.")
             except Exception:
                 # Fallback to stub if HF backend fails to load
                 self.backend = EchoStubBackend()
+                print("[VLMEventsAnnotator] Falling back to EchoStubBackend due to HF backend exception.")
         self.config = config or VLMEventsConfig()
         self.cache = Cache(str(self.config.cache_dir))
         self.config.cache_dir.mkdir(parents=True, exist_ok=True)

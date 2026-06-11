@@ -1,33 +1,48 @@
 from __future__ import annotations
 
 from typing import Literal
+from pathlib import Path
 
 import torch
-from transformers import AutoProcessor, AutoModelForVision2Seq
 
 from vlm_schema import VLMBackend  # Protocol with analyze(image_path, prompt)
 
+from transformers import AutoProcessor, AutoModelForImageTextToText
 
-class HFVisionLanguageBackend:
+
+class HFVisionLanguageBackend(VLMBackend):
     """
     Hugging Face-based vision-language backend implementing VLMBackend.
-    Tested with LLaVA/Qwen-VL style models that accept (image, prompt).
+    Uses Qwen2-VL-2B-Instruct by default, with a local cache directory.
     """
+
+    model_name: str
 
     def __init__(
         self,
-        model_name: str = "Qwen/Qwen-VL-Chat",  # or a specific LLaVA HF ID
+        model_name: str = "Qwen/Qwen2-VL-2B-Instruct",
         device: Literal["cpu", "cuda"] = "cuda",
         max_new_tokens: int = 512,
+        trust_remote_code: bool = True,
     ):
         self.model_name = model_name
         self.device = device
         self.max_new_tokens = max_new_tokens
+        self.trust_remote_code = trust_remote_code
 
-        self.processor = AutoProcessor.from_pretrained(model_name)
-        self.model = AutoModelForVision2Seq.from_pretrained(
+        models_dir = Path("/content/nnds/models")
+        cache_dir = models_dir / "models--Qwen--Qwen2-VL-2B-Instruct"
+
+        self.processor = AutoProcessor.from_pretrained(
             model_name,
-            torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+            cache_dir=str(cache_dir),
+            trust_remote_code=trust_remote_code,
+        )
+        self.model = AutoModelForImageTextToText.from_pretrained(
+            model_name,
+            cache_dir=str(cache_dir),
+            dtype=torch.float16 if device == "cuda" else torch.float32,
+            trust_remote_code=trust_remote_code,
         ).to(device)
 
     def analyze(self, image_path: str, prompt: str) -> str:
