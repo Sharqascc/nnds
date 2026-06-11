@@ -13,7 +13,8 @@ import pandas as pd
 from diskcache import Cache
 
 from vlm_schema import VLMSafetyAnalysis, VLMBackend
-from vlm_backend_stub import EchoStubBackend  # swap to real backend later
+from vlm_backend_stub import EchoStubBackend  # fallback backend
+from vlm_hf_backend import HFVisionLanguageBackend
 
 
 @dataclass
@@ -26,7 +27,17 @@ class VLMEventsConfig:
 
 class VLMEventsAnnotator:
     def __init__(self, backend: VLMBackend | None = None, config: VLMEventsConfig | None = None):
-        self.backend = backend or EchoStubBackend()
+        if backend is not None:
+            self.backend = backend
+        else:
+            try:
+                self.backend = HFVisionLanguageBackend(
+                    model_name="Qwen/Qwen-VL-Chat",
+                    device="cuda",
+                )
+            except Exception:
+                # Fallback to stub if HF backend fails to load
+                self.backend = EchoStubBackend()
         self.config = config or VLMEventsConfig()
         self.cache = Cache(str(self.config.cache_dir))
         self.config.cache_dir.mkdir(parents=True, exist_ok=True)

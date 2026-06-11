@@ -17,3 +17,5 @@ outputs/*
 *.pt
 
 *.bak
+analysis_results_*/
+outputs/*.csv

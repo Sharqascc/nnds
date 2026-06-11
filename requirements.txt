@@ -12,3 +12,8 @@ torch
 torchvision
 ultralytics
 pyarrow
+transformers
+accelerate
+sentencepiece
+Pillow
+diskcache
