@@ -2,7 +2,7 @@ import os, sys, subprocess
 from pathlib import Path
 
 # OPTIONAL: GitHub token for rate-limited/private access
-os.environ["NNDS_GH_TOKEN"] = "YOUR_GITHUB_TOKEN_HERE"  # or "" if public is fine
+os.environ["NNDS_GH_TOKEN"] = "REDACTED_TOKEN"  # or "" if public is fine
 
 colab_ready_content = '''# === NNDS Colab bootstrap (no HF token needed for public use) ===
 import os
