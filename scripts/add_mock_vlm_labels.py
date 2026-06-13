@@ -2,7 +2,7 @@
 import pandas as pd
 from pathlib import Path
 
-PET_CSV = Path("outputs/petevents_bev_50.csv")
+PET_CSV = Path("outputs/petevents_working.csv")
 OUT_CSV = Path("outputs/petevents_bev_vlm_50frames_vlm_mock.csv")
 
 def severity_from_pet(pet):

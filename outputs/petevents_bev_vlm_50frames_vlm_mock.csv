@@ -1,1 +1,5 @@
-event_id,pet,frame,track_a,track_b,conflict_type,world_traj_i,world_traj_j,vlm_severity,vlm_scenario_type,vlm_violation_type,vlm_description
+obj_i,obj_j,cell_id,t_exit_i,t_enter_j,pet,world_traj_i,world_traj_j,severity,event_id,vlm_severity,vlm_scenario_type,vlm_violation_type,vlm_description
+1,5,CELL_A_1,2.3,5.0,2.7,[],[],moderate,0,Low,Turn conflict / intersection,No lane discipline,Conflict between tracks 1 and 5 in CELL_A_1 with PET 2.700s.
+1,5,CELL_B_1,4.8,7.5,2.7,[],[],moderate,1,Low,Lane change zone,Unsafe lane change,Conflict between tracks 1 and 5 in CELL_B_1 with PET 2.700s.
+2,5,CELL_B_1,5.9,7.5,1.5999999999999996,[],[],moderate,2,Low,Lane change zone,Unsafe lane change,Conflict between tracks 2 and 5 in CELL_B_1 with PET 1.600s.
+2,4,CELL_B_2,3.5,3.8,0.2999999999999998,[],[],critical,3,Critical,Rear-end near miss,Tailgating,Conflict between tracks 2 and 4 in CELL_B_2 with PET 0.300s.
