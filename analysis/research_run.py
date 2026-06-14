@@ -174,6 +174,24 @@ def load_video_list(videos_list: Path) -> List[str]:
 
 def run_pet_extraction(args: argparse.Namespace, paths: WorkflowPaths, video_path: Path, out_csv: Path) -> pd.DataFrame:
     logger.info("Running PET extraction on %s", video_path)
+
+    if args.detector == "yolo26seg":
+        from experimental.contact_point_pipeline import ContactPointPipeline
+
+        pipe = ContactPointPipeline(
+            model_name="yolo26n-seg.pt",
+            road_mask_path=str(paths.road_mask) if hasattr(paths, "road_mask") and paths.road_mask else None,
+            homography_path=str(paths.homography) if hasattr(paths, "homography") and paths.homography else None,
+        )
+        df = pipe.run(
+            video_path=str(video_path),
+            max_frames=args.max_frames,
+        )
+        out_csv.parent.mkdir(parents=True, exist_ok=True)
+        df.to_csv(out_csv, index=False)
+        logger.info("YOLO26 PET extraction completed: %s rows -> %s", len(df), out_csv)
+        return df
+
     from traffic_analyzer import run_video_to_pet
 
     kwargs = dict(
@@ -188,13 +206,12 @@ def run_pet_extraction(args: argparse.Namespace, paths: WorkflowPaths, video_pat
         detector=args.detector,
         rtdetr_weights_path=paths.rtdetr_weights,
     )
-    if args.imgsz is not None:
+    if args.imgsz is not None and args.detector != "rtdetr":
         kwargs["imgsz"] = args.imgsz
 
     df = run_video_to_pet(**kwargs)
     logger.info("PET extraction completed: %s rows -> %s", len(df), out_csv)
     return df
-
 
 def run_pet_summary(
     args: argparse.Namespace,
@@ -441,7 +458,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--rtdetr-weights", default="rtdetr-l.pt")
     parser.add_argument(
         "--detector",
-        choices=["sam3", "rtdetr"],
+        choices=["sam3", "rtdetr", "yolo26seg"],
         default="sam3",
         help="Detection backend: use rtdetr for routine runs; use sam3 for heavy concept-aware segmentation.",
     )
