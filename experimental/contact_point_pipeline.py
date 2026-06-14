@@ -1,8 +1,6 @@
-
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import List, Optional, Tuple
 
 import cv2
@@ -25,19 +23,16 @@ class TrackPoint:
 
 
 class ContactPointPipeline:
-
-def _project_pixel_to_world(self, pixel_x, pixel_y):
-    """Project a single pixel point to world coordinates using loaded homography."""
-    if getattr(self, "H", None) is None:
-        raise RuntimeError("Homography matrix self.H is not loaded")
-    import numpy as np
-    pt = np.array([float(pixel_x), float(pixel_y), 1.0], dtype=float)
-    out = self.H @ pt
-    if not np.isfinite(out).all():
-        raise RuntimeError(f"Non-finite homography output for point {(pixel_x, pixel_y)}: {out}")
-    if abs(out[2]) < 1e-12:
-        raise RuntimeError(f"Homography normalization term too small for point {(pixel_x, pixel_y)}: {out}")
-    return float(out[0] / out[2]), float(out[1] / out[2])
+    def _project_pixel_to_world(self, pixel_x, pixel_y):
+        if getattr(self, "H", None) is None:
+            raise RuntimeError("Homography matrix self.H is not loaded")
+        pt = np.array([float(pixel_x), float(pixel_y), 1.0], dtype=float)
+        out = self.H @ pt
+        if not np.isfinite(out).all():
+            raise RuntimeError(f"Non-finite homography output for point {(pixel_x, pixel_y)}: {out}")
+        if abs(out[2]) < 1e-12:
+            raise RuntimeError(f"Homography normalization term too small for point {(pixel_x, pixel_y)}: {out}")
+        return float(out[0] / out[2]), float(out[1] / out[2])
 
     def __init__(
         self,
@@ -77,7 +72,6 @@ def _project_pixel_to_world(self, pixel_x, pixel_y):
         y_band_percent: float = 2.0,
     ) -> Tuple[float, float]:
         mask_xy = np.asarray(mask_xy, dtype=float)
-
         if mask_xy.ndim != 2 or mask_xy.shape[0] < 3:
             return ContactPointPipeline._box_bottom_center(box_xyxy)
 
@@ -171,7 +165,7 @@ def _project_pixel_to_world(self, pixel_x, pixel_y):
 
                 rows.append(
                     TrackPoint(
-                        frame_idx=frame_idx,
+                        frame_idx=int(frame_idx),
                         track_id=int(track_ids[idx]),
                         cls_id=int(cls_ids[idx]),
                         conf=float(confs[idx]),
@@ -184,95 +178,3 @@ def _project_pixel_to_world(self, pixel_x, pixel_y):
                 )
 
         return pd.DataFrame([r.__dict__ for r in rows])
-
-    def debug_annotate_video(
-        self,
-        video_path: str,
-        output_path: str,
-        tracker: str = "bytetrack.yaml",
-        conf: float = 0.25,
-        max_frames: int = 10,
-    ) -> str:
-        cap = cv2.VideoCapture(video_path)
-        if not cap.isOpened():
-            raise FileNotFoundError(f"Could not open video: {video_path}")
-
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        if fps <= 0:
-            fps = 25.0
-
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-        out_path = Path(output_path)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        writer = cv2.VideoWriter(
-            str(out_path),
-            cv2.VideoWriter_fourcc(*"mp4v"),
-            fps,
-            (width, height),
-        )
-
-        results = self.model.track(
-            source=video_path,
-            stream=True,
-            persist=True,
-            tracker=tracker,
-            conf=conf,
-            classes=self.classes,
-            verbose=False,
-        )
-
-        for frame_idx, r in enumerate(results):
-            if frame_idx >= max_frames:
-                break
-
-            frame = r.plot(labels=True, boxes=True, masks=True, probs=False)
-
-            if r.boxes is not None and r.boxes.id is not None:
-                boxes_xyxy = r.boxes.xyxy.cpu().numpy() if r.boxes.xyxy is not None else None
-                masks_xy = r.masks.xy if r.masks is not None else []
-                track_ids = r.boxes.id.int().cpu().tolist()
-
-                for idx, tid in enumerate(track_ids):
-                    mask_pts = masks_xy[idx] if idx < len(masks_xy) else None
-                    box_xyxy = boxes_xyxy[idx] if boxes_xyxy is not None and idx < len(boxes_xyxy) else None
-
-                    try:
-                        if mask_pts is None:
-                            x, y = self._box_bottom_center(box_xyxy)
-                        else:
-                            x, y = self.extract_contact_point(mask_pts, box_xyxy=box_xyxy)
-                    except Exception:
-                        continue
-
-                    valid = self.validate_point(x, y)
-                    color = (0, 255, 0) if valid else (0, 0, 255)
-
-                    cv2.circle(frame, (int(round(x)), int(round(y))), 5, color, -1)
-                    cv2.putText(
-                        frame,
-                        f"id={tid}",
-                        (int(round(x)) + 6, int(round(y)) - 6),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.5,
-                        color,
-                        1,
-                        cv2.LINE_AA,
-                    )
-
-            cv2.putText(
-                frame,
-                f"frame={frame_idx}",
-                (20, 30),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                (255, 255, 255),
-                2,
-                cv2.LINE_AA,
-            )
-            writer.write(frame)
-
-        writer.release()
-        cap.release()
-        return str(out_path)
