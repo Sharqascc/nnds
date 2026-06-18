@@ -560,8 +560,8 @@ def run_video_to_pet(
                 "track_a": track_a,
                 "track_b": track_b,
                 "conflict_type": conflict_type,
-                "world_traj_i": world_traj_i_str,
-                "world_traj_j": world_traj_j_str,
+                "world_traj_i": serialize_world_traj(traj_i),
+                "world_traj_j": serialize_world_traj(traj_j),
             }
         )
 
@@ -582,6 +582,17 @@ def run_video_to_pet(
     logger.info("✅ Saved %d PET events to %s", len(df), out_csv_path)
     return df
 
+
+
+
+def serialize_world_traj(samples):
+    out = []
+    for s in samples:
+        t = float(getattr(s, "t"))
+        x = float(getattr(s, "x"))
+        y = float(getattr(s, "y"))
+        out.append((t, x, y))
+    return out
 
 
 def parse_args() -> argparse.Namespace:
