@@ -505,11 +505,9 @@ mypy --ignore-missing-imports .
 
 - SAM3 model from Meta AI  
 - Hugging Face for model/dataset hosting  
-- FHWA for SSAM methodology guidance  
+- FHWA for SSAM methodology guidance
 
 <!-- AUTO-README-START -->
-> The block below is auto-generated to keep high-level structure in sync with the repository.
-
 ## Auto-generated structure
 
 - `experimental/contact_point_pipeline.py` — contact-point projection into world coordinates.
