@@ -1,78 +1,26 @@
-# NNDS: Non-motorized and Heterogeneous Traffic Safety Analysis
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+## Requirements & Compatibility
 
-AI-powered system for analyzing vehicle behavior and surrogate safety metrics at unsignalized intersections.
+### Compatibility Matrix
 
-## 📋 Table of Contents
+| Component          | Python      | CUDA      | torch        |
+|--------------------|-------------|-----------|--------------|
+| SAM3 pipeline      | 3.8–3.10    | 11.7+     | 2.0+         |
+| Diffusion model    | 3.9–3.11    | 11.8+     | 2.0+         |
+| Visualization      | 3.8–3.11    | N/A       | N/A          |
 
-- [Pipeline Architecture](#pipeline-architecture)
-- [Quick Start](#quick-start)
-- [Installation](#installation)
-- [Usage Guide](#usage-guide)
-- [Pipeline Components](#pipeline-components)
-- [Visualization Suite](#visualization-suite)
-- [Diffusion-Based Modeling](#diffusion-based-modeling)
-- [SSM Verification](#ssm-verification--validation-methodology)
-- [Project Structure](#project-structure)
-- [Colab Setup](#colab-setup-recommended)
-- [License](#license)
+### Example `requirements.txt`
 
-## Pipeline Architecture
+Pin versions for reproducibility:
 
-The NNDS system implements a multi-stage pipeline that transforms raw intersection video into quantitative safety metrics and diffusion-based trajectory predictions.
-
-### Pipeline Overview
-
-| Phase | Stage | Key Output | Location |
-|-------|-------|------------|----------|
-| 1 | Video Input & Preprocessing | Raw frames | `videos/` |
-| 2 | SAM3 Video Segmentation | Actor masks + track IDs | `traffic_analyzer.py` |
-| 3 | BEV Transformation | World-coordinate trajectories | `bev_mapper.py`, `giti_bev_calib.py` |
-| 4 | Grid Mapping & Trajectory | Grid cell assignments | `grid_trajectory/` |
-| 5 | PET Conflict Extraction | Conflict events + PETs | `outputs/petevents_bev.csv` |
-| 6 | Analysis & Visualization | Safety statistics + plots | `analysis/`, `analysis/visualization/` |
-| 7 | Diffusion-Based Modeling | Counterfactual trajectories | `traffic_diffusion/` |
-
-### Pipeline Data Flow
-
+```txt
+torch>=2.0.0,<2.1.0
+opencv-python>=4.8.0,<4.9.0
+numpy>=1.24.0,<1.26.0
+supervision>=0.10.0
 ```
-[videos/traffic_video.mp4]
-        │
-        ▼
-┌─────────────────────────────┐
-│  Phase 2: SAM3 Segmentation │ → sam3.pt (HF model)
-│  (actor masks + track IDs)  │
-└──────────────┬──────────────┘
-               │
-               ▼
-┌─────────────────────────────┐
-│  Phase 3: BEV Transform     │ → giti_bev_calib.py, bev_mapper.py
-│  (image → world coordinates)│
-└──────────────┬──────────────┘
-               │
-               ▼
-┌─────────────────────────────┐
-│  Phase 4: Grid + Trajectory │ → grid_trajectory/
-│  (grid cells + (t,x,y) traj)│
-└──────────────┬──────────────┘
-               │
-               ▼
-┌─────────────────────────────┐
-│  Phase 5: PET Extraction    │ → outputs/petevents_bev.csv
-│  (conflict events + PETs)   │
-└──────────────┬──────────────┘
-               │
-        ┌──────┴──────┐
-        ▼             ▼
-┌──────────────┐  ┌───────────────────────┐
-│ Phase 6:     │  │ Phase 7:              │
-│ Analysis     │  │ Diffusion Modeling    │
-│ & Viz        │  │ (train + sample + eval)│
-└──────────────┘  └───────────────────────┘
-```
+
+Adjust to match your actual dependencies.
 
 ## Quick Start
 
@@ -86,7 +34,6 @@ import os
 import sys
 import subprocess
 from pathlib import Path
-from urllib.parse import quote
 
 # 1) Clone or update repo on main branch
 os.chdir("/content")
@@ -94,9 +41,13 @@ repo_dir = Path("nnds")
 
 if repo_dir.exists():
     os.chdir(repo_dir)
-    subprocess.run(["git", "fetch"], check=True)
-    subprocess.run(["git", "checkout", "main"], check=True)
-    subprocess.run(["git", "pull"], check=True)
+    try:
+        subprocess.run(["git", "fetch"], check=True, capture_output=True)
+        subprocess.run(["git", "checkout", "main"], check=True, capture_output=True)
+        subprocess.run(["git", "pull"], check=True, capture_output=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Git fetch/pull failed: {e.stderr.decode()}")
+        raise
 else:
     subprocess.run(["git", "clone", "https://github.com/Sharqascc/nnds.git", "nnds"], check=True)
     os.chdir(repo_dir)
@@ -109,14 +60,28 @@ subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"
 os.makedirs("videos", exist_ok=True)
 video_path = Path("videos/traffic_video.mp4")
 if not video_path.exists():
-    subprocess.run(["wget", "-O", str(video_path), 
-        "https://huggingface.co/datasets/sharqascc/traffic-video-dataset/resolve/main/videos/traffic_video.mp4"], check=True)
+    subprocess.run(
+        [
+            "wget",
+            "-O",
+            str(video_path),
+            "https://huggingface.co/datasets/sharqascc/traffic-video-dataset/resolve/main/videos/traffic_video.mp4",
+        ],
+        check=True,
+    )
 
 # 4) Download SAM3 weights
 sam3_path = Path("sam3.pt")
 if not sam3_path.exists():
-    subprocess.run(["wget", "-O", str(sam3_path),
-        "https://huggingface.co/sharqascc/sam3-traffic-model/resolve/main/sam3.pt"], check=True)
+    subprocess.run(
+        [
+            "wget",
+            "-O",
+            str(sam3_path),
+            "https://huggingface.co/sharqascc/sam3-traffic-model/resolve/main/sam3.pt",
+        ],
+        check=True,
+    )
 
 print("✅ Setup complete!")
 ```
@@ -148,9 +113,9 @@ pip install -r requirements.txt
 ### Using Make
 
 ```bash
-make install      # Install dependencies
-make grid         # Run video-to-PET pipeline
-make test         # Run tests
+make install      # pip install -r requirements.txt
+make grid         # PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
+make test         # pytest tests/ -v
 ```
 
 ## Usage Guide
@@ -200,92 +165,91 @@ PYTHONPATH=. python analysis/research_run.py \
 
 ### Phase 1: Video Input & Preprocessing
 
-| Component | File | Description |
-|-----------|------|-------------|
-| Input video | `videos/` | Raw traffic video (e.g., `traffic_video.mp4`) |
-| Demo video | HF dataset | Public demo at `sharqascc/traffic-video-dataset` |
-| Frame limiting | `--max-frames` | Debug/fast-test mode |
+| Component     | File                         | Description                                  |
+|--------------|------------------------------|----------------------------------------------|
+| Input video  | `videos/`                    | Raw traffic video (e.g., `traffic_video.mp4`) |
+| Demo video   | HF dataset                   | `sharqascc/traffic-video-dataset`            |
+| Frame limiting | `--max-frames`             | Debug / fast-test mode                       |
+| Trajectory parser | `analysis/trajectory_parser.py` | Parses raw trajectories into analysis-ready form |
 
-### Phase 2: SAM3 Video Segmentation
+### Phase 2: Segmentation & Tracking (SAM3 / YOLO26)
 
-| Component | File | Description |
-|-----------|------|-------------|
-| SAM3 weights | `sam3.pt` | Downloaded from HF model repo |
-| Segmentation | `traffic_analyzer.py` | SAM3 segments actors per frame |
-| Actor tracking | — | Track IDs assigned across frames |
+| Component          | File                               | Description                                       |
+|-------------------|------------------------------------|---------------------------------------------------|
+| SAM3 weights       | `sam3.pt`                         | SAM3 model (downloaded from Hugging Face)         |
+| SAM3 grid-PET      | `grid_trajectory/sam3_grid_pet.py`| SAM3 → grid → PET pipeline                        |
+| YOLO26seg grid-PET | `grid_trajectory/yolo26seg_grid_pet.py` | YOLOv8‑26 segmentation → grid → PET (experimental) |
+| Contact-point pipeline | `experimental/contact_point_pipeline.py` | Experimental contact-point projection into world coordinates |
+| Local motion checker | `experimental/check_local_motion.py` | Tools for inspecting local motion and calibration |
 
 ### Phase 3: BEV Transformation & Calibration
 
-| Component | File | Description |
-|-----------|------|-------------|
-| Homography calibration | `giti_bev_calib.py` | Camera-to-world homography |
-| BEV mapper | `bev_mapper.py` | Image-plane to world coordinates |
-| World coordinates | — | Outputs (t, x, y) trajectories in meters |
+| Component           | File                 | Description                             |
+|--------------------|----------------------|-----------------------------------------|
+| Homography calibration | `giti_bev_calib.py` | Camera-to-world homography estimation   |
+| BEV mapper         | `bev_mapper.py`      | Image-plane to world coordinates        |
+| World coordinates  | —                    | Outputs (t, x, y) trajectories in meters |
 
 ### Phase 4: Grid Mapping & Trajectory Construction
 
-| Component | File | Description |
-|-----------|------|-------------|
-| Spatial grid | `grid_trajectory/spatial_grid.py` | Intersection grid zones |
-| PET grid logic | `grid_trajectory/pet_grid.py` | Grid cell assignments |
-| SAM3-grid integration | `grid_trajectory/sam3_grid_pet.py` | SAM3 + grid + PET |
-| Trajectory dataset | `traffic_diffusion/data/` | `trajdiff_*.npy`, `*.parquet` |
+| Component         | File                           | Description                              |
+|------------------|--------------------------------|------------------------------------------|
+| Spatial grid     | `grid_trajectory/spatial_grid.py` | Intersection grid zones                 |
+| PET grid logic   | `grid_trajectory/pet_grid.py`  | Grid cell assignments and PET logic      |
+| Trajectory dataset | `traffic_diffusion/data/`    | `trajdiff_*.npy`, `*.parquet` for diffusion training |
 
 ### Phase 5: PET Conflict Extraction
 
-| Component | File | Description |
-|-----------|------|-------------|
-| End-to-end pipeline | `traffic_analyzer.py` | SAM3 → BEV → Grid → PET |
-| PET computation | `grid_trajectory/` | Post Encroachment Time |
-| Conflict detection | `pet_conflict_checker.py` | Conflict classification |
-| Output CSV | `outputs/petevents_bev.csv` | Events with PET, trajectories |
-| Gate counter | `gate_counter.py` | Actor counting through gates |
+| Component          | File                     | Description                              |
+|-------------------|--------------------------|------------------------------------------|
+| End-to-end pipeline | `traffic_analyzer.py`   | SAM3 / YOLO26seg → BEV → grid → PET      |
+| PET computation   | `grid_trajectory/`       | Post Encroachment Time logic             |
+| Conflict detection | `pet_conflict_checker.py`| Conflict classification                  |
+| Output CSV        | `outputs/petevents_bev.csv` | Events with PET, trajectories           |
+| Gate counter      | `gate_counter.py`        | Actor counting through gates             |
 
 ### Phase 6: Analysis & Visualization
 
-| Component | File | Description |
-|-----------|------|-------------|
-| PET summary | `analysis/pet_summary.py` | Statistics, percentiles, risk |
-| SSM verification | `analysis/ssm/` | SSM validation framework |
-| Uncertainty quantification | `analysis/ssm/uncertainty_quantifier.py` | Error analysis |
-| Statistical testing | `analysis/verification/statistical_testing.py` | Hypothesis tests |
-| Reproducibility audit | `analysis/logging/reproducibility_audit.py` | Run tracking |
-| Research runner | `analysis/research_run.py` | Orchestrated workflow |
+| Component                  | File                                         | Description                        |
+|---------------------------|----------------------------------------------|------------------------------------|
+| PET summary               | `analysis/pet_summary.py`                    | Statistics, percentiles, risk      |
+| SSM verification          | `analysis/ssm/ssm_verification.py`           | SSM validation framework           |
+| Uncertainty quantification| `analysis/ssm/uncertainty_quantifier.py`     | Error and uncertainty analysis     |
+| Statistical testing       | `analysis/verification/statistical_testing.py`| Hypothesis tests                  |
+| Reproducibility audit     | `analysis/logging/reproducibility_audit.py`  | Run tracking (if present)          |
+| Research runner           | `analysis/research_run.py`                   | Orchestrated workflow              |
 
 ### Phase 7: Diffusion-Based Trajectory Modeling
 
-| Component | File | Description |
-|-----------|------|-------------|
-| Diffusion model | `traffic_diffusion/trajectory_diffusion.py` | Conditional diffusion |
-| Training script | `traffic_diffusion/train_trajectory_diffusion.py` | Train on PET events |
-| Model & sampler | `traffic_diffusion/model_and_sampler.py` | Checkpoint + sampling |
-| Training utils | `traffic_diffusion/training_utils.py` | Data loaders, loops |
-| Sampling utils | `traffic_diffusion/sampling_utils.py` | Counterfactual futures |
-| PET safety metrics | `traffic_diffusion/pet_safety_metrics.py` | PET/TTC from sampled |
-| PET diffusion analysis | `analysis/pet_diffusion_analysis.py` | Real vs generated PET |
+| Component        | File                                  | Description                                     |
+|-----------------|---------------------------------------|-------------------------------------------------|
+| Diffusion model | `traffic_diffusion/trajectory_diffusion.py` | Conditional trajectory diffusion model     |
+| Training script | `traffic_diffusion/train_trajectory_diffusion.py` | Train on PET events                    |
+| Model & sampler | `traffic_diffusion/model_and_sampler.py` | Checkpoint + sampling utilities              |
+| Training utils  | `traffic_diffusion/training_utils.py` | Data loaders and training loops               |
+| Sampling utils  | `traffic_diffusion/sampling_utils.py` | Counterfactual futures generation             |
+| PET safety metrics | `traffic_diffusion/pet_safety_metrics.py` | PET/TTC from diffusion trajectories     |
+| Episode reward  | `traffic_diffusion/episode_reward.py` | Episode-level reward and safety metrics        |
+| PET diffusion analysis | `analysis/pet_diffusion_analysis.py` | Real vs generated PET comparison         |
 
 ## Visualization Suite
 
-The NNDS visualization suite (26+ exports) produces publication-ready figures compliant with IEEE Transactions on ITS, Accident Analysis & Prevention, and FHWA guidelines.
-
 ### Visualization Components
 
-| Module | File | Exports | Description |
-|--------|------|---------|-------------|
-| SSM Analysis | `industry_standard_viz.py` | 10 | Distribution, time series, heatmaps |
-| Diffusion Evaluation | `pet_diffusion_plots.py` | 6 | PET-like metrics, residuals |
-| Conflict Events | `pet_event_plots.py` | 7 | Individual conflict visualization |
-| Video Overlays | `video_overlays.py` | 5 | Frame overlays, MP4 generation |
+| Module             | File                                         | Exports | Description                           |
+|--------------------|----------------------------------------------|---------|---------------------------------------|
+| SSM Analysis       | `analysis/visualization/industry_standard_viz.py` | 10      | Distributions, time series, heatmaps  |
+| Diffusion Evaluation | `analysis/visualization/pet_diffusion_plots.py` | 6       | PET-like metrics, residuals           |
+| Conflict Events    | `analysis/visualization/pet_event_plots.py`  | 7       | Individual conflict visualization     |
+| Video Overlays     | `analysis/visualization/video_overlays.py`   | 5       | Frame overlays, MP4 generation        |
 
 ### Quick Visualization Examples
 
 ```python
-from analysis.visualization import (
-    plot_pet_distribution,
-    plot_conflict_event,
-    generate_conflict_video,
-    DiffusionPETPlotter
-)
+from analysis.visualization.industry_standard_viz import plot_pet_distribution
+from analysis.visualization.pet_event_plots import plot_conflict_event
+from analysis.visualization.video_overlays import generate_conflict_video
+from analysis.visualization.pet_diffusion_plots import DiffusionPETPlotter
 
 # PET distribution
 fig = plot_pet_distribution(df['pet'].values, style='journal')
@@ -319,10 +283,13 @@ plotter.plot_all(pet_pairs, records, out_dir='diffusion_eval/')
 ### Training
 
 ```bash
-# Train on PET events
 PYTHONPATH=. python traffic_diffusion/train_trajectory_diffusion.py \
     --csv-path outputs/petevents_bev.csv \
-    --epochs 100
+    --epochs 100 \
+    --batch-size 32 \
+    --learning-rate 1e-4 \
+    --device cuda \
+    --save-dir checkpoints/
 ```
 
 ### Safety Evaluation
@@ -344,18 +311,16 @@ PYTHONPATH=. python analysis/safety_eval_diffusion_notebook.py
 
 ### Surrogate Safety Measures
 
-| Metric | Description | Safety Threshold | Reference |
-|--------|-------------|-----------------|-----------|
-| PET | Time difference between leaving/entering conflict zone | < 1.5s: critical, < 3.0s: potential | Allen et al. (1977) |
-| TTC | Time to collision if trajectories maintained | < 2.0s: critical, < 5.0s: potential | Hyd’en (1987) |
-| DRAC | Deceleration rate to avoid collision | > 3.37 m/s²: unsafe | NHTSA guidelines |
+| Metric | Description                                      | Safety Threshold             | Reference                |
+|--------|--------------------------------------------------|-----------------------------|--------------------------|
+| PET    | Time difference between leaving/entering conflict zone | < 1.5s: critical, < 3.0s: potential | Allen et al. (1977) |
+| TTC    | Time to collision if trajectories maintained     | < 2.0s: critical, < 5.0s: potential | Hyd’en (1987)        |
+| DRAC   | Deceleration rate to avoid collision             | > 3.37 m/s²: unsafe          | NHTSA guidelines        |
 
 ### Mathematical Formulation
 
-PET and TTC are defined as:
-
 \[
-\text{PET}_{i,j} = \min_t \left| t_j^{\text{enter}} - t_i^{\text{exit}} \right| 
+\text{PET}_{i,j} = \min_t \left| t_j^{\text{enter}} - t_i^{\text{exit}} \right|
 \]
 
 \[
@@ -364,12 +329,12 @@ PET and TTC are defined as:
 
 ### Error Propagation
 
-| Error Source | Typical Magnitude | Impact on PET |
-|--------------|-------------------|---------------|
-| Detection (ε_d) | 0.1–0.3 m | ±0.05 s |
-| Homography (ε_h) | 0.2–0.5 m | ±0.10 s |
-| Tracking (ε_t) | 0.05–0.15 m | ±0.02 s |
-| Total | 0.25–0.60 m | ±0.12 s |
+| Error Source     | Typical Magnitude | Impact on PET  |
+|------------------|-------------------|----------------|
+| Detection (ε_d)  | 0.1–0.3 m         | ±0.05 s        |
+| Homography (ε_h) | 0.2–0.5 m         | ±0.10 s        |
+| Tracking (ε_t)   | 0.05–0.15 m       | ±0.02 s        |
+| Total            | 0.25–0.60 m       | ±0.12 s        |
 
 ### Validation Protocol
 
@@ -379,66 +344,91 @@ Three-tier validation per FHWA SSAM framework:
 2. Simulation validation – against VISSIM, SUMO  
 3. Field validation – correlation with crash data  
 
+## Output Directory Structure
+
+```text
+outputs/
+├── petevents_bev.csv                     # Main PET events
+├── safety_events_diffusion_model.csv     # Sampled futures with PET/TTC
+├── trajectories/
+│   └── world_trajectories.npy            # BEV trajectories
+└── visualizations/
+    ├── plots/                            # PDF/PNG figures
+    └── videos/                           # Annotated MP4 clips
+```
+
+## PET CSV Schema
+
+| Column        | Type     | Nullable | Description                           | Value Range                |
+|--------------|----------|----------|---------------------------------------|----------------------------|
+| `event_id`   | int      | No       | Integer conflict index                | 1, 2, 3, …               |
+| `pet`        | float    | Yes      | Post-Encroachment Time (seconds)      | [0, ∞), NaN if invalid   |
+| `frame`      | int      | Yes      | Frame index                           | 0, 1, 2, …, NaN if unknown |
+| `track_a`    | int      | No       | Track ID of first actor               | ≥1                       |
+| `track_b`    | int      | No       | Track ID of second actor              | ≥1                       |
+| `conflict_type` | str    | No       | Grid cell ID                          | e.g. `CELL_C_1`          |
+| `world_traj_i` | str    | No       | BEV trajectory for actor a            | Serialized JSON/array    |
+| `world_traj_j` | str    | No       | BEV trajectory for actor b            | Serialized JSON/array    |
+
+## Common Issues & Solutions
+
+| Issue                                | Solution                                                                                |
+|-------------------------------------|-----------------------------------------------------------------------------------------|
+| CUDA out of memory                   | Reduce batch size or use `--max-frames 100`                                            |
+| Homography calibration fails         | Ensure at least 4 correspondence points in `giti_bev_calib.py`                          |
+| Empty PET CSV output                 | Check `--pet-threshold` is reasonable for your scene                                    |
+| Video not found                      | Verify `videos/` directory and file permissions                                         |
+| Import errors in visualization       | Use explicit imports as shown in `Visualization Example` section                        |
+| Training is too slow                 | Enable GPU via `CUDA_VISIBLE_DEVICES=0` and ensure `torch` uses CUDA                    |
+
+## Environment Variables
+
+| Variable             | Purpose                          | Default     |
+|----------------------|----------------------------------|-------------|
+| `PYTHONPATH`         | Project root for imports         | `.`         |
+| `CUDA_VISIBLE_DEVICES` | GPU selection for diffusion     | `0`         |
+| `NNDS_DATA_DIR`      | Override data directory          | `./data/`   |
+
 ## Project Structure
 
-```
+```text
 nnds/
-├── analysis/                      # Research & evaluation
-│   ├── logging/                   # Reproducibility audit
-│   │   ├── __init__.py
-│   │   └── reproducibility_audit.py
-│   ├── ssm/                       # SSM verification
+├── analysis/
+│   ├── __init__.py
+│   ├── pet_diffusion_analysis.py
+│   ├── pet_summary.py
+│   ├── research_run.py
+│   ├── safety_eval_diffusion_notebook.py
+│   ├── safety_eval_diffusion.py
+│   ├── trajectory_parser.py
+│   ├── ssm/
 │   │   ├── __init__.py
 │   │   ├── ssm_verification.py
 │   │   └── uncertainty_quantifier.py
-│   ├── verification/              # Statistical testing
+│   ├── verification/
 │   │   ├── __init__.py
 │   │   └── statistical_testing.py
-│   ├── visualization/             # 26+ plotting functions
-│   │   ├── __init__.py            # Main exports (v2.3.0)
-│   │   ├── industry_standard_viz.py
-│   │   ├── pet_diffusion_plots.py
-│   │   ├── pet_event_plots.py
-│   │   └── video_overlays.py
-│   ├── __init__.py
-│   ├── pet_diffusion_analysis.py  # Diffusion evaluation
-│   ├── pet_summary.py             # PET statistics (v2.0.0)
-│   ├── research_run.py            # Workflow orchestrator
-│   ├── safety_eval_diffusion.py   # Batch safety evaluation
-│   └── safety_eval_diffusion_notebook.py
-├── calibration/                   # Calibration utilities
-│   ├── grid_validation_calibration.py
-│   ├── monte_carlo_calibration_benchmark.py
-│   └── monte_carlo_calibration_notes.md
-├── configs/                       # Configuration files
-│   ├── bev_config.json
-│   ├── gate_config.yaml
-│   ├── giti_calibration_points.json
-│   └── GITI_grid_config.json
-├── docs/                          # Documentation & samples
-│   ├── code_dumps/
-│   └── data_samples/
-│       └── petevents_bev_demo.csv
-├── grid_trajectory/               # Core grid/PET logic
+│   └── visualization/
+│       ├── __init__.py
+│       ├── industry_standard_viz.py
+│       ├── pet_diffusion_plots.py
+│       ├── pet_event_plots.py
+│       └── video_overlays.py
+├── experimental/
+│   ├── check_local_motion.py
+│   └── contact_point_pipeline.py
+├── grid_trajectory/
 │   ├── __init__.py
 │   ├── pet_grid.py
 │   ├── sam3_grid_pet.py
-│   └── spatial_grid.py
-├── outputs/                       # Generated artifacts (gitignored)
-├── sample_data/                   # Sample video
-│   └── traffic_video.mp4
-├── tests/                         # Smoke tests
-│   ├── test_configs_smoke.py
-│   ├── test_diffusion_smoke.py
-│   ├── test_imports_smoke.py
-│   ├── test_repo_smoke.py
-│   └── test_traffic_analyzer_cli.py
-├── traffic_diffusion/             # Diffusion models
-│   ├── data/                      # Training data
+│   ├── spatial_grid.py
+│   └── yolo26seg_grid_pet.py
+├── traffic_diffusion/
+│   ├── __init__.py
+│   ├── data/
 │   │   ├── trajdiff_inputs.npy
 │   │   ├── trajdiff_meta.parquet
 │   │   └── trajdiff_targets.npy
-│   ├── __init__.py
 │   ├── episode_reward.py
 │   ├── model_and_sampler.py
 │   ├── pet_safety_metrics.py
@@ -446,35 +436,18 @@ nnds/
 │   ├── train_trajectory_diffusion.py
 │   ├── training_utils.py
 │   └── trajectory_diffusion.py
-├── videos/                        # Input videos
-│   └── traffic_video.mp4
-├── bev_mapper.py                  # BEV transformation
-├── bootstrap_nnds_session.sh      # Session bootstrap
-├── colab_ready.py                 # Colab utilities
-├── CONTRIBUTING.md
-├── gate_counter.py                # Traffic counting
-├── giti_bev_calib.py              # Homography calibration
-├── Makefile
-├── nnds_structure.py              # Structure visualizer
-├── pet_conflict_checker.py        # Conflict detection
-├── pyproject.toml
-├── README.md
-├── requirements.txt
-├── sam3.pt                        # SAM3 weights (3.2GB, gitignored)
-├── traffic_analyzer.py            # Main entry point
-└── traj_diffusion_normalized.py   # Normalized diffusion experiments
+└── ...
 ```
 
 ## Colab Setup (Recommended)
 
 ### One-Cell Bootstrap
 
-The bootstrap script above handles everything:
+The bootstrap script above handles:
 
-- Clones/updates repository on `main` branch  
-- Installs Python dependencies  
-- Downloads demo video from Hugging Face datasets  
-- Downloads SAM3 weights from Hugging Face models  
+- Cloning/updating the repository on `main`  
+- Installing Python dependencies  
+- Downloading demo video and SAM3 weights  
 
 ### Running in Colab
 
@@ -494,21 +467,6 @@ The bootstrap script above handles everything:
     --csv-path outputs/petevents_bev_test.csv \
     --export --output-dir results/
 ```
-
-## PET CSV Format
-
-The default PET CSV contains:
-
-| Column | Description |
-|--------|-------------|
-| `event_id` | Integer conflict index |
-| `pet` | Post-Encroachment Time (seconds) |
-| `frame` | Frame index (may be NaN) |
-| `track_a` | Track ID of first actor |
-| `track_b` | Track ID of second actor |
-| `conflict_type` | Grid cell ID (e.g., `CELL_C_1`) |
-| `world_traj_i` | BEV trajectory for actor a |
-| `world_traj_j` | BEV trajectory for actor b |
 
 ## Development
 
@@ -532,7 +490,6 @@ black .
 mypy --ignore-missing-imports .
 ```
 
-
 ## References
 
 - Allen, B. L., Shin, B. T., & Cooper, P. J. (1977). Analysis of traffic conflicts and collisions. *Transportation Research Record*, 667, 67–74.  
@@ -540,16 +497,19 @@ mypy --ignore-missing-imports .
 - Hyd’en, C. (1987). The Swedish Traffic Conflicts Technique. *Bulletin Lund Institute of Technology*, 70.  
 - Zheng, L., Ismail, K., & Meng, X. (2014). Traffic conflict techniques for road safety analysis. *Accident Analysis & Prevention*.  
 - FHWA. (2008). *Surrogate Safety Assessment Model and Validation*. FHWA-HRT-08-051.  
-
+- Hayward, J. C. (1972). Near-miss determination through use of a scale of danger.  
+- Vogel, K. (2003). A comparison of headway and time to collision as safety indicators.  
+- Archer, J. (2005). Indicators for traffic safety assessment methods.  
 
 ## Acknowledgments
 
 - SAM3 model from Meta AI  
 - Hugging Face for model/dataset hosting  
 - FHWA for SSAM methodology guidance  
-```
 
 <!-- AUTO-README-START -->
+> The block below is auto-generated to keep high-level structure in sync with the repository.
+
 ## Auto-generated structure
 
 - `experimental/contact_point_pipeline.py` — contact-point projection into world coordinates.
