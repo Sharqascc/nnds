@@ -1,4 +1,5 @@
 import os
+import argparse
 import numpy as np
 import pandas as pd
 import torch
@@ -15,7 +16,10 @@ def parse_traj_txy(cell):
 
 class TrajDiffusionDatasetNorm(Dataset):
     def __init__(self, csv_path, Th=8):
-        df = pd.read_csv(csv_path)
+        csv_path = os.path.abspath(csv_path)
+        df = pd.read_csv(csv_path, encoding='utf-8', engine='python')
+        print(f"[dataset] reading csv: {csv_path}")
+        print(f"[dataset] columns: {list(df.columns)}")
 
         t_i_list, xy_i_list, xy_j_list = [], [], []
         lengths = []
@@ -230,17 +234,23 @@ def sample_future_fn(batch, num_samples=20, checkpoint_path="checkpoints/traj_di
     Returns:
       samples_world: (num_samples, B, T_future, 4)
     """
-    return sample_future_denorm(batch, checkpoint_path=checkpoint_path, num_samples=num_samples)
+    return sample_future_denorm(batch, checkpoint_path=checkpoint_path, num_samples=num_samples, traj_shape=(9, 2, 2), cond_dim=4)
 
 def main():
-    csv_path = "docs/data_samples/petevents_bev_demo.csv"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--csv-path", required=True)
+    parser.add_argument("--checkpoint-path", required=True)
+    parser.add_argument("--out-csv-path", required=True)
+    args = parser.parse_args()
+
+    csv_path = args.csv_path
     ds, dl = make_loader(csv_path, batch_size=32, Th=8, shuffle=False)
     df_pet = ds.df
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     def sample_fn(batch, num_samples=20):
         # batch tensors are moved to device inside eval_safety_over_loader
-        return sample_future_fn(batch, num_samples=num_samples, checkpoint_path="checkpoints/traj_diffusion_best.pt")
+        return sample_future_fn(batch, num_samples=num_samples, checkpoint_path=args.checkpoint_path)
 
     eval_safety_over_loader(
         loader=dl,

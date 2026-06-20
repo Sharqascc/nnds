@@ -48,11 +48,11 @@ def sample_future_denorm(batch, checkpoint_path: str, num_samples: int = 1,
     # Derive shapes
     B, Th, D = batch["past"].shape
     Tf = batch["future"].shape[1]  # future horizon
-    # traj_shape = (T, N, F) where T = Tf, N=2 agents, F=2 coords
-    T = Tf
-    N = 2
-    F = 2
-    traj_shape = (T, N, F)
+    T = Tf  # output future steps
+    _, N, F = traj_shape  # use training shape metadata for agent/feature dims
+
+    # traj_shape is passed as parameter: (9, 2, 2)
+    # T is only the future horizon used for output reshaping
 
     # Load model once
     model = load_model(checkpoint_path, traj_shape=traj_shape, cond_dim=cond_dim, num_steps=num_steps)
@@ -67,8 +67,9 @@ def sample_future_denorm(batch, checkpoint_path: str, num_samples: int = 1,
     samples = []
     for _ in range(num_samples):
         # model.sample expects cond shape (B, cond_dim) and returns (B, T, N, F)
-        x = model.sample(cond)  # (B, T, N, F)
-        x = x.to("cpu").numpy()  # -> (B, T, N, F)
+        x = model.sample(cond)  # (B, T_total, N, F) where T_total=9
+        x = x[:, -T:, :, :]      # slice to future horizon only: (B, T, N, F) where T=5
+        x = x.to("cpu").numpy()
         # reshape to (B, T, 4) with agents concatenated along feature dim
         x_4 = x.reshape(B, T, N * F)  # (B, Tf, 4)
         samples.append(x_4)
