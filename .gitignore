@@ -6,10 +6,10 @@ patch.diff
 sam3.pt
 videos/
 
-# Ignore everything in outputs by default…
+# Ignore everything in outputs by default...
 outputs/*
 
-# …but keep CSVs (and optionally a README) tracked
+# ...but keep CSVs (and optionally a README) tracked
 !outputs/*.csv
 !outputs/README.md
 
@@ -18,8 +18,5 @@ outputs/*
 
 *.bak
 analysis_results_*/
-outputs/*.csv
 models/
-analysis_results_*/
-outputs/*.csv
 SimSun.ttf
