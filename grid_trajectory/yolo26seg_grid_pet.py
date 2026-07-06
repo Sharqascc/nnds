@@ -7,6 +7,7 @@ import json
 import logging
 import time
 
+import cv2
 import pandas as pd
 
 from experimental.contact_point_pipeline import ContactPointPipeline
@@ -71,7 +72,11 @@ def run_yolo26seg_grid_pet(
         bev_resolution=bev_cfg["bev_resolution"],
     )
 
-    fps = 25.0
+    # Read the real FPS from the video instead of assuming 25.0 --
+    # a wrong FPS silently scales every PET time-gap computation.
+    cap = cv2.VideoCapture(str(video_path))
+    fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+    cap.release()
     traj_logger = TrajectoryLogger(fps=fps)
 
     pipe = ContactPointPipeline(model_name="yolo26n-seg.pt")
@@ -100,6 +105,12 @@ def run_yolo26seg_grid_pet(
     df = df.sort_values(["frame_idx", "track_id"]).reset_index(drop=True)
 
     for _, row in df.iterrows():
+        # Respect the road-mask validity check computed upstream in
+        # ContactPointPipeline -- previously this was silently ignored,
+        # letting off-road detections get projected anyway.
+        if "valid_road_mask" in row and not bool(row["valid_road_mask"]):
+            continue
+
         frame_idx = int(row["frame_idx"])
         track_id = int(row["track_id"])
         cx = float(row["pixel_x"])

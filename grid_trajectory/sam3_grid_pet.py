@@ -313,9 +313,19 @@ def run_sam3_grid_pet(
             track_ids_attr = getattr(boxes, "id", None)
             if track_ids_attr is not None:
                 track_ids = track_ids_attr.detach().cpu().numpy()
+                ids_are_synthetic = False
             else:
-                # Fallback: synthetic IDs per frame (still usable for PET)
+                # SAM3 did not return persistent IDs for this frame.
+                # Synthetic per-frame indices have NO cross-frame identity
+                # meaning and would corrupt TrajectoryLogger intervals if
+                # logged as if they were real tracks. Warn loudly and skip.
+                _log(
+                    f"WARNING: frame {frame_idx} has no persistent track IDs "
+                    f"from SAM3 (boxes.id is None). Skipping {len(xyxy)} detection(s) "
+                    f"this frame rather than fabricating fake track identity."
+                )
                 track_ids = np.arange(len(xyxy), dtype=int)
+                ids_are_synthetic = True
 
             h, w = frame.shape[:2]
             det_count_total += len(xyxy)
@@ -339,6 +349,9 @@ def run_sam3_grid_pet(
                 return f"class_{cls_id}"
 
             for k, box in enumerate(xyxy):
+                if ids_are_synthetic:
+                    # Do not log fabricated identity into PET trajectories
+                    continue
                 x1, y1, x2, y2 = box.astype(int)
                 x1 = max(0, min(x1, w - 1))
                 y1 = max(0, min(y1, h - 1))

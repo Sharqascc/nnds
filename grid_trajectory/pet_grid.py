@@ -110,19 +110,26 @@ class TrajectoryLogger:
     to reduce memory usage, and exposes basic stats.
     """
 
-    def __init__(self, fps: float, downsample_every: int = 1) -> None:
+    def __init__(self, fps: float, downsample_every: int = 1, max_frame_gap: int = 5) -> None:
         """
         Args:
             fps: Frames per second, must be > 0.
             downsample_every: Keep every k-th world sample (1 = keep all).
+            max_frame_gap: If a track is not observed in the same cell for
+                more than this many consecutive frames (e.g. occlusion),
+                the interval is closed rather than treated as continuous
+                presence spanning the gap.
         """
         if fps <= 0:
             raise ValueError(f"fps must be positive, got {fps}")
         if downsample_every < 1:
             raise ValueError(f"downsample_every must be >= 1, got {downsample_every}")
+        if max_frame_gap < 1:
+            raise ValueError(f"max_frame_gap must be >= 1, got {max_frame_gap}")
 
         self.fps: float = float(fps)
         self.downsample_every: int = int(downsample_every)
+        self.max_frame_gap: int = int(max_frame_gap)
         # track_id -> list[(frame_idx, cell_id, world_x, world_y)]
         self.tracks: DefaultDict[
             int, List[Tuple[int, Any, Optional[float], Optional[float]]]
@@ -160,6 +167,7 @@ class TrajectoryLogger:
             samples.sort(key=lambda x: x[0])
 
             prev_cell: Any = None
+            prev_frame: Optional[int] = None
             start_frame: Optional[int] = None
             world_samples: List[WorldSampleType] = []
             sample_counter = 0
@@ -169,6 +177,7 @@ class TrajectoryLogger:
 
                 if prev_cell is None:
                     prev_cell = cell_id
+                    prev_frame = fi
                     start_frame = fi
                     if wx is not None and wy is not None:
                         if sample_counter % self.downsample_every == 0:
@@ -178,7 +187,10 @@ class TrajectoryLogger:
                         sample_counter += 1
                     continue
 
-                if cell_id == prev_cell:
+                gap = fi - prev_frame if prev_frame is not None else 0
+                same_cell_continuous = (cell_id == prev_cell) and (gap <= self.max_frame_gap)
+
+                if same_cell_continuous:
                     if wx is not None and wy is not None:
                         if sample_counter % self.downsample_every == 0:
                             world_samples.append(
@@ -186,9 +198,10 @@ class TrajectoryLogger:
                             )
                         sample_counter += 1
                 else:
-                    # Close previous interval
+                    # Close previous interval at the last frame it was
+                    # actually observed (not fi - 1, since a gap may exist).
                     if start_frame is not None:
-                        end_frame = fi - 1
+                        end_frame = prev_frame if prev_frame is not None else fi - 1
                         intervals.append(
                             IntervalType(
                                 obj_id=obj_id,
@@ -209,6 +222,8 @@ class TrajectoryLogger:
                             WorldSampleType(t=fi / self.fps, x=float(wx), y=float(wy))
                         )
                         sample_counter += 1
+
+                prev_frame = fi
 
             # Close last interval for this object
             if prev_cell is not None and start_frame is not None and samples:
@@ -345,6 +360,11 @@ def compute_pet(
             A = sorted_intervals[i]
             for j in range(i + 1, n):  # only j > i to avoid duplicates
                 B = sorted_intervals[j]
+
+                if A.obj_id == B.obj_id:
+                    # Same object re-entering the same cell is not a conflict
+                    # with itself; skip to avoid fabricated self-PET events.
+                    continue
 
                 # Case 1: A exits before B enters (A -> B)
                 if A.t_exit <= B.t_enter:

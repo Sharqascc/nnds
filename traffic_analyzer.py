@@ -560,8 +560,8 @@ def run_video_to_pet(
                 "track_a": track_a,
                 "track_b": track_b,
                 "conflict_type": conflict_type,
-                "world_traj_i": serialize_world_traj(traj_i),
-                "world_traj_j": serialize_world_traj(traj_j),
+                "world_traj_i": serialize_world_traj(world_traj_i),
+                "world_traj_j": serialize_world_traj(world_traj_j),
             }
         )
 
