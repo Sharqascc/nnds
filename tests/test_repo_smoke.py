@@ -23,11 +23,11 @@ def test_expected_paths_exist():
         "Makefile",
         "requirements.txt",
         "pyproject.toml",
-        "traffic_analyzer.py",
-        "bev_mapper.py",
-        "giti_bev_calib.py",
-        "gate_counter.py",
-        "pet_conflict_checker.py",
+        "core/traffic_analyzer.py",
+        "core/bev_mapper.py",
+        "core/giti_bev_calib.py",
+        "core/gate_counter.py",
+        "core/pet_conflict_checker.py",
         "grid_trajectory/pet_grid.py",
         "grid_trajectory/sam3_grid_pet.py",
         "grid_trajectory/spatial_grid.py",
@@ -90,10 +90,10 @@ def test_outputs_is_gitignored():
 
 def test_can_load_top_level_scripts():
     for rel_path in [
-        "traffic_analyzer.py",
-        "bev_mapper.py",
-        "giti_bev_calib.py",
-        "traj_diffusion_normalized.py",
+        "core/traffic_analyzer.py",
+        "core/bev_mapper.py",
+        "core/giti_bev_calib.py",
+        "traffic_diffusion/traj_diffusion_normalized.py",
     ]:
         path = ROOT / rel_path
         spec = importlib.util.spec_from_file_location(path.stem, path)
@@ -197,10 +197,10 @@ def test_repo_summary_context():
     error messages from other tests easier to interpret in CI logs.
     """
     key_paths = [
-        "traffic_analyzer.py",
-        "bev_mapper.py",
-        "gate_counter.py",
-        "pet_conflict_checker.py",
+        "core/traffic_analyzer.py",
+        "core/bev_mapper.py",
+        "core/gate_counter.py",
+        "core/pet_conflict_checker.py",
         "traffic_diffusion/data/trajdiff_inputs.npy",
         "traffic_diffusion/data/trajdiff_targets.npy",
         "traffic_diffusion/data/trajdiff_meta.parquet",

@@ -1,7 +1,7 @@
 from pathlib import Path
 import argparse
 
-from vlm_events import VLMEventsAnnotator
+from vlm.vlm_events import VLMEventsAnnotator
 
 def main():
     parser = argparse.ArgumentParser()

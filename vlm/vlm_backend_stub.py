@@ -1,7 +1,7 @@
 # analysis/vlm_backend_stub.py
 from __future__ import annotations
 import json
-from vlm_schema import VLMBackend
+from vlm.vlm_schema import VLMBackend
 
 
 class EchoStubBackend:

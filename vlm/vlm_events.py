@@ -12,9 +12,9 @@ import numpy as np
 import pandas as pd
 from diskcache import Cache
 
-from vlm_schema import VLMSafetyAnalysis, VLMBackend
-from vlm_backend_stub import EchoStubBackend  # fallback backend
-from vlm_hf_backend import HFVisionLanguageBackend
+from vlm.vlm_schema import VLMSafetyAnalysis, VLMBackend
+from vlm.vlm_backend_stub import EchoStubBackend  # fallback backend
+from vlm.vlm_hf_backend import HFVisionLanguageBackend
 
 
 @dataclass

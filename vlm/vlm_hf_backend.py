@@ -5,7 +5,7 @@ from pathlib import Path
 
 import torch
 
-from vlm_schema import VLMBackend  # Protocol with analyze(image_path, prompt)
+from vlm.vlm_schema import VLMBackend  # Protocol with analyze(image_path, prompt)
 
 from transformers import AutoProcessor, AutoModelForImageTextToText
 

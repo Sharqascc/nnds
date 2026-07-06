@@ -90,10 +90,10 @@ print("✅ Setup complete!")
 
 ```bash
 # Full pipeline
-PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
+PYTHONPATH=. python core/traffic_analyzer.py --video videos/traffic_video.mp4
 
 # With frame limit for debugging
-PYTHONPATH=. python traffic_analyzer.py \
+PYTHONPATH=. python core/traffic_analyzer.py \
     --video videos/traffic_video.mp4 \
     --out-csv outputs/petevents_bev_test.csv \
     --pet-threshold 2.0 \
@@ -114,7 +114,7 @@ pip install -r requirements.txt
 
 ```bash
 make install      # pip install -r requirements.txt
-make grid         # PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
+make grid         # PYTHONPATH=. python core/traffic_analyzer.py --video videos/traffic_video.mp4
 make test         # pytest tests/ -v
 ```
 
@@ -123,7 +123,7 @@ make test         # pytest tests/ -v
 ### PET Extraction Only
 
 ```bash
-PYTHONPATH=. python traffic_analyzer.py \
+PYTHONPATH=. python core/traffic_analyzer.py \
     --video videos/traffic_video.mp4 \
     --out-csv outputs/petevents_bev.csv \
     --pet-threshold 2.0
@@ -186,8 +186,8 @@ PYTHONPATH=. python analysis/research_run.py \
 
 | Component           | File                 | Description                             |
 |--------------------|----------------------|-----------------------------------------|
-| Homography calibration | `giti_bev_calib.py` | Camera-to-world homography estimation   |
-| BEV mapper         | `bev_mapper.py`      | Image-plane to world coordinates        |
+| Homography calibration | `core/giti_bev_calib.py` | Camera-to-world homography estimation   |
+| BEV mapper         | `core/bev_mapper.py`      | Image-plane to world coordinates        |
 | World coordinates  | —                    | Outputs (t, x, y) trajectories in meters |
 
 ### Phase 4: Grid Mapping & Trajectory Construction
@@ -202,11 +202,11 @@ PYTHONPATH=. python analysis/research_run.py \
 
 | Component          | File                     | Description                              |
 |-------------------|--------------------------|------------------------------------------|
-| End-to-end pipeline | `traffic_analyzer.py`   | SAM3 / YOLO26seg → BEV → grid → PET      |
+| End-to-end pipeline | `core/traffic_analyzer.py`   | SAM3 / YOLO26seg → BEV → grid → PET      |
 | PET computation   | `grid_trajectory/`       | Post Encroachment Time logic             |
-| Conflict detection | `pet_conflict_checker.py`| Conflict classification                  |
+| Conflict detection | `core/pet_conflict_checker.py`| Conflict classification                  |
 | Output CSV        | `outputs/petevents_bev.csv` | Events with PET, trajectories           |
-| Gate counter      | `gate_counter.py`        | Actor counting through gates             |
+| Gate counter      | `core/gate_counter.py`        | Actor counting through gates             |
 
 ### Phase 6: Analysis & Visualization
 
@@ -375,7 +375,7 @@ outputs/
 | Issue                                | Solution                                                                                |
 |-------------------------------------|-----------------------------------------------------------------------------------------|
 | CUDA out of memory                   | Reduce batch size or use `--max-frames 100`                                            |
-| Homography calibration fails         | Ensure at least 4 correspondence points in `giti_bev_calib.py`                          |
+| Homography calibration fails         | Ensure at least 4 correspondence points in `core/giti_bev_calib.py`                          |
 | Empty PET CSV output                 | Check `--pet-threshold` is reasonable for your scene                                    |
 | Video not found                      | Verify `videos/` directory and file permissions                                         |
 | Import errors in visualization       | Use explicit imports as shown in `Visualization Example` section                        |
@@ -453,11 +453,11 @@ The bootstrap script above handles:
 
 ```python
 # After bootstrap, run pipeline
-!cd /content/nnds && PYTHONPATH=. python traffic_analyzer.py \
+!cd /content/nnds && PYTHONPATH=. python core/traffic_analyzer.py \
     --video videos/traffic_video.mp4
 
 # With frame limit for quick testing
-!cd /content/nnds && PYTHONPATH=. python traffic_analyzer.py \
+!cd /content/nnds && PYTHONPATH=. python core/traffic_analyzer.py \
     --video videos/traffic_video.mp4 \
     --max-frames 30 \
     --out-csv outputs/petevents_bev_test.csv
@@ -511,7 +511,7 @@ mypy --ignore-missing-imports .
 ## Auto-generated structure
 
 - `experimental/contact_point_pipeline.py` — contact-point projection into world coordinates.
-- `traffic_analyzer.py` — main video-to-PET entry point.
+- `core/traffic_analyzer.py` — main video-to-PET entry point.
 - `analysis/research_run.py` — orchestrated research workflow.
 
 <!-- AUTO-README-END -->

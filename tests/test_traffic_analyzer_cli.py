@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 
 import pytest
-import traffic_analyzer
+from core import traffic_analyzer
 
 
 ROOT = Path(__file__).resolve().parents[1]

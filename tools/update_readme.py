@@ -29,7 +29,7 @@ class ReadmeConfig:
 
 CONFIG = ReadmeConfig(
     help_commands=(
-        ("traffic_analyzer", ("python", "traffic_analyzer.py", "--help")),
+        ("traffic_analyzer", ("python", "core/traffic_analyzer.py", "--help")),
         ("pet_summary", ("python", "analysis/pet_summary.py", "--help")),
         ("research_run", ("python", "analysis/research_run.py", "--help")),
     ),

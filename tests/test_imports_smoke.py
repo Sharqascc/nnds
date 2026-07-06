@@ -41,10 +41,10 @@ def test_core_modules_importable():
     """
     required_modules = [
         # Main video → PET pipeline
-        "traffic_analyzer",
-        "bev_mapper",
-        "gate_counter",  # added
-        "pet_conflict_checker",
+        "core.traffic_analyzer",
+        "core.bev_mapper",
+        "core.gate_counter",  # added
+        "core.pet_conflict_checker",
         "grid_trajectory.spatial_grid",
         "grid_trajectory.pet_grid",
         "grid_trajectory.sam3_grid_pet",
@@ -86,7 +86,7 @@ def test_core_symbols_exist_in_key_modules():
     This stays shallow on purpose: no heavy computation or I/O, just presence checks.
     """
     # traffic_analyzer: must expose parse_args and main
-    ta = importlib.import_module("traffic_analyzer")
+    ta = importlib.import_module("core.traffic_analyzer")
     for attr in ["parse_args", "main"]:
         assert hasattr(ta, attr), f"traffic_analyzer is missing expected symbol '{attr}'"
 

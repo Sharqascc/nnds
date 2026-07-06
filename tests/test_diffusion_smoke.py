@@ -46,8 +46,8 @@ def test_diffusion_key_files_and_data_exist():
     assert (ROOT / "analysis" / "safety_eval_diffusion_notebook.py").exists()
 
     # Core pipeline scripts
-    assert (ROOT / "traffic_analyzer.py").exists()
-    assert (ROOT / "bev_mapper.py").exists()
+    assert (ROOT / "core" / "traffic_analyzer.py").exists()
+    assert (ROOT / "core" / "bev_mapper.py").exists()
 
     # Required diffusion data files
     data_dir = ROOT / "traffic_diffusion" / "data"

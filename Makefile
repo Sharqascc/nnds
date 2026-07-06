@@ -31,7 +31,7 @@ dev: install
 # === Video → Grid/PET pipeline ===
 
 grid pet:
-	PYTHONPATH=. $(PYTHON) traffic_analyzer.py \
+	PYTHONPATH=. $(PYTHON) core/traffic_analyzer.py \
 		--video $(VIDEO) \
 		--sam3-weights $(SAM3_WEIGHTS) \
 		--out-csv $(OUT_CSV) \

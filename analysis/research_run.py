@@ -192,7 +192,7 @@ def run_pet_extraction(args: argparse.Namespace, paths: WorkflowPaths, video_pat
         logger.info("YOLO26 PET extraction completed: %s rows -> %s", len(df), out_csv)
         return df
 
-    from traffic_analyzer import run_video_to_pet
+    from core.traffic_analyzer import run_video_to_pet
 
     kwargs = dict(
         video_path=video_path,

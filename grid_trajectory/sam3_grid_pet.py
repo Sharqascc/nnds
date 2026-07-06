@@ -30,7 +30,7 @@ from grid_trajectory.pet_grid import (
     IntervalType,
     PETSummaryType,
 )
-from bev_mapper import BEVMapper
+from core.bev_mapper import BEVMapper
 
 
 LoggerType = Union[logging.Logger, Any]
