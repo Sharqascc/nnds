@@ -64,6 +64,118 @@ def _project_points_homography(pixel_points: np.ndarray, H: np.ndarray) -> np.nd
     return out
 
 
+# ============================================================================
+# BEVMapper Class - Added for NNDS Pipeline Compatibility
+# ============================================================================
+
+class BEVMapper:
+    """Bird's Eye View mapper for converting between pixel, world, and BEV coordinates."""
+    
+    def __init__(self, H_pixel_to_world, bev_bounds, bev_resolution):
+        import numpy as np
+        self.H = np.asarray(H_pixel_to_world, dtype=np.float64)
+        self.bev_x_min = float(bev_bounds["x_min"])
+        self.bev_x_max = float(bev_bounds["x_max"])
+        self.bev_y_min = float(bev_bounds["y_min"])
+        self.bev_y_max = float(bev_bounds["y_max"])
+        self.bev_w, self.bev_h = map(int, bev_resolution)
+        self.mpp_x = (self.bev_x_max - self.bev_x_min) / max(self.bev_w, 1)
+        self.mpp_y = (self.bev_y_max - self.bev_y_min) / max(self.bev_h, 1)
+    
+    def pixel_to_world(self, p):
+        import numpy as np
+        try:
+            x, y = p
+            v = np.array([x, y, 1.0], dtype=np.float64)
+            w = self.H @ v
+            if abs(w[2]) < 1e-9:
+                return None
+            w /= w[2]
+            return float(w[0]), float(w[1])
+        except Exception:
+            return None
+    
+    def world_to_bev(self, world_xy):
+        try:
+            X, Y = world_xy
+            u = int((X - self.bev_x_min) / self.mpp_x)
+            v = int((Y - self.bev_y_min) / self.mpp_y)
+            return u, v
+        except Exception:
+            return None
+    
+    def pixel_to_bev(self, p):
+        world = self.pixel_to_world(p)
+        if world is None:
+            return None
+        return self.world_to_bev(world)
+
+    def estimate_transformation_error(self, pixel_point, pixel_error_std=0.5, eps=1.0):
+        """
+        Estimate propagated world-space position uncertainty (meters) for a
+        given pixel location, assuming isotropic pixel localization noise.
+
+        Uses a finite-difference Jacobian of the pixel->world mapping and
+        linear error propagation: Sigma_world = J @ Sigma_pixel @ J^T, with
+        Sigma_pixel = pixel_error_std^2 * I (uncorrelated x/y pixel noise).
+
+        Returns sqrt(trace(Sigma_world)) in meters, or None if the point or
+        its finite-difference neighbors fall outside the valid (non-degenerate)
+        region of the homography.
+        """
+        import numpy as np
+        x, y = pixel_point
+        base = self.pixel_to_world((x, y))
+        if base is None:
+            return None
+
+        J = np.zeros((2, 2), dtype=np.float64)
+        for i, (dx, dy) in enumerate([(eps, 0.0), (0.0, eps)]):
+            wp = self.pixel_to_world((x + dx, y + dy))
+            wm = self.pixel_to_world((x - dx, y - dy))
+            if wp is None or wm is None:
+                return None
+            J[:, i] = (np.array(wp) - np.array(wm)) / (2 * eps)
+
+        sigma_pixel_sq = float(pixel_error_std) ** 2
+        cov_world = sigma_pixel_sq * (J @ J.T)
+        variance = float(np.trace(cov_world))
+        if variance < 0 or not np.isfinite(variance):
+            return None
+        return float(np.sqrt(variance))
+
+    def world_to_bev_batch(self, world_points):
+        """
+        Vectorized batch version of world_to_bev.
+
+        Args:
+            world_points: Nx2 (or Nx3, extra cols ignored) array-like of
+                (X, Y) world coordinates.
+
+        Returns:
+            (bev_coords, valid): bev_coords is an Nx2 int64 array of (u, v)
+            BEV pixel coordinates; valid is an N-length bool array, True
+            where the point falls within [0, bev_w) x [0, bev_h).
+        """
+        import numpy as np
+        world_points = np.asarray(world_points, dtype=np.float64)
+        if world_points.ndim != 2 or world_points.shape[1] < 2:
+            raise ValueError("world_points must be an Nx2 (or Nx3) array")
+
+        X = world_points[:, 0]
+        Y = world_points[:, 1]
+
+        # NOTE: uses truncation (matching int() in world_to_bev above), not
+        # floor(). This is a pre-existing convention, not introduced here --
+        # it only differs from floor() for negative-origin BEV bounds.
+        u = np.trunc((X - self.bev_x_min) / self.mpp_x).astype(np.int64)
+        v = np.trunc((Y - self.bev_y_min) / self.mpp_y).astype(np.int64)
+
+        valid = (u >= 0) & (u < self.bev_w) & (v >= 0) & (v < self.bev_h)
+        bev_coords = np.stack([u, v], axis=1)
+        return bev_coords, valid
+
+
 def test_with_real_calibration(
     calib_json: str = "configs/giti_calibration_points.json",
     bev_json: str = "configs/bev_config.json",
@@ -408,48 +520,3 @@ if __name__ == "__main__":
     main()
 
 
-# ============================================================================
-# BEVMapper Class - Added for NNDS Pipeline Compatibility
-# ============================================================================
-
-class BEVMapper:
-    """Bird's Eye View mapper for converting between pixel, world, and BEV coordinates."""
-    
-    def __init__(self, H_pixel_to_world, bev_bounds, bev_resolution):
-        import numpy as np
-        self.H = np.asarray(H_pixel_to_world, dtype=np.float64)
-        self.bev_x_min = float(bev_bounds["x_min"])
-        self.bev_x_max = float(bev_bounds["x_max"])
-        self.bev_y_min = float(bev_bounds["y_min"])
-        self.bev_y_max = float(bev_bounds["y_max"])
-        self.bev_w, self.bev_h = map(int, bev_resolution)
-        self.mpp_x = (self.bev_x_max - self.bev_x_min) / max(self.bev_w, 1)
-        self.mpp_y = (self.bev_y_max - self.bev_y_min) / max(self.bev_h, 1)
-    
-    def pixel_to_world(self, p):
-        import numpy as np
-        try:
-            x, y = p
-            v = np.array([x, y, 1.0], dtype=np.float64)
-            w = self.H @ v
-            if abs(w[2]) < 1e-9:
-                return None
-            w /= w[2]
-            return float(w[0]), float(w[1])
-        except Exception:
-            return None
-    
-    def world_to_bev(self, world_xy):
-        try:
-            X, Y = world_xy
-            u = int((X - self.bev_x_min) / self.mpp_x)
-            v = int((Y - self.bev_y_min) / self.mpp_y)
-            return u, v
-        except Exception:
-            return None
-    
-    def pixel_to_bev(self, p):
-        world = self.pixel_to_world(p)
-        if world is None:
-            return None
-        return self.world_to_bev(world)
