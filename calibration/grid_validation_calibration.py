@@ -267,10 +267,28 @@ def main() -> None:
     # GENERATE OR LOAD CALIBRATION POINTS
     # ------------------------------------------------------------------
     if args.real_data:
-        # Placeholder for future real-data integration
-        # Example: pixel_pts, world_pts_noisy, world_pts_true = load_real_calibration_points(...)
+        # NOT IMPLEMENTED BY DESIGN, not just unfinished: this script's
+        # validation logic (VAL_RATIO=0.15 split, 5-fold KFold) assumes a
+        # dense grid of correspondences (e.g. the 324-point synthetic grid
+        # used below). Applied to the current real survey (6 points), the
+        # 15% val split rounds to 0 held-out points, and 5-fold CV degrades
+        # to near-meaningless single-point folds -- neither produces a
+        # trustworthy estimate.
+        #
+        # For the current 6-point real survey, use
+        # calibration/loocv_real_calibration.py instead, which uses
+        # leave-one-out CV appropriate for small N.
+        #
+        # This flag should only be wired up once a real, denser survey
+        # (10+ well-spread ground control points) has been collected --
+        # at that point train/val + KFold CV as implemented here becomes
+        # statistically meaningful again.
         raise NotImplementedError(
-            "--real-data is a stub; integrate real GCP loading here."
+            "--real-data is intentionally unimplemented for the current "
+            "6-point survey: this script's train/val split and 5-fold CV "
+            "require a denser point set to be statistically valid. Use "
+            "calibration/loocv_real_calibration.py for the current data. "
+            "Wire this flag up once a denser (10+ point) real survey exists."
         )
     else:
         pixel_pts, world_pts_noisy, world_pts_true = generate_synthetic_grid(
