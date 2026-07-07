@@ -99,8 +99,15 @@ def test_with_real_calibration(
     with open(bev_config_path, "r") as f:
         bev_config = json.load(f)
 
-    pixel_points = np.array(calib.get("pixel_points", []), dtype=np.float64)
-    world_points = np.array(calib.get("world_points", []), dtype=np.float64)
+    calib_points = calib.get("calibration_points", [])
+    pixel_points = np.array(
+        [[p["pixel"]["x"], p["pixel"]["y"]] for p in calib_points],
+        dtype=np.float64,
+    )
+    world_points = np.array(
+        [[p["world"]["easting"], p["world"]["northing"]] for p in calib_points],
+        dtype=np.float64,
+    )
 
     if len(pixel_points) < 4 or len(world_points) < 4:
         print(f"❌ Insufficient calibration points: {len(pixel_points)}")
@@ -143,12 +150,6 @@ def test_with_real_calibration(
         H = compute_homography_dlt(pixel_points, world_points_xy)
         mask = np.ones(len(pixel_points), dtype=bool)
         print("✓ Homography computed using DLT")
-
-    try:
-        from bev_mapper import BEVMapper
-    except ImportError as e:
-        print(f"❌ Could not import BEVMapper: {e}")
-        return None
 
     bounds = bev_config.get("bounds", bev_config.get("bev_bounds"))
     resolution = bev_config.get("resolution", bev_config.get("bev_resolution"))
@@ -197,7 +198,18 @@ def test_with_real_calibration(
     print(f"    Max error:    {max_error:.4f} m")
     print(f"    RMSE:         {rmse:.4f} m")
 
-    if rmse < 0.25:
+    n_points = len(pixel_points)
+    if n_points <= 8:
+        print(
+            f"\n  ⚠ NOTE: With only {n_points} calibration points fitting an "
+            f"8-DOF homography, this self-residual RMSE ({rmse:.4f} m) is "
+            f"expected to look artificially low (near-overfit) and should "
+            f"NOT be reported as calibration accuracy. Run "
+            f"calibration/loocv_real_calibration.py for an honest, held-out "
+            f"error estimate before citing calibration quality."
+        )
+        quality = "SELF-RESIDUAL ONLY - RUN LOOCV FOR TRUE ACCURACY"
+    elif rmse < 0.25:
         quality = "EXCELLENT"
     elif rmse < 0.50:
         quality = "GOOD"
@@ -316,7 +328,13 @@ def test_with_real_calibration(
     else:
         print("  Round-trip Error:       N/A")
 
-    if results["passes_validation"]:
+    if n_points <= 8:
+        print(
+            "\n  ⚠ SELF-RESIDUAL PASSED, BUT THIS IS NOT SUFFICIENT EVIDENCE "
+            "OF ACCURACY with this few points. Run LOOCV before treating "
+            "this calibration as validated."
+        )
+    elif results["passes_validation"]:
         print("\n  ✅ CALIBRATION VALIDATED - Ready for production use")
     else:
         print("\n  ⚠ CALIBRATION NEEDS REVIEW - Consider re-calibration")

@@ -95,8 +95,17 @@ class ConflictSeverity(Enum):
 PET_COLUMN_CANDIDATES = ["pet", "pet_sec", "true_pet_sec", "pet_sample_sec"]
 
 # Default error sources for uncertainty quantification (meters)
+#
+# DEFAULT_HOMOGRAPHY_ERROR was updated from an assumed placeholder (0.3 m) to
+# the measured Leave-One-Out Cross-Validation (LOOCV) RMSE computed against
+# the real 6-point GITI calibration survey (see calibration/loocv_real_calibration.py
+# and calibration/loocv_real_calibration_results.json). Self-residual error on
+# these same points was 0.038 m, but with only 6 points fitting an 8-DOF
+# homography, self-residual substantially understates true generalization
+# error (8.2x lower than LOOCV in this dataset). LOOCV RMSE is used here as
+# an honest, held-out estimate of homography positional error.
 DEFAULT_DETECTION_ERROR = 0.2
-DEFAULT_HOMOGRAPHY_ERROR = 0.3
+DEFAULT_HOMOGRAPHY_ERROR = 0.311  # measured LOOCV RMSE, see calibration/loocv_real_calibration_results.json
 DEFAULT_TRACKING_ERROR = 0.1
 
 
