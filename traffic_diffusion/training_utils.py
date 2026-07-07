@@ -9,7 +9,7 @@ Provides:
 - Training loop with gradient clipping and early stopping
 - Optional LR scheduler, data augmentation, gradient accumulation
 - Optional wandb experiment tracking and mixed precision training
-- Integration with nnds.core.types (optional)
+- Integration with core.types (optional)
 """
 
 
@@ -24,11 +24,11 @@ from torch.utils.data import DataLoader, random_split, Subset
 
 # Import core types (once you have them)
 try:
-    from nnds.core.types import TrajectoryBatch, DiffusionDatasetLike
+    from core.types import TrajectoryBatch, DiffusionDatasetLike
     CORE_TYPES_AVAILABLE = True
 except ImportError:
     CORE_TYPES_AVAILABLE = False
-    warnings.warn("nnds.core.types not found. Using fallback types.")
+    warnings.warn("core.types not found. Using fallback types.")
 
 from traffic_diffusion.trajectory_diffusion import (
     TrajectoryDiffusionModel,
@@ -674,7 +674,7 @@ def train_diffusion_model_simple(
 # Optional typed helpers
 # ---------------------------------------------------------------------
 if CORE_TYPES_AVAILABLE:
-    from nnds.core.types import TrajectoryBatch
+    from core.types import TrajectoryBatch
 
     def batch_to_trajectory_batch(
         x0: torch.Tensor,

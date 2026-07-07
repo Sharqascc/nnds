@@ -109,9 +109,14 @@ if __name__ == "__main__":
     # 4) Sampling (normalized space)
     # -----------------------------
     @torch.no_grad()
-    def sample_future_denorm(batch, max_B=4):
+    def sample_future_ddpm_loop(batch, max_B=4):
         """
-        Returns: (B, Tf, 4) in normalized coordinates (only scale undone).
+        Explicit DDPM reverse-diffusion sampler (normalized space; only scale undone).
+
+        NOTE: distinct from traffic_diffusion.model_and_sampler.sample_future_denorm,
+        which wraps a checkpoint-loaded model's black-box .sample() method. This
+        function runs the reverse diffusion loop explicitly, step by step, and is
+        local to this training/debug script only.
         """
         past = batch["past"][:max_B].to(device)
         B = past.shape[0]
@@ -161,7 +166,7 @@ if __name__ == "__main__":
 
         past_world = past_norm.clone() * scale
         real_world = future_norm.clone() * scale
-        samp_world = sample_future_denorm(batch, max_B=max_B)
+        samp_world = sample_future_ddpm_loop(batch, max_B=max_B)
 
         past_np = past_world.cpu().numpy()
         real_np = real_world.cpu().numpy()
@@ -224,7 +229,7 @@ if __name__ == "__main__":
     # -----------------------------
     def quick_sample_test():
         test_batch = next(iter(loader))
-        future_sample_world = sample_future_denorm(test_batch, max_B=4)
+        future_sample_world = sample_future_ddpm_loop(test_batch, max_B=4)
         print("sampled future (world) shape:", future_sample_world.shape)
         print("first sample, first 3 steps:")
         print(future_sample_world[0, :3].cpu().numpy())

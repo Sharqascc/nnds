@@ -1,4 +1,5 @@
 
+import math
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
@@ -15,10 +16,29 @@ class TrajectoryDataset(Dataset):
     def __getitem__(self, idx):
         return self.trajectories[idx], self.conditions[idx]
 
+class SinusoidalTimeEmbedding(nn.Module):
+    def __init__(self, dim):
+        super().__init__()
+        self.dim = dim
+
+    def forward(self, t):
+        half = self.dim // 2
+        freqs = torch.exp(
+            -math.log(10000) * torch.arange(half, device=t.device).float() / half
+        )
+        args = t.float().unsqueeze(-1) * freqs.unsqueeze(0)
+        emb = torch.cat([torch.sin(args), torch.cos(args)], dim=-1)
+        if self.dim % 2 == 1:
+            emb = torch.nn.functional.pad(emb, (0, 1))
+        return emb
+
+
 class SimpleUNet1D(nn.Module):
     def __init__(self, dim, cond_dim):
         super().__init__()
         self.fc_cond = nn.Linear(cond_dim, dim)
+        self.time_embed = SinusoidalTimeEmbedding(dim)
+        self.fc_time = nn.Linear(dim, dim)
         self.net = nn.Sequential(
             nn.Linear(dim, 2 * dim),
             nn.SiLU(),
@@ -27,9 +47,10 @@ class SimpleUNet1D(nn.Module):
             nn.Linear(2 * dim, dim),
         )
 
-    def forward(self, x, cond):
+    def forward(self, x, cond, t):
         c = self.fc_cond(cond)
-        h = x + c
+        te = self.fc_time(self.time_embed(t))
+        h = x + c + te
         return self.net(h)
 
 class TrajectoryDiffusionModel(nn.Module):
@@ -60,7 +81,7 @@ class TrajectoryDiffusionModel(nn.Module):
     def p_losses(self, x0, cond, t):
         noise = torch.randn_like(x0)
         xt = self.q_sample(x0, t, noise)
-        noise_pred = self.model(xt, cond)
+        noise_pred = self.model(xt, cond, t)
         return nn.functional.mse_loss(noise_pred, noise)
 
     def forward(self, x0, cond):
@@ -76,7 +97,7 @@ class TrajectoryDiffusionModel(nn.Module):
 
         for i in reversed(range(steps)):
             t = torch.full((b,), i, device=self.device, dtype=torch.long)
-            noise_pred = self.model(x, cond)
+            noise_pred = self.model(x, cond, t)
 
             alpha = self.alphas[i]
             alpha_bar = self.alphas_cumprod[i]

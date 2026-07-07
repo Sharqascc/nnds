@@ -4,7 +4,7 @@ import numpy as np
 from traffic_diffusion.trajectory_diffusion import TrajectoryDiffusionModel
 
 _DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-_MODEL = None
+_MODEL_CACHE = {}
 
 def load_model(checkpoint_path: str, traj_shape, cond_dim, num_steps=1000):
     """
@@ -12,10 +12,14 @@ def load_model(checkpoint_path: str, traj_shape, cond_dim, num_steps=1000):
 
     traj_shape: (T, N, F) used during training.
     cond_dim:   conditioning dimension used during training.
+
+    Cached per (checkpoint_path, traj_shape, cond_dim, num_steps) so that
+    loading a different checkpoint or config doesn't silently reuse a
+    previously loaded model.
     """
-    global _MODEL
-    if _MODEL is not None:
-        return _MODEL
+    key = (checkpoint_path, tuple(traj_shape), cond_dim, num_steps)
+    if key in _MODEL_CACHE:
+        return _MODEL_CACHE[key]
 
     model = TrajectoryDiffusionModel(
         traj_shape=traj_shape,
@@ -28,14 +32,19 @@ def load_model(checkpoint_path: str, traj_shape, cond_dim, num_steps=1000):
     state = ckpt.get("state_dict", ckpt)
     model.load_state_dict(state)
     model.to(_DEVICE).eval()
-    _MODEL = model
-    return _MODEL
+    _MODEL_CACHE[key] = model
+    return _MODEL_CACHE[key]
 
 
 @torch.no_grad()
 def sample_future_denorm(batch, checkpoint_path: str, num_samples: int = 1,
                          traj_shape=(9, 2, 2), cond_dim=4, num_steps=1000):
     """
+    NOTE: distinct from traj_diffusion_normalized.sample_future_ddpm_loop, which
+    runs an explicit DDPM reverse-diffusion loop step by step. This function
+    instead loads a checkpointed model and delegates to its .sample() method,
+    trusting that method to perform the reverse process correctly internally.
+
     Inputs:
       batch:
         - 'past':   (B, Th, 4) normalized input trajectories (2 agents x (x,y))
