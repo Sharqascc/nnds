@@ -25,6 +25,10 @@ from matplotlib.gridspec import GridSpec
 from scipy import stats
 from scipy.stats import gaussian_kde
 from scipy.ndimage import gaussian_filter
+from analysis.visualization.severity import (
+    get_severity_color as _get_severity_color,
+    severity_legend_patches as _severity_legend_patches,
+)
 from typing import List, Dict, Tuple, Optional, Union
 import warnings
 
@@ -279,16 +283,15 @@ class SSMPlotter:
             label='PET Distribution'
         )
         
-        # Color bars by severity (using configurable thresholds)
+        # Color bars by severity using the shared 5-tier scheme, so every
+        # bin (including the "safe" tier) is colored and matches the legend
+        # exactly -- previously bins above 'moderate' kept the default blue
+        # histogram color while the legend promised a green "Safe" swatch
+        # that never actually appeared on the chart.
         pet_thresh = self.thresholds['pet']
         for i, patch in enumerate(patches):
             bin_center = (bin_edges[i] + bin_edges[i+1]) / 2
-            if bin_center < pet_thresh['critical']:
-                patch.set_facecolor(self.COLORS['red'])
-            elif bin_center < pet_thresh['serious']:
-                patch.set_facecolor(self.COLORS['orange'])
-            elif bin_center < pet_thresh['moderate']:
-                patch.set_facecolor(self.COLORS['yellow'])
+            patch.set_facecolor(_get_severity_color(bin_center, pet_thresh))
         
         # Kernel Density Estimate
         if show_kde and len(data) > 1:
@@ -349,13 +352,10 @@ class SSMPlotter:
             pad=15
         )
         
-        # Legend with severity categories
-        legend_elements = [
-            mpatches.Patch(color=self.COLORS['red'], label=f'Critical (<{pet_thresh["critical"]}s)'),
-            mpatches.Patch(color=self.COLORS['orange'], label=f'Serious ({pet_thresh["critical"]}-{pet_thresh["serious"]}s)'),
-            mpatches.Patch(color=self.COLORS['yellow'], label=f'Moderate ({pet_thresh["serious"]}-{pet_thresh["moderate"]}s)'),
-            mpatches.Patch(color=self.COLORS['green'], label=f'Safe (>{pet_thresh["safe"]}s)'),
-        ]
+        # Legend built from the same shared severity scheme used to color
+        # the bars, so the legend can never promise a color that isn't
+        # actually used on the chart.
+        legend_elements = _severity_legend_patches(pet_thresh)
         ax.legend(handles=legend_elements, loc='upper right', fontsize=self.font_size - 1)
         
         ax.xaxis.set_major_locator(MaxNLocator(nbins=10))

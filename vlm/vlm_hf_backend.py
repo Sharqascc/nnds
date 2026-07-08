@@ -31,7 +31,12 @@ class HFVisionLanguageBackend(VLMBackend):
         self.trust_remote_code = trust_remote_code
 
         models_dir = Path("/content/nnds/models")
-        cache_dir = models_dir / "models--Qwen--Qwen2-VL-2B-Instruct"
+        # Derive the cache subfolder from the actual model_name passed in,
+        # instead of hardcoding the 2B model's folder name -- previously this
+        # was hardcoded, so passing a different model (e.g. the 7B variant
+        # vlm_events.py actually uses) would load/cache into the wrong folder.
+        cache_dir_name = "models--" + model_name.replace("/", "--")
+        cache_dir = models_dir / cache_dir_name
 
         self.processor = AutoProcessor.from_pretrained(
             model_name,
@@ -66,5 +71,13 @@ class HFVisionLanguageBackend(VLMBackend):
                 max_new_tokens=self.max_new_tokens,
             )
 
-        out_text = self.processor.batch_decode(output_ids, skip_special_tokens=True)[0]
+        # generate() returns the input prompt tokens concatenated with the
+        # newly generated tokens for this decoder-based model. Previously the
+        # full sequence was decoded and returned as-is, meaning downstream
+        # JSON parsing (VLMSafetyAnalysis.from_model_response) always failed
+        # on real output since "<prompt><json>" is not valid JSON on its own.
+        # Slice off the input length so only the new tokens are decoded.
+        input_length = inputs["input_ids"].shape[1]
+        new_tokens = output_ids[:, input_length:]
+        out_text = self.processor.batch_decode(new_tokens, skip_special_tokens=True)[0]
         return out_text

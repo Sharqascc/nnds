@@ -47,8 +47,12 @@ COLORS = {
 }
 
 
-# Configure publication-quality defaults
-plt.rcParams.update({
+# Publication-quality rcParams for this module. NOT applied automatically on
+# import (previously this was a bare plt.rcParams.update() at module load,
+# which silently mutated global matplotlib state for any other code that
+# happened to import this module). Call apply_pet_diffusion_style() explicitly
+# if you want these defaults active.
+_PET_DIFFUSION_RCPARAMS = {
     'font.size': 10,
     'axes.labelsize': 11,
     'axes.titlesize': 12,
@@ -59,7 +63,18 @@ plt.rcParams.update({
     'savefig.dpi': 300,
     'axes.grid': True,
     'grid.alpha': 0.3,
-})
+}
+
+
+def apply_pet_diffusion_style():
+    """Explicitly opt in to this module's publication-quality rcParams.
+
+    Intentionally not called at import time -- doing so used to mutate
+    global matplotlib state (plt.rcParams) as a side effect of merely
+    importing this module, which could unexpectedly change styling in
+    unrelated code sharing the same process.
+    """
+    plt.rcParams.update(_PET_DIFFUSION_RCPARAMS)
 
 
 def _maybe_save(out_path: Optional[str], save_pdf: bool = True):
@@ -178,6 +193,7 @@ def plot_pet_like_histogram(
     plt.tight_layout()
     _maybe_save(out_path, save_pdf=save_pdf)
     plt.show()
+    plt.close()
 
 
 def plot_true_vs_pet_like(
@@ -272,6 +288,7 @@ def plot_true_vs_pet_like(
     plt.tight_layout()
     _maybe_save(out_path, save_pdf=save_pdf)
     plt.show()
+    plt.close()
 
 
 def plot_true_vs_sample_delta(
@@ -375,6 +392,7 @@ def plot_true_vs_sample_delta(
     plt.tight_layout()
     _maybe_save(out_path, save_pdf=save_pdf)
     plt.show()
+    plt.close()
 
 
 def plot_residual_analysis(
@@ -412,9 +430,16 @@ def plot_residual_analysis(
     true_pet = np.array(true_pet)
     residuals = np.array(residuals)
 
-    # Normality test
+    # Normality test (randomly subsample when over Shapiro-Wilk's N=5000 cap,
+    # instead of always taking the first 5000 -- records are often sorted or
+    # grouped by row_idx, so a fixed-order slice can bias the normality test)
     if len(residuals) >= 3:
-        shapiro_stat, shapiro_p = stats.shapiro(residuals[:5000])  # Shapiro max 5000
+        if len(residuals) > 5000:
+            rng = np.random.default_rng(42)
+            shapiro_sample = rng.choice(residuals, size=5000, replace=False)
+        else:
+            shapiro_sample = residuals
+        shapiro_stat, shapiro_p = stats.shapiro(shapiro_sample)  # Shapiro max 5000, randomly subsampled
     else:
         shapiro_p = np.nan
 
@@ -485,6 +510,7 @@ def plot_residual_analysis(
     plt.tight_layout()
     _maybe_save(out_path, save_pdf=save_pdf)
     plt.show()
+    plt.close()
 
 
 def plot_bland_altman(
@@ -556,6 +582,7 @@ def plot_bland_altman(
     plt.tight_layout()
     _maybe_save(out_path, save_pdf=save_pdf)
     plt.show()
+    plt.close()
 
 
 class DiffusionPETPlotter:

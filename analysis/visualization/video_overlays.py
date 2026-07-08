@@ -47,25 +47,26 @@ __all__ = [
 
 
 # Colorblind-safe palette (Okabe-Ito) in BGR for OpenCV
-COLORS_BGR = {
-    'blue': (178, 114, 0),      # #0072B2
-    'orange': (0, 159, 230),    # #E69F00
-    'green': (115, 158, 0),     # #009E73
-    'yellow': (66, 228, 240),   # #F0E442
-    'purple': (167, 121, 204),  # #CC79A7
-    'cyan': (233, 180, 86),     # #56B4E9
-    'red': (0, 94, 213),        # #D55E00
-    'black': (0, 0, 0)          # #000000
-}
+# BGR palette and thresholds are derived from the shared
+# analysis.visualization.severity module (which stores hex colors, since
+# matplotlib-based files use hex) so this file can't drift out of sync with
+# industry_standard_viz.py / pet_event_plots.py. OpenCV needs BGR tuples,
+# so we convert the shared hex values once here.
+from analysis.visualization.severity import (
+    COLORS as _HEX_COLORS,
+    DEFAULT_PET_THRESHOLDS as DEFAULT_THRESHOLDS,
+    get_severity_color as _shared_get_severity_color,
+    get_severity_label as _shared_get_severity_label,
+)
 
 
-# Severity thresholds (matching EventPlotter)
-DEFAULT_THRESHOLDS = {
-    'critical': 0.5,
-    'serious': 1.0,
-    'moderate': 1.5,
-    'safe': 5.0
-}
+def _hex_to_bgr(hex_color: str):
+    hex_color = hex_color.lstrip('#')
+    r, g, b = (int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+    return (b, g, r)
+
+
+COLORS_BGR = {name: _hex_to_bgr(hexval) for name, hexval in _HEX_COLORS.items()}
 
 
 class VideoOverlayPlotter:
@@ -113,30 +114,13 @@ class VideoOverlayPlotter:
         self._grid_warning_emitted = False
 
     def _get_severity_color(self, pet_value: float) -> Tuple[int, int, int]:
-        """Get BGR color based on PET severity."""
-        if pet_value < self.thresholds['critical']:
-            return COLORS_BGR['red']
-        elif pet_value < self.thresholds['serious']:
-            return COLORS_BGR['orange']
-        elif pet_value < self.thresholds['moderate']:
-            return COLORS_BGR['yellow']
-        elif pet_value < self.thresholds['safe']:
-            return COLORS_BGR['green']
-        else:
-            return COLORS_BGR['blue']
+        """Get BGR color based on PET severity (delegates to shared severity module)."""
+        hex_color = _shared_get_severity_color(pet_value, self.thresholds)
+        return _hex_to_bgr(hex_color)
 
     def _get_severity_label(self, pet_value: float) -> str:
-        """Get severity category label."""
-        if pet_value < self.thresholds['critical']:
-            return 'CRITICAL'
-        elif pet_value < self.thresholds['serious']:
-            return 'SERIOUS'
-        elif pet_value < self.thresholds['moderate']:
-            return 'MODERATE'
-        elif pet_value < self.thresholds['safe']:
-            return 'SLIGHT'
-        else:
-            return 'SAFE'
+        """Get severity category label (delegates to shared severity module)."""
+        return _shared_get_severity_label(pet_value, self.thresholds).upper()
 
     def overlay_trajectories(
         self,
@@ -510,66 +494,6 @@ class VideoOverlayPlotter:
             cv2.imwrite(save_path, frame, [cv2.IMWRITE_PNG_COMPRESSION, 3])
         else:
             cv2.imwrite(save_path, frame, [cv2.IMWRITE_JPEG_QUALITY, 95])
-
-    def compose_inset(
-        self,
-        frame: np.ndarray,
-        inset: np.ndarray,
-        position: str = "bottom-right",
-        scale: float = 0.25,
-        border: int = 4,
-        border_color: Tuple[int, int, int] = (255, 255, 255)
-    ) -> np.ndarray:
-        """
-        Compose an inset image (e.g., BEV view) onto the main frame.
-
-        Args:
-            frame: Main BGR frame.
-            inset: BGR inset image (e.g., top-down BEV plot).
-            position: 'top-left', 'top-right', 'bottom-left', 'bottom-right'.
-            scale: Width of inset as fraction of main frame width.
-            border: Border thickness in pixels.
-            border_color: Border color (BGR).
-
-        Returns:
-            Frame with inset composed.
-        """
-        output = frame.copy()
-        h, w = output.shape[:2]
-
-        # Resize inset to target width
-        target_w = max(int(w * scale), 1)
-        aspect = inset.shape[0] / max(inset.shape[1], 1)
-        target_h = max(int(target_w * aspect), 1)
-
-        inset_resized = cv2.resize(inset, (target_w, target_h), interpolation=cv2.INTER_AREA)
-
-        # Position top-left corner
-        if position == "top-left":
-            x0, y0 = border, border
-        elif position == "top-right":
-            x0, y0 = w - target_w - border, border
-        elif position == "bottom-left":
-            x0, y0 = border, h - target_h - border
-        else:  # bottom-right
-            x0, y0 = w - target_w - border, h - target_h - border
-
-        # Draw border
-        cv2.rectangle(
-            output,
-            (x0 - border, y0 - border),
-            (x0 + target_w + border, y0 + target_h + border),
-            border_color,
-            thickness=border
-        )
-
-        # Paste inset
-        roi = output[y0:y0 + target_h, x0:x0 + target_w]
-        if roi.shape[:2] == inset_resized.shape[:2]:
-            output[y0:y0 + target_h, x0:x0 + target_w] = inset_resized
-
-        return output
-
 
     def compose_inset(
         self,

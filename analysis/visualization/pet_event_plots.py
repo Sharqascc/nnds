@@ -38,26 +38,15 @@ __all__ = [
 ]
 
 
-# Colorblind-safe palette (Okabe-Ito - consistent with industry_standard_viz)
-COLORS = {
-    'blue': '#0072B2',
-    'orange': '#E69F00',
-    'green': '#009E73',
-    'yellow': '#F0E442',
-    'purple': '#CC79A7',
-    'cyan': '#56B4E9',
-    'red': '#D55E00',
-    'black': '#000000'
-}
-
-
-# Safety thresholds (FHWA-based, configurable)
-DEFAULT_THRESHOLDS = {
-    'critical': 0.5,   # < 0.5s = critical
-    'serious': 1.0,    # 0.5-1.0s = serious
-    'moderate': 1.5,   # 1.0-1.5s = moderate
-    'safe': 5.0        # > 5.0s = safe
-}
+# Colorblind-safe palette and severity thresholds now come from the shared
+# analysis.visualization.severity module, so this file cannot drift out of
+# sync with industry_standard_viz.py / video_overlays.py as it previously did.
+from analysis.visualization.severity import (
+    COLORS,
+    DEFAULT_PET_THRESHOLDS as DEFAULT_THRESHOLDS,
+    get_severity_color as _shared_get_severity_color,
+    get_severity_label as _shared_get_severity_label,
+)
 
 
 def load_pet_csv(csv_path: str) -> pd.DataFrame:
@@ -198,30 +187,12 @@ class EventPlotter:
             })
 
     def _get_severity_color(self, pet_value: float) -> str:
-        """Get color based on PET severity."""
-        if pet_value < self.thresholds['critical']:
-            return COLORS['red']
-        elif pet_value < self.thresholds['serious']:
-            return COLORS['orange']
-        elif pet_value < self.thresholds['moderate']:
-            return COLORS['yellow']
-        elif pet_value < self.thresholds['safe']:
-            return COLORS['green']
-        else:
-            return COLORS['blue']
+        """Get color based on PET severity (delegates to shared severity module)."""
+        return _shared_get_severity_color(pet_value, self.thresholds)
 
     def _get_severity_label(self, pet_value: float) -> str:
-        """Get severity category label."""
-        if pet_value < self.thresholds['critical']:
-            return 'Critical'
-        elif pet_value < self.thresholds['serious']:
-            return 'Serious'
-        elif pet_value < self.thresholds['moderate']:
-            return 'Moderate'
-        elif pet_value < self.thresholds['safe']:
-            return 'Slight'
-        else:
-            return 'Safe'
+        """Get severity category label (delegates to shared severity module)."""
+        return _shared_get_severity_label(pet_value, self.thresholds)
 
     def plot_conflict_event(
         self,
