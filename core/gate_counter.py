@@ -1,9 +1,14 @@
+# Thresholds are in PIXELS (perpendicular distance from the gate line).
+# Chosen to comfortably exceed typical detector/tracker jitter (a few px)
+# while remaining well below the perpendicular displacement of an actual
+# vehicle/pedestrian crossing the line (tens of pixels at typical frame
+# rates). Tune per-camera if object sizes/resolution differ significantly.
 GATE_HYSTERESIS = {
-    "West_Gate": {"min_side_mag": 0.10, "min_delta_side": 0.15},
-    "North_Gate": {"min_side_mag": 0.35, "min_delta_side": 0.50},
-    "SouthWest_Gate": {"min_side_mag": 0.50, "min_delta_side": 0.75},
-    "South_Gate": {"min_side_mag": 0.35, "min_delta_side": 0.50},
-    "East_Gate": {"min_side_mag": 0.35, "min_delta_side": 0.50},
+    "West_Gate": {"min_side_mag": 8.0, "min_delta_side": 12.0},
+    "North_Gate": {"min_side_mag": 15.0, "min_delta_side": 20.0},
+    "SouthWest_Gate": {"min_side_mag": 20.0, "min_delta_side": 30.0},
+    "South_Gate": {"min_side_mag": 15.0, "min_delta_side": 20.0},
+    "East_Gate": {"min_side_mag": 15.0, "min_delta_side": 20.0},
 }
 
 import logging
@@ -65,8 +70,13 @@ class VirtualGate:
 
     def signed_distance(self, point: Tuple[float, float]) -> float:
         """
-        Signed side value of a point relative to the line through p1->p2.
-        Only the sign matters for crossing detection.
+        Signed perpendicular distance (in pixels) of a point from the
+        line through p1->p2. Only the sign matters for crossing detection;
+        the magnitude is used by hysteresis thresholds in GATE_HYSTERESIS,
+        which are calibrated in pixel units (not normalized by gate length,
+        since line length has no natural relationship to how far off the
+        line a real crossing displaces -- that scale depends on tracked
+        object size and frame rate, not on how the gate was drawn).
         """
         p = np.array(point, dtype=float)
         a = np.array(self.p1, dtype=float)
