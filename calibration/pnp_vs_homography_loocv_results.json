@@ -1,0 +1,36 @@
+{
+  "homography_loocv": {
+    "mean_m": 0.23690229654312134,
+    "median_m": 0.1618075668811798,
+    "max_m": 0.6226518154144287,
+    "rmse_m": 0.3123697340488434,
+    "n_valid": 6,
+    "n_total": 6
+  },
+  "pnp_loocv": {
+    "mean_m": 0.5845328065163888,
+    "median_m": 0.579190928485375,
+    "max_m": 0.8583654494237501,
+    "rmse_m": 0.6064036924188149,
+    "n_valid": 6,
+    "n_total": 6
+  },
+  "assumed_intrinsics": [
+    [
+      1600.0,
+      0.0,
+      800.0
+    ],
+    [
+      0.0,
+      1600.0,
+      360.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "note": "PnP uses assumed intrinsics; treat as feasibility check only. easting/northing NOT unit-converted (already metric)."
+}
