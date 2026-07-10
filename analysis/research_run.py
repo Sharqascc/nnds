@@ -189,7 +189,14 @@ def run_pet_extraction(args: argparse.Namespace, paths: WorkflowPaths, video_pat
         )
         out_csv.parent.mkdir(parents=True, exist_ok=True)
         df.to_csv(out_csv, index=False)
-        logger.info("YOLO26 PET extraction completed: %s rows -> %s", len(df), out_csv)
+        convert_tracks_to_pet_csv(
+            tracks_csv=out_csv,
+            pet_csv=out_csv,
+            fps=float(getattr(args, "fps", 30.0)),
+            pet_threshold=float(getattr(args, "pet_threshold", 5.0)),
+        )
+        df = pd.read_csv(out_csv)
+        logger.info("YOLO26 PET extraction completed: %s PET events -> %s", len(df), out_csv)
         return df
 
     from core.traffic_analyzer import run_video_to_pet
@@ -532,6 +539,61 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
 
     return parser.parse_args(argv)
 
+
+def convert_tracks_to_pet_csv(
+    tracks_csv: Path,
+    pet_csv: Path,
+    fps: float = 30.0,
+    pet_threshold: float = 5.0,
+    cell_size_px: float = 50.0,
+) -> Path:
+    import pandas as pd
+    from grid_trajectory.pet_grid import TrajectoryLogger, compute_pet
+
+    df = pd.read_csv(tracks_csv)
+    required = {"frame_idx", "track_id", "pixel_x", "pixel_y"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(f"Missing required track columns: {sorted(missing)}")
+
+    logger = TrajectoryLogger(fps=fps)
+    for row in df.itertuples(index=False):
+        vals = {c: getattr(row, c, None) for c in ["frame_idx", "track_id", "pixel_x", "pixel_y"]}
+        if any(pd.isna(v) for v in vals.values()):
+            continue
+        cell_id = (int(float(row.pixel_x) // cell_size_px), int(float(row.pixel_y) // cell_size_px))
+        logger.log(
+            track_id=int(row.track_id),
+            frame_idx=int(row.frame_idx),
+            cell_id=cell_id,
+            world_x=None if pd.isna(getattr(row, "world_x", None)) else float(getattr(row, "world_x")),
+            world_y=None if pd.isna(getattr(row, "world_y", None)) else float(getattr(row, "world_y")),
+        )
+
+    intervals = logger.build_intervals()
+    pet_events = compute_pet(intervals, pet_threshold=pet_threshold)
+
+    out = pd.DataFrame(
+        [
+            {
+                "obj_i": ev.obj_i,
+                "obj_j": ev.obj_j,
+                "cell_id": str(ev.cell_id),
+                "t_exit_i": ev.t_exit_i,
+                "t_enter_j": ev.t_enter_j,
+                "pet": ev.pet,
+                "severity": ev.severity,
+            }
+            for ev in pet_events
+        ]
+    )
+
+    if out.empty:
+        out = pd.DataFrame(columns=["obj_i", "obj_j", "cell_id", "t_exit_i", "t_enter_j", "pet", "severity"])
+
+    pet_csv.parent.mkdir(parents=True, exist_ok=True)
+    out.to_csv(pet_csv, index=False)
+    return pet_csv
 
 def run_single_video(args: argparse.Namespace, paths: WorkflowPaths, video_path: Path) -> Dict[str, Any]:
     result = WorkflowResult(
