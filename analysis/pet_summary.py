@@ -20,6 +20,7 @@ from typing import Dict, List, Optional, Sequence, Tuple, Any
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from scipy import stats
 
 
@@ -391,11 +392,58 @@ class PETEventAnalyzer:
                 json.dump(comp, f, indent=2, default=str)
             exported["comparison"] = comp_file
 
+        extra_exports = self._export_pet_histogram_and_qa(output_dir)
+        exported["histogram"] = extra_exports["histogram"]
+        exported["qa_note"] = extra_exports["qa_note"]
+
         return exported
 
     # ------------------------------------------------------------------ #
     # Pretty printing
     # ------------------------------------------------------------------ #
+
+    def _export_pet_histogram_and_qa(self, output_dir: Path) -> Dict[str, Path]:
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        hist_file = output_dir / f"pet_histogram_{self.csv_path.stem}.png"
+        qa_file = output_dir / f"pet_qa_note_{self.csv_path.stem}.txt"
+
+        pet = self.df["pet"].dropna().astype(float)
+
+        plt.figure(figsize=(8, 5))
+        plt.hist(pet, bins=30, color="#2563eb", edgecolor="white")
+        plt.axvline(1.0, color="red", linestyle="--", linewidth=1.5, label="critical")
+        plt.axvline(2.0, color="orange", linestyle="--", linewidth=1.5, label="serious")
+        plt.axvline(3.0, color="gold", linestyle="--", linewidth=1.5, label="moderate")
+        plt.xlabel("PET (s)")
+        plt.ylabel("Count")
+        plt.title("PET Distribution")
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(hist_file, dpi=160)
+        plt.close()
+
+        p95 = float(np.percentile(pet, 95))
+        p99 = float(np.percentile(pet, 99))
+        mean_pet = float(pet.mean())
+
+        if p99 < 2.0:
+            qa_note = "QA note: PET distribution is heavily compressed below 2.0s; inspect conflict triggering or calibration."
+        elif p95 < 3.0:
+            qa_note = "QA note: PET values are mostly below 3.0s; scene appears conflict-dense and should be reviewed with calibration in mind."
+        else:
+            qa_note = "QA note: PET distribution shows broader spread with no immediate compression warning."
+
+        qa_file.write_text(
+            qa_note + f" Mean={mean_pet:.3f}s, p95={p95:.3f}s, p99={p99:.3f}s.\n",
+            encoding="utf-8",
+        )
+
+        return {
+            "histogram": hist_file,
+            "qa_note": qa_file,
+        }
+
     def print_summary(self, show_risk_buckets: bool = True) -> None:
         """Print a human‑readable summary to stdout."""
         stats_dict = self.basic_stats()
