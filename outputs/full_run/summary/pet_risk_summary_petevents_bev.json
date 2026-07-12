@@ -1,0 +1,23 @@
+{
+  "critical": {
+    "count": 239,
+    "percentage": 34.19170243204578
+  },
+  "serious": {
+    "count": 439,
+    "percentage": 62.80400572246066
+  },
+  "moderate": {
+    "count": 21,
+    "percentage": 3.004291845493562
+  },
+  "safe": {
+    "count": 0,
+    "percentage": 0.0
+  },
+  "conflict_rate": {
+    "count": 678,
+    "percentage": 96.99570815450643,
+    "per_1000_events": 969.9570815450644
+  }
+}

@@ -1,0 +1,1 @@
+QA note: PET values are mostly below 3.0s; scene appears conflict-dense and should be reviewed with calibration in mind. Mean=1.220s, p95=1.967s, p99=2.000s.
