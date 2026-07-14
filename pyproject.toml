@@ -1,18 +1,16 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=68,<82", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "nnds"
 version = "0.1.0"
 description = "Non-motorized and heterogeneous traffic safety analysis (research code)"
+readme = "README.md"
 requires-python = ">=3.10"
-
 authors = [
   { name = "ASCC Sharq 786" }
 ]
-
-# Runtime dependencies – keep in sync with requirements.txt
 dependencies = [
   "numpy==1.26.4",
   "pandas==2.2.2",
@@ -33,11 +31,21 @@ dev = [
   "mypy>=1.9.0",
 ]
 
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["analysis*", "core*", "grid_trajectory*", "traffic_diffusion*", "vlm*"]
+exclude = ["tests*", "outputs*", "results*", "sample_data*", "docs*", "experimental*", "colab*", "tools*"]
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
 minversion = "7.0"
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
-addopts = [
-  "-ra", # show extra summary info
-]
+addopts = ["-ra"]
+
+[tool.ruff.lint.per-file-ignores]
+"traffic_diffusion/traj_diffusion_normalized.py" = ["F821"]
+

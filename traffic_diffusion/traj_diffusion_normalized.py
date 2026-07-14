@@ -128,11 +128,11 @@ if __name__ == "__main__":
             eps_theta = model(x_t, t, cond=past)
 
             alpha_t = alphas[t_step]
-            beta_t = betas[t_step]
+            beta_t = 1.0 - alpha_t
             alpha_bar_t = alphas_cumprod[t_step]
             alpha_bar_prev = (
                 alphas_cumprod[t_step - 1]
-                if t_step > 0 else torch.tensor(1.0, device=device)
+                if t_step > 0 else torch.tensor(1.0, device=x_t.device)
             )
 
             posterior_variance = beta_t * (1.0 - alpha_bar_prev) / (1.0 - alpha_bar_t)
