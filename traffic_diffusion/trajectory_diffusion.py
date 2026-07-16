@@ -73,12 +73,17 @@ class TrajectoryDiffusionModel(nn.Module):
         self.model = SimpleUNet1D(dim=self.D, cond_dim=cond_dim).to(self.device)
 
     def q_sample(self, x0, t, noise=None):
+        x0 = x0.reshape(x0.shape[0], -1)
         if noise is None:
             noise = torch.randn_like(x0)
+        else:
+            noise = noise.reshape(noise.shape[0], -1)
         a_t = self.alphas_cumprod[t].view(-1, 1)
         return torch.sqrt(a_t) * x0 + torch.sqrt(1.0 - a_t) * noise
 
     def p_losses(self, x0, cond, t):
+        x0 = x0.reshape(x0.shape[0], -1)
+        cond = cond.reshape(cond.shape[0], -1)
         noise = torch.randn_like(x0)
         xt = self.q_sample(x0, t, noise)
         noise_pred = self.model(xt, cond, t)
