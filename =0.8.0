@@ -1,0 +1,11 @@
+Requirement already satisfied: safetensors in /usr/local/lib/python3.12/dist-packages (0.7.0)
+Collecting safetensors
+  Using cached safetensors-0.8.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.2 kB)
+Downloading safetensors-0.8.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (516 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 516.0/516.0 kB 5.2 MB/s eta 0:00:00
+Installing collected packages: safetensors
+  Attempting uninstall: safetensors
+    Found existing installation: safetensors 0.7.0
+    Uninstalling safetensors-0.7.0:
+      Successfully uninstalled safetensors-0.7.0
+Successfully installed safetensors-0.8.0
