@@ -448,33 +448,16 @@ def run_video_to_pet(
         pet_events = result.pet_events if hasattr(result, "pet_events") else []
 
     else:
-        # RT-DETR path: validate RT-DETR weights and run RT-DETR pipeline
+        # RT-DETR path declared but not implemented on this branch
         if not rtdetr_weights_path.exists():
             raise FileNotFoundError(f"RT-DETR weights not found: {rtdetr_weights_path}")
 
-        try:
-            from grid_trajectory.rtdetr_grid_pet import run_rtdetr_grid_pet
-        except ModuleNotFoundError as exc:
-            raise ModuleNotFoundError(
-                "Missing dependency for RT-DETR pipeline. "
-                "Implement grid_trajectory.rtdetr_grid_pet.run_rtdetr_grid_pet "
-                "or ensure it is importable."
-            ) from exc
-
-        project_root = str(Path(".").resolve())
-        result = run_rtdetr_grid_pet(
-            project_root=project_root,
-            video_rel_path=str(video_path),
-            rtdetr_rel_path=str(rtdetr_weights_path),
-            grid_rel_path=str(grid_config_path),
-            bev_rel_path=str(bev_config_path),
-            output_name="rtdetr_grid_pet_run",
-            conf=0.25,
-            pet_threshold=pet_threshold,
-            max_frames=max_frames,
-            show_progress=show_progress,
+        raise NotImplementedError(
+            "RT-DETR video pipeline is not implemented in this branch. "
+            "Missing module: grid_trajectory.rtdetr_grid_pet.run_rtdetr_grid_pet. "
+            "Use detector='sam3' or add grid_trajectory/rtdetr_grid_pet.py "
+            "with a compatible run_rtdetr_grid_pet(...) implementation."
         )
-        pet_events = result.pet_events if hasattr(result, "pet_events") else []
 
     out_csv_path.parent.mkdir(parents=True, exist_ok=True)
 
