@@ -396,6 +396,7 @@ def run_video_to_pet(
     show_progress: bool = True,
     detector: str = "sam3",
     rtdetr_weights_path: Path | str = "rtdetr-l.pt",
+    yolo_weights_path: Path | str = "yolo11n.pt",
 ) -> pd.DataFrame:
     """Video → detections → grid → BEV → PET events CSV (SAM3 or RT-DETR).
 
@@ -407,6 +408,7 @@ def run_video_to_pet(
     grid_config_path = Path(grid_config_path)
     sam3_weights_path = Path(sam3_weights_path)
     rtdetr_weights_path = Path(rtdetr_weights_path)
+    yolo_weights_path = Path(yolo_weights_path)
     out_csv_path = Path(out_csv_path)
 
     # Validate inputs early with clear messages
@@ -446,6 +448,27 @@ def run_video_to_pet(
             show_progress=show_progress,
         )
         pet_events = result.pet_events if hasattr(result, "pet_events") else []
+
+    elif detector == "yolo-cpu":
+        if not yolo_weights_path.exists():
+            raise FileNotFoundError(f"YOLO weights not found: {yolo_weights_path}")
+
+        try:
+            from grid_trajectory.yolo_cpu_grid_pet import run_yolo_cpu_grid_pet
+        except ModuleNotFoundError as exc:
+            raise ModuleNotFoundError(
+                "Missing dependency for YOLO CPU pipeline."
+            ) from exc
+
+        result = run_yolo_cpu_grid_pet(
+            video_path=str(video_path),
+            weights_path=str(yolo_weights_path),
+            output_csv_path=str(out_csv_path),
+            max_frames=max_frames,
+            imgsz=480,
+            conf=0.25,
+        )
+        pet_events = result["pet_events"] if isinstance(result, dict) and "pet_events" in result else []
 
     else:
         # RT-DETR path: validate RT-DETR weights and run RT-DETR pipeline
@@ -560,7 +583,7 @@ def parse_args() -> argparse.Namespace:
         "--detector",
         type=str,
         default="sam3",
-        choices=["sam3", "rtdetr"],
+        choices=["sam3", "rtdetr", "yolo-cpu"],
         help="Detection backend: 'sam3' (default) or 'rtdetr' (experimental)",
     )
     parser.add_argument(
@@ -568,6 +591,13 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default="rtdetr-l.pt",
         help="RT-DETR weights path (used when --detector rtdetr)",
+    )
+
+    parser.add_argument(
+        "--yolo-weights",
+        type=str,
+        default="yolo11n.pt",
+        help="YOLO weights path (used when --detector yolo-cpu)",
     )
     parser.add_argument(
         "--out-csv",
@@ -622,6 +652,9 @@ def main() -> None:
         pet_threshold=args.pet_threshold,
         max_frames=args.max_frames,
         show_progress=not args.no_progress,
+        yolo_weights_path=args.yolo_weights,
+        detector=args.detector,
+        rtdetr_weights_path=args.rtdetr_weights,
     )
 
 
