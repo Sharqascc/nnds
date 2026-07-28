@@ -8,9 +8,12 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[1] if "__file__" in globals() else Path("/content/nnds")
+
+DEFAULT_UVH_MODEL = "/root/.cache/huggingface/hub/models--iisc-aim--UVH-26/snapshots/4a22412775adb6f97f22735647afee976b4638a0/weights/YOLOv11-S/UVH-26-MV-YOLOv11-S.pt"
+DEFAULT_COCO_PERSON_MODEL = "yolo26m-seg.pt"
 
 def log(msg, level="INFO"):
     print(f"[{level}] {msg}")
@@ -34,14 +37,35 @@ def main():
     parser.add_argument("--skip-extraction", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--verbose", "-v", action="store_true")
-    
+
+    parser.add_argument("--detector", default="uvh-coco-fused",
+                        choices=["uvh-coco-fused"],
+                        help="Final production detector policy")
+    parser.add_argument("--uvh-model", default=DEFAULT_UVH_MODEL,
+                        help="Primary UVH-26 detector weights")
+    parser.add_argument("--coco-person-model", default=DEFAULT_COCO_PERSON_MODEL,
+                        help="Fallback COCO person-only detector weights")
+    parser.add_argument("--uvh-conf", type=float, default=0.20,
+                        help="UVH-26 confidence threshold")
+    parser.add_argument("--coco-person-conf", type=float, default=0.20,
+                        help="COCO person confidence threshold")
+    parser.add_argument("--detector-imgsz", type=int, default=1280,
+                        help="Inference image size for both detectors")
+    parser.add_argument("--person-suppress-overlap", type=float, default=0.35,
+                        help="Suppress COCO person if overlap/person-area exceeds this threshold")
+
     args = parser.parse_args()
-    
+
     video_path = Path(args.video)
     if not video_path.exists() and not args.skip_extraction:
         log(f"Video not found: {video_path}", "ERROR")
         sys.exit(1)
-    
+
+    uvh_model_path = Path(args.uvh_model)
+    if not uvh_model_path.exists():
+        log(f"UVH model not found: {uvh_model_path}", "ERROR")
+        sys.exit(1)
+
     if not args.out_csv:
         stem = video_path.stem
         frame_tag = f"{args.max_frames}f" if args.max_frames else "full"
@@ -49,25 +73,38 @@ def main():
         out_csv = f"outputs/petevents_bev_{stem}_{frame_tag}_pet{pet_tag}.csv"
     else:
         out_csv = args.out_csv
-    
+
     out_path = Path(out_csv)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     stages_completed = []
-    
+
     if not args.skip_extraction:
         log("=== Stage 1: Video -> PET ===")
-        cmd = [sys.executable, "traffic_analyzer.py", "--video", args.video,
-               "--sam3-weights", args.sam3_weights, "--out-csv", out_csv,
-               "--pet-threshold", str(args.pet_threshold)]
+        cmd = [
+            sys.executable, "traffic_analyzer.py",
+            "--video", args.video,
+            "--sam3-weights", args.sam3_weights,
+            "--out-csv", out_csv,
+            "--pet-threshold", str(args.pet_threshold),
+            "--detector", args.detector,
+            "--uvh-model", args.uvh_model,
+            "--coco-person-model", args.coco_person_model,
+            "--uvh-conf", str(args.uvh_conf),
+            "--coco-person-conf", str(args.coco_person_conf),
+            "--imgsz", str(args.detector_imgsz),
+            "--person-suppress-overlap", str(args.person_suppress_overlap),
+        ]
         if args.max_frames:
             cmd += ["--max-frames", str(args.max_frames)]
+        if args.verbose:
+            cmd += ["--verbose"]
         if not args.dry_run:
             start = time.time()
             run_cmd(cmd, cwd=ROOT)
             log(f"Stage 1 completed in {time.time() - start:.1f}s", "SUCCESS")
             stages_completed.append("extraction")
-    
+
     if args.train_diffusion:
         log("=== Stage 2: Diffusion Training ===")
         cmd = [sys.executable, "traffic_diffusion/train_trajectory_diffusion.py",
@@ -77,7 +114,7 @@ def main():
             run_cmd(cmd, cwd=ROOT)
             log(f"Stage 2 completed in {time.time() - start:.1f}s", "SUCCESS")
             stages_completed.append("train_diffusion")
-    
+
     if args.eval_diffusion:
         log("=== Stage 3: Diffusion Evaluation ===")
         cmd = [sys.executable, "analysis/safety_eval_diffusion.py"]
@@ -86,17 +123,27 @@ def main():
             run_cmd(cmd, cwd=ROOT)
             log(f"Stage 3 completed in {time.time() - start:.1f}s", "SUCCESS")
             stages_completed.append("eval_diffusion")
-    
+
     if not args.dry_run:
-        summary = {"pet_csv": out_csv, "stages_completed": stages_completed,
-                   "timestamp": datetime.now().isoformat()}
+        summary = {
+            "pet_csv": out_csv,
+            "stages_completed": stages_completed,
+            "timestamp": datetime.now().isoformat(),
+            "detector": args.detector,
+            "uvh_model": args.uvh_model,
+            "coco_person_model": args.coco_person_model,
+            "uvh_conf": args.uvh_conf,
+            "coco_person_conf": args.coco_person_conf,
+            "detector_imgsz": args.detector_imgsz,
+            "person_suppress_overlap": args.person_suppress_overlap,
+        }
         summary_path = Path("outputs/research_run_summary.json")
         summary_path.parent.mkdir(parents=True, exist_ok=True)
         with summary_path.open("w") as f:
             json.dump(summary, f, indent=2)
         log(f"Summary saved to {summary_path}")
-    
-    log(f"\n=== Done ===\nPET CSV: {out_csv}")
+
+    log(f"\\n=== Done ===\\nPET CSV: {out_csv}")
 
 if __name__ == "__main__":
     main()

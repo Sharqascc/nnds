@@ -1,0 +1,6 @@
+event_id,pet,frame,track_a,track_b,conflict_type,world_traj_i,world_traj_j
+0,inf,,-1,-1,UNKNOWN,track_22,track_2
+1,inf,,-1,-1,UNKNOWN,track_11,track_10
+2,inf,,-1,-1,UNKNOWN,track_15,track_17
+3,inf,,-1,-1,UNKNOWN,track_17,track_58
+4,inf,,-1,-1,UNKNOWN,track_89,track_200

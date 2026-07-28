@@ -397,6 +397,12 @@ def run_video_to_pet(
     detector: str = "sam3",
     rtdetr_weights_path: Path | str = "rtdetr-l.pt",
     yolo_weights_path: Path | str = "yolo11n.pt",
+    uvh_model_path: Path | str = "/root/.cache/huggingface/hub/models--iisc-aim--UVH-26/snapshots/4a22412775adb6f97f22735647afee976b4638a0/weights/YOLOv11-S/UVH-26-MV-YOLOv11-S.pt",
+    coco_person_model_path: Path | str = "yolo26m-seg.pt",
+    uvh_conf: float = 0.20,
+    coco_person_conf: float = 0.20,
+    imgsz: int = 1280,
+    person_suppress_overlap: float = 0.35,
 ) -> pd.DataFrame:
     """Video → detections → grid → BEV → PET events CSV (SAM3 or RT-DETR).
 
@@ -409,6 +415,8 @@ def run_video_to_pet(
     sam3_weights_path = Path(sam3_weights_path)
     rtdetr_weights_path = Path(rtdetr_weights_path)
     yolo_weights_path = Path(yolo_weights_path)
+    uvh_model_path = Path(uvh_model_path)
+    coco_person_model_path = Path(coco_person_model_path)
     out_csv_path = Path(out_csv_path)
 
     # Validate inputs early with clear messages
@@ -467,6 +475,37 @@ def run_video_to_pet(
             max_frames=max_frames,
             imgsz=480,
             conf=0.25,
+        )
+        pet_events = result["pet_events"] if isinstance(result, dict) and "pet_events" in result else []
+
+    elif detector == "uvh-coco-fused":
+        if not uvh_model_path.exists():
+            raise FileNotFoundError(f"UVH model not found: {uvh_model_path}")
+        if not coco_person_model_path.exists():
+            raise FileNotFoundError(f"COCO person model not found: {coco_person_model_path}")
+
+        try:
+            from grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
+        except ModuleNotFoundError as exc:
+            raise ModuleNotFoundError(
+                "Missing fused detector backend. Expected "
+                "grid_trajectory.uvh_coco_fused_grid_pet.run_uvh_coco_fused_grid_pet"
+            ) from exc
+
+        result = run_uvh_coco_fused_grid_pet(
+            video_path=str(video_path),
+            bev_config_path=str(bev_config_path),
+            grid_config_path=str(grid_config_path),
+            uvh_model_path=str(uvh_model_path),
+            coco_person_model_path=str(coco_person_model_path),
+            output_csv_path=str(out_csv_path),
+            pet_threshold=pet_threshold,
+            max_frames=max_frames,
+            imgsz=imgsz,
+            uvh_conf=uvh_conf,
+            coco_person_conf=coco_person_conf,
+            person_suppress_overlap=person_suppress_overlap,
+            show_progress=show_progress,
         )
         pet_events = result["pet_events"] if isinstance(result, dict) and "pet_events" in result else []
 
@@ -583,7 +622,7 @@ def parse_args() -> argparse.Namespace:
         "--detector",
         type=str,
         default="sam3",
-        choices=["sam3", "rtdetr", "yolo-cpu"],
+        choices=["sam3", "rtdetr", "yolo-cpu", "uvh-coco-fused"],
         help="Detection backend: 'sam3' (default) or 'rtdetr' (experimental)",
     )
     parser.add_argument(
@@ -598,6 +637,42 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default="yolo11n.pt",
         help="YOLO weights path (used when --detector yolo-cpu)",
+    )
+    parser.add_argument(
+        "--uvh-model",
+        type=str,
+        default="/root/.cache/huggingface/hub/models--iisc-aim--UVH-26/snapshots/4a22412775adb6f97f22735647afee976b4638a0/weights/YOLOv11-S/UVH-26-MV-YOLOv11-S.pt",
+        help="UVH-26 weights path (used when --detector uvh-coco-fused)",
+    )
+    parser.add_argument(
+        "--coco-person-model",
+        type=str,
+        default="yolo26m-seg.pt",
+        help="COCO person fallback weights path (used when --detector uvh-coco-fused)",
+    )
+    parser.add_argument(
+        "--uvh-conf",
+        type=float,
+        default=0.20,
+        help="UVH-26 confidence threshold",
+    )
+    parser.add_argument(
+        "--coco-person-conf",
+        type=float,
+        default=0.20,
+        help="COCO person confidence threshold",
+    )
+    parser.add_argument(
+        "--imgsz",
+        type=int,
+        default=1280,
+        help="Inference image size for fused detector",
+    )
+    parser.add_argument(
+        "--person-suppress-overlap",
+        type=float,
+        default=0.35,
+        help="Suppress COCO person if overlap/person-area exceeds this threshold",
     )
     parser.add_argument(
         "--out-csv",
@@ -655,6 +730,12 @@ def main() -> None:
         yolo_weights_path=args.yolo_weights,
         detector=args.detector,
         rtdetr_weights_path=args.rtdetr_weights,
+        uvh_model_path=args.uvh_model,
+        coco_person_model_path=args.coco_person_model,
+        uvh_conf=args.uvh_conf,
+        coco_person_conf=args.coco_person_conf,
+        imgsz=args.imgsz,
+        person_suppress_overlap=args.person_suppress_overlap,
     )
 
 
