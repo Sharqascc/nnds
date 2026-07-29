@@ -17,6 +17,7 @@ import warnings
 from pathlib import Path
 from typing import Sequence, Tuple, Dict, Any, Optional, Union, List
 from dataclasses import dataclass
+import sys
 
 import torch
 import numpy as np
@@ -46,8 +47,10 @@ except ImportError:
 # ---------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------
-@dataclass
 class TrainingConfig:
+    def __init__(self, *args, **kwargs):
+        self.__dict__.update(kwargs)
+
     """Configuration for diffusion model training."""
     batch_size: int = 14
     learning_rate: float = 1e-3
