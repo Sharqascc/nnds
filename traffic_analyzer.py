@@ -426,7 +426,7 @@ def run_video_to_pet(
         (grid_config_path, "Grid config"),
     ]:
         if not path.exists():
-            raise FileNotFoundError(f"{name} not found: {path}")
+            raise SystemExit(f"Video file not found: {path}")
 
     if detector == "sam3":
         # SAM3 path: validate SAM3 weights and run existing pipeline
