@@ -19,7 +19,10 @@ import json
 
 import cv2
 import numpy as np
-from ultralytics.models.sam import SAM3VideoSemanticPredictor
+try:
+    from ultralytics.models.sam import SAM3VideoSemanticPredictor
+except Exception:
+    SAM3VideoSemanticPredictor = None
 
 from grid_trajectory.spatial_grid import SpatialGrid
 from grid_trajectory.pet_grid import (
