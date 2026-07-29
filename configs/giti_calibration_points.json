@@ -9,7 +9,8 @@
     "camera_used": "Mobile Phone",
     "updated": "expanded calibration footprint",
     "target_width_m": 20.0,
-    "target_height_m": 16.0
+    "target_height_m": 16.0,
+    "review": "mid-edge points corrected for BEV rectangle consistency"
   },
   "calibration_points": [
     {
@@ -68,26 +69,26 @@
       "id": 5,
       "description": "Expanded mid-edge east",
       "pixel": {
-        "x": 824.5,
-        "y": 124.0
+        "x": 1455.0,
+        "y": 419.5
       },
       "world": {
         "easting": 730920.97,
         "northing": 222006.35,
-        "elevation_ft": 190.0
+        "elevation_ft": 197.0
       }
     },
     {
       "id": 6,
       "description": "Expanded mid-edge west",
       "pixel": {
-        "x": 824.5,
-        "y": 715.0
+        "x": 194.0,
+        "y": 419.5
       },
       "world": {
         "easting": 730900.97,
         "northing": 222006.35,
-        "elevation_ft": 190.0
+        "elevation_ft": 197.0
       }
     }
   ]
