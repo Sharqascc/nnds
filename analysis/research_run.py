@@ -25,7 +25,7 @@ def run_cmd(cmd: List[str], cwd: Path = ROOT) -> None:
         log(f"Command failed with return code {result.returncode}", "ERROR")
         raise SystemExit(result.returncode)
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description="NNDS Research Pipeline")
     parser.add_argument("--video", required=True, help="Input video path")
     parser.add_argument("--sam3-weights", default="sam3.pt", help="SAM3 weights")
@@ -54,7 +54,7 @@ def main():
     parser.add_argument("--person-suppress-overlap", type=float, default=0.35,
                         help="Suppress COCO person if overlap/person-area exceeds this threshold")
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     video_path = Path(args.video)
     if not video_path.exists() and not args.skip_extraction:
