@@ -42,9 +42,9 @@ import numpy as np
 import pandas as pd
 import warnings
 
-# Import core types (ensure nnds.core.types exists)
+# Import core types (ensure core.types exists)
 try:
-    from nnds.core.types import PETEvent, Trajectory, WorldPoint
+    from core.types import PETEvent, Trajectory, WorldPoint
 except ImportError:
     # Fallback: define minimal types if core module unavailable
     @dataclass

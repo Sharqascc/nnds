@@ -6,7 +6,7 @@ from typing import Any, DefaultDict, Dict, List, Optional, Sequence, Tuple
 
 # Optional: integrate with core NNDS types if present
 try:
-    from nnds.core.types import (
+    from core.types import (
         WorldSample as CoreWorldSample,
         Interval as CoreInterval,
         PETEvent as CorePETEvent,

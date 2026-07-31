@@ -144,11 +144,7 @@ def test_with_real_calibration(
         mask = np.ones(len(pixel_points), dtype=bool)
         print("✓ Homography computed using DLT")
 
-    try:
-        from bev_mapper import BEVMapper
-    except ImportError as e:
-        print(f"❌ Could not import BEVMapper: {e}")
-        return None
+    # BEVMapper is defined in this module; no import needed here.
 
     bounds = bev_config.get("bounds", bev_config.get("bev_bounds"))
     resolution = bev_config.get("resolution", bev_config.get("bev_resolution"))
