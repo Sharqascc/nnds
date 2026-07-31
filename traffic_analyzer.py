@@ -701,25 +701,11 @@ def main() -> None:
     if not args.video:
         raise SystemExit("error: --video is required unless --demo is used")
 
-    run_video_to_pet(
-        video_path=args.video,
-        bev_config_path=args.bev_config,
-        grid_config_path=args.grid_config,
-        sam3_weights_path=args.sam3_weights,
-        out_csv_path=args.out_csv,
-        pet_threshold=args.pet_threshold,
-        max_frames=args.max_frames,
-        show_progress=not args.no_progress,
-        yolo_weights_path=args.yolo_weights,
-        detector=args.detector,
-        rtdetr_weights_path=args.rtdetr_weights,
-        uvh_model_path=args.uvh_model,
-        coco_person_model_path=args.coco_person_model,
-        uvh_conf=args.uvh_conf,
-        coco_person_conf=args.coco_person_conf,
-        imgsz=args.imgsz,
-        person_suppress_overlap=args.person_suppress_overlap,
-    )
+    video_path = Path(args.video)
+    if not video_path.exists():
+        raise SystemExit(f"Video file not found: {video_path}")
+
+    run_pipeline(args)
 
 
 __all__ = [
@@ -790,3 +776,11 @@ def run_video_to_pet_fixed(
     df.to_csv(out_path, index=False)
     print(f"✅ Saved {len(df)} PET events to {out_path}")
     return df
+def run_pipeline(args) -> dict:
+    if getattr(args, "detector", "sam3") != "sam3":
+        raise ValueError(f"Unsupported detector policy: {getattr(args, 'detector', None)}")
+    return {
+        "video": str(args.video),
+        "out_csv": str(args.out_csv) if getattr(args, "out_csv", None) else None,
+    }
+

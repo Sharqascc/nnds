@@ -31,7 +31,6 @@ References:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from typing import Tuple, List, Dict, Any, Iterable, Optional, Sequence
 from enum import Enum
 from datetime import datetime
@@ -47,30 +46,31 @@ try:
     from core.types import PETEvent, Trajectory, WorldPoint
 except ImportError:
     # Fallback: define minimal types if core module unavailable
-    @dataclass
     class WorldPoint:
-        t: float
-        x: float
-        y: float
+        def __init__(self, t: float, x: float, y: float):
+            self.t = t
+            self.x = x
+            self.y = y
 
-    @dataclass
     class Trajectory:
-        track_id: int
-        points: Tuple[WorldPoint, ...]
-        actor_type: Optional[str] = None
-        source: Optional[str] = None
+        def __init__(self, track_id: int, points, actor_type: Optional[str] = None, source: Optional[str] = None):
+            self.track_id = track_id
+            self.points = tuple(points)
+            self.actor_type = actor_type
+            self.source = source
 
-    @dataclass
     class PETEvent:
-        event_id: int
-        pet: float
-        track_a: int
-        track_b: int
-        conflict_type: str
-        world_traj_i: Trajectory
-        world_traj_j: Trajectory
-        frame: Optional[int] = None
-        metadata: Dict[str, Any] = field(default_factory=dict)
+        def __init__(self, event_id: int, pet: float, track_a: int, track_b: int, conflict_type: str,
+                     world_traj_i, world_traj_j, frame: Optional[int] = None, metadata: Optional[Dict[str, Any]] = None):
+            self.event_id = event_id
+            self.pet = pet
+            self.track_a = track_a
+            self.track_b = track_b
+            self.conflict_type = conflict_type
+            self.world_traj_i = world_traj_i
+            self.world_traj_j = world_traj_j
+            self.frame = frame
+            self.metadata = {} if metadata is None else metadata
 
 
 # =============================================================================
@@ -104,62 +104,38 @@ DEFAULT_TRACKING_ERROR = 0.1
 # DATACLASSES
 # =============================================================================
 
-@dataclass
 class PETUncertainty:
-    """
-    PET measurement uncertainty with error source breakdown.
-
-    Attributes:
-        nominal_pet: Measured PET value (seconds)
-        uncertainty_std: Total uncertainty standard deviation (seconds)
-        error_sources: Contribution from each error source (seconds)
-        confidence_interval_95: 95% confidence interval [lower, upper]
-    """
-    nominal_pet: float
-    uncertainty_std: float
-    error_sources: Dict[str, float]
+    def __init__(self, nominal_pet: float, uncertainty_std: float, error_sources: Dict[str, float]):
+        self.nominal_pet = nominal_pet
+        self.uncertainty_std = uncertainty_std
+        self.error_sources = error_sources
 
     @property
     def confidence_interval_95(self) -> Tuple[float, float]:
-        """95% confidence interval (±1.96σ)."""
         margin = 1.96 * self.uncertainty_std
-        return (
-            max(0.0, self.nominal_pet - margin),
-            self.nominal_pet + margin
-        )
+        return (max(0.0, self.nominal_pet - margin), self.nominal_pet + margin)
 
     @property
     def relative_error_percent(self) -> float:
-        """Relative uncertainty as percentage."""
         if self.nominal_pet < 1e-6:
             return np.inf
         return (self.uncertainty_std / self.nominal_pet) * 100.0
 
 
-@dataclass
 class ConflictResult:
-    """
-    Conflict detection result with severity and metadata.
-
-    Attributes:
-        id_a, id_b: Actor/track IDs
-        pet: Post-Encroachment Time (seconds)
-        severity: FHWA severity classification
-        uncertainty: Optional PET uncertainty quantification
-        frame_start, frame_end: Conflict temporal bounds
-        extra: Additional metadata
-    """
-    id_a: Any
-    id_b: Any
-    pet: float
-    severity: ConflictSeverity
-    uncertainty: Optional[PETUncertainty] = None
-    frame_start: Optional[int] = None
-    frame_end: Optional[int] = None
-    extra: Dict[str, Any] = None
+    def __init__(self, id_a: Any, id_b: Any, pet: float, severity: ConflictSeverity,
+                 uncertainty: Optional[PETUncertainty] = None, frame_start: Optional[int] = None,
+                 frame_end: Optional[int] = None, extra: Optional[Dict[str, Any]] = None):
+        self.id_a = id_a
+        self.id_b = id_b
+        self.pet = pet
+        self.severity = severity
+        self.uncertainty = uncertainty
+        self.frame_start = frame_start
+        self.frame_end = frame_end
+        self.extra = {} if extra is None else extra
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for CSV export."""
         d = {
             "id_a": self.id_a,
             "id_b": self.id_b,
@@ -168,15 +144,12 @@ class ConflictResult:
             "frame_start": self.frame_start,
             "frame_end": self.frame_end,
         }
-
         if self.uncertainty:
             d["pet_uncertainty_std"] = self.uncertainty.uncertainty_std
             d["pet_95ci_lower"] = self.uncertainty.confidence_interval_95[0]
             d["pet_95ci_upper"] = self.uncertainty.confidence_interval_95[1]
-
         if self.extra is not None:
             d.update(self.extra)
-
         return d
 
 
