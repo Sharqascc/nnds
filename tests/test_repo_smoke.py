@@ -137,7 +137,7 @@ def test_sam3_weights_presence_and_size():
     sam3_path = ROOT / "sam3.pt"
     if not sam3_path.exists():
         warnings.warn(
-            "sam3.pt not found in repo root. SAM3-based video segmentation may not "
+            "optional model weights not found in repo root. SAM3-based video segmentation may not "
             "work until weights are downloaded.",
             UserWarning,
         )

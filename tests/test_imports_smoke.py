@@ -29,7 +29,7 @@ def _soft_import(module_name: str):
     except Exception as exc:
         warnings.warn(
             f"Optional module '{module_name}' could not be imported: {exc}. "
-            "Some features (e.g., SAM3-based segmentation) may be unavailable.",
+            "Some features may be unavailable.",
             UserWarning,
         )
 
@@ -71,8 +71,8 @@ def test_optional_modules_importable_with_warning():
     Examples: SAM/SAM3-related components that may need large weights or specific envs.
     """
     optional_modules = [
-        "ultralytics.models.sam",  # SAM3 / SAM from Ultralytics (optional)
-        "sam3_wrapper",            # If you have a custom SAM3 wrapper module
+        "optional segmentation module",  # SAM3 / SAM from Ultralytics (optional)
+        "optional wrapper module",            # If you have a custom SAM3 wrapper module
     ]
 
     for name in optional_modules:
