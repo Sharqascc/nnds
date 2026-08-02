@@ -26,3 +26,15 @@ Use clear, scoped commit messages, for example:
 - `Add diffusion sampling utility`
 - `Document notebook safety pipeline`
 - `Refactor PET event preprocessing`
+
+## Weights
+
+For UVH-26 weights, use one of the following:
+
+```bash
+make weights
+# or
+bash scripts/download_uvh26.sh
+```
+
+The canonical path is `weights/uvh26.pt`.
