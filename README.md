@@ -563,3 +563,16 @@ MIT License – see [LICENSE](LICENSE) file for details.
 - Hugging Face for model/dataset hosting  
 - FHWA for SSAM methodology guidance  
 ```
+
+## UVH-26 weights
+
+The UVH-26 checkpoint is expected at `weights/uvh26.pt`.
+
+Restore it with:
+
+```bash
+git lfs install
+git lfs pull
+# or
+bash scripts/download_uvh26.sh
+```
