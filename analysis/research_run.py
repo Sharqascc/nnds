@@ -37,6 +37,7 @@ def main(argv=None):
     parser.add_argument("--skip-extraction", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--verbose", "-v", action="store_true")
+    parser.add_argument("--auto-download-weights", action="store_true", help="Auto-fetch UVH-26 weights if missing")
 
     parser.add_argument("--detector", default="uvh-coco-fused",
                         choices=["uvh-coco-fused"],
@@ -62,6 +63,14 @@ def main(argv=None):
         sys.exit(1)
 
     uvh_model_path = Path(args.uvh_model)
+    if not uvh_model_path.exists() and args.auto_download_weights:
+        import subprocess
+        for cmd in (["make", "weights"], ["bash", "scripts/download_uvh26.sh"]):
+            try:
+                subprocess.run(cmd, check=True)
+                break
+            except Exception:
+                pass
     if not uvh_model_path.exists():
         log(f"UVH model not found: {uvh_model_path}", "ERROR")
         sys.exit(1)
