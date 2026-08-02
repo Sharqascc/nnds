@@ -53,3 +53,10 @@ smoke:
 
 clean:
 	rm -rf __pycache__ */__pycache__ .pytest_cache
+
+
+
+.PHONY: weights
+
+weights:
+	bash scripts/download_uvh26.sh

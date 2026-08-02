@@ -16,3 +16,8 @@ echo " - Re-upload or re-download sam3.pt into ./sam3.pt"
 echo "Then you can run:"
 echo "  python traffic_analyzer.py --video videos_trim/traffic_video_30f.mp4 \\"
 echo "    --sam3-weights sam3.pt --out-csv outputs/petevents_bev_30f.csv --pet-threshold 2.0"
+
+# Ensure UVH-26 weights are available
+if [ -f scripts/download_uvh26.sh ]; then
+  bash scripts/download_uvh26.sh
+fi
