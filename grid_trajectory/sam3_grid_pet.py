@@ -18,6 +18,24 @@ import time
 import json
 
 import cv2
+
+def overlay_pet_info(frame, frame_idx, fps, pet_value=None, entry_frame=None, exit_frame=None, extra_lines=None):
+    t = frame_idx / fps if fps else 0.0
+    y = 30
+    cv2.putText(frame, f"t = {t:.2f}s", (20, y), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 255), 2, cv2.LINE_AA)
+    y += 35
+    if pet_value is not None:
+        cv2.putText(frame, f"PET = {pet_value:.2f}s", (20, y), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2, cv2.LINE_AA)
+        y += 35
+    if entry_frame is not None and exit_frame is not None:
+        cv2.putText(frame, f"entry={entry_frame} exit={exit_frame}", (20, y), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
+        y += 30
+    if extra_lines:
+        for line in extra_lines[:4]:
+            cv2.putText(frame, line, (20, y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2, cv2.LINE_AA)
+            y += 25
+    return frame
+
 import numpy as np
 try:
     from ultralytics.models.sam import SAM3VideoSemanticPredictor
@@ -254,13 +272,15 @@ def run_sam3_grid_pet(
 
             if boxes is None or getattr(boxes, "xyxy", None) is None:
                 if writer is not None:
-                    writer.write(frame)
+                    frame = overlay_pet_info(frame, frame_idx, fps)
+                writer.write(frame)
                 continue
 
             xyxy = boxes.xyxy.detach().cpu().numpy()
             if xyxy.size == 0:
                 if writer is not None:
-                    writer.write(frame)
+                    frame = overlay_pet_info(frame, frame_idx, fps)
+                writer.write(frame)
                 continue
 
             track_ids_attr = getattr(boxes, "id", None)
@@ -317,6 +337,7 @@ def run_sam3_grid_pet(
                 )
 
             if writer is not None:
+                frame = overlay_pet_info(frame, frame_idx, fps)
                 writer.write(frame)
 
             if show_progress and frame_idx % (50 * frame_stride) == 0:
