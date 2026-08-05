@@ -544,21 +544,45 @@ def run_video_to_pet(
 
     rows: list[dict[str, Any]] = []
     for idx, e in enumerate(pet_events):
+        def _get(keys, default=None):
+            if isinstance(e, dict):
+                for k in keys:
+                    if k in e and e[k] is not None:
+                        return e[k]
+            else:
+                for k in keys:
+                    if hasattr(e, k) and getattr(e, k) is not None:
+                        return getattr(e, k)
+            return default
+
+        # Extract track IDs (check direct integer attributes or parse 'track_17' strings)
+        def _parse_track_id(keys):
+            val = _get(keys)
+            if val is None or val == -1:
+                return -1
+            if isinstance(val, (int, float)) and not (isinstance(val, float) and np.isnan(val)):
+                return int(val)
+            m = re.search(r'\d+', str(val))
+            return int(m.group()) if m else -1
+
+        track_a_val = _parse_track_id(["track_a", "obj_i", "track_i", "traj_i_id", "world_traj_i"])
+        track_b_val = _parse_track_id(["track_b", "obj_j", "track_j", "traj_j_id", "world_traj_j"])
+        frame_val = _get(["frame", "conflict_frame", "start_frame", "frame_idx", "t_conflict"])
+        pet_val = _get(["PET", "pet"], float("inf"))
+        conflict_type_val = _get(["conflict_type", "cell_id"], "UNKNOWN")
+        world_traj_i_val = _get(["world_traj_i", "traj_i"])
+        world_traj_j_val = _get(["world_traj_j", "traj_j"])
+
         rows.append(
             {
                 "event_id": idx,
-                # PET in seconds from sam3_grid_pet
-                "pet": (e.get("PET", e.get("pet", float("inf"))) if isinstance(e, dict) else getattr(e, "PET", getattr(e, "pet", float("inf")))),
-                # frame index not currently provided; keep as None for now
-                "frame": None,
-                # track IDs from SAM3/grid pipeline
-                "track_a": (e.get("obj_i", -1) if isinstance(e, dict) else getattr(e, "obj_i", -1)),
-                "track_b": (e.get("obj_j", -1) if isinstance(e, dict) else getattr(e, "obj_j", -1)),
-                # grid cell ID as conflict label
-                "conflict_type": (e.get("cell_id", "UNKNOWN") if isinstance(e, dict) else getattr(e, "cell_id", "UNKNOWN")),
-                # BEV world trajectories (t, x, y)
-                "world_traj_i": (e.get("world_traj_i") if isinstance(e, dict) else getattr(e, "world_traj_i", None)),
-                "world_traj_j": (e.get("world_traj_j") if isinstance(e, dict) else getattr(e, "world_traj_j", None)),
+                "pet": pet_val,
+                "frame": frame_val,
+                "track_a": track_a_val,
+                "track_b": track_b_val,
+                "conflict_type": conflict_type_val,
+                "world_traj_i": world_traj_i_val,
+                "world_traj_j": world_traj_j_val,
             }
         )
 
@@ -685,6 +709,38 @@ def parse_args() -> argparse.Namespace:
         help="Disable verbose/progress output from SAM3 pipeline",
     )
     return parser.parse_args()
+
+
+
+import inspect
+
+
+def run_pipeline(args):
+    # Direct mapping from CLI argparse attributes to run_video_to_pet parameter names
+    kwargs = {
+        'video_path': getattr(args, 'video', None),
+        'bev_config_path': getattr(args, 'bev_config', 'configs/bev_config.json'),
+        'grid_config_path': getattr(args, 'grid_config', 'configs/GITI_grid_config.json'),
+        'sam3_weights_path': getattr(args, 'sam3_weights', 'sam3.pt'),
+        'out_csv_path': getattr(args, 'out_csv', 'outputs/petevents_bev.csv'),
+        'pet_threshold': getattr(args, 'pet_threshold', 2.0),
+        'max_frames': getattr(args, 'max_frames', None),
+        'show_progress': not getattr(args, 'no_progress', False),
+        'detector': getattr(args, 'detector', 'sam3'),
+        'rtdetr_weights_path': getattr(args, 'rtdetr_weights', 'rtdetr-l.pt'),
+        'yolo_weights_path': getattr(args, 'yolo_weights', 'yolo11n.pt'),
+        'uvh_model_path': getattr(args, 'uvh_model', '/content/nnds/uvh26.pt'),
+        'coco_person_model_path': getattr(args, 'coco_person_model', '/content/nnds/yolo11n.pt'),
+        'uvh_conf': getattr(args, 'uvh_conf', 0.2),
+        'coco_person_conf': getattr(args, 'coco_person_conf', 0.2),
+        'imgsz': getattr(args, 'imgsz', 1280),
+        'person_suppress_overlap': getattr(args, 'person_suppress_overlap', 0.35),
+    }
+
+    # Filter out None values so internal defaults apply if not specified
+    filtered_kwargs = {k: v for k, v in kwargs.items() if v is not None}
+
+    return run_video_to_pet(**filtered_kwargs)
 
 
 def main() -> None:
