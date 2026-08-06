@@ -1,7 +1,7 @@
+from __future__ import annotations
 from tqdm import tqdm
 import sys
 
-from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -297,11 +297,12 @@ def run_uvh_coco_fused_grid_pet(
 
         if show_progress and frame_idx % 25 == 0:
             print(f"[UVH-COCO] processed frame={frame_idx}")
+        frame_idx += 1
+
+
+
 
     print(f"[UVH-COCO] ✅ Frame processing finished ({frame_idx} frames). Initializing track indexing...", flush=True)
-
-
-        frame_idx += 1
 
     det_df = pd.DataFrame(detection_rows)
     out_path = Path(output_csv_path)
