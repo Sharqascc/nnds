@@ -1,151 +1,126 @@
 import os
 import torch
-import torch.nn as nn
-import numpy as np
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
 import pandas as pd
-from pathlib import Path
+import numpy as np
 from traffic_diffusion.trajectory_diffusion import TrajectoryDiffusionModel
 
-def build_normalized_tensors(csv_path, Th=16, scaler_stats=None, augment=False):
-    """
-    Extracts trajectory pairs from CSV and converts them into relative displacements (p_t - p_0).
-    Flexibly detects event ID columns (event_id, conflict_id, pair_id, track_id, id).
-    """
+def build_velocity_tensors(csv_path, Th=16, scaler_stats=None):
     if not os.path.exists(csv_path):
         raise FileNotFoundError(f"Dataset CSV not found at {csv_path}")
         
     df = pd.read_csv(csv_path)
-    
-    # 1. Flexible Event ID Detection
-    id_candidates = ["event_id", "conflict_id", "pair_id", "track_id", "case_id", "id", "event"]
-    id_col = next((c for c in id_candidates if c in df.columns), None)
+    id_col = next((c for c in ["conflict_id", "event_id", "pair_id", "track_id", "id"] if c in df.columns), None)
     
     if id_col is None:
-        print(f"⚠️ No explicit event ID column found in {csv_path}. Auto-chunking into sequences of length {Th}.")
-        df["event_id"] = np.arange(len(df)) // Th
-        id_col = "event_id"
-    else:
-        print(f"ℹ️ Found event identifier column: '{id_col}'")
+        df["conflict_id"] = np.arange(len(df)) // Th
+        id_col = "conflict_id"
 
-    # 2. Check Coordinate Columns
-    required_coords = ["x_i", "y_i", "x_j", "y_j"]
-    for col in required_coords:
-        if col not in df.columns:
-            raise ValueError(f"Missing required coordinate column '{col}' in {csv_path}. Available columns: {list(df.columns)}")
+    vel_trajs = []
+    cond_vecs = []
+
+    for _, grp in df.groupby(id_col):
+        if "frame" in grp.columns:
+            grp = grp.sort_values("frame")
             
-    rel_list, cond_list, start_pos_list, real_pets = [], [], [], []
-    
-    for event_id, group in df.groupby(id_col):
-        if "frame" in group.columns:
-            group = group.sort_values("frame")
-        
-        if len(group) < Th:
+        if len(grp) < Th:
             continue
-            
-        ti_seq = group[["x_i", "y_i"]].values[:Th]
-        tj_seq = group[["x_j", "y_j"]].values[:Th]
+        sub = grp.iloc[:Th]
         
-        # Reference position: starting position of vehicle i (p_0)
-        start_pos = ti_seq[0].copy()
+        ti = sub[["x_i", "y_i"]].values.astype(np.float32)
+        tj = sub[["x_j", "y_j"]].values.astype(np.float32)
         
-        # Calculate relative displacements (p_t - p_0)
-        ti_rel = ti_seq - start_pos
-        tj_rel = tj_seq[0] - start_pos # Condition on initial position of vehicle j
+        v_i = np.zeros_like(ti)
+        v_i[1:] = np.diff(ti, axis=0)
         
-        rel_list.append(ti_rel)
-        cond_list.append(tj_rel)
-        start_pos_list.append(start_pos)
+        v_j = np.zeros_like(tj)
+        v_j[1:] = np.diff(tj, axis=0)
         
-        if "pet" in group.columns:
-            real_pets.append(group["pet"].iloc[0])
-        elif "PET" in group.columns:
-            real_pets.append(group["PET"].iloc[0])
-        else:
-            real_pets.append(1.5)
-            
-    if len(rel_list) == 0:
-        raise ValueError(f"No valid trajectory sequences of length {Th} found in {csv_path}")
+        cond = np.hstack([(tj[0] - ti[0]), (v_j[0] - v_i[0])])
         
-    x0_arr = np.array(rel_list, dtype=np.float32)       # Shape: (N, Th, 2)
-    cond_arr = np.array(cond_list, dtype=np.float32)     # Shape: (N, 2)
-    start_pos_arr = np.array(start_pos_list, dtype=np.float32) # Shape: (N, 2)
-    real_pets = np.array(real_pets, dtype=np.float32)
-    
-    # Data Augmentation (Random Rotation during Training)
-    if augment:
-        angles = np.random.uniform(0, 2 * np.pi, size=len(x0_arr))
-        cos_a, sin_a = np.cos(angles), np.sin(angles)
-        R = np.stack([np.stack([cos_a, -sin_a], axis=-1), 
-                      np.stack([sin_a, cos_a], axis=-1)], axis=-2) # (N, 2, 2)
-        
-        x0_arr = np.einsum("nti,nij->ntj", x0_arr, R)
-        cond_arr = np.einsum("ni,nij->nj", cond_arr, R)
+        vel_trajs.append(v_i)
+        cond_vecs.append(cond)
 
-    # Dataset normalization statistics
-    if scaler_stats is None:
-        mean = float(np.mean(x0_arr))
-        std = float(np.std(x0_arr)) + 1e-6
-        stats = {"mean": mean, "std": std}
+    vel_arr = np.array(vel_trajs, dtype=np.float32)   # (N, 16, 2)
+    cond_arr = np.array(cond_vecs, dtype=np.float32) # (N, 4)
+
+    if scaler_stats is not None:
+        mean = scaler_stats["mean"]
+        std = scaler_stats["std"]
+        cond_mean = scaler_stats["cond_mean"]
+        cond_std = scaler_stats["cond_std"]
     else:
-        stats = scaler_stats
-        mean, std = stats["mean"], stats["std"]
-        
-    x0_norm = (x0_arr - mean) / std
-    cond_norm = (cond_arr - mean) / std
-    
-    # Expand channel dimension for Temporal U-Net: (N, Th, 1, 2)
-    x0_tensor = torch.tensor(x0_norm, dtype=torch.float32).unsqueeze(2)
-    cond_tensor = torch.tensor(cond_norm, dtype=torch.float32)
-    
-    return x0_tensor, cond_tensor, stats, x0_arr, cond_arr, start_pos_arr, real_pets
+        mean = vel_arr.mean(axis=(0, 1), keepdims=True)
+        std = vel_arr.std(axis=(0, 1), keepdims=True) + 1e-5
+        cond_mean = cond_arr.mean(axis=0, keepdims=True)
+        cond_std = cond_arr.std(axis=0, keepdims=True) + 1e-5
 
-def train(train_csv_path, checkpoint_dir="checkpoints", epochs=40, batch_size=32, lr=1e-3, Th=16):
+    vel_norm = (vel_arr - mean) / std
+    cond_norm = (cond_arr - cond_mean) / cond_std
+    
+    vel_tensor = torch.tensor(vel_norm, dtype=torch.float32).unsqueeze(2) # (N, 16, 1, 2)
+    cond_tensor = torch.tensor(cond_norm, dtype=torch.float32)
+
+    stats = {
+        "mean": mean,
+        "std": std,
+        "cond_mean": cond_mean,
+        "cond_std": cond_std
+    }
+
+    return vel_tensor, cond_tensor, stats
+
+def train(train_csv_path="outputs/petevents_train.csv", checkpoint_dir="checkpoints", epochs=50, batch_size=32, lr=1e-3, Th=16):
     os.makedirs(checkpoint_dir, exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     print(f"📦 Loading training data from {train_csv_path}...")
-    x0_train, cond_train, stats, _, _, _, _ = build_normalized_tensors(
-        train_csv_path, Th=Th, augment=True
-    )
+    vel_tensor, cond_tensor, stats = build_velocity_tensors(train_csv_path, Th=Th)
     
-    dataset = torch.utils.data.TensorDataset(x0_train, cond_train)
-    loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    dataset = TensorDataset(vel_tensor, cond_tensor)
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
     
-    model = TrajectoryDiffusionModel(traj_shape=(Th, 1, 2), cond_dim=2, hidden_dim=128).to(device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
+    model = TrajectoryDiffusionModel(traj_shape=(Th, 1, 2), cond_dim=4, hidden_dim=128).to(device)
+    optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
     
     best_loss = float("inf")
-    checkpoint_path = os.path.join(checkpoint_dir, "traj_diffusion_best.pt")
+    ckpt_path = os.path.join(checkpoint_dir, "traj_diffusion_best.pt")
     
-    print(f"🔥 Starting training for {epochs} epochs on device: {device}...")
+    print(f"🔥 Training Flow Matching Velocity Model for {epochs} epochs on {device}...")
+    
     for epoch in range(1, epochs + 1):
         model.train()
-        total_loss = 0.0
+        epoch_loss = 0.0
         
-        for x_batch, c_batch in loader:
-            x_batch, c_batch = x_batch.to(device), c_batch.to(device)
-            optimizer.zero_grad()
+        for batch_vel, batch_cond in loader:
+            batch_vel = batch_vel.to(device)
+            batch_cond = batch_cond.to(device)
             
-            loss = model.p_losses(x_batch, c_batch)
+            optimizer.zero_grad()
+            loss = model.compute_loss(batch_vel, batch_cond)
             loss.backward()
-            nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
             
-            total_loss += loss.item() * len(x_batch)
+            epoch_loss += loss.item() * len(batch_vel)
             
-        epoch_loss = total_loss / len(dataset)
+        scheduler.step()
+        avg_loss = epoch_loss / len(dataset)
+        
         if epoch % 5 == 0 or epoch == 1:
-            print(f"Epoch [{epoch:02d}/{epochs:02d}] - MSE Loss: {epoch_loss:.6f}")
+            print(f"Epoch [{epoch:02d}/{epochs}] - Flow Matching Loss: {avg_loss:.6f}")
             
-        if epoch_loss < best_loss:
-            best_loss = epoch_loss
+        if avg_loss < best_loss:
+            best_loss = avg_loss
             torch.save({
                 "state_dict": model.state_dict(),
-                "mean": stats["mean"],
-                "std": stats["std"]
-            }, checkpoint_path)
-            
-    print(f"✅ Training complete. Best model saved to {checkpoint_path} (Loss: {best_loss:.6f})")
+                "stats": stats,
+                "model_type": "velocity_diffusion"
+            }, ckpt_path)
+
+    print(f"✅ Training complete. Checkpoint saved to {ckpt_path} (Best Loss: {best_loss:.6f})")
 
 if __name__ == "__main__":
-    train("outputs/petevents_train.csv")
+    train()
