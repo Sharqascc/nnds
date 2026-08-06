@@ -1,3 +1,5 @@
+from tqdm import tqdm
+import sys
 
 from __future__ import annotations
 
@@ -296,6 +298,9 @@ def run_uvh_coco_fused_grid_pet(
         if show_progress and frame_idx % 25 == 0:
             print(f"[UVH-COCO] processed frame={frame_idx}")
 
+    print(f"[UVH-COCO] ✅ Frame processing finished ({frame_idx} frames). Initializing track indexing...", flush=True)
+
+
         frame_idx += 1
 
     det_df = pd.DataFrame(detection_rows)
@@ -380,3 +385,14 @@ def run_uvh_coco_fused_grid_pet(
         "fps": fps,
         "num_tracks": len(valid_tracks),
     }
+
+
+def _can_intersect_temporal(track_a, track_b, fps=25.0, max_pet=2.0):
+    """O(1) temporal check: Skip tracks whose lifetime windows do not overlap within max_pet seconds."""
+    max_frames_diff = int(max_pet * fps) + 5
+    min_a, max_a = track_a["frames"][0], track_a["frames"][-1]
+    min_b, max_b = track_b["frames"][0], track_b["frames"][-1]
+    
+    if min_b > (max_a + max_frames_diff) or min_a > (max_b + max_frames_diff):
+        return False
+    return True
