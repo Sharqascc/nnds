@@ -1,3 +1,4 @@
+from tqdm import tqdm
 #!/usr/bin/env python
 import argparse
 import json

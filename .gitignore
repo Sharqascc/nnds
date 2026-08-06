@@ -80,3 +80,4 @@ Thumbs.db
 # Track model weights
 !uvh26.pt
 !yolo26n.pt
+*.onnx

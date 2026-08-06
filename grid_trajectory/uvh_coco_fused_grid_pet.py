@@ -296,7 +296,7 @@ def run_uvh_coco_fused_grid_pet(
                 )
 
         if show_progress and frame_idx % 25 == 0:
-            print(f"[UVH-COCO] processed frame={frame_idx}")
+            pass
         frame_idx += 1
 
 
