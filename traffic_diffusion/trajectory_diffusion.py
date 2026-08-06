@@ -1,104 +1,101 @@
 import torch
 import torch.nn as nn
-import numpy as np
+import torch.nn.functional as F
 
-class ResidualBlock(nn.Module):
-    def __init__(self, dim):
+class TemporalResBlock(nn.Module):
+    def __init__(self, channels):
         super().__init__()
-        self.block = nn.Sequential(
-            nn.Linear(dim, dim),
-            nn.LayerNorm(dim),
-            nn.ReLU(),
-            nn.Linear(dim, dim),
-            nn.LayerNorm(dim)
-        )
-        self.relu = nn.ReLU()
+        self.conv1 = nn.Conv1d(channels, channels, kernel_size=3, padding=1)
+        self.norm1 = nn.GroupNorm(8, channels)
+        self.conv2 = nn.Conv1d(channels, channels, kernel_size=3, padding=1)
+        self.norm2 = nn.GroupNorm(8, channels)
 
-    def forward(self, x):
-        return self.relu(x + self.block(x))
-
-class SimpleUNet(nn.Module):
-    def __init__(self, traj_shape, cond_dim=2):
-        super().__init__()
-        self.Th, self.C, self.D = traj_shape
-        traj_dim = self.Th * self.C * self.D
-        input_dim = traj_dim + traj_dim + 1 # xt + condition + timestep
-        
-        hidden_dim = 512
-        self.input_proj = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
-            nn.LayerNorm(hidden_dim),
-            nn.ReLU()
-        )
-        
-        self.res_blocks = nn.Sequential(
-            ResidualBlock(hidden_dim),
-            ResidualBlock(hidden_dim),
-            ResidualBlock(hidden_dim)
-        )
-        
-        self.output_proj = nn.Linear(hidden_dim, traj_dim)
-
-    def forward(self, xt, cond, t):
-        b, Th, c, d = xt.shape
-        xt_flat = xt.reshape(b, -1)
-        cond_flat = cond.reshape(b, -1)
-        t_embed = t.float().unsqueeze(1) / 1000.0
-        
-        x_in = torch.cat([xt_flat, cond_flat, t_embed], dim=1)
-        h = self.input_proj(x_in)
-        h = self.res_blocks(h)
-        out = self.output_proj(h)
-        return out.reshape(b, Th, c, d)
+    def forward(self, x, emb):
+        res = x
+        h = F.silu(self.norm1(self.conv1(x)))
+        h = h + emb.unsqueeze(-1)
+        h = self.norm2(self.conv2(h))
+        return F.silu(h + res)
 
 class TrajectoryDiffusionModel(nn.Module):
-    def __init__(self, traj_shape=(16, 1, 2), cond_dim=2, timesteps=100):
+    def __init__(self, traj_shape=(16, 1, 2), cond_dim=2, hidden_dim=128):
         super().__init__()
-        self.traj_shape = traj_shape
-        self.timesteps = timesteps
-        self.model = SimpleUNet(traj_shape, cond_dim)
+        self.Th, self.N_agents, self.dim = traj_shape
+        self.input_dim = self.dim * self.N_agents
+        self.hidden_dim = hidden_dim
+        
+        self.time_mlp = nn.Sequential(
+            nn.Linear(1, hidden_dim),
+            nn.SiLU(),
+            nn.Linear(hidden_dim, hidden_dim)
+        )
+        self.cond_mlp = nn.Sequential(
+            nn.Linear(cond_dim, hidden_dim),
+            nn.SiLU(),
+            nn.Linear(hidden_dim, hidden_dim)
+        )
+        
+        self.input_proj = nn.Conv1d(self.input_dim, hidden_dim, kernel_size=3, padding=1)
+        
+        self.blocks = nn.ModuleList([
+            TemporalResBlock(hidden_dim),
+            TemporalResBlock(hidden_dim),
+            TemporalResBlock(hidden_dim),
+            TemporalResBlock(hidden_dim)
+        ])
+        
+        self.out_proj = nn.Sequential(
+            nn.Conv1d(hidden_dim, hidden_dim, kernel_size=3, padding=1),
+            nn.SiLU(),
+            nn.Conv1d(hidden_dim, self.input_dim, kernel_size=3, padding=1)
+        )
 
-        beta = torch.linspace(1e-4, 0.02, timesteps)
-        alpha = 1.0 - beta
-        alpha_bar = torch.cumprod(alpha, dim=0)
+    def forward(self, x, cond, t):
+        B = x.shape[0]
+        x_flat = x.reshape(B, self.Th, self.input_dim).permute(0, 2, 1)
+        
+        if t.ndim == 1:
+            t = t.unsqueeze(-1)
+        t_emb = self.time_mlp(t)
+        
+        if cond.ndim > 2:
+            cond = cond.reshape(B, -1)
+        c_emb = self.cond_mlp(cond)
+        
+        emb = t_emb + c_emb
+        
+        h = self.input_proj(x_flat)
+        for block in self.blocks:
+            h = block(h, emb)
+            
+        out = self.out_proj(h)
+        out = out.permute(0, 2, 1).reshape(B, self.Th, self.N_agents, self.dim)
+        return out
 
-        self.register_buffer("beta", beta)
-        self.register_buffer("alpha", alpha)
-        self.register_buffer("alpha_bar", alpha_bar)
-
-    def forward(self, x0, cond):
-        b = x0.shape[0]
-        t = torch.randint(0, self.timesteps, (b,), device=x0.device).long()
+    def p_losses(self, x0, cond):
+        B = x0.shape[0]
+        device = x0.device
+        t = torch.rand(B, 1, device=device)
         noise = torch.randn_like(x0)
         
-        alpha_bar_t = self.alpha_bar[t].view(b, 1, 1, 1)
-        xt = torch.sqrt(alpha_bar_t) * x0 + torch.sqrt(1.0 - alpha_bar_t) * noise
+        t_exp = t.view(B, 1, 1, 1)
+        xt = (1.0 - t_exp) * x0 + t_exp * noise
         
-        noise_pred = self.model(xt, cond, t)
-        return nn.functional.mse_loss(noise_pred, noise)
+        pred_noise = self(xt, cond, t)
+        return F.mse_loss(pred_noise, noise)
+
+    def compute_loss(self, x0, cond):
+        return self.p_losses(x0, cond)
 
     @torch.no_grad()
-    def sample(self, cond):
-        b = cond.shape[0]
+    def sample(self, cond, num_steps=20):
+        B = cond.shape[0]
         device = cond.device
-        xt = torch.randn((b, *self.traj_shape), device=device)
-
-        for i in reversed(range(self.timesteps)):
-            t = torch.full((b,), i, device=device, dtype=torch.long)
-            alpha_i = self.alpha[i]
-            alpha_bar_i = self.alpha_bar[i]
-            beta_i = self.beta[i]
-
-            noise_pred = self.model(xt, cond, t)
-            
-            if i > 0:
-                noise = torch.randn_like(xt)
-            else:
-                noise = torch.zeros_like(xt)
-
-            coef = 1.0 / torch.sqrt(alpha_i)
-            resid = beta_i / torch.sqrt(1.0 - alpha_bar_i)
-            xt = coef * (xt - resid * noise_pred) + torch.sqrt(beta_i) * noise
-
-        return xt
-print("✅ Upgraded TrajectoryDiffusionModel with High-Capacity Residual Blocks.")
+        x = torch.randn(B, self.Th, self.N_agents, self.dim, device=device)
+        
+        dt = 1.0 / num_steps
+        for i in range(num_steps, 0, -1):
+            t = torch.full((B, 1), i / num_steps, device=device)
+            pred_noise = self(x, cond, t)
+            x = x - pred_noise * dt
+        return x
