@@ -1,3 +1,9 @@
+import sys
+from pathlib import Path
+repo_root = Path(__file__).resolve().parent.parent
+if str(repo_root) not in sys.path:
+    sys.path.insert(0, str(repo_root))
+
 import os
 import ast
 import numpy as np
@@ -13,71 +19,101 @@ def parse_traj_txy(cell):
     return arr[:, 0], arr[:, 1:3]
 
 
-def build_training_tensors(csv_path, Th=8):
+def build_training_tensors(csv_path, Th=16):
+    import pandas as pd
+    import numpy as np
+    import torch, ast, glob
+    from pathlib import Path
+
+    csv_path = Path(csv_path)
+
+    # Prioritize generated outputs over demo samples
+    if not csv_path.exists() or "data_samples" in str(csv_path):
+        candidates = sorted([Path(f) for f in glob.glob("outputs/petevents_*.csv") if not f.endswith("_detections.csv")])
+        if candidates:
+            csv_path = candidates[-1]
+            print(f"ℹ️ Auto-selected generated PET CSV from outputs: {csv_path}")
+
+    if not csv_path.exists():
+        raise FileNotFoundError(f"Could not locate PET events CSV at {csv_path}")
+
     df = pd.read_csv(csv_path)
+    if df.empty:
+        raise ValueError(f"CSV file {csv_path} is empty.")
 
-    x0_list = []
-    cond_list = []
+    x0_list, cond_list = [], []
 
-    for ci, cj in zip(df["world_traj_i"], df["world_traj_j"]):
-        t_i, xy_i = parse_traj_txy(ci)
-        t_j, xy_j = parse_traj_txy(cj)
+    # Case 1: world_traj_i / world_traj_j embedded in CSV
+    if "world_traj_i" in df.columns and "world_traj_j" in df.columns:
+        for ci, cj in zip(df["world_traj_i"], df["world_traj_j"]):
+            ti = np.array(ast.literal_eval(ci) if isinstance(ci, str) else ci, dtype=np.float32)
+            tj = np.array(ast.literal_eval(cj) if isinstance(cj, str) else cj, dtype=np.float32)
+            if len(ti) >= Th and len(tj) >= Th:
+                x0_list.append(ti[:Th])
+                cond_list.append(tj[:Th])
 
-        T = min(len(xy_i), len(xy_j))
-        if T < (Th + 2):
-            continue
+    # Case 2: Reconstruct trajectories using companion detections CSV in the same folder
+    else:
+        det_path = csv_path.parent / f"{csv_path.stem}_detections.csv"
+        if not det_path.exists():
+            clean_stem = csv_path.stem.replace("petevents_bev_", "").replace("petevents_", "")
+            det_path = csv_path.parent / f"{clean_stem}_detections.csv"
 
-        xy_i = xy_i[:T]
-        xy_j = xy_j[:T]
+        if not det_path.exists():
+            candidates = sorted([Path(f) for f in glob.glob(f"{csv_path.parent}/*_detections.csv")])
+            if candidates:
+                det_path = candidates[-1]
 
-        past_i = xy_i[:Th]
-        past_j = xy_j[:Th]
-        fut_i = xy_i[Th:]
-        fut_j = xy_j[Th:]
+        if not det_path.exists():
+            raise FileNotFoundError(f"Could not locate companion detections file for {csv_path}")
 
-        Tf = min(len(fut_i), len(fut_j))
-        if Tf < 2:
-            continue
+        print(f"✅ Reconstructing trajectories using matching detections file: {det_path}")
+        det_df = pd.read_csv(det_path)
 
-        fut_i = fut_i[:Tf]
-        fut_j = fut_j[:Tf]
+        id_col_i = next((c for c in ["track_id_i", "actor_i", "id_i", "track_a", "track_i"] if c in df.columns), None)
+        id_col_j = next((c for c in ["track_id_j", "actor_j", "id_j", "track_b", "track_j"] if c in df.columns), None)
 
-        cx, cy = past_i[-1]
-        cond = np.array([
-            past_i[-1, 0] - cx, past_i[-1, 1] - cy,
-            past_j[-1, 0] - cx, past_j[-1, 1] - cy,
-        ], dtype=np.float32)
+        if not id_col_i or not id_col_j:
+            raise KeyError(f"Could not locate track ID columns in {csv_path}. Columns found: {list(df.columns)}")
 
-        fut_i_norm = fut_i - np.array([cx, cy], dtype=np.float32)
-        fut_j_norm = fut_j - np.array([cx, cy], dtype=np.float32)
+        track_col = next((c for c in ["track_id", "actor_id", "id"] if c in det_df.columns), None)
+        frame_col = next((c for c in ["frame", "frame_idx", "frame_id"] if c in det_df.columns), "frame")
+        x_col = next((c for c in ["cx", "world_x", "x", "bev_x", "x1"] if c in det_df.columns), None)
+        y_col = next((c for c in ["cy", "world_y", "y", "bev_y", "y1"] if c in det_df.columns), None)
 
-        x0 = np.stack([fut_i_norm, fut_j_norm], axis=1)  # (Tf, 2, 2)
+        if not track_col or not x_col or not y_col:
+            raise KeyError(f"Missing required trajectory columns in {det_path}. Columns found: {list(det_df.columns)}")
 
-        x0_list.append(x0.astype(np.float32))
-        cond_list.append(cond)
+        for _, row in df.iterrows():
+            id_i, id_j = row[id_col_i], row[id_col_j]
+            traj_i = det_df[det_df[track_col] == id_i][[frame_col, x_col, y_col]].sort_values(frame_col)[[x_col, y_col]].values
+            traj_j = det_df[det_df[track_col] == id_j][[frame_col, x_col, y_col]].sort_values(frame_col)[[x_col, y_col]].values
 
-    if not x0_list:
-        raise RuntimeError("No valid training samples built from CSV")
+            if len(traj_i) > 0 and len(traj_j) > 0:
+                if len(traj_i) < Th:
+                    traj_i = np.pad(traj_i, ((0, Th - len(traj_i)), (0, 0)), mode="edge")
+                if len(traj_j) < Th:
+                    traj_j = np.pad(traj_j, ((0, Th - len(traj_j)), (0, 0)), mode="edge")
 
-    Tf_target = 9  # must match evaluator's Tf
+                x0_list.append(traj_i[:Th])
+                cond_list.append(traj_j[:Th])
 
-    x0_list_fixed = []
-    for x in x0_list:
-        if x.shape[0] >= Tf_target:
-            x_fixed = x[:Tf_target]
-        else:
-            pad = np.repeat(x[-1:, :, :], Tf_target - x.shape[0], axis=0)
-            x_fixed = np.concatenate([x, pad], axis=0)
-        x0_list_fixed.append(x_fixed.astype(np.float32))
+    if len(x0_list) == 0:
+        raise ValueError(f"No valid trajectory pairs extracted from {csv_path}.")
 
-    x0 = torch.tensor(np.stack(x0_list_fixed, axis=0), dtype=torch.float32)   # (B,9,2,2)
-    cond = torch.tensor(np.stack(cond_list, axis=0), dtype=torch.float32)    # (B,4)
+    x0_tensor = torch.tensor(np.array(x0_list), dtype=torch.float32)
+    cond_tensor = torch.tensor(np.array(cond_list), dtype=torch.float32)
 
-    return x0, cond
+    if x0_tensor.ndim == 3:
+        x0_tensor = x0_tensor.unsqueeze(2)
+    if cond_tensor.ndim == 3:
+        cond_tensor = cond_tensor.unsqueeze(2)
+
+    return x0_tensor, cond_tensor
 
 
 def train(
-    csv_path="docs/data_samples/petevents_bev_demo.csv",
+    csv_path="outputs/petevents_bev_traffic_video_full_pet2p0.csv",
     checkpoint_dir="checkpoints",
     Th=8,
     batch_size=32,

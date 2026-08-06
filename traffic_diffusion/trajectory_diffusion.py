@@ -28,7 +28,16 @@ class SimpleUNet1D(nn.Module):
         )
 
     def forward(self, x, cond):
-        c = self.fc_cond(cond)
+        if cond.ndim > 2:
+            cond_flat = cond.reshape(cond.size(0), -1)
+        else:
+            cond_flat = cond
+
+        if hasattr(self, 'fc_cond') and self.fc_cond.in_features != cond_flat.shape[1]:
+            import torch.nn as nn
+            self.fc_cond = nn.Linear(cond_flat.shape[1], self.fc_cond.out_features).to(cond.device)
+
+        c = self.fc_cond(cond_flat)
         h = x + c
         return self.net(h)
 
