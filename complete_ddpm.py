@@ -223,7 +223,7 @@ def evaluate_model(test_csv, checkpoint_path, K=10, Th=16, dt=0.1):
     all_gen_pos = np.zeros((N, K, T, 2))
     for k in range(K):
         all_gen_pos[:, k, 0] = start_pos_arr
-        all_gen_pos[:, k, 1:] = start_pos_arr[:, None] + np.cumsum(all_gen[k, :, :-1, :], axis=0) * dt
+        all_gen_pos[:, k, 1:] = start_pos_arr[:, None] + np.cumsum(all_gen[k, :, :-1, :], axis=1) * dt
     
     all_gen_pos = savgol_filter(all_gen_pos, window_length=5, polyorder=3, axis=2)
     
