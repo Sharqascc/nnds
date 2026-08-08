@@ -96,8 +96,38 @@ class TrajectoryUNet1D(nn.Module):
 
 # ============ Data Loading ============
 
+def parse_traj(traj_str, Th=16):
+    """Parse trajectory string like [(frame, x, y), ...]"""
+    import ast
+    try:
+        traj_list = ast.literal_eval(traj_str)
+        xy_data = [(t[1], t[2]) for t in traj_list[:Th]]
+        return np.array(xy_data, dtype=np.float32) if len(xy_data) >= Th else None
+    except:
+        return None
+
 def load_data_from_csv(csv_path, Th=16):
     df = pd.read_csv(csv_path)
+    
+    # Check if we have the new format (world_traj_i, world_traj_j)
+    if 'world_traj_i' in df.columns and 'world_traj_j' in df.columns:
+        gt_trajs, cond_trajs, start_pos_arr = [], [], []
+        
+        for idx, row in df.iterrows():
+            traj_i = parse_traj(row['world_traj_i'], Th=Th)
+            traj_j = parse_traj(row['world_traj_j'], Th=Th)
+            
+            if traj_i is not None and traj_j is not None:
+                gt_trajs.append(traj_i)
+                cond_trajs.append(traj_j)
+                start_pos_arr.append(traj_i[0])
+        
+        if len(gt_trajs) == 0:
+            return None, None, None
+        
+        return np.array(gt_trajs), np.array(cond_trajs), np.array(start_pos_arr)
+    
+    # Old format
     id_col = next((c for c in ["conflict_id", "event_id", "pair_id", "track_id", "id"] if c in df.columns), None)
     
     gt_trajs, cond_trajs, start_pos_arr = [], [], []
@@ -192,6 +222,11 @@ def train_model(train_csv, input_dim=32, hidden_dim=128, epochs=100, batch_size=
 
 def evaluate_model(test_csv, checkpoint_path, K=10, Th=16, dt=0.1):
     checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
+    # Get Th from checkpoint if available
+    if 'traj_shape' in checkpoint:
+        Th = checkpoint['traj_shape'][0]
+    elif 'input_dim' in checkpoint:
+        Th = checkpoint['input_dim'] // 2
     result = load_data_from_csv(test_csv, Th=Th)
     gt_trajs, cond_trajs, start_pos_arr = result[:3]
     real_pets = None if len(result) < 4 else result[3]
@@ -204,7 +239,8 @@ def evaluate_model(test_csv, checkpoint_path, K=10, Th=16, dt=0.1):
     N, T = vel_tensor_norm.shape[0], vel_tensor_norm.shape[1]
     print(f"Test samples: {N}, horizon T: {T}")
     
-    model = TrajectoryUNet1D(input_dim=checkpoint['input_dim'])
+    input_dim = checkpoint.get('input_dim', checkpoint['traj_shape'][0] * 2)
+    model = TrajectoryUNet1D(input_dim=input_dim)
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
     
