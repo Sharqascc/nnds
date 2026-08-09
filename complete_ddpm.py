@@ -295,6 +295,6 @@ def evaluate_model(test_csv, checkpoint_path, K=10, Th=16, dt=0.1):
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1 and sys.argv[1] == 'train':
-        train_model('outputs/petevents_train.csv')
+        train_model('outputs/petevents_train.csv', input_dim=18)
     else:
         evaluate_model('outputs/petevents_test.csv', 'checkpoints/best.pt')
