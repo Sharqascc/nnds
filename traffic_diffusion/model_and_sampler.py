@@ -6,12 +6,13 @@ from traffic_diffusion.trajectory_diffusion import TrajectoryDiffusionModel
 _DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 _MODEL = None
 
-def load_model(checkpoint_path: str, traj_shape, cond_dim, num_steps=1000):
+def load_model(checkpoint_path: str, traj_shape, cond_dim, hidden_dim=128):
     """
     Construct TrajectoryDiffusionModel and load weights from checkpoint.
 
     traj_shape: (T, N, F) used during training.
     cond_dim:   conditioning dimension used during training.
+    hidden_dim: hidden width used during training.
     """
     global _MODEL
     if _MODEL is not None:
@@ -20,11 +21,13 @@ def load_model(checkpoint_path: str, traj_shape, cond_dim, num_steps=1000):
     model = TrajectoryDiffusionModel(
         traj_shape=traj_shape,
         cond_dim=cond_dim,
-        num_steps=num_steps,
-        device=_DEVICE,
+        hidden_dim=hidden_dim,
     )
 
-    ckpt = torch.load(checkpoint_path, map_location=_DEVICE)
+    # weights_only=False: our checkpoints bundle a "stats" dict (numpy arrays)
+    # alongside the state_dict, so the strict weights-only unpickler (PyTorch
+    # 2.6+ default) rejects them. Only load checkpoints you trust.
+    ckpt = torch.load(checkpoint_path, map_location=_DEVICE, weights_only=False)
     state = ckpt.get("state_dict", ckpt)
     model.load_state_dict(state)
     model.to(_DEVICE).eval()
@@ -34,7 +37,8 @@ def load_model(checkpoint_path: str, traj_shape, cond_dim, num_steps=1000):
 
 @torch.no_grad()
 def sample_future_denorm(batch, checkpoint_path: str, num_samples: int = 1,
-                         traj_shape=(9, 2, 2), cond_dim=4, num_steps=1000):
+                         traj_shape=(9, 2, 2), cond_dim=4, hidden_dim=128,
+                         num_steps=50):
     """
     Inputs:
       batch:
@@ -55,7 +59,7 @@ def sample_future_denorm(batch, checkpoint_path: str, num_samples: int = 1,
     traj_shape = (T, N, F)
 
     # Load model once
-    model = load_model(checkpoint_path, traj_shape=traj_shape, cond_dim=cond_dim, num_steps=num_steps)
+    model = load_model(checkpoint_path, traj_shape=traj_shape, cond_dim=cond_dim, hidden_dim=hidden_dim)
 
     # Build conditioning vector(s) from batch["past"]
     # Here, a simple example: flattened last past step for each agent.
@@ -67,7 +71,7 @@ def sample_future_denorm(batch, checkpoint_path: str, num_samples: int = 1,
     samples = []
     for _ in range(num_samples):
         # model.sample expects cond shape (B, cond_dim) and returns (B, T, N, F)
-        x = model.sample(cond)  # (B, T, N, F)
+        x = model.sample(cond, num_steps=num_steps)  # (B, T, N, F)
         x = x.to("cpu").numpy()  # -> (B, T, N, F)
         # reshape to (B, T, 4) with agents concatenated along feature dim
         x_4 = x.reshape(B, T, N * F)  # (B, Tf, 4)

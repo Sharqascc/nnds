@@ -1,6 +1,32 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.data import Dataset
+
+
+class TrajectoryDataset(Dataset):
+    """Simple (trajectory, condition) pair dataset for diffusion training.
+
+    Args:
+        trajectories: (num_samples, Th, N_agents, dim) tensor of trajectories.
+        conditions:   (num_samples, cond_dim) tensor of conditioning vectors.
+    """
+
+    def __init__(self, trajectories: torch.Tensor, conditions: torch.Tensor):
+        if trajectories.shape[0] != conditions.shape[0]:
+            raise ValueError(
+                "trajectories and conditions must have the same number of "
+                f"samples, got {trajectories.shape[0]} vs {conditions.shape[0]}"
+            )
+        self.trajectories = trajectories
+        self.conditions = conditions
+
+    def __len__(self):
+        return self.trajectories.shape[0]
+
+    def __getitem__(self, idx):
+        return self.trajectories[idx], self.conditions[idx]
+
 
 class TemporalResBlock(nn.Module):
     def __init__(self, channels):
