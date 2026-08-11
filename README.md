@@ -576,3 +576,59 @@ git lfs pull
 # or
 bash scripts/download_uvh26.sh
 ```
+
+## 🚀 Quick Start
+
+The primary entry point is **`traffic_analyzer.py`**. It provides a unified CLI for video processing, object detection, PET extraction, and gate counting.
+
+### Basic Usage
+
+```bash
+# Show help
+python traffic_analyzer.py --help
+
+# Process video with UVH detector (best for Indian traffic)
+python traffic_analyzer.py --video sample_data/traffic_video.mp4 --detector uvh-coco-fused --output outputs/result.mp4 --max-frames 100
+
+# Use custom UVH and COCO person models
+python traffic_analyzer.py --video sample_data/traffic_video.mp4 --detector uvh-coco-fused --uvh-model uvh26.pt --coco-person-model yolo11n.pt --out-csv outputs/pet_events.csv
+
+# Run with gate counting
+python traffic_analyzer.py --video sample_data/traffic_video.mp4 --detector uvh-coco-fused --bev-config configs/bev_config.json --grid-config configs/GITI_grid_config.json --out-csv outputs/pet_events.csv
+
+# Run demo (calibration/speed test)
+python traffic_analyzer.py --demo
+```
+
+### Supported Detectors
+
+| Detector | Description |
+|----------|-------------|
+| `uvh-coco-fused` | UVH-26 for vehicles + COCO person fallback (recommended for Indian traffic) |
+| `sam3` | SAM3 segmentation (default) |
+| `rtdetr` | RT-DETR object detection |
+| `yolo-cpu` | YOLO CPU model |
+
+### Output Files
+
+- **Video**: Annotated output with gates and detections (if `--output` specified).
+- **PET CSV**: `--out-csv` (default: `pet_events.csv`) with conflict events.
+- **Detections CSV**: Saved alongside PET CSV with `_detections.csv` suffix.
+
+### Example: Full Pipeline
+
+```bash
+python traffic_analyzer.py \
+    --video sample_data/traffic_video.mp4 \
+    --detector uvh-coco-fused \
+    --uvh-model uvh26.pt \
+    --coco-person-model yolo11n.pt \
+    --bev-config configs/bev_config.json \
+    --grid-config configs/GITI_grid_config.json \
+    --out-csv outputs/pet_events.csv \
+    --output outputs/result.mp4 \
+    --max-frames 200 \
+    --pet-threshold 2.0
+```
+
+This will process 200 frames, detect vehicles and pedestrians, compute PET events, and save both the annotated video and CSV outputs.
