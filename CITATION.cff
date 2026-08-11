@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: "Sharqascc"
+    given-names: "S."
+title: "NNDS: Neural Network Diffusion for Traffic Safety"
+version: 1.0.0
+date-released: 2026-08-11
+url: "https://github.com/Sharqascc/nnds"
+license: MIT
