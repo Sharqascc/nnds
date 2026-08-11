@@ -632,3 +632,49 @@ python traffic_analyzer.py \
 ```
 
 This will process 200 frames, detect vehicles and pedestrians, compute PET events, and save both the annotated video and CSV outputs.
+## 🎥 Video Output
+
+The `traffic_analyzer.py` script does not produce video output; it focuses on PET extraction and CSV generation.
+
+For annotated video with volume counting, use the **Gate Counter**:
+
+```python
+from gate_counter import TrafficVolumeCounter
+from ultralytics import YOLO
+
+model = YOLO("uvh26.pt")
+
+def uvh_detector(frame):
+    results = model(frame, imgsz=640, conf=0.25)
+    detections = []
+    for r in results:
+        boxes = r.boxes
+        if boxes is not None:
+            for box in boxes:
+                x1, y1, x2, y2 = box.xyxy[0].tolist()
+                cx, cy = (x1+x2)/2, (y1+y2)/2
+                detections.append({
+                    "centroid": (cx, cy),
+                    "cls": model.names[int(box.cls)],
+                    "conf": float(box.conf),
+                })
+    return detections
+
+counter = TrafficVolumeCounter(
+    videopath="sample_data/traffic_video.mp4",
+    gate_config="configs/gate_config.yaml",
+    classes_of_interest=["car", "motorcycle", "bus", "truck", "auto", "bicycle"],
+    draw_stats=True,
+    draw_tracks=True,
+)
+
+result = counter.process_video(
+    detector=uvh_detector,
+    output_video="outputs/result.mp4",
+    max_frames=100,
+    show_progress=True,
+)
+print(result)
+```
+
+This will generate an annotated video with gate crossings and counts.
