@@ -1,4 +1,5 @@
 from __future__ import annotations
+import matplotlib.pyplot as plt
 from utils.interactive import show_image, ask_user
 from tqdm import tqdm
 import sys
@@ -299,6 +300,96 @@ def run_uvh_coco_fused_grid_pet(
         if show_progress and frame_idx % 25 == 0:
             pass
         frame_idx += 1
+
+        # === INTERACTIVE PAUSE ===
+        if frame_idx % 20 == 0:
+            print("\n" + "="*50)
+            print(f"🔄 Processed {frame_idx} frames.")
+            # Show the current frame from video
+            try:
+                cap = cv2.VideoCapture(video_path)
+                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+                ret, frame = cap.read()
+                cap.release()
+                if ret:
+                    plt.imshow(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                    plt.title(f"Frame {frame_idx}")
+                    plt.axis('off')
+                    plt.show()
+                    plt.pause(0.1)
+            except Exception as e:
+                print(f"⚠️ Could not show frame: {e}")
+            print("Press Enter to continue, or type 'stop' and press Enter to abort.")
+            import sys
+            sys.stdout.flush()
+            user_input = input().strip().lower()
+            print(f"DEBUG: user_input = '{user_input}'")
+            if user_input == 'stop':
+                print("⏹️ Stopped by user.")
+                break
+
+
+        # === INTERACTIVE PAUSE (DEBUG) ===
+        if frame_idx % 20 == 0:
+            print("\n" + "="*50)
+            print(f"🔄 Processed {frame_idx} frames.")
+            # Show the current frame from video
+            try:
+                cap = cv2.VideoCapture(video_path)
+                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+                ret, frame = cap.read()
+                cap.release()
+                if ret:
+                    plt.imshow(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                    plt.title(f"Frame {frame_idx}")
+                    plt.axis('off')
+                    plt.show()
+                    plt.pause(0.1)
+            except Exception as e:
+                print(f"⚠️ Could not show frame: {e}")
+            print("Press Enter to continue, or type 'stop' and press Enter to abort.")
+            sys.stdout.flush()
+            user_input = input().strip().lower()
+            print(f"DEBUG: user_input = '{user_input}'")  # Debug line
+            if user_input == 'stop':
+                print("⏹️ Stopped by user.")
+                break  # Use break instead of raising exception
+
+
+        
+        # === INTERACTIVE PAUSE (DEBUG) ===
+        if frame_idx % 20 == 0:
+            print("\n" + "="*50)
+            print(f"🔄 Processed {frame_idx} frames.")
+            # Show the current frame from video
+            try:
+                cap = cv2.VideoCapture(video_path)
+                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+                ret, frame = cap.read()
+                cap.release()
+                if ret:
+                    plt.imshow(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                    plt.title(f"Frame {frame_idx}")
+                    plt.axis('off')
+                    plt.show()
+                    plt.pause(0.1)
+            except Exception as e:
+                print(f"⚠️ Could not show frame: {e}")
+            print("Press Enter to continue, or type 'stop' and press Enter to abort.")
+            sys.stdout.flush()
+            user_input = input().strip().lower()
+            print(f"DEBUG: user_input = '{user_input}'")  # Debug line
+            if user_input == 'stop':
+                print("⏹️ Stopped by user.")
+                break  # Use break instead of raising exception
+
+        if frame_idx % 20 == 0:
+            print(f"🔄 Processed {frame_idx} frames. Press Enter to continue, or type 'stop' to abort.")
+            user_input = input().strip().lower()
+            if user_input == 'stop':
+                print("⏹️ Stopped by user.")
+                raise KeyboardInterrupt("Stopped by user")
+
         
         if interactive and frame_idx % 20 == 0:
             print(f"🔍 Interactive block reached at frame {frame_idx}")
