@@ -301,6 +301,8 @@ def run_uvh_coco_fused_grid_pet(
         frame_idx += 1
         
         if interactive and frame_idx % 20 == 0:
+            print(f"🔍 Interactive block reached at frame {frame_idx}")
+            show_frame(video_path, title=f"Frame {frame_idx}", frame_idx=frame_idx)
             print(f"⏳ Processed {frame_idx} frames.")
             show_frame(video_path, title=f"Frame {frame_idx}", frame_idx=frame_idx)
             if not ask_user("Continue processing?"):
@@ -323,6 +325,8 @@ def run_uvh_coco_fused_grid_pet(
 
         
         if interactive and frame_idx % 20 == 0:
+            print(f"🔍 Interactive block reached at frame {frame_idx}")
+            show_frame(video_path, title=f"Frame {frame_idx}", frame_idx=frame_idx)
             print(f"⏳ Processed {frame_idx} frames.")
             show_frame(video_path, title=f"Frame {frame_idx}", frame_idx=frame_idx)
             if not ask_user("Continue processing?"):
@@ -348,6 +352,8 @@ def run_uvh_coco_fused_grid_pet(
 
         
         if interactive and frame_idx % 20 == 0:
+            print(f"🔍 Interactive block reached at frame {frame_idx}")
+            show_frame(video_path, title=f"Frame {frame_idx}", frame_idx=frame_idx)
             print(f"⏳ Processed {frame_idx} frames.")
             show_frame(video_path, title=f"Frame {frame_idx}", frame_idx=frame_idx)
             if not ask_user("Continue processing?"):
