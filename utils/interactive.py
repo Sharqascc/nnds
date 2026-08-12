@@ -1,5 +1,6 @@
 import cv2
 import matplotlib.pyplot as plt
+import sys
 
 def show_frame(video_path, title="Video Frame", frame_idx=0):
     cap = cv2.VideoCapture(video_path)
@@ -26,7 +27,6 @@ def ask_user(prompt="Continue? (y/n): "):
     print("\n" + "="*50)
     print("⏳ WAITING FOR YOUR INPUT")
     print(prompt)
-    import sys
     sys.stdout.flush()
     while True:
         ans = input().strip().lower()

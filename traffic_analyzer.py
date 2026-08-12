@@ -709,6 +709,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Disable verbose/progress output from SAM3 pipeline",
     )
+    parser.add_argument('--interactive', action='store_true', help='Run in interactive mode with step-by-step prompts and previews')
     return parser.parse_args()
 
 
