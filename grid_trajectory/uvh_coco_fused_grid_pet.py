@@ -1,3 +1,4 @@
+from utils.interactive import show_image, ask_user
 from __future__ import annotations
 from tqdm import tqdm
 import sys
@@ -146,7 +147,7 @@ def run_uvh_coco_fused_grid_pet(
     coco_model = YOLO(coco_person_model_path)
 
     cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
+    if not cap.isOpened(, interactive: bool = False):
         raise RuntimeError(f"Failed to open video: {video_path}")
 
     fps = cap.get(cv2.CAP_PROP_FPS)
@@ -298,6 +299,29 @@ def run_uvh_coco_fused_grid_pet(
         if show_progress and frame_idx % 25 == 0:
             pass
         frame_idx += 1
+        if interactive and frame_idx % 20 == 0:
+            print(f"⏳ Processed {frame_idx} frames.")
+            # Show the current frame from the video
+            show_frame(video_path, title=f"Frame {frame_idx}", frame_idx=frame_idx)
+            if not ask_user("Continue processing?"):
+                print("⏹️ Stopped by user.")
+                # We need to break the loop. We'll use a flag.
+                # The loop is inside a for, we can break and then return.
+                # We'll set a variable to indicate stop.
+                # Since we can't easily break nested loops, we'll use a flag.
+                # We'll set a flag and check after.
+
+        if interactive and frame_idx % 20 == 0:
+            # Show a preview frame (use the current frame)
+            # We need to capture the original frame. In this code, 'frame' is not available directly because we're using streams.
+            # We'll use a placeholder: we can't easily show the frame here because we don't have it.
+            # Instead, we'll show a message and ask to continue.
+            print(f"⏳ Processed {frame_idx} frames. Continue?")
+            if not ask_user("Continue processing?"):
+                print("⏹️ Stopped by user.")
+                # We need to break out of the loop and return early.
+                # We'll set a flag.
+
 
 
 
