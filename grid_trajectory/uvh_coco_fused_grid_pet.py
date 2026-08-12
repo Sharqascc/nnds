@@ -303,20 +303,15 @@ def run_uvh_coco_fused_grid_pet(
         if interactive and frame_idx % 20 == 0:
             print(f"🔍 Interactive block reached at frame {frame_idx}")
             show_frame(video_path, title=f"Frame {frame_idx}", frame_idx=frame_idx)
-            print(f"⏳ Processed {frame_idx} frames.")
-            show_frame(video_path, title=f"Frame {frame_idx}", frame_idx=frame_idx)
             if not ask_user("Continue processing?"):
                 print("⏹️ Stopped by user.")
-                # Break out of the loop
-                # We'll set a flag and check after the loop
-                # For now, we'll use a return to stop the function early.
-                # But we can't return from inside the loop easily.
-                # We'll use a flag and check after the loop.
-                # We'll add a variable `stop_processing` and break.
+                # We'll use a flag to break out of the loop
+                stop_processing = True
+                break
                 # Since we're in a for loop, we can use `break` to exit.
                 # But we need to break out of the outer loop as well.
                 # We'll use a flag and check after the loop.
-                # Let's set a flag and break.
+                # Let's set a flag and break
                 # We'll add a flag variable and check.
                 # For simplicity, we'll just return an empty result.
                 return {}
@@ -327,20 +322,15 @@ def run_uvh_coco_fused_grid_pet(
         if interactive and frame_idx % 20 == 0:
             print(f"🔍 Interactive block reached at frame {frame_idx}")
             show_frame(video_path, title=f"Frame {frame_idx}", frame_idx=frame_idx)
-            print(f"⏳ Processed {frame_idx} frames.")
-            show_frame(video_path, title=f"Frame {frame_idx}", frame_idx=frame_idx)
             if not ask_user("Continue processing?"):
                 print("⏹️ Stopped by user.")
-                # Break out of the loop
-                # We'll set a flag and check after the loop
-                # For now, we'll use a return to stop the function early.
-                # But we can't return from inside the loop easily.
-                # We'll use a flag and check after the loop.
-                # We'll add a variable `stop_processing` and break.
+                # We'll use a flag to break out of the loop
+                stop_processing = True
+                break
                 # Since we're in a for loop, we can use `break` to exit.
                 # But we need to break out of the outer loop as well.
                 # We'll use a flag and check after the loop.
-                # Let's set a flag and break.
+                # Let's set a flag and break
                 # We'll add a flag variable and check.
                 # For simplicity, we'll just return an empty result.
                 return {}
@@ -354,20 +344,15 @@ def run_uvh_coco_fused_grid_pet(
         if interactive and frame_idx % 20 == 0:
             print(f"🔍 Interactive block reached at frame {frame_idx}")
             show_frame(video_path, title=f"Frame {frame_idx}", frame_idx=frame_idx)
-            print(f"⏳ Processed {frame_idx} frames.")
-            show_frame(video_path, title=f"Frame {frame_idx}", frame_idx=frame_idx)
             if not ask_user("Continue processing?"):
                 print("⏹️ Stopped by user.")
-                # Break out of the loop
-                # We'll set a flag and check after the loop
-                # For now, we'll use a return to stop the function early.
-                # But we can't return from inside the loop easily.
-                # We'll use a flag and check after the loop.
-                # We'll add a variable `stop_processing` and break.
+                # We'll use a flag to break out of the loop
+                stop_processing = True
+                break
                 # Since we're in a for loop, we can use `break` to exit.
                 # But we need to break out of the outer loop as well.
                 # We'll use a flag and check after the loop.
-                # Let's set a flag and break.
+                # Let's set a flag and break
                 # We'll add a flag variable and check.
                 # For simplicity, we'll just return an empty result.
                 return {}
