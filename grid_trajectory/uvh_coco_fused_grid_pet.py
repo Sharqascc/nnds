@@ -136,7 +136,7 @@ def run_uvh_coco_fused_grid_pet(
     uvh_conf: float = 0.20,
     coco_person_conf: float = 0.20,
     person_suppress_overlap: float = 0.35,
-    show_progress: bool = True,
+    show_progress: bool = True, interactive: bool = False,
 ) -> Dict[str, Any]:
     video_path = str(Path(video_path).resolve())
     uvh_model_path = str(Path(uvh_model_path).resolve())
@@ -147,7 +147,7 @@ def run_uvh_coco_fused_grid_pet(
     coco_model = YOLO(coco_person_model_path)
 
     cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
+    if not cap.isOpened(, interactive: bool = False):
         raise RuntimeError(f"Failed to open video: {video_path}")
 
     fps = cap.get(cv2.CAP_PROP_FPS)

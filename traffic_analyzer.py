@@ -495,7 +495,7 @@ def run_video_to_pet(
 
         result = run_uvh_coco_fused_grid_pet(
             video_path=video_path,
-            bev_config_path=str(bev_config_path),
+            bev_config_path=str(bev_config_path, interactive=interactive),
             grid_config_path=str(grid_config_path),
             uvh_model_path=str(uvh_model_path),
             coco_person_model_path=str(coco_person_model_path),
