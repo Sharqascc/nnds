@@ -305,7 +305,6 @@ def run_uvh_coco_fused_grid_pet(
             show_frame(video_path, title=f"Frame {frame_idx}", frame_idx=frame_idx)
             if not ask_user("Continue processing?"):
                 print("⏹️ Stopped by user.")
-                # We'll use a flag to break out of the loop
                 stop_processing = True
                 break
                 # Since we're in a for loop, we can use `break` to exit.
@@ -324,7 +323,6 @@ def run_uvh_coco_fused_grid_pet(
             show_frame(video_path, title=f"Frame {frame_idx}", frame_idx=frame_idx)
             if not ask_user("Continue processing?"):
                 print("⏹️ Stopped by user.")
-                # We'll use a flag to break out of the loop
                 stop_processing = True
                 break
                 # Since we're in a for loop, we can use `break` to exit.
@@ -346,7 +344,6 @@ def run_uvh_coco_fused_grid_pet(
             show_frame(video_path, title=f"Frame {frame_idx}", frame_idx=frame_idx)
             if not ask_user("Continue processing?"):
                 print("⏹️ Stopped by user.")
-                # We'll use a flag to break out of the loop
                 stop_processing = True
                 break
                 # Since we're in a for loop, we can use `break` to exit.
