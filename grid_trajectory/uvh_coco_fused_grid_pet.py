@@ -302,6 +302,16 @@ def run_uvh_coco_fused_grid_pet(
         if interactive and frame_idx % 20 == 0:
             print(f"⏳ Processed {frame_idx} frames.")
             # Show the current frame from the video
+            # We need to pass video_path and frame_idx to show_frame
+            show_frame(video_path, title=f"Frame {frame_idx}", frame_idx=frame_idx)
+            if not ask_user("Continue processing?"):
+                print("⏹️ Stopped by user.")
+                # We need to break the loop. We'll raise an exception to stop processing.
+                raise StopIteration
+
+        if interactive and frame_idx % 20 == 0:
+            print(f"⏳ Processed {frame_idx} frames.")
+            # Show the current frame from the video
             show_frame(video_path, title=f"Frame {frame_idx}", frame_idx=frame_idx)
             if not ask_user("Continue processing?"):
                 print("⏹️ Stopped by user.")
