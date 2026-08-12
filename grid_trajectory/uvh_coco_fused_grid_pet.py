@@ -302,151 +302,32 @@ def run_uvh_coco_fused_grid_pet(
         frame_idx += 1
 
         # === INTERACTIVE PAUSE ===
-        if frame_idx % 20 == 0:
+        if interactive and frame_idx % 20 == 0:
             print("\n" + "="*50)
             print(f"🔄 Processed {frame_idx} frames.")
-            # Show the current frame from video
             try:
                 cap = cv2.VideoCapture(video_path)
                 cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
                 ret, frame = cap.read()
                 cap.release()
                 if ret:
+                    from IPython.display import display
+                    fig = plt.figure()
                     plt.imshow(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
                     plt.title(f"Frame {frame_idx}")
                     plt.axis('off')
-                    plt.show()
-                    plt.pause(0.1)
+                    display(fig)
+                    plt.close(fig)
             except Exception as e:
                 print(f"⚠️ Could not show frame: {e}")
-            print("Press Enter to continue, or type 'stop' and press Enter to abort.")
-            import sys
-            sys.stdout.flush()
-            user_input = input().strip().lower()
-            print(f"DEBUG: user_input = '{user_input}'")
-            if user_input == 'stop':
-                print("⏹️ Stopped by user.")
-                break
 
-
-        # === INTERACTIVE PAUSE (DEBUG) ===
-        if frame_idx % 20 == 0:
-            print("\n" + "="*50)
-            print(f"🔄 Processed {frame_idx} frames.")
-            # Show the current frame from video
-            try:
-                cap = cv2.VideoCapture(video_path)
-                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-                ret, frame = cap.read()
-                cap.release()
-                if ret:
-                    plt.imshow(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-                    plt.title(f"Frame {frame_idx}")
-                    plt.axis('off')
-                    plt.show()
-                    plt.pause(0.1)
-            except Exception as e:
-                print(f"⚠️ Could not show frame: {e}")
             print("Press Enter to continue, or type 'stop' and press Enter to abort.")
             sys.stdout.flush()
             user_input = input().strip().lower()
-            print(f"DEBUG: user_input = '{user_input}'")  # Debug line
             if user_input == 'stop':
-                print("⏹️ Stopped by user.")
-                break  # Use break instead of raising exception
-
-
-        
-        # === INTERACTIVE PAUSE (DEBUG) ===
-        if frame_idx % 20 == 0:
-            print("\n" + "="*50)
-            print(f"🔄 Processed {frame_idx} frames.")
-            # Show the current frame from video
-            try:
-                cap = cv2.VideoCapture(video_path)
-                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-                ret, frame = cap.read()
-                cap.release()
-                if ret:
-                    plt.imshow(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-                    plt.title(f"Frame {frame_idx}")
-                    plt.axis('off')
-                    plt.show()
-                    plt.pause(0.1)
-            except Exception as e:
-                print(f"⚠️ Could not show frame: {e}")
-            print("Press Enter to continue, or type 'stop' and press Enter to abort.")
-            sys.stdout.flush()
-            user_input = input().strip().lower()
-            print(f"DEBUG: user_input = '{user_input}'")  # Debug line
-            if user_input == 'stop':
-                print("⏹️ Stopped by user.")
-                break  # Use break instead of raising exception
-
-        if frame_idx % 20 == 0:
-            print(f"🔄 Processed {frame_idx} frames. Press Enter to continue, or type 'stop' to abort.")
-            user_input = input().strip().lower()
-            if user_input == 'stop':
-                print("⏹️ Stopped by user.")
-                raise KeyboardInterrupt("Stopped by user")
-
-        
-        if interactive and frame_idx % 20 == 0:
-            print(f"🔍 Interactive block reached at frame {frame_idx}")
-            show_frame(video_path, title=f"Frame {frame_idx}", frame_idx=frame_idx)
-            if not ask_user("Continue processing?"):
                 print("⏹️ Stopped by user.")
                 stop_processing = True
                 break
-                # Since we're in a for loop, we can use `break` to exit.
-                # But we need to break out of the outer loop as well.
-                # We'll use a flag and check after the loop.
-                # Let's set a flag and break
-                # We'll add a flag variable and check.
-                # For simplicity, we'll just return an empty result.
-                return {}
-                raise StopIteration
-
-        
-        if interactive and frame_idx % 20 == 0:
-            print(f"🔍 Interactive block reached at frame {frame_idx}")
-            show_frame(video_path, title=f"Frame {frame_idx}", frame_idx=frame_idx)
-            if not ask_user("Continue processing?"):
-                print("⏹️ Stopped by user.")
-                stop_processing = True
-                break
-                # Since we're in a for loop, we can use `break` to exit.
-                # But we need to break out of the outer loop as well.
-                # We'll use a flag and check after the loop.
-                # Let's set a flag and break
-                # We'll add a flag variable and check.
-                # For simplicity, we'll just return an empty result.
-                return {}
-                # The loop is inside a for, we can break and then return.
-                # We'll set a variable to indicate stop.
-                # Since we can't easily break nested loops, we'll use a flag.
-                # We'll set a flag and check after.
-
-        
-        if interactive and frame_idx % 20 == 0:
-            print(f"🔍 Interactive block reached at frame {frame_idx}")
-            show_frame(video_path, title=f"Frame {frame_idx}", frame_idx=frame_idx)
-            if not ask_user("Continue processing?"):
-                print("⏹️ Stopped by user.")
-                stop_processing = True
-                break
-                # Since we're in a for loop, we can use `break` to exit.
-                # But we need to break out of the outer loop as well.
-                # We'll use a flag and check after the loop.
-                # Let's set a flag and break
-                # We'll add a flag variable and check.
-                # For simplicity, we'll just return an empty result.
-                return {}
-                # We'll set a flag.
-
-
-
-
 
     print(f"[UVH-COCO] ✅ Frame processing finished ({frame_idx} frames). Initializing track indexing...", flush=True)
 
