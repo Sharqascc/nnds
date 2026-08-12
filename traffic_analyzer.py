@@ -714,6 +714,7 @@ def parse_args() -> argparse.Namespace:
 
 
 import inspect
+from utils.interactive import show_frame, show_image, ask_user
 
 
 def run_pipeline(args):
