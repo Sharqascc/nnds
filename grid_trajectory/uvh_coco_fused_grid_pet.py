@@ -1,5 +1,5 @@
-from utils.interactive import show_image, ask_user
 from __future__ import annotations
+from utils.interactive import show_image, ask_user
 from tqdm import tqdm
 import sys
 
@@ -147,7 +147,7 @@ def run_uvh_coco_fused_grid_pet(
     coco_model = YOLO(coco_person_model_path)
 
     cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened(, interactive: bool = False):
+    if not cap.isOpened():
         raise RuntimeError(f"Failed to open video: {video_path}")
 
     fps = cap.get(cv2.CAP_PROP_FPS)
