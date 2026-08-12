@@ -351,7 +351,6 @@ def run_uvh_coco_fused_grid_pet(
                 # We'll add a flag variable and check.
                 # For simplicity, we'll just return an empty result.
                 return {}
- We need to break out of the loop and return early.
                 # We'll set a flag.
 
 
