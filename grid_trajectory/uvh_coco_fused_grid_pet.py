@@ -314,7 +314,6 @@ def run_uvh_coco_fused_grid_pet(
                 # We'll add a flag variable and check.
                 # For simplicity, we'll just return an empty result.
                 return {}
- We need to break the loop. We'll raise an exception to stop processing.
                 raise StopIteration
 
         
@@ -332,7 +331,6 @@ def run_uvh_coco_fused_grid_pet(
                 # We'll add a flag variable and check.
                 # For simplicity, we'll just return an empty result.
                 return {}
- We need to break the loop. We'll use a flag.
                 # The loop is inside a for, we can break and then return.
                 # We'll set a variable to indicate stop.
                 # Since we can't easily break nested loops, we'll use a flag.
