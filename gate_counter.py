@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple, Any
 
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import yaml
@@ -525,12 +526,16 @@ class TrafficVolumeCounter:
 
             while True:
                 ret, frame = cap.read()
-                if not ret:
-                    break
+            if preview_interval is not None and frame_idx % preview_interval == 0:
+                # Show the frame in Colab
+                plt.imshow(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                plt.title(f"Frame {frame_idx}")
+                plt.axis('off')
+                plt.pause(0.01)
+                plt.clf()
 
                 frame_idx += 1
                 if max_frames is not None and frame_idx > max_frames:
-                    break
 
                 raw_detections = detector(frame)
                 detections: List[Dict[str, Any]] = []

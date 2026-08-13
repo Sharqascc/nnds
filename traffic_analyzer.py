@@ -611,114 +611,190 @@ def parse_args() -> argparse.Namespace:
         description="Video → SAM3 + grid → BEV → PET events pipeline"
     )
     parser.add_argument("--video", default=None, help="Input video path")
-    parser.add_argument(
-        "--bev-config",
-        default="configs/bev_config.json",
-        help="BEV configuration JSON path",
-    )
-    parser.add_argument(
-        "--grid-config",
-        default="configs/GITI_grid_config.json",
-        help="Grid configuration JSON path",
-    )
-    parser.add_argument(
-        "--sam3-weights",
-        default="sam3.pt",
-        help="SAM3 weights checkpoint path",
-    )
-    parser.add_argument(
-        "--detector",
-        type=str,
-        default="sam3",
-        choices=["sam3", "rtdetr", "yolo-cpu", "uvh-coco-fused"],
-        help="Detection backend: 'sam3' (default) or 'rtdetr' (experimental)",
-    )
-    parser.add_argument(
-        "--rtdetr-weights",
-        type=str,
-        default="rtdetr-l.pt",
-        help="RT-DETR weights path (used when --detector rtdetr)",
-    )
-
-    parser.add_argument(
-        "--yolo-weights",
-        type=str,
-        default="yolo11n.pt",
-        help="YOLO weights path (used when --detector yolo-cpu)",
-    )
-    parser.add_argument(
-        "--uvh-model",
-        type=str,
-        default="/root/.cache/huggingface/hub/models--iisc-aim--UVH-26/snapshots/4a22412775adb6f97f22735647afee976b4638a0/weights/YOLOv11-S/UVH-26-MV-YOLOv11-S.pt",
-        help="UVH-26 weights path (used when --detector uvh-coco-fused)",
-    )
-    parser.add_argument(
-        "--coco-person-model",
-        type=str,
-        default="yolo26m-seg.pt",
-        help="COCO person fallback weights path (used when --detector uvh-coco-fused)",
-    )
-    parser.add_argument(
-        "--uvh-conf",
-        type=float,
-        default=0.20,
-        help="UVH-26 confidence threshold",
-    )
-    parser.add_argument(
-        "--coco-person-conf",
-        type=float,
-        default=0.20,
-        help="COCO person confidence threshold",
-    )
-    parser.add_argument(
-        "--imgsz",
-        type=int,
-        default=1280,
-        help="Inference image size for fused detector",
-    )
-    parser.add_argument(
-        "--person-suppress-overlap",
-        type=float,
-        default=0.35,
-        help="Suppress COCO person if overlap/person-area exceeds this threshold",
-    )
-    parser.add_argument(
-        "--out-csv",
-        default="outputs/petevents_bev.csv",
-        help="Output CSV path for PET events",
-    )
-    parser.add_argument(
-        "--pet-threshold",
-        type=float,
-        default=2.0,
-        help="PET threshold in seconds",
-    )
-    parser.add_argument(
-        "--demo",
-        action="store_true",
-        help="Run internal calibration/speed demo instead of video pipeline",
-    )
-    parser.add_argument(
-        "--max-frames",
-        type=int,
-        default=None,
-        help="Process only the first N frames",
-    )
-    parser.add_argument(
-        "--no-progress",
-        action="store_true",
-        help="Disable verbose/progress output from SAM3 pipeline",
-    )
-    parser.add_argument('--interactive', action='store_true', help='Run in interactive mode with step-by-step prompts and previews')
+    parser.add_argument("--bev-config", default="configs/bev_config.json", help="BEV configuration JSON path")
+    parser.add_argument("--grid-config", default="configs/GITI_grid_config.json", help="Grid configuration JSON path")
+    parser.add_argument("--gate-config", default="configs/gate_config.yaml", help="Gate configuration YAML path")
+    parser.add_argument("--sam3-weights", default="sam3.pt", help="SAM3 weights checkpoint path")
+    parser.add_argument("--detector", type=str, default="sam3", choices=["sam3", "rtdetr", "yolo-cpu", "uvh-coco-fused"], help="Detection backend: 'sam3' (default) or 'rtdetr' (experimental)")
+    parser.add_argument("--rtdetr-weights", type=str, default="rtdetr-l.pt", help="RT-DETR weights path (used when --detector rtdetr)")
+    parser.add_argument("--yolo-weights", type=str, default="yolo11n.pt", help="YOLO weights path (used when --detector yolo-cpu)")
+    parser.add_argument("--uvh-model", type=str, default="/root/.cache/huggingface/hub/models--iisc-aim--UVH-26/snapshots/4a22412775adb6f97f22735647afee976b4638a0/weights/YOLOv11-S/UVH-26-MV-YOLOv11-S.pt", help="UVH-26 weights path (used when --detector uvh-coco-fused)")
+    parser.add_argument("--coco-person-model", type=str, default="yolo26m-seg.pt", help="COCO person fallback weights path (used when --detector uvh-coco-fused)")
+    parser.add_argument("--uvh-conf", type=float, default=0.20, help="UVH-26 confidence threshold")
+    parser.add_argument("--coco-person-conf", type=float, default=0.20, help="COCO person confidence threshold")
+    parser.add_argument("--imgsz", type=int, default=1280, help="Inference image size for fused detector")
+    parser.add_argument("--person-suppress-overlap", type=float, default=0.35, help="Suppress COCO person if overlap/person-area exceeds this threshold")
+    parser.add_argument("--out-csv", default="outputs/petevents_bev.csv", help="Output CSV path for PET events")
+    parser.add_argument("--pet-threshold", type=float, default=2.0, help="PET threshold in seconds")
+    parser.add_argument("--demo", action="store_true", help="Run internal calibration/speed demo instead of video pipeline")
+    parser.add_argument("--max-frames", type=int, default=None, help="Process only the first N frames")
+    parser.add_argument("--no-progress", action="store_true", help="Disable verbose/progress output from SAM3 pipeline")
+    parser.add_argument("--interactive", action="store_true", help="Run in interactive mode with step-by-step prompts and previews")
     return parser.parse_args()
 
 
+def interactive_detector(frame, model, imgsz=640, conf=0.25):
+    results = model(frame, imgsz=imgsz, conf=conf, verbose=False)
+    detections = []
+    if results and len(results) > 0:
+        boxes = results[0].boxes
+        if boxes is not None and len(boxes) > 0:
+            xyxy = boxes.xyxy.cpu().numpy()
+            confs = boxes.conf.cpu().numpy()
+            clss = boxes.cls.cpu().numpy().astype(int)
+            for i in range(len(xyxy)):
+                x1, y1, x2, y2 = xyxy[i]
+                cx = (x1 + x2) / 2.0
+                cy = (y1 + y2) / 2.0
+                cls_name = model.names.get(clss[i], "unknown")
+                detections.append({
+                    "centroid": (float(cx), float(cy)),
+                    "cls": cls_name,
+                    "conf": float(confs[i]),
+                })
+    return detections
 
-import inspect
-from utils.interactive import show_frame, show_image, ask_user
+def run_interactive_pipeline(args):
+    import os
+    import cv2
+    import matplotlib.pyplot as plt
+    import yaml
+    from ultralytics import YOLO
+    from gate_counter import TrafficVolumeCounter
+    from grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
+    from utils.interactive import show_frame, show_image, ask_user
 
+    print("\n" + "="*60)
+    print("🚦 INTERACTIVE TRAFFIC ANALYSIS PIPELINE")
+    print("="*60)
+
+    video_path = args.video
+    if not video_path or not os.path.exists(video_path):
+        print("❌ No video provided or file not found.")
+        return
+
+    # Stage 1: Load Video
+    print("\n📹 Stage 1: Load Video")
+    show_frame(video_path, title="Input Video – First Frame")
+    if not ask_user("Proceed to detection?"):
+        print("⏹️ Stopped by user.")
+        return
+
+    # Stage 2: Detection & Tracking Sample
+    print("\n🔍 Stage 2: Detection & Tracking Sample")
+    model = YOLO(args.uvh_model or "uvh26.pt")
+    cap = cv2.VideoCapture(video_path)
+    ret, frame = cap.read()
+    cap.release()
+    if ret:
+        results = model(frame, imgsz=args.imgsz or 640, conf=args.uvh_conf or 0.25, verbose=False)
+        annotated = results[0].plot() if results else frame
+        show_image(annotated, title="Detection Example")
+    else:
+        print("⚠️ Could not read frame.")
+
+    if not ask_user("Proceed to gate counting?"):
+        print("⏹️ Stopped by user.")
+        return
+
+    # Stage 3: Gate Counting
+    print("\n🚧 Stage 3: Gate Counting")
+    gate_config_path = args.gate_config or "configs/gate_config.yaml"
+    if not os.path.exists(gate_config_path):
+        gate_cfg = {
+            "gates": [
+                {"name": "MainGate", "start": [100, 300], "end": [600, 300], "color": [0, 255, 255], "entry_side": "left", "enabled": True}
+            ]
+        }
+        with open(gate_config_path, "w") as f:
+            yaml.dump(gate_cfg, f)
+        print(f"✅ Created default gate config: {gate_config_path}")
+
+    counter = TrafficVolumeCounter(
+        videopath=video_path,
+        gate_config=gate_config_path,
+        classes_of_interest=["car", "motorcycle", "bus", "truck", "auto", "bicycle"],
+        min_confidence=0.25,
+        draw_stats=True,
+        draw_tracks=True,
+    )
+
+    output_video = "outputs/interactive_gate_output.mp4"
+    print("⏳ Running gate counter (50 frames)...")
+    result = counter.process_video(
+        preview_interval=10,
+        detector=lambda frame: interactive_detector(frame, model, imgsz=640, conf=0.25),
+        output_video=output_video,
+        max_frames=50,
+        show_progress=True,
+    )
+    print(f"Gate counting result: {result}")
+
+    if os.path.exists(output_video):
+        cap = cv2.VideoCapture(output_video)
+        ret, frame = cap.read()
+        cap.release()
+        if ret:
+            show_image(frame, title="Gate Counting – Output Video Preview")
+        else:
+            print("⚠️ Could not read output video frame.")
+    else:
+        print("❌ Output video not found.")
+
+    if not ask_user("Proceed to PET extraction?"):
+        print("⏹️ Stopped by user.")
+        return
+
+    # Stage 4: PET Extraction
+    print("\n⚡ Stage 4: PET Extraction")
+    out_csv = args.out_csv or "outputs/pet_events.csv"
+    pet_threshold = args.pet_threshold or 2.0
+    max_frames = args.max_frames or 100
+
+    pet_result = run_uvh_coco_fused_grid_pet(
+        video_path=video_path,
+        bev_config_path=args.bev_config or "configs/bev_config.json",
+        grid_config_path=args.grid_config or "configs/GITI_grid_config.json",
+        uvh_model_path=args.uvh_model or "uvh26.pt",
+        coco_person_model_path=args.coco_person_model or "yolo11n.pt",
+        output_csv_path=out_csv,
+        pet_threshold=pet_threshold,
+        max_frames=max_frames,
+        imgsz=args.imgsz or 1280,
+        uvh_conf=args.uvh_conf or 0.20,
+        coco_person_conf=args.coco_person_conf or 0.20,
+        person_suppress_overlap=args.person_suppress_overlap or 0.35,
+        show_progress=True,
+    )
+
+    print("\n📊 PET Extraction Results:")
+    print(f"  Detections CSV: {pet_result.get('detections_csv')}")
+    print(f"  PET CSV: {pet_result.get('pet_csv')}")
+    print(f"  PET events found: {len(pet_result.get('pet_events', []))}")
+    if pet_result.get('pet_events'):
+        print("  First 3 events:")
+        for e in pet_result['pet_events'][:3]:
+            print(f"    Event {e['event_id']}: PET={e['pet']:.3f}s")
+
+    # Stage 5: Final Outputs
+    print("\n📁 Stage 5: Final Outputs")
+    print(f"  - Annotated video: {output_video}")
+    print(f"  - PET events CSV: {out_csv}")
+    print(f"  - Detections CSV: {pet_result.get('detections_csv')}")
+
+    if ask_user("Show summary statistics?"):
+        print("\n📊 Summary:")
+        print(f"  Total PET events: {len(pet_result.get('pet_events', []))}")
+        print(f"  Unique tracks: {pet_result.get('num_tracks', 0)}")
+        print(f"  FPS: {pet_result.get('fps', 0):.2f}")
+
+    print("\n🎉 Interactive pipeline complete.")
+    return pet_result
 
 def run_pipeline(args):
+    if args.interactive:
+        return run_interactive_pipeline(args)
+    # Original batch pipeline continues below
     # Direct mapping from CLI argparse attributes to run_video_to_pet parameter names
     kwargs = {
         'video_path': getattr(args, 'video', None),
@@ -835,6 +911,167 @@ def run_video_to_pet_fixed(
     df.to_csv(out_path, index=False)
     print(f"✅ Saved {len(df)} PET events to {out_path}")
     return df
+
+
+
+def interactive_detector(frame, model, imgsz=640, conf=0.25):
+    results = model(frame, imgsz=imgsz, conf=conf, verbose=False)
+    detections = []
+    if results and len(results) > 0:
+        boxes = results[0].boxes
+        if boxes is not None and len(boxes) > 0:
+            xyxy = boxes.xyxy.cpu().numpy()
+            confs = boxes.conf.cpu().numpy()
+            clss = boxes.cls.cpu().numpy().astype(int)
+            for i in range(len(xyxy)):
+                x1, y1, x2, y2 = xyxy[i]
+                cx = (x1 + x2) / 2.0
+                cy = (y1 + y2) / 2.0
+                cls_name = model.names.get(clss[i], "unknown")
+                detections.append({
+                    "centroid": (float(cx), float(cy)),
+                    "cls": cls_name,
+                    "conf": float(confs[i]),
+                })
+    return detections
+
+def run_interactive_pipeline(args):
+    import os
+    import cv2
+    import matplotlib.pyplot as plt
+    import yaml
+    from ultralytics import YOLO
+    from gate_counter import TrafficVolumeCounter
+    from grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
+    from utils.interactive import show_frame, show_image, ask_user
+
+    print("\n" + "="*60)
+    print("🚦 INTERACTIVE TRAFFIC ANALYSIS PIPELINE")
+    print("="*60)
+
+    video_path = args.video
+    if not video_path or not os.path.exists(video_path):
+        print("❌ No video provided or file not found.")
+        return
+
+    # Stage 1: Load Video
+    print("\n📹 Stage 1: Load Video")
+    show_frame(video_path, title="Input Video – First Frame")
+    if not ask_user("Proceed to detection?"):
+        print("⏹️ Stopped by user.")
+        return
+
+    # Stage 2: Detection & Tracking Sample
+    print("\n🔍 Stage 2: Detection & Tracking Sample")
+    model = YOLO(args.uvh_model or "uvh26.pt")
+    cap = cv2.VideoCapture(video_path)
+    ret, frame = cap.read()
+    cap.release()
+    if ret:
+        results = model(frame, imgsz=args.imgsz or 640, conf=args.uvh_conf or 0.25, verbose=False)
+        annotated = results[0].plot() if results else frame
+        show_image(annotated, title="Detection Example")
+    else:
+        print("⚠️ Could not read frame.")
+
+    if not ask_user("Proceed to gate counting?"):
+        print("⏹️ Stopped by user.")
+        return
+
+    # Stage 3: Gate Counting
+    print("\n🚧 Stage 3: Gate Counting")
+    gate_config_path = args.gate_config or "configs/gate_config.yaml"
+    if not os.path.exists(gate_config_path):
+        gate_cfg = {
+            "gates": [
+                {"name": "MainGate", "start": [100, 300], "end": [600, 300], "color": [0, 255, 255], "entry_side": "left", "enabled": True}
+            ]
+        }
+        with open(gate_config_path, "w") as f:
+            yaml.dump(gate_cfg, f)
+        print(f"✅ Created default gate config: {gate_config_path}")
+
+    counter = TrafficVolumeCounter(
+        videopath=video_path,
+        gate_config=gate_config_path,
+        classes_of_interest=["car", "motorcycle", "bus", "truck", "auto", "bicycle"],
+        min_confidence=0.25,
+        draw_stats=True,
+        draw_tracks=True,
+    )
+
+    output_video = "outputs/interactive_gate_output.mp4"
+    print("⏳ Running gate counter (50 frames)...")
+    result = counter.process_video(
+        preview_interval=10,
+        detector=lambda frame: interactive_detector(frame, model, imgsz=640, conf=0.25),
+        output_video=output_video,
+        max_frames=50,
+        show_progress=True,
+    )
+    print(f"Gate counting result: {result}")
+
+    if os.path.exists(output_video):
+        cap = cv2.VideoCapture(output_video)
+        ret, frame = cap.read()
+        cap.release()
+        if ret:
+            show_image(frame, title="Gate Counting – Output Video Preview")
+        else:
+            print("⚠️ Could not read output video frame.")
+    else:
+        print("❌ Output video not found.")
+
+    if not ask_user("Proceed to PET extraction?"):
+        print("⏹️ Stopped by user.")
+        return
+
+    # Stage 4: PET Extraction
+    print("\n⚡ Stage 4: PET Extraction")
+    out_csv = args.out_csv or "outputs/pet_events.csv"
+    pet_threshold = args.pet_threshold or 2.0
+    max_frames = args.max_frames or 100
+
+    pet_result = run_uvh_coco_fused_grid_pet(
+        video_path=video_path,
+        bev_config_path=args.bev_config or "configs/bev_config.json",
+        grid_config_path=args.grid_config or "configs/GITI_grid_config.json",
+        uvh_model_path=args.uvh_model or "uvh26.pt",
+        coco_person_model_path=args.coco_person_model or "yolo11n.pt",
+        output_csv_path=out_csv,
+        pet_threshold=pet_threshold,
+        max_frames=max_frames,
+        imgsz=args.imgsz or 1280,
+        uvh_conf=args.uvh_conf or 0.20,
+        coco_person_conf=args.coco_person_conf or 0.20,
+        person_suppress_overlap=args.person_suppress_overlap or 0.35,
+        show_progress=True,
+    )
+
+    print("\n📊 PET Extraction Results:")
+    print(f"  Detections CSV: {pet_result.get('detections_csv')}")
+    print(f"  PET CSV: {pet_result.get('pet_csv')}")
+    print(f"  PET events found: {len(pet_result.get('pet_events', []))}")
+    if pet_result.get('pet_events'):
+        print("  First 3 events:")
+        for e in pet_result['pet_events'][:3]:
+            print(f"    Event {e['event_id']}: PET={e['pet']:.3f}s")
+
+    # Stage 5: Final Outputs
+    print("\n📁 Stage 5: Final Outputs")
+    print(f"  - Annotated video: {output_video}")
+    print(f"  - PET events CSV: {out_csv}")
+    print(f"  - Detections CSV: {pet_result.get('detections_csv')}")
+
+    if ask_user("Show summary statistics?"):
+        print("\n📊 Summary:")
+        print(f"  Total PET events: {len(pet_result.get('pet_events', []))}")
+        print(f"  Unique tracks: {pet_result.get('num_tracks', 0)}")
+        print(f"  FPS: {pet_result.get('fps', 0):.2f}")
+
+    print("\n🎉 Interactive pipeline complete.")
+    return pet_result
+
 def run_pipeline(args) -> dict:
     if getattr(args, "detector", "sam3") != "sam3":
         raise ValueError(f"Unsupported detector policy: {getattr(args, 'detector', None)}")
