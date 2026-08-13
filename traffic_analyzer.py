@@ -722,7 +722,6 @@ def run_interactive_pipeline(args):
     output_video = "outputs/interactive_gate_output.mp4"
     print("⏳ Running gate counter (50 frames)...")
     result = counter.process_video(
-        preview_interval=10,
         detector=lambda frame: interactive_detector(frame, model, imgsz=640, conf=0.25),
         output_video=output_video,
         max_frames=50,
@@ -1003,7 +1002,6 @@ def run_interactive_pipeline(args):
     output_video = "outputs/interactive_gate_output.mp4"
     print("⏳ Running gate counter (50 frames)...")
     result = counter.process_video(
-        preview_interval=10,
         detector=lambda frame: interactive_detector(frame, model, imgsz=640, conf=0.25),
         output_video=output_video,
         max_frames=50,
