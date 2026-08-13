@@ -536,7 +536,7 @@ class TrafficVolumeCounter:
 
                 frame_idx += 1
                 if max_frames is not None and frame_idx > max_frames:
-
+                    break
                 raw_detections = detector(frame)
                 detections: List[Dict[str, Any]] = []
 
