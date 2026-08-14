@@ -528,13 +528,13 @@ class TrafficVolumeCounter:
 
             while True:
                 ret, frame = cap.read()
-            if preview_interval is not None and frame_idx % preview_interval == 0:
-                # Show the frame in Colab
-                plt.imshow(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-                plt.title(f"Frame {frame_idx}")
-                plt.axis('off')
-                plt.pause(0.01)
-                plt.clf()
+                if preview_interval is not None and frame_idx % preview_interval == 0:
+                    # Show the frame in Colab
+                    plt.imshow(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                    plt.title(f"Frame {frame_idx}")
+                    plt.axis('off')
+                    plt.pause(0.01)
+                    plt.clf()
 
                 frame_idx += 1
                 if max_frames is not None and frame_idx > max_frames:
@@ -612,11 +612,11 @@ class TrafficVolumeCounter:
 
         finally:
             if cap is not None:
-            if cap is not None:
+                cap.release()
             if out is not None:
-            if out is not None:
+                out.release()
             if pbar is not None:
-            if pbar is not None:
+                pbar.close()
 
     # ---------- results export ----------
     @staticmethod

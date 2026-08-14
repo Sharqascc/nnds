@@ -699,16 +699,14 @@ def run_interactive_pipeline(args):
 
     # Stage 3: Gate Counting
     print("\n🚧 Stage 3: Gate Counting")
+    # Canonical gate config path: configs/gate_config.yaml
+    # Users should edit this file to define their gates.
     gate_config_path = args.gate_config or "configs/gate_config.yaml"
     if not os.path.exists(gate_config_path):
-        gate_cfg = {
-            "gates": [
-                {"name": "MainGate", "start": [100, 300], "end": [600, 300], "color": [0, 255, 255], "entry_side": "left", "enabled": True}
-            ]
-        }
-        with open(gate_config_path, "w") as f:
-            yaml.dump(gate_cfg, f)
-        print(f"✅ Created default gate config: {gate_config_path}")
+        raise FileNotFoundError(
+            f"Gate config not found at {gate_config_path}. "
+            "Please ensure configs/gate_config.yaml exists and is properly configured."
+        )
 
     counter = TrafficVolumeCounter(
         videopath=video_path,
