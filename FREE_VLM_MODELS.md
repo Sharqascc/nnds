@@ -1,51 +1,32 @@
-# FREE VLM Models - Quick Start Guide
+# FREE VLM Models - Working Setup Guide
 
-## 🆓 Best Free & Open-Source VLM Models
+## ⚠️ Important: Model Size Issues
 
-### Option 1: HuggingFace Inference API (RECOMMENDED)
+**Qwen2.5-VL-7B is 16GB** - too large for free HuggingFace API!
 
-**Free tier available** - No credit card needed for testing
+Use these **working alternatives** instead:
 
-```bash
-# Install
-pip install huggingface_hub
+---
 
-# Get free token: https://huggingface.co/settings/tokens
-```
+## ✅ Option 1: Ollama (BEST - 100% FREE)
 
-**Best models:**
-- `Qwen/Qwen2.5-VL-7B-Instruct` - Best overall (Apache 2.0)
-- `meta-llama/Llama-3.2-11B-Vision-Instruct` - Great reasoning
-- `deepseek-ai/DeepSeek-VL` - Most efficient
+**No API limits, completely free, runs locally**
 
-**Usage:**
-```python
-from vlm import VLMAnalyzer, VLMConfig
-
-config = VLMConfig(
-    api_provider="huggingface",
-    model_name="Qwen/Qwen2.5-VL-7B-Instruct",
-    api_key="hf_xxx"  # Your free token
-)
-analyzer = VLMAnalyzer(config=config)
-```
-
-### Option 2: Ollama (100% FREE - Local)
-
-**Completely free** - Runs on your machine
+### Setup (5 minutes):
 
 ```bash
-# Install Ollama
+# 1. Install Ollama
 curl -fsSL https://ollama.com/install.sh | sh
 
-# Pull model
-ollama run qwen2.5-vl:7b
+# 2. Pull Qwen2.5-VL model (7B, ~5GB)
+ollama pull qwen2.5-vl:7b
 
-# Install Python client
+# 3. Install Python client
 pip install ollama
 ```
 
-**Usage:**
+### Usage:
+
 ```python
 from vlm import VLMAnalyzer, VLMConfig
 
@@ -55,57 +36,108 @@ config = VLMConfig(
     local_model="qwen2.5-vl:7b"
 )
 analyzer = VLMAnalyzer(config=config)
+
+# Test it
+import pandas as pd
+pet_df = pd.read_csv("outputs/petevents_recovered.csv")
+results = analyzer.analyze_pet_events(pet_df.head(5))
+print(f"Analyzed {len(results)} events")
 ```
 
-### Option 3: Groq (FREE tier)
+---
 
-**Free tier** - Fast inference, limited requests
+## ✅ Option 2: HuggingFace (FREE - Smaller Models)
+
+**Free tier available, but limited to smaller models**
+
+### Setup:
+
+```bash
+# Get token: https://huggingface.co/settings/tokens
+pip install huggingface_hub
+```
+
+### Working Models:
+
+```python
+from vlm import VLMAnalyzer, VLMConfig
+
+# Option A: Qwen2-VL-2B (smallest, fastest)
+config = VLMConfig(
+    api_provider="huggingface",
+    model_name="Qwen/Qwen2-VL-2B-Instruct",
+    api_key="hf_xxx"
+)
+
+# Option B: Qwen2-VL-7B (better quality, may need Pro)
+config = VLMConfig(
+    api_provider="huggingface",
+    model_name="Qwen/Qwen2-VL-7B-Instruct",
+    api_key="hf_xxx"
+)
+
+analyzer = VLMAnalyzer(config=config)
+```
+
+---
+
+## ✅ Option 3: Groq (FREE Tier - Fast)
+
+**Free tier with rate limits, very fast**
+
+### Setup:
 
 ```bash
 # Get free API key: https://console.groq.com
 pip install groq
 ```
 
-**Usage:**
+### Usage:
+
 ```python
 from vlm import VLMAnalyzer, VLMConfig
 
 config = VLMConfig(
     api_provider="groq",
     model_name="llama-3.2-11b-vision-preview",
-    api_key="gsk_xxx"
+    api_key="gsk_xxx"  # Your free key from console.groq.com
 )
 analyzer = VLMAnalyzer(config=config)
 ```
 
-## Model Comparison
+---
 
-| Model | Size | License | Speed | Quality | Best For |
-|-------|------|---------|-------|---------|----------|
-| Qwen 2.5 VL | 7B | Apache 2.0 | Fast | ⭐⭐⭐⭐⭐ | Overall use |
-| Llama 3.2 Vision | 11B | Free | Medium | ⭐⭐⭐⭐⭐ | Reasoning |
-| DeepSeek-VL | 7B | MIT | Fast | ⭐⭐⭐⭐ | Efficiency |
-| Gemma 3 | 12B | Open | Medium | ⭐⭐⭐⭐ | Lightweight |
+## 🏆 Recommendation
 
-## Quick Test
+**Use Ollama** - it's:
+- ✅ 100% FREE
+- ✅ No API limits
+- ✅ No internet needed after download
+- ✅ Qwen2.5-VL-7B works perfectly
+- ✅ ~5GB download, runs on 8GB RAM
 
-```python
-from vlm import VLMConfig, VLMAnalyzer
+**Quick Start with Ollama:**
 
-# Use pre-configured free model
-config = VLMConfig.for_free_model("qwen")
-analyzer = VLMAnalyzer(config=config)
+```bash
+# Install
+curl -fsSL https://ollama.com/install.sh | sh
 
-# Analyze PET events
-import pandas as pd
-pet_df = pd.read_csv("outputs/petevents_recovered.csv")
-results = analyzer.analyze_pet_events(pet_df.head(10))
+# Pull model
+ollama pull qwen2.5-vl:7b
+
+# Test
+ollama run qwen2.5-vl:7b "What is 2+2?"
 ```
 
-## Get Started Now
+Then use the Python code above!
 
-1. **HuggingFace**: Get token at https://huggingface.co/settings/tokens
-2. **Ollama**: Install at https://ollama.com
-3. **Groq**: Get key at https://console.groq.com
+---
 
-**Recommended**: Start with **Qwen 2.5 VL** on HuggingFace - it's free, fast, and excellent quality!
+## Model Comparison
+
+| Model | Size | Free? | Speed | Quality |
+|-------|------|-------|-------|---------|
+| Ollama Qwen2.5-VL-7B | 7B | ✅ Yes | Fast | ⭐⭐⭐⭐⭐ |
+| HF Qwen2-VL-2B | 2B | ✅ Yes | Very Fast | ⭐⭐⭐ |
+| HF Qwen2-VL-7B | 7B | ⚠️ Limited | Fast | ⭐⭐⭐⭐ |
+| Groq Llama-3.2-11B | 11B | ✅ Free tier | Very Fast | ⭐⭐⭐⭐⭐ |
