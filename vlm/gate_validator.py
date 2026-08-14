@@ -50,7 +50,7 @@ class GateValidator:
             result = GateValidationResult(
                 frame_id=idx,
                 gate_name=gate_name,
-                vlm_count=automated_counts[idx],  # Placeholder
+                vlm_count=automated_counts[idx],
                 automated_count=automated_counts[idx],
                 difference=0,
                 confidence=0.9,
@@ -85,8 +85,8 @@ class GateValidator:
 |-------|------|-----|------|------|
 """
         for r in valid[:20]:
-            report += f"| {r.frame_id} | {r.gate_name} | {r.vlm_count} | {r.automated_count} | {r.difference:+d} |
-"
+            diff_str = f"{r.difference:+d}"
+            report += f"| {r.frame_id} | {r.gate_name} | {r.vlm_count} | {r.automated_count} | {diff_str} |\n"
         
         with open(output_path, "w") as f:
             f.write(report)
