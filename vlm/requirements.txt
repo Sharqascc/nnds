@@ -1,9 +1,27 @@
-# VLM Module Requirements
-openai>=1.0.0
-anthropic>=0.18.0
-google-generativeai>=0.3.0
+# VLM Module Requirements - FREE & OPEN-SOURCE
+# Install with: pip install -r vlm/requirements.txt
+
+# HuggingFace (FREE - recommended)
+huggingface_hub>=0.20.0
+
+# Ollama (FREE - local deployment)
+ollama>=0.1.0
+
+# Groq (FREE tier available)
+groq>=0.4.0
+
+# Optional: Commercial APIs
+# openai>=1.0.0
+# anthropic>=0.18.0
+# google-generativeai>=0.3.0
+
+# Image processing
 opencv-python>=4.8.0
 Pillow>=10.0.0
+
+# Data processing
 pandas>=2.0.0
 numpy>=1.24.0
+
+# Visualization
 matplotlib>=3.7.0

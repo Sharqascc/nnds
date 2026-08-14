@@ -7,6 +7,13 @@ Provides VLM-based analysis of traffic conflicts including:
 - Natural language descriptions
 - Recommended actions
 - Conflict type identification
+
+Supports FREE models:
+- Qwen 2.5 VL (HuggingFace)
+- Llama 3.2 Vision (HuggingFace)
+- DeepSeek-VL (HuggingFace)
+- Ollama (local deployment)
+- Groq (free tier)
 """
 
 import json
@@ -36,6 +43,9 @@ class VLMAnalysisResult:
 class VLMAnalyzer:
     """
     Vision-Language Model analyzer for traffic safety analysis.
+    
+    Supports both commercial (OpenAI, Anthropic) and FREE open-source models
+    (Qwen, Llama, DeepSeek via HuggingFace, Ollama, Groq).
     """
     
     def __init__(self, config: Optional[VLMConfig] = None, api_key: Optional[str] = None):
@@ -44,6 +54,46 @@ class VLMAnalyzer:
             self.config.api_key = api_key
         self._client = None
         self._results: List[VLMAnalysisResult] = []
+    
+    @property
+    def client(self):
+        if self._client is None:
+            self._client = self._initialize_client()
+        return self._client
+    
+    def _initialize_client(self):
+        provider = self.config.api_provider
+        
+        if provider == "huggingface":
+            try:
+                from huggingface_hub import InferenceClient
+                return InferenceClient(token=self.config.api_key)
+            except ImportError:
+                raise ImportError("Install: pip install huggingface_hub")
+        
+        elif provider == "ollama":
+            try:
+                import ollama
+                return ollama
+            except ImportError:
+                raise ImportError("Install: pip install ollama")
+        
+        elif provider == "groq":
+            try:
+                from groq import Groq
+                return Groq(api_key=self.config.api_key)
+            except ImportError:
+                raise ImportError("Install: pip install groq")
+        
+        elif provider == "openai":
+            try:
+                from openai import OpenAI
+                return OpenAI(api_key=self.config.api_key, base_url=self.config.api_base)
+            except ImportError:
+                raise ImportError("Install: pip install openai")
+        
+        else:
+            raise ValueError(f"Unsupported provider: {provider}")
     
     def analyze_pet_events(self, pet_events: pd.DataFrame) -> List[VLMAnalysisResult]:
         """Analyze multiple PET events."""
@@ -64,7 +114,7 @@ class VLMAnalyzer:
         conflict_type = pet_event.get("conflict_type", "UNKNOWN")
         tracks = pet_event.get("tracks_involved", [pet_event.get("track_a", 0)])
         
-        # Rule-based analysis (fallback when no API key)
+        # Rule-based analysis (fallback when no API)
         severity = self._classify_severity(pet)
         description = f"Conflict at {conflict_type}. PET = {pet:.3f}s ({severity} severity)."
         action = self._get_action(severity)
@@ -81,7 +131,6 @@ class VLMAnalyzer:
         )
     
     def _classify_severity(self, pet: float) -> str:
-        """Classify PET event severity."""
         if pet < self.config.severity_thresholds["SEVERE"]:
             return "SEVERE"
         elif pet < self.config.severity_thresholds["HIGH"]:
@@ -91,7 +140,6 @@ class VLMAnalyzer:
         return "LOW"
     
     def _get_action(self, severity: str) -> str:
-        """Get recommended action for severity level."""
         actions = {
             "SEVERE": "Immediate evasive action required",
             "HIGH": "Monitor situation closely",
@@ -101,7 +149,6 @@ class VLMAnalyzer:
         return actions.get(severity, "Review manually")
     
     def save_results(self, results: List[VLMAnalysisResult], output_path: str) -> None:
-        """Save analysis results to JSON."""
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
@@ -123,7 +170,6 @@ class VLMAnalyzer:
         print(f"Saved {len(results)} results to {output_path}")
     
     def generate_statistics(self, results: List[VLMAnalysisResult]) -> Dict[str, Any]:
-        """Generate summary statistics."""
         if not results:
             return {}
         
