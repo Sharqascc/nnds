@@ -1,3 +1,4 @@
+from IPython.display import display, clear_output
 import logging
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -486,6 +487,7 @@ class TrafficVolumeCounter:
         max_frames: Optional[int] = None,
         log_visual_debug: bool = False,
         show_progress: bool = False,
+        preview_interval: Optional[int] = None,
     ) -> Dict[str, Any]:
         cap: Optional[cv2.VideoCapture] = None
         out: Optional[cv2.VideoWriter] = None
@@ -610,11 +612,11 @@ class TrafficVolumeCounter:
 
         finally:
             if cap is not None:
-                cap.release()
+            if cap is not None:
             if out is not None:
-                out.release()
+            if out is not None:
             if pbar is not None:
-                pbar.close()
+            if pbar is not None:
 
     # ---------- results export ----------
     @staticmethod

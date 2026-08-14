@@ -726,6 +726,7 @@ def run_interactive_pipeline(args):
         output_video=output_video,
         max_frames=50,
         show_progress=True,
+        preview_interval=5,
     )
     print(f"Gate counting result: {result}")
 
@@ -1006,6 +1007,7 @@ def run_interactive_pipeline(args):
         output_video=output_video,
         max_frames=50,
         show_progress=True,
+        preview_interval=5,
     )
     print(f"Gate counting result: {result}")
 
