@@ -1,126 +1,78 @@
 """
-VLM Configuration
-==================
-
-Centralized configuration for VLM models and analysis parameters.
+VLM Configuration - Lightweight Computer Vision Models
 """
 
-from dataclasses import dataclass, field
-from typing import List, Dict, Optional
-import json
-from pathlib import Path
+from dataclasses import dataclass
+from typing import Literal, Optional
 
 
 @dataclass
 class VLMConfig:
-    """Configuration for VLM analysis."""
+    """Configuration for VLM-based gate validation"""
     
-    # API Configuration
-    api_provider: str = "openai"  # openai, anthropic, google, ollama, huggingface, groq
-    api_key: Optional[str] = None
-    api_base: Optional[str] = None
+    # Model selection
+    MODEL_NAME: Literal[
+        "Qwen/Qwen2-VL-2B-Instruct",      # Recommended: 2B, fast, excellent CV
+        "microsoft/Phi-3.5-vision-instruct",  # 4B, good alternative
+        "HuggingFaceTB/SmolVLM-256M-Instruct", # 256M, ultra-lightweight
+    ] = "Qwen/Qwen2-VL-2B-Instruct"
     
-    # Model Configuration - FREE & OPEN-SOURCE OPTIONS
-    model_name: str = "Qwen/Qwen2.5-VL-7B-Instruct"  # Default: best free model
+    # Device settings
+    DEVICE: str = "cuda"
+    DTYPE: str = "float16"  # or "bfloat16" for A100
     
-    # Recommended free models:
-    # - Qwen/Qwen2.5-VL-7B-Instruct (best overall, Apache 2.0)
-    # - meta-llama/Llama-3.2-11B-Vision-Instruct (great reasoning, free license)
-    # - deepseek-ai/DeepSeek-VL (efficient, MIT license)
-    # - google/gemma-3-12b-it (lightweight, open weights)
+    # Inference settings
+    MAX_NEW_TOKENS: int = 256
+    TEMPERATURE: float = 0.1  # Low for deterministic counting
+    DO_SAMPLE: bool = False
     
-    max_tokens: int = 1024
-    temperature: float = 0.0
+    # Image preprocessing
+    IMAGE_SIZE: tuple = (512, 512)  # Qwen2-VL handles various sizes
+    MAX_PIXELS: int = 1280 * 28 * 28  # Qwen2-VL max
     
-    # Local deployment (Ollama)
-    local_model: str = "qwen2.5-vl:7b"  # For Ollama: ollama run qwen2.5-vl:7b
-    ollama_base: str = "http://localhost:11434"
+    # Batch processing
+    BATCH_SIZE: int = 4
+    NUM_WORKERS: int = 2
     
-    # Analysis Configuration
-    severity_thresholds: Dict[str, float] = field(default_factory=lambda: {
-        "SEVERE": 1.0,    # PET < 1.0s
-        "HIGH": 1.5,      # PET < 1.5s
-        "MODERATE": 2.5,  # PET < 2.5s
-        "LOW": float("inf")  # PET >= 2.5s
-    })
-    
-    # PET Event Analysis
-    analyze_conflicts: bool = True
-    generate_descriptions: bool = True
-    recommend_actions: bool = True
-    
-    # Gate Validation
-    validate_gates: bool = True
-    gate_config_path: Optional[str] = None
-    
-    # Output Configuration
-    output_dir: str = "outputs/vlm_analysis"
-    save_json: bool = True
-    save_visualization: bool = True
-    
-    @classmethod
-    def for_free_model(cls, model: str = "qwen") -> "VLMConfig":
-        """
-        Pre-configured settings for free models.
-        
-        Args:
-            model: 'qwen', 'llama', 'deepseek', 'gemma', or 'ollama'
-        """
-        configs = {
-            "qwen": cls(
-                api_provider="huggingface",
-                model_name="Qwen/Qwen2.5-VL-7B-Instruct",
-                api_key="hf_xxx"  # Get free token from huggingface.co
-            ),
-            "llama": cls(
-                api_provider="huggingface",
-                model_name="meta-llama/Llama-3.2-11B-Vision-Instruct",
-                api_key="hf_xxx"
-            ),
-            "deepseek": cls(
-                api_provider="huggingface",
-                model_name="deepseek-ai/DeepSeek-VL",
-                api_key="hf_xxx"
-            ),
-            "ollama": cls(
-                api_provider="ollama",
-                api_base="http://localhost:11434",
-                local_model="qwen2.5-vl:7b"
-            ),
-            "groq": cls(
-                api_provider="groq",
-                model_name="llama-3.2-11b-vision-preview",
-                api_key="gsk_xxx"  # Free tier at groq.com
-            )
-        }
-        return configs.get(model, configs["qwen"])
-    
-    @classmethod
-    def from_file(cls, path: str) -> "VLMConfig":
-        """Load configuration from JSON file."""
-        with open(path) as f:
-            data = json.load(f)
-        return cls(**data)
-    
-    def save(self, path: str) -> None:
-        """Save configuration to JSON file."""
-        with open(path, "w") as f:
-            json.dump(self.__dict__, f, indent=2)
-    
-    @property
-    def default_prompt(self) -> str:
-        """Default prompt for PET event analysis."""
-        return """You are a traffic safety analyst. Analyze this PET (Post-Encroachment Time) event and provide:
-1. Severity classification (SEVERE/HIGH/MODERATE/LOW)
-2. Natural language description of the conflict
-3. Recommended action for traffic management
+    # Gate validation specific
+    GATE_COUNT_PROMPT: str = """Analyze this image carefully. Count the number of gates visible.
 
-PET Value: {pet:.3f}s
-Conflict Type: {conflict_type}
-Tracks Involved: {tracks}
+Rules:
+1. Count only complete gate structures
+2. A gate is a controlled entry/exit point with barriers or checkpoints
+3. Look for gate houses, barriers, or checkpoint structures
+4. Count each distinct gate separately
 
-Provide your analysis in JSON format with keys: severity, description, recommended_action."""
+Provide your answer in this format:
+Gate count: [number]
+
+If you see no gates, respond:
+Gate count: 0"""
+
+    DISCREPANCY_PROMPT: str = """Compare the detected gate count ({detected_count}) with the expected count ({expected_count}).
+
+Analyze the image and explain:
+1. What might have been missed or double-counted
+2. Any ambiguous structures that could be gates
+3. Your final assessment of the correct count
+
+Be specific about locations and visual evidence."""
+
+    # Performance
+    USE_FLASH_ATTN: bool = False  # Enable if available
+    USE_CACHE: bool = True  # Use KV cache for faster inference
 
 
-# Default configuration instance
-DEFAULT_CONFIG = VLMConfig()
+# Free API models (no GPU needed)
+FREE_VLM_MODELS = {
+    "groq-llama3.2-vision": {
+        "provider": "groq",
+        "model": "llama-3.2-90b-vision-preview",
+        "max_tokens": 1024,
+    },
+    "hf-inference": {
+        "provider": "huggingface",
+        "model": "Qwen/Qwen2-VL-7B-Instruct",
+        "max_tokens": 512,
+    },
+}
