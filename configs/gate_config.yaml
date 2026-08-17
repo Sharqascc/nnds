@@ -1,14 +1,76 @@
 gates:
 - color:
+  - 255
+  - 0
+  - 0
+  end:
+  - 450
+  - 150
+  entry_side: right
+  mode: all
+  name: West_Gate
+  start:
+  - 210
+  - 170
+  type: volume
+- color:
   - 0
   - 255
-  - 255
-  enabled: true
+  - 0
   end:
-  - 600
-  - 300
+  - 143
+  - 375
   entry_side: left
-  name: MainGate
+  mode: all
+  name: SouthWest_Gate
   start:
-  - 100
-  - 300
+  - 205
+  - 211
+  type: volume
+- color:
+  - 0
+  - 0
+  - 255
+  end:
+  - 840
+  - 710
+  entry_side: left
+  mode: all
+  name: South_Gate
+  start:
+  - 125
+  - 420
+  type: volume
+- color:
+  - 255
+  - 255
+  - 0
+  end:
+  - 925
+  - 625
+  entry_side: right
+  mode: all
+  name: East_Gate
+  start:
+  - 1455
+  - 255
+  type: volume
+- color:
+  - 255
+  - 0
+  - 255
+  end:
+  - 840
+  - 190
+  entry_side: left
+  mode: all
+  name: North_Gate
+  start:
+  - 1460
+  - 240
+  type: volume
+meta:
+  coordinate_system: image_pixels
+  description: Virtual gates for gate_counter.py tuned to traffic_video.mp4
+  direction: x_right_y_down
+  origin: top_left

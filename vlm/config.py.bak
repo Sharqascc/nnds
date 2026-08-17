@@ -12,10 +12,10 @@ class VLMConfig:
     
     # Model selection
     MODEL_NAME: Literal[
-        "/content/drive/MyDrive/nnds_models/qwen2-vl-2b",      # Recommended: 2B, fast, excellent CV
+        "Qwen/Qwen2-VL-2B-Instruct",      # Recommended: 2B, fast, excellent CV
         "microsoft/Phi-3.5-vision-instruct",  # 4B, good alternative
         "HuggingFaceTB/SmolVLM-256M-Instruct", # 256M, ultra-lightweight
-    ] = "/content/drive/MyDrive/nnds_models/qwen2-vl-2b"
+    ] = "Qwen/Qwen2-VL-2B-Instruct"
     
     # Device settings
     DEVICE: str = "cuda"
