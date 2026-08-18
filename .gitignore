@@ -1,23 +1,29 @@
-# Models and large data
-data/models/*.pt
-data/sample_data/
-data/uvh26_data/
-data/checkpoints/
+# Model weights
+*.pt
+*.pth
+*.onnx
+*.engine
+
+# Video files
+*.mp4
+*.avi
+*.mov
+
+# Data outputs
 outputs/
+data/models/
+sample_data/
 
-# Python
-*.pyc
+# Backup files
+*.bak
+
+# Python caches
 __pycache__/
-*.so
-*.egg-info/
-dist/
-build/
+*.pyc
 
-# IDE
-.idea/
-.vscode/
-*.swp
-.DS_Store
-
-# Colab / temp
+# Colab / Jupyter
 .ipynb_checkpoints/
+
+# Large local data / checkpoints
+data/checkpoints/
+data/uvh26_data/

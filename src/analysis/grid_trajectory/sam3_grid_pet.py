@@ -42,8 +42,8 @@ try:
 except Exception:
     SAM3VideoSemanticPredictor = None
 
-from grid_trajectory.spatial_grid import SpatialGrid
-from grid_trajectory.pet_grid import (
+from src.analysis.grid_trajectory.spatial_grid import SpatialGrid
+from src.analysis.grid_trajectory.pet_grid import (
     TrajectoryLogger,
     compute_pet,
     summarize_pet,
@@ -51,7 +51,7 @@ from grid_trajectory.pet_grid import (
     IntervalType,
     PETSummaryType,
 )
-from bev_mapper import BEVMapper
+from src.bev.bev_mapper import BEVMapper
 
 
 LoggerType = Union[logging.Logger, Any]

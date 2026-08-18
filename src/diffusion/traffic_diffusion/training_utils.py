@@ -25,13 +25,13 @@ from torch.utils.data import DataLoader, random_split, Subset
 
 # Import core types (once you have them)
 try:
-    from core.types import TrajectoryBatch, DiffusionDatasetLike
+    from src.core.types import TrajectoryBatch, DiffusionDatasetLike
     CORE_TYPES_AVAILABLE = True
 except ImportError:
     CORE_TYPES_AVAILABLE = False
     warnings.warn("core.types not found. Using fallback types.")
 
-from traffic_diffusion.trajectory_diffusion import (
+from src.diffusion.traffic_diffusion.trajectory_diffusion import (
     TrajectoryDiffusionModel,
     TrajectoryDataset,
 )
@@ -677,7 +677,7 @@ def train_diffusion_model_simple(
 # Optional typed helpers
 # ---------------------------------------------------------------------
 if CORE_TYPES_AVAILABLE:
-    from core.types import TrajectoryBatch
+    from src.core.types import TrajectoryBatch
 
     def batch_to_trajectory_batch(
         x0: torch.Tensor,

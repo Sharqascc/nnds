@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 
-from traffic_diffusion.trajectory_diffusion import TrajectoryDiffusionModel
+from src.diffusion.traffic_diffusion.trajectory_diffusion import TrajectoryDiffusionModel
 
 _DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 _MODEL = None

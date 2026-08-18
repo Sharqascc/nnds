@@ -3,7 +3,7 @@
 Beginner-friendly debugging helpers for NNDS.
 
 Usage in any script:
-    from utils.debug_helpers import debug_save_image, debug_save_df, debug_print_section
+    from src.utils.debug_helpers import debug_save_image, debug_save_df, debug_print_section
 
     debug_print_section("Detections summary")
     debug_save_image(frame, "frame_001.png", subdir="debug")

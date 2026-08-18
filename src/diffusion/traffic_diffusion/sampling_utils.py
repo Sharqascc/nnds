@@ -4,7 +4,7 @@ import torch
 
 def load_eval_model(checkpoint_path, device, T=15, N=1, F=4, cond_dim=4,
                     hidden_dim=128):
-    from traffic_diffusion.trajectory_diffusion import TrajectoryDiffusionModel
+    from src.diffusion.traffic_diffusion.trajectory_diffusion import TrajectoryDiffusionModel
 
     traj_shape = (T, N, F)
     model = TrajectoryDiffusionModel(

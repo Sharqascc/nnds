@@ -4,7 +4,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 import pandas as pd
 import numpy as np
-from traffic_diffusion.trajectory_diffusion import TrajectoryDiffusionModel
+from src.diffusion.traffic_diffusion.trajectory_diffusion import TrajectoryDiffusionModel
 
 def build_velocity_tensors(csv_path, Th=16, scaler_stats=None):
     if not os.path.exists(csv_path):

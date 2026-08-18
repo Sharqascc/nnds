@@ -395,11 +395,11 @@ def run_video_to_pet(
     pet_threshold: float = 2.0,
     max_frames: int | None = None,
     show_progress: bool = True,
-    detector: str = "sam3",
+    detector: str = "uvh-coco-fused",
     rtdetr_weights_path: Path | str = "rtdetr-l.pt",
-    yolo_weights_path: Path | str = "yolo11n.pt",
-    uvh_model_path: Path | str = "/root/.cache/huggingface/hub/models--iisc-aim--UVH-26/snapshots/4a22412775adb6f97f22735647afee976b4638a0/weights/YOLOv11-S/UVH-26-MV-YOLOv11-S.pt",
-    coco_person_model_path: Path | str = "yolo26m-seg.pt",
+    yolo_weights_path: Path | str = "data/models/yolo11n.pt",
+    uvh_model_path: Path | str = "data/models/uvh26.pt",
+    coco_person_model_path: Path | str = "data/models/yolo11n.pt",
     uvh_conf: float = 0.20,
     coco_person_conf: float = 0.20,
     imgsz: int = 1280,
@@ -432,10 +432,10 @@ def run_video_to_pet(
     if detector == "sam3":
         # SAM3 path: validate SAM3 weights and run existing pipeline
         if not sam3_weights_path.exists():
-            raise FileNotFoundError(f"SAM3 weights not found: {sam3_weights_path}")
+            sam3_weights_path = None
 
         try:
-            from grid_trajectory.sam3_grid_pet import run_sam3_grid_pet
+            from src.analysis.grid_trajectory.sam3_grid_pet import run_sam3_grid_pet
         except ModuleNotFoundError as exc:
             raise ModuleNotFoundError(
                 "Missing dependency for video pipeline. Install required packages "
@@ -463,7 +463,7 @@ def run_video_to_pet(
             raise FileNotFoundError(f"YOLO weights not found: {yolo_weights_path}")
 
         try:
-            from grid_trajectory.yolo_cpu_grid_pet import run_yolo_cpu_grid_pet
+            from src.analysis.grid_trajectory.yolo_cpu_grid_pet import run_yolo_cpu_grid_pet
         except ModuleNotFoundError as exc:
             raise ModuleNotFoundError(
                 "Missing dependency for YOLO CPU pipeline."
@@ -486,7 +486,7 @@ def run_video_to_pet(
             raise FileNotFoundError(f"COCO person model not found: {coco_person_model_path}")
 
         try:
-            from grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
+            from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
         except ModuleNotFoundError as exc:
             raise ModuleNotFoundError(
                 "Missing fused detector backend. Expected "
@@ -615,11 +615,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--grid-config", default="configs/GITI_grid_config.json", help="Grid configuration JSON path")
     parser.add_argument("--gate-config", default="configs/gate_config.yaml", help="Gate configuration YAML path")
     parser.add_argument("--sam3-weights", default="sam3.pt", help="SAM3 weights checkpoint path")
-    parser.add_argument("--detector", type=str, default="sam3", choices=["sam3", "rtdetr", "yolo-cpu", "uvh-coco-fused"], help="Detection backend: 'sam3' (default) or 'rtdetr' (experimental)")
+    parser.add_argument("--detector", type=str, default="uvh-coco-fused", choices=["sam3", "rtdetr", "yolo-cpu", "uvh-coco-fused"], help="Detection backend: 'sam3' (default) or 'rtdetr' (experimental)")
     parser.add_argument("--rtdetr-weights", type=str, default="rtdetr-l.pt", help="RT-DETR weights path (used when --detector rtdetr)")
     parser.add_argument("--yolo-weights", type=str, default="yolo11n.pt", help="YOLO weights path (used when --detector yolo-cpu)")
-    parser.add_argument("--uvh-model", type=str, default="/root/.cache/huggingface/hub/models--iisc-aim--UVH-26/snapshots/4a22412775adb6f97f22735647afee976b4638a0/weights/YOLOv11-S/UVH-26-MV-YOLOv11-S.pt", help="UVH-26 weights path (used when --detector uvh-coco-fused)")
-    parser.add_argument("--coco-person-model", type=str, default="yolo26m-seg.pt", help="COCO person fallback weights path (used when --detector uvh-coco-fused)")
+    parser.add_argument("--uvh-model", type=str, default="data/models/uvh26.pt", help="UVH-26 weights path (used when --detector uvh-coco-fused)")
+    parser.add_argument("--coco-person-model", type=str, default="data/models/yolo11n.pt", help="COCO person fallback weights path (used when --detector uvh-coco-fused)")
     parser.add_argument("--uvh-conf", type=float, default=0.20, help="UVH-26 confidence threshold")
     parser.add_argument("--coco-person-conf", type=float, default=0.20, help="COCO person confidence threshold")
     parser.add_argument("--imgsz", type=int, default=1280, help="Inference image size for fused detector")
@@ -660,9 +660,9 @@ def run_interactive_pipeline(args):
     import matplotlib.pyplot as plt
     import yaml
     from ultralytics import YOLO
-    from gate_counter import TrafficVolumeCounter
-    from grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
-    from utils.interactive import show_frame, show_image, ask_user
+    from src.analysis.gate_counter import TrafficVolumeCounter
+    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
+    from src.utils.interactive import show_frame, show_image, ask_user
 
     print("\n" + "="*60)
     print("🚦 INTERACTIVE TRAFFIC ANALYSIS PIPELINE")
@@ -867,7 +867,7 @@ def run_video_to_pet_fixed(
 ) -> pd.DataFrame:
     """Fixed version of run_video_to_pet with correct parameters."""
     try:
-        from grid_trajectory.sam3_grid_pet import run_sam3_grid_pet
+        from src.analysis.grid_trajectory.sam3_grid_pet import run_sam3_grid_pet
     except ModuleNotFoundError as exc:
         raise ModuleNotFoundError(
             "Missing dependency for video pipeline. Install required packages "
@@ -939,9 +939,9 @@ def run_interactive_pipeline(args):
     import matplotlib.pyplot as plt
     import yaml
     from ultralytics import YOLO
-    from gate_counter import TrafficVolumeCounter
-    from grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
-    from utils.interactive import show_frame, show_image, ask_user
+    from src.analysis.gate_counter import TrafficVolumeCounter
+    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
+    from src.utils.interactive import show_frame, show_image, ask_user
 
     print("\n" + "="*60)
     print("🚦 INTERACTIVE TRAFFIC ANALYSIS PIPELINE")
@@ -1077,4 +1077,3 @@ def run_pipeline(args) -> dict:
         "video": str(args.video),
         "out_csv": str(args.out_csv) if getattr(args, "out_csv", None) else None,
     }
-

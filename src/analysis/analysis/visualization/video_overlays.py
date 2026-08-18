@@ -32,7 +32,7 @@ import numpy as np
 from pathlib import Path
 
 try:
-    from grid_trajectory.spatial_grid import SpatialGrid
+    from src.analysis.grid_trajectory.spatial_grid import SpatialGrid
 except ImportError:
     SpatialGrid = None
     warnings.warn("SpatialGrid not available - grid overlay disabled")

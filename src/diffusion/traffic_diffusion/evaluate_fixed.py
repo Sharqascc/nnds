@@ -3,7 +3,7 @@ import torch
 import pandas as pd
 import numpy as np
 from scipy.stats import wasserstein_distance
-from traffic_diffusion.trajectory_diffusion import TrajectoryDiffusionModel
+from src.diffusion.traffic_diffusion.trajectory_diffusion import TrajectoryDiffusionModel
 
 def load_checkpoint_safe(ckpt_path, device):
     try:

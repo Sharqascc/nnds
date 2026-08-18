@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 from ultralytics import YOLO
-from vlm.analyzer import VLLMAnalyzer
+from src.vlm.analyzer import VLLMAnalyzer
 from tqdm import tqdm
 
 class VLMEnhancedPipeline:

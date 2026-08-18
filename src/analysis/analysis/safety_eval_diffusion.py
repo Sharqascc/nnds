@@ -221,7 +221,7 @@ def eval_safety_over_loader(
 
 import torch
 import numpy as np
-from traffic_diffusion.model_and_sampler import sample_future_denorm
+from src.diffusion.traffic_diffusion.model_and_sampler import sample_future_denorm
 
 def sample_future_fn(batch, num_samples=20, checkpoint_path="checkpoints/traj_diffusion_best.pt"):
     """

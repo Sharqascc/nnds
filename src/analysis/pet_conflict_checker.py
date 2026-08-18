@@ -43,7 +43,7 @@ import warnings
 
 # Import core types (ensure core.types exists)
 try:
-    from core.types import PETEvent, Trajectory, WorldPoint
+    from src.core.types import PETEvent, Trajectory, WorldPoint
 except ImportError:
     # Fallback: define minimal types if core module unavailable
     class WorldPoint:

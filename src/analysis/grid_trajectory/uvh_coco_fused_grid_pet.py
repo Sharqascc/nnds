@@ -1,6 +1,6 @@
 from __future__ import annotations
 import matplotlib.pyplot as plt
-from utils.interactive import show_image, ask_user
+from src.utils.interactive import show_image, ask_user
 from tqdm import tqdm
 import sys
 

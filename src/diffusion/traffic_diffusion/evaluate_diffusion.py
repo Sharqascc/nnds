@@ -5,8 +5,8 @@ import pandas as pd
 from pathlib import Path
 from scipy.stats import wasserstein_distance
 from scipy.signal import savgol_filter
-from traffic_diffusion.trajectory_diffusion import TrajectoryDiffusionModel
-from traffic_diffusion.train_trajectory_diffusion import build_normalized_tensors
+from src.diffusion.traffic_diffusion.trajectory_diffusion import TrajectoryDiffusionModel
+from src.diffusion.traffic_diffusion.train_trajectory_diffusion import build_normalized_tensors
 
 def compute_min_ade_fde(pred_trajs, gt_trajs):
     gt_expanded = np.expand_dims(gt_trajs, axis=1)

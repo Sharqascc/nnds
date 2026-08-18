@@ -441,7 +441,7 @@ frame = overlay_conflict_frame(
 22. Complete Video Frame with All Overlays
 -------------------------------------------
 from analysis.visualization import VideoOverlayPlotter
-from grid_trajectory.spatial_grid import SpatialGrid
+from src.analysis.grid_trajectory.spatial_grid import SpatialGrid
 
 plotter = VideoOverlayPlotter(dpi=300, colorblind_safe=True)
 grid = SpatialGrid('configs/GITI_grid_config.json')

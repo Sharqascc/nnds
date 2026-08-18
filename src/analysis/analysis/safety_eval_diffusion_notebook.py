@@ -21,13 +21,13 @@ import numpy as np
 import pandas as pd
 import torch
 
-from traffic_diffusion.training_utils import (
+from src.diffusion.traffic_diffusion.training_utils import (
     build_clean_dataloaders,
     create_model,
     train_diffusion_model,
 )
-from traffic_diffusion.sampling_utils import load_eval_model, sample_future
-from traffic_diffusion.pet_safety_metrics import compute_safety_metrics
+from src.diffusion.traffic_diffusion.sampling_utils import load_eval_model, sample_future
+from src.diffusion.traffic_diffusion.pet_safety_metrics import compute_safety_metrics
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_DIR = ROOT / "outputs"
@@ -144,7 +144,7 @@ def run_safety_eval_pipeline(
     df_summary_model : pd.DataFrame
         Aggregated safety metrics.
     """
-    from traffic_diffusion.trajectory_diffusion import load_trajdiff_dataset
+    from src.diffusion.traffic_diffusion.trajectory_diffusion import load_trajdiff_dataset
 
     logger.info("Loading trajectory diffusion dataset from %s", ROOT)
     raw_dataset, meta_df = load_trajdiff_dataset(ROOT)
