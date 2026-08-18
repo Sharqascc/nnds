@@ -53,7 +53,6 @@ profile = "black"
 line_length = 100
 
 [tool.pytest.ini_options]
-addopts = "--cov=src --cov-report=term-missing"
 testpaths = [
     "tests",
 ]
