@@ -1,5 +1,5 @@
 import numpy as np
-from core.validation import compute_error_metrics, validate_bev_result, validate_numeric_array
+from src.core.validation import compute_error_metrics, validate_bev_result, validate_numeric_array
 
 
 def test_compute_error_metrics():

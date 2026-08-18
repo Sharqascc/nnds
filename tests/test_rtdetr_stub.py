@@ -1,6 +1,6 @@
 
 import pytest
-from traffic_analyzer import run_video_to_pet
+from src.pipeline.traffic_analyzer import run_video_to_pet
 
 def test_rtdetr_detector_raises_not_implemented(tmp_path):
     video = tmp_path / "dummy.mp4"
