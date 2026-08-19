@@ -13,6 +13,7 @@ import cv2
 import numpy as np
 import pandas as pd
 from ultralytics import YOLO
+import torch
 
 
 UVH_DISPLAY_MAP = {
@@ -138,11 +139,15 @@ def run_uvh_coco_fused_grid_pet(
     coco_person_conf: float = 0.20,
     person_suppress_overlap: float = 0.35,
     show_progress: bool = True, interactive: bool = False,
+    device: str = "auto",
 ) -> Dict[str, Any]:
     video_path = str(Path(video_path).resolve())
     uvh_model_path = str(Path(uvh_model_path).resolve())
     coco_person_model_path = str(Path(coco_person_model_path).resolve())
     output_csv_path = str(Path(output_csv_path).resolve())
+
+    if device == "auto":
+        device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
     uvh_model = YOLO(uvh_model_path)
     coco_model = YOLO(coco_person_model_path)
@@ -154,6 +159,7 @@ def run_uvh_coco_fused_grid_pet(
     fps = cap.get(cv2.CAP_PROP_FPS)
     if not fps or fps <= 0:
         fps = 30.0
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     cap.release()
 
     detection_rows = []
@@ -169,7 +175,7 @@ def run_uvh_coco_fused_grid_pet(
         conf=uvh_conf,
         imgsz=imgsz,
         verbose=False,
-        device="cpu",
+        device=device,
     )
 
     coco_results = coco_model.track(
@@ -180,10 +186,12 @@ def run_uvh_coco_fused_grid_pet(
         conf=coco_person_conf,
         imgsz=imgsz,
         verbose=False,
-        device="cpu",
+        device=device,
         classes=[0],
     )
 
+    total_iters = total_frames if max_frames is None else min(total_frames, max_frames)
+    pbar = tqdm(total=total_iters, desc="Processing frames", unit="frame", disable=not show_progress)
     for uvh_r, coco_r in zip(uvh_results, coco_results):
         if max_frames is not None and frame_idx >= max_frames:
             break
@@ -300,6 +308,7 @@ def run_uvh_coco_fused_grid_pet(
         if show_progress and frame_idx % 25 == 0:
             pass
         frame_idx += 1
+        pbar.update(1)
 
         # === INTERACTIVE PAUSE ===
         if interactive and frame_idx % 20 == 0:
@@ -329,6 +338,7 @@ def run_uvh_coco_fused_grid_pet(
                 stop_processing = True
                 break
 
+    pbar.close()
     print(f"[UVH-COCO] ✅ Frame processing finished ({frame_idx} frames). Initializing track indexing...", flush=True)
 
     det_df = pd.DataFrame(detection_rows)

@@ -404,6 +404,7 @@ def run_video_to_pet(
     coco_person_conf: float = 0.20,
     imgsz: int = 1280,
     person_suppress_overlap: float = 0.35,
+    device: str = "auto",
 ) -> pd.DataFrame:
     """Video → detections → grid → BEV → PET events CSV (SAM3 or RT-DETR).
 
@@ -507,6 +508,7 @@ def run_video_to_pet(
             coco_person_conf=coco_person_conf,
             person_suppress_overlap=person_suppress_overlap,
             show_progress=show_progress,
+            device=device,
         )
         pet_events = result["pet_events"] if isinstance(result, dict) and "pet_events" in result else []
 
@@ -624,6 +626,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--coco-person-conf", type=float, default=0.20, help="COCO person confidence threshold")
     parser.add_argument("--imgsz", type=int, default=1280, help="Inference image size for fused detector")
     parser.add_argument("--person-suppress-overlap", type=float, default=0.35, help="Suppress COCO person if overlap/person-area exceeds this threshold")
+    parser.add_argument("--device", type=str, default="auto", help="Device to use: 'auto', 'cpu', 'cuda:0', 'cuda:1', etc.")
     parser.add_argument("--out-csv", default="outputs/petevents_bev.csv", help="Output CSV path for PET events")
     parser.add_argument("--pet-threshold", type=float, default=2.0, help="PET threshold in seconds")
     parser.add_argument("--demo", action="store_true", help="Run internal calibration/speed demo instead of video pipeline")
@@ -763,6 +766,7 @@ def run_interactive_pipeline(args):
         coco_person_conf=args.coco_person_conf or 0.20,
         person_suppress_overlap=args.person_suppress_overlap or 0.35,
         show_progress=True,
+        device=getattr(args, 'device', 'auto'),
     )
 
     print("\n📊 PET Extraction Results:")
@@ -812,6 +816,7 @@ def run_pipeline(args):
         'coco_person_conf': getattr(args, 'coco_person_conf', 0.2),
         'imgsz': getattr(args, 'imgsz', 1280),
         'person_suppress_overlap': getattr(args, 'person_suppress_overlap', 0.35),
+        'device': getattr(args, 'device', 'auto'),
     }
 
     # Filter out None values so internal defaults apply if not specified
@@ -1044,6 +1049,7 @@ def run_interactive_pipeline(args):
         coco_person_conf=args.coco_person_conf or 0.20,
         person_suppress_overlap=args.person_suppress_overlap or 0.35,
         show_progress=True,
+        device=getattr(args, 'device', 'auto'),
     )
 
     print("\n📊 PET Extraction Results:")
