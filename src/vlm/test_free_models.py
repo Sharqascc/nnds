@@ -11,9 +11,8 @@ from pathlib import Path
 import pandas as pd
 
 # Add current directory
-sys.path.insert(0, str(Path(__file__).parent))
-
-from vlm import VLMAnalyzer, VLMConfig
+from src.vlm.analyzer import VLLMAnalyzer
+from src.vlm.config import VLMConfig
 
 def test_ollama():
     """Test with Ollama (100% FREE, recommended)"""
@@ -27,7 +26,7 @@ def test_ollama():
             api_base="http://localhost:11434",
             local_model="qwen2.5-vl:7b"
         )
-        analyzer = VLMAnalyzer(config=config)
+        analyzer = VLLMAnalyzer(config=config)
         
         # Load PET events
         pet_df = pd.read_csv("outputs/petevents_recovered.csv")
@@ -61,7 +60,7 @@ def test_huggingface_small():
             model_name="Qwen/Qwen2-VL-2B-Instruct",
             api_key="hf_xxx"  # Replace with your token
         )
-        analyzer = VLMAnalyzer(config=config)
+        analyzer = VLLMAnalyzer(config=config)
         
         # Load PET events
         pet_df = pd.read_csv("outputs/petevents_recovered.csv")
@@ -92,7 +91,7 @@ def test_groq():
             model_name="llama-3.2-11b-vision-preview",
             api_key="gsk_xxx"  # Replace with your key
         )
-        analyzer = VLMAnalyzer(config=config)
+        analyzer = VLLMAnalyzer(config=config)
         
         # Load PET events
         pet_df = pd.read_csv("outputs/petevents_recovered.csv")

@@ -12,7 +12,10 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 
-from groq import Groq
+try:
+    from groq import Groq
+except ImportError:
+    Groq = None
 from .config import VLMConfig
 
 
@@ -34,6 +37,8 @@ class GateValidator:
     
     def __init__(self, groq_api_key: str, config: Optional[VLMConfig] = None):
         self.config = config or VLMConfig()
+        if Groq is None:
+            raise ImportError("groq package is required for GateValidator. Install with 'pip install groq'.")
         self.client = Groq(api_key=groq_api_key)
         self.model = "llama-3.2-11b-vision-preview"
     
