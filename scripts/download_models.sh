@@ -19,7 +19,7 @@ mkdir -p "$MODELS_DIR"
 # --------------------------------------------
 # 1. UVH-26 (primary detection model)
 # --------------------------------------------
-UVH_URL="https://raw.githubusercontent.com/Sharqascc/nnds/cleanup/system-reorganization/uvh26.pt"
+UVH_URL="https://huggingface.co/iisc-aim/UVH-26/resolve/main/weights/YOLOv11-S/UVH-26-MV-YOLOv11-S.pt"
 UVH_DEST="$MODELS_DIR/uvh26.pt"
 
 if [ -f "$UVH_DEST" ] && [ -s "$UVH_DEST" ]; then
