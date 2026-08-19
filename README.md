@@ -94,6 +94,37 @@ All tests are designed to run without heavyweight models or GPU.
 
 ---
 
+## ⚡ Performance Tips
+
+The pipeline automatically chooses the fastest available backend:
+
+| Backend | How to enable | Speed |
+|---------|---------------|-------|
+| **CUDA (GPU)** | `--device auto` (if GPU available) | Fastest |
+| **OpenVINO (CPU)** | Export models once, then `--backend auto` or `--backend openvino` | ~2.3x faster than PyTorch CPU |
+| **PyTorch CPU** | `--backend pytorch` | Slowest |
+
+### Export models for OpenVINO
+
+```bash
+python scripts/export_openvino.py --uvh data/models/uvh26.pt --yolo data/models/yolo11n.pt
+```
+
+After export, the pipeline will use OpenVINO automatically when no GPU is present.
+
+### Reduce image size for faster inference
+
+Add `--imgsz 640` to trade a little accuracy for much faster processing:
+
+```bash
+python scripts/run_pipeline.py --video data/sample_data/traffic_video.mp4 --imgsz 640
+```
+
+### Show progress bar
+
+The pipeline now displays a `tqdm` progress bar by default. To disable it, add `--no-progress`.
+
+---
 ## 📁 Repository Structure
 
 ```
