@@ -405,6 +405,7 @@ def run_video_to_pet(
     imgsz: int = 1280,
     person_suppress_overlap: float = 0.35,
     device: str = "auto",
+    backend: str = "auto",
 ) -> pd.DataFrame:
     """Video → detections → grid → BEV → PET events CSV (SAM3 or RT-DETR).
 
@@ -509,6 +510,7 @@ def run_video_to_pet(
             person_suppress_overlap=person_suppress_overlap,
             show_progress=show_progress,
             device=device,
+            backend=backend,
         )
         pet_events = result["pet_events"] if isinstance(result, dict) and "pet_events" in result else []
 
@@ -627,6 +629,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--imgsz", type=int, default=1280, help="Inference image size for fused detector")
     parser.add_argument("--person-suppress-overlap", type=float, default=0.35, help="Suppress COCO person if overlap/person-area exceeds this threshold")
     parser.add_argument("--device", type=str, default="auto", help="Device to use: 'auto', 'cpu', 'cuda:0', 'cuda:1', etc.")
+    parser.add_argument("--backend", type=str, default="auto", help="Backend to use: 'auto', 'pytorch', 'openvino'")
     parser.add_argument("--out-csv", default="outputs/petevents_bev.csv", help="Output CSV path for PET events")
     parser.add_argument("--pet-threshold", type=float, default=2.0, help="PET threshold in seconds")
     parser.add_argument("--demo", action="store_true", help="Run internal calibration/speed demo instead of video pipeline")
@@ -817,6 +820,7 @@ def run_pipeline(args):
         'imgsz': getattr(args, 'imgsz', 1280),
         'person_suppress_overlap': getattr(args, 'person_suppress_overlap', 0.35),
         'device': getattr(args, 'device', 'auto'),
+        'backend': getattr(args, 'backend', 'auto'),
     }
 
     # Filter out None values so internal defaults apply if not specified

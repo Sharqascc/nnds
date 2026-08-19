@@ -140,6 +140,7 @@ def run_uvh_coco_fused_grid_pet(
     person_suppress_overlap: float = 0.35,
     show_progress: bool = True, interactive: bool = False,
     device: str = "auto",
+    backend: str = "auto",
 ) -> Dict[str, Any]:
     video_path = str(Path(video_path).resolve())
     uvh_model_path = str(Path(uvh_model_path).resolve())
@@ -149,8 +150,33 @@ def run_uvh_coco_fused_grid_pet(
     if device == "auto":
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-    uvh_model = YOLO(uvh_model_path)
-    coco_model = YOLO(coco_person_model_path)
+    # Determine OpenVINO model directories
+    def _openvino_dir(model_pt_path: str) -> Path:
+        p = Path(model_pt_path)
+        return p.with_name(p.stem + "_openvino_model")
+
+    use_openvino = False
+    if backend == "auto":
+        if torch.cuda.is_available():
+            device = "cuda:0" if device == "auto" else device
+        else:
+            try:
+                import openvino
+                ov_uvh_dir = _openvino_dir(uvh_model_path)
+                ov_coco_dir = _openvino_dir(coco_person_model_path)
+                if ov_uvh_dir.exists() and ov_coco_dir.exists():
+                    use_openvino = True
+            except Exception:
+                pass
+    elif backend == "openvino":
+        use_openvino = True
+
+    if use_openvino:
+        uvh_model = YOLO(str(_openvino_dir(uvh_model_path)), task="detect")
+        coco_model = YOLO(str(_openvino_dir(coco_person_model_path)), task="detect")
+    else:
+        uvh_model = YOLO(uvh_model_path)
+        coco_model = YOLO(coco_person_model_path)
 
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -339,6 +365,7 @@ def run_uvh_coco_fused_grid_pet(
                 break
 
     pbar.close()
+    print(f"[UVH-COCO] backend={'openvino' if use_openvino else 'pytorch'} device={device}")
     print(f"[UVH-COCO] ✅ Frame processing finished ({frame_idx} frames). Initializing track indexing...", flush=True)
 
     det_df = pd.DataFrame(detection_rows)
