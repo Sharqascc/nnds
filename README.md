@@ -50,7 +50,7 @@ This creates `data/models/` and downloads:
 
 ### 4. Run the pipeline
 
-Place a traffic video in `data/sample_data/` (or use your own path), then:
+A sample traffic video is included at `data/sample_data/traffic_video.mp4`. You can use it directly or replace it with your own:
 
 ```bash
 python scripts/run_pipeline.py --video data/sample_data/traffic_video.mp4
