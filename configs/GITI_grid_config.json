@@ -1,3 +1,24 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:5e3ecb16260dceeacfcf91ce08f7bc2e310e0b687e466f99c057e65dc2d499e2
-size 301
+{
+  "corners": {
+    "top_left": [
+      100,
+      100
+    ],
+    "top_right": [
+      1500,
+      100
+    ],
+    "bottom_left": [
+      100,
+      700
+    ],
+    "bottom_right": [
+      1500,
+      700
+    ]
+  },
+  "configuration": {
+    "cell_size": 50,
+    "naming_style": "CELL_{col}_{row}"
+  }
+}

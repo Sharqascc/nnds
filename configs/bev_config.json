@@ -1,3 +1,36 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:3d10ba9e64e5a8aa2f9092125e5e9f1c62bbd490680f965292e3c99fe005e443
-size 570
+{
+  "x_min": 730900.96875,
+  "x_max": 730920.96875,
+  "y_min": 221998.3515625,
+  "y_max": 222014.3515625,
+  "resolution": [
+    1000,
+    800
+  ],
+  "bev_resolution": [
+    1000,
+    800
+  ],
+  "H_pixel_to_world": [
+    [
+      3.0115060867971573,
+      126.99092826927175,
+      730909.4499233229
+    ],
+    [
+      0.9157821104945187,
+      38.57124290501,
+      222005.1
+    ],
+    [
+      1e-06,
+      2e-06,
+      1.0
+    ]
+  ],
+  "notes": {
+    "updated": "expanded bounds for realistic BEV footprint",
+    "target_width_m": 20.0,
+    "target_height_m": 16.0
+  }
+}

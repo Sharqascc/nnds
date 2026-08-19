@@ -5,3 +5,7 @@ uvh26_data/** filter=lfs diff=lfs merge=lfs -text
 *.json filter=lfs diff=lfs merge=lfs -text
 *.mp4 filter=lfs diff=lfs merge=lfs -text
 *.csv filter=lfs diff=lfs merge=lfs -text
+
+# Override LFS for small config and demo files
+configs/*.json -filter -diff -merge -text
+docs/data_samples/petevents_bev_demo.csv -filter -diff -merge -text

@@ -1,3 +1,95 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:7a97bf3f2284fdf2aaba9c2cad3115bc2a16306fa97f279cdafe201b70d8c68d
-size 2046
+{
+  "metadata": {
+    "timestamp": "2024-02-22",
+    "description": "G-ITI Intersection Calibration Points",
+    "coordinate_system": "Northing, Easting, Elevation (feet)",
+    "origin": "Point 1 (222006.49, 730911.81, 197)",
+    "total_points": 6,
+    "image_size": "1600x720",
+    "camera_used": "Mobile Phone",
+    "updated": "expanded calibration footprint",
+    "target_width_m": 20.0,
+    "target_height_m": 16.0,
+    "review": "mid-edge points corrected for BEV rectangle consistency"
+  },
+  "calibration_points": [
+    {
+      "id": 1,
+      "description": "Expanded corner 1",
+      "pixel": {
+        "x": 194.0,
+        "y": 124.0
+      },
+      "world": {
+        "easting": 730900.97,
+        "northing": 221998.35,
+        "elevation_ft": 197.0
+      }
+    },
+    {
+      "id": 2,
+      "description": "Expanded corner 2",
+      "pixel": {
+        "x": 1455.0,
+        "y": 124.0
+      },
+      "world": {
+        "easting": 730920.97,
+        "northing": 221998.35,
+        "elevation_ft": 197.0
+      }
+    },
+    {
+      "id": 3,
+      "description": "Expanded corner 3",
+      "pixel": {
+        "x": 1455.0,
+        "y": 715.0
+      },
+      "world": {
+        "easting": 730920.97,
+        "northing": 222014.35,
+        "elevation_ft": 197.0
+      }
+    },
+    {
+      "id": 4,
+      "description": "Expanded corner 4",
+      "pixel": {
+        "x": 194.0,
+        "y": 715.0
+      },
+      "world": {
+        "easting": 730900.97,
+        "northing": 222014.35,
+        "elevation_ft": 197.0
+      }
+    },
+    {
+      "id": 5,
+      "description": "Expanded mid-edge east",
+      "pixel": {
+        "x": 1455.0,
+        "y": 419.5
+      },
+      "world": {
+        "easting": 730920.97,
+        "northing": 222006.35,
+        "elevation_ft": 197.0
+      }
+    },
+    {
+      "id": 6,
+      "description": "Expanded mid-edge west",
+      "pixel": {
+        "x": 194.0,
+        "y": 419.5
+      },
+      "world": {
+        "easting": 730900.97,
+        "northing": 222006.35,
+        "elevation_ft": 197.0
+      }
+    }
+  ]
+}
