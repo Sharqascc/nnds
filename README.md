@@ -1,680 +1,195 @@
-# NNDS: Non-motorized and Heterogeneous Traffic Safety Analysis
+# 🚦 NNDS – Neural Network for Driving Safety
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+### Intersection Safety & Conflict Detection Pipeline
 
-AI-powered system for analyzing vehicle behavior and surrogate safety metrics at unsignalized intersections.
+A **modular, research-ready pipeline** for real‑time detection and analysis of pedestrian‑vehicle interactions at intersections. Combines **UVH + YOLO detectors** with tracking, BEV mapping, and post‑event analysis.
 
-## 📋 Table of Contents
+---
 
-- [Pipeline Architecture](#pipeline-architecture)
-- [Quick Start](#quick-start)
-- [Installation](#installation)
-- [Usage Guide](#usage-guide)
-- [Pipeline Components](#pipeline-components)
-- [Visualization Suite](#visualization-suite)
-- [Diffusion-Based Modeling](#diffusion-based-modeling)
-- [SSM Verification](#ssm-verification--validation-methodology)
-- [Project Structure](#project-structure)
-- [Colab Setup](#colab-setup-recommended)
-- [License](#license)
+## ✨ Features
 
-## Pipeline Architecture
+- **UVH-COCO Fused Detector** – primary backend combining UVH‑26 and YOLO11 for robust pedestrian/vehicle detection
+- **BEV Mapping** – bird's‑eye‑view transformation for accurate spatial reasoning
+- **Grid‑based PET Event Extraction** – detects and logs pedestrian–vehicle conflict events
+- **Diffusion‑based Trajectory Modelling** – for trajectory prediction and safety evaluation
+- **VLM Integration (optional)** – vision‑language models for advanced analysis
+- **Smoke tests** – lightweight tests to verify repo health
 
-The NNDS system implements a multi-stage pipeline that transforms raw intersection video into quantitative safety metrics and diffusion-based trajectory predictions.
+---
 
-### Pipeline Overview
+## 🚀 Quick Start
 
-| Phase | Stage | Key Output | Location |
-|-------|-------|------------|----------|
-| 1 | Video Input & Preprocessing | Raw frames | `videos/` |
-| 2 | SAM3 Video Segmentation | Actor masks + track IDs | `traffic_analyzer.py` |
-| 3 | BEV Transformation | World-coordinate trajectories | `bev_mapper.py`, `giti_bev_calib.py` |
-| 4 | Grid Mapping & Trajectory | Grid cell assignments | `grid_trajectory/` |
-| 5 | PET Conflict Extraction | Conflict events + PETs | `outputs/petevents_bev.csv` |
-| 6 | Analysis & Visualization | Safety statistics + plots | `analysis/`, `analysis/visualization/` |
-| 7 | Diffusion-Based Modeling | Counterfactual trajectories | `traffic_diffusion/` |
-
-### Pipeline Data Flow
-
-```
-[videos/traffic_video.mp4]
-        │
-        ▼
-┌─────────────────────────────┐
-│  Phase 2: SAM3 Segmentation │ → sam3.pt (HF model)
-│  (actor masks + track IDs)  │
-└──────────────┬──────────────┘
-               │
-               ▼
-┌─────────────────────────────┐
-│  Phase 3: BEV Transform     │ → giti_bev_calib.py, bev_mapper.py
-│  (image → world coordinates)│
-└──────────────┬──────────────┘
-               │
-               ▼
-┌─────────────────────────────┐
-│  Phase 4: Grid + Trajectory │ → grid_trajectory/
-│  (grid cells + (t,x,y) traj)│
-└──────────────┬──────────────┘
-               │
-               ▼
-┌─────────────────────────────┐
-│  Phase 5: PET Extraction    │ → outputs/petevents_bev.csv
-│  (conflict events + PETs)   │
-└──────────────┬──────────────┘
-               │
-        ┌──────┴──────┐
-        ▼             ▼
-┌──────────────┐  ┌───────────────────────┐
-│ Phase 6:     │  │ Phase 7:              │
-│ Analysis     │  │ Diffusion Modeling    │
-│ & Viz        │  │ (train + sample + eval)│
-└──────────────┘  └───────────────────────┘
-```
-
-## Quick Start
-
-### One-Click Colab Setup
-
-Paste this into a fresh Colab cell:
-
-```python
-# NNDS Colab bootstrap: clone, install, download demo video + SAM3
-import os
-import sys
-import subprocess
-from pathlib import Path
-from urllib.parse import quote
-
-# 1) Clone or update repo on main branch
-os.chdir("/content")
-repo_dir = Path("nnds")
-
-if repo_dir.exists():
-    os.chdir(repo_dir)
-    subprocess.run(["git", "fetch"], check=True)
-    subprocess.run(["git", "checkout", "main"], check=True)
-    subprocess.run(["git", "pull"], check=True)
-else:
-    subprocess.run(["git", "clone", "https://github.com/Sharqascc/nnds.git", "nnds"], check=True)
-    os.chdir(repo_dir)
-    subprocess.run(["git", "checkout", "main"], check=True)
-
-# 2) Install dependencies
-subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check=True)
-
-# 3) Download demo video
-os.makedirs("videos", exist_ok=True)
-video_path = Path("videos/traffic_video.mp4")
-if not video_path.exists():
-    subprocess.run(["wget", "-O", str(video_path), 
-        "https://huggingface.co/datasets/sharqascc/traffic-video-dataset/resolve/main/videos/traffic_video.mp4"], check=True)
-
-# 4) Download SAM3 weights
-sam3_path = Path("sam3.pt")
-if not sam3_path.exists():
-    subprocess.run(["wget", "-O", str(sam3_path),
-        "https://huggingface.co/sharqascc/sam3-traffic-model/resolve/main/sam3.pt"], check=True)
-
-print("✅ Setup complete!")
-```
-
-### Run the Pipeline
-
-```bash
-# Full pipeline
-PYTHONPATH=. python traffic_analyzer.py --video videos/traffic_video.mp4
-
-# With frame limit for debugging
-PYTHONPATH=. python traffic_analyzer.py \
-    --video videos/traffic_video.mp4 \
-    --out-csv outputs/petevents_bev_test.csv \
-    --pet-threshold 2.0 \
-    --max-frames 30
-```
-
-## Installation
-
-### Local Development
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/Sharqascc/nnds.git
 cd nnds
+git checkout refactor/restructure   # or your preferred branch
+```
+
+### 2. Install dependencies
+
+```bash
 pip install -r requirements.txt
 ```
 
-### Using Make
+> Python 3.10+ is recommended.
+
+### 3. Download pretrained models
 
 ```bash
-make install      # Install dependencies
-make grid         # Run video-to-PET pipeline
-make test         # Run tests
+bash scripts/download_models.sh
 ```
 
-## Usage Guide
+This creates `data/models/` and downloads:
 
-### PET Extraction Only
+| Model | File | Purpose |
+|-------|------|---------|
+| UVH‑26 | `data/models/uvh26.pt` | Primary detection model |
+| YOLO11n | `data/models/yolo11n.pt` | COCO person fallback detector |
+
+### 4. Run the pipeline
+
+A sample traffic video is included at `data/sample_data/traffic_video.mp4`. You can use it directly or replace it with your own:
 
 ```bash
-PYTHONPATH=. python traffic_analyzer.py \
-    --video videos/traffic_video.mp4 \
-    --out-csv outputs/petevents_bev.csv \
-    --pet-threshold 2.0
+python scripts/run_pipeline.py --video data/sample_data/traffic_video.mp4
 ```
 
-### PET Summary & Analysis
+The pipeline will process the video, detect objects, map to BEV, and produce:
+
+- `outputs/petevents_bev_detections.csv` – all detections
+- `outputs/petevents_bev.csv` – PET conflict events
+
+> To process only the first N frames for a quick test, add `--max-frames N`.
+
+---
+
+## 🕹 Detector Backends
+
+You can choose a detector with `--detector`:
+
+| Detector | Description | Required models |
+|----------|-------------|-----------------|
+| `uvh-coco-fused` | **Default** – UVH + YOLO person fallback | `uvh26.pt`, `yolo11n.pt` |
+| `yolo-cpu` | YOLO‑only, CPU‑friendly | `yolo11n.pt` |
+| `sam3` | SAM3‑based segmentation (if weights available) | `sam3.pt` |
+| `rtdetr` | Experimental RT‑DETR (not fully implemented) | `rtdetr-l.pt` |
+
+Example:
 
 ```bash
-# Basic statistics
-PYTHONPATH=. python analysis/pet_summary.py \
-    --csv-path outputs/petevents_bev.csv
-
-# With risk thresholds and export
-PYTHONPATH=. python analysis/pet_summary.py \
-    --csv-path outputs/petevents_bev.csv \
-    --critical 1.0 --moderate 3.0 \
-    --export --output-dir analysis_results/
+python scripts/run_pipeline.py --video my_video.mp4 --detector yolo-cpu
 ```
 
-### Research Workflow (Orchestrated)
+---
+
+## 🧪 Running Tests
 
 ```bash
-# Full research pipeline
-PYTHONPATH=. python analysis/research_run.py \
-    --video videos/traffic_video.mp4 \
-    --train-diffusion --eval-diffusion
-
-# Resume from existing CSV
-PYTHONPATH=. python analysis/research_run.py \
-    --video videos/traffic_video.mp4 \
-    --skip-extraction --train-diffusion
-
-# Dry run (test without executing)
-PYTHONPATH=. python analysis/research_run.py \
-    --video videos/traffic_video.mp4 --dry-run
+pytest -q
 ```
 
-## Pipeline Components
+All tests are designed to run without heavyweight models or GPU.
 
-### Phase 1: Video Input & Preprocessing
+---
 
-| Component | File | Description |
-|-----------|------|-------------|
-| Input video | `videos/` | Raw traffic video (e.g., `traffic_video.mp4`) |
-| Demo video | HF dataset | Public demo at `sharqascc/traffic-video-dataset` |
-| Frame limiting | `--max-frames` | Debug/fast-test mode |
+## ⚡ Performance Tips
 
-### Phase 2: SAM3 Video Segmentation
+The pipeline automatically chooses the fastest available backend:
 
-| Component | File | Description |
-|-----------|------|-------------|
-| SAM3 weights | `sam3.pt` | Downloaded from HF model repo |
-| Segmentation | `traffic_analyzer.py` | SAM3 segments actors per frame |
-| Actor tracking | — | Track IDs assigned across frames |
+| Backend | How to enable | Speed |
+|---------|---------------|-------|
+| **CUDA (GPU)** | `--device auto` (if GPU available) | Fastest |
+| **OpenVINO (CPU)** | Export models once, then `--backend auto` or `--backend openvino` | ~2.3x faster than PyTorch CPU |
+| **PyTorch CPU** | `--backend pytorch` | Slowest |
 
-### Phase 3: BEV Transformation & Calibration
-
-| Component | File | Description |
-|-----------|------|-------------|
-| Homography calibration | `giti_bev_calib.py` | Camera-to-world homography |
-| BEV mapper | `bev_mapper.py` | Image-plane to world coordinates |
-| World coordinates | — | Outputs (t, x, y) trajectories in meters |
-
-### Phase 4: Grid Mapping & Trajectory Construction
-
-| Component | File | Description |
-|-----------|------|-------------|
-| Spatial grid | `grid_trajectory/spatial_grid.py` | Intersection grid zones |
-| PET grid logic | `grid_trajectory/pet_grid.py` | Grid cell assignments |
-| SAM3-grid integration | `grid_trajectory/sam3_grid_pet.py` | SAM3 + grid + PET |
-| Trajectory dataset | `traffic_diffusion/data/` | `trajdiff_*.npy`, `*.parquet` |
-
-### Phase 5: PET Conflict Extraction
-
-| Component | File | Description |
-|-----------|------|-------------|
-| End-to-end pipeline | `traffic_analyzer.py` | SAM3 → BEV → Grid → PET |
-| PET computation | `grid_trajectory/` | Post Encroachment Time |
-| Conflict detection | `pet_conflict_checker.py` | Conflict classification |
-| Output CSV | `outputs/petevents_bev.csv` | Events with PET, trajectories |
-| Gate counter | `gate_counter.py` | Actor counting through gates |
-
-### Phase 6: Analysis & Visualization
-
-| Component | File | Description |
-|-----------|------|-------------|
-| PET summary | `analysis/pet_summary.py` | Statistics, percentiles, risk |
-| SSM verification | `analysis/ssm/` | SSM validation framework |
-| Uncertainty quantification | `analysis/ssm/uncertainty_quantifier.py` | Error analysis |
-| Statistical testing | `analysis/verification/statistical_testing.py` | Hypothesis tests |
-| Reproducibility audit | `analysis/logging/reproducibility_audit.py` | Run tracking |
-| Research runner | `analysis/research_run.py` | Orchestrated workflow |
-
-### Phase 7: Diffusion-Based Trajectory Modeling
-
-| Component | File | Description |
-|-----------|------|-------------|
-| Diffusion model | `traffic_diffusion/trajectory_diffusion.py` | Conditional diffusion |
-| Training script | `traffic_diffusion/train_trajectory_diffusion.py` | Train on PET events |
-| Model & sampler | `traffic_diffusion/model_and_sampler.py` | Checkpoint + sampling |
-| Training utils | `traffic_diffusion/training_utils.py` | Data loaders, loops |
-| Sampling utils | `traffic_diffusion/sampling_utils.py` | Counterfactual futures |
-| PET safety metrics | `traffic_diffusion/pet_safety_metrics.py` | PET/TTC from sampled |
-| PET diffusion analysis | `analysis/pet_diffusion_analysis.py` | Real vs generated PET |
-
-## Visualization Suite
-
-The NNDS visualization suite (26+ exports) produces publication-ready figures compliant with IEEE Transactions on ITS, Accident Analysis & Prevention, and FHWA guidelines.
-
-### Visualization Components
-
-| Module | File | Exports | Description |
-|--------|------|---------|-------------|
-| SSM Analysis | `industry_standard_viz.py` | 10 | Distribution, time series, heatmaps |
-| Diffusion Evaluation | `pet_diffusion_plots.py` | 6 | PET-like metrics, residuals |
-| Conflict Events | `pet_event_plots.py` | 7 | Individual conflict visualization |
-| Video Overlays | `video_overlays.py` | 5 | Frame overlays, MP4 generation |
-
-### Quick Visualization Examples
-
-```python
-from analysis.visualization import (
-    plot_pet_distribution,
-    plot_conflict_event,
-    generate_conflict_video,
-    DiffusionPETPlotter
-)
-
-# PET distribution
-fig = plot_pet_distribution(df['pet'].values, style='journal')
-
-# Single conflict event
-plot_conflict_event(df, event_id=5, show_velocities=True)
-
-# Generate conflict video
-generate_conflict_video(
-    video_path='videos/traffic_video.mp4',
-    frame_range=(1200, 1300),
-    trajectories=trajectories,
-    output_path='conflict_video.mp4'
-)
-
-# Complete diffusion evaluation suite
-plotter = DiffusionPETPlotter(dpi=300)
-plotter.plot_all(pet_pairs, records, out_dir='diffusion_eval/')
-```
-
-### Visualization Standards
-
-- Resolution: 300 DPI minimum for publication  
-- Font: 10–12pt serif (Times New Roman / Computer Modern)  
-- Color: Colorblind-safe palettes (Okabe-Ito, Viridis)  
-- Formats: PNG (raster), PDF/SVG (vector for LaTeX)  
-- Dimensions: Single-column (3.375") or double-column (6.875")
-
-## Diffusion-Based Modeling
-
-### Training
+### Export models for OpenVINO
 
 ```bash
-# Train on PET events
-PYTHONPATH=. python traffic_diffusion/train_trajectory_diffusion.py \
-    --csv-path outputs/petevents_bev.csv \
-    --epochs 100
+python scripts/export_openvino.py --uvh data/models/uvh26.pt --yolo data/models/yolo11n.pt
 ```
 
-### Safety Evaluation
+After export, the pipeline will use OpenVINO automatically when no GPU is present.
+
+### Reduce image size for faster inference
+
+Add `--imgsz 640` to trade a little accuracy for much faster processing:
 
 ```bash
-# Batch PET/TTC evaluation
-PYTHONPATH=. python analysis/safety_eval_diffusion.py
-
-# Notebook-friendly pipeline
-PYTHONPATH=. python analysis/safety_eval_diffusion_notebook.py
+python scripts/run_pipeline.py --video data/sample_data/traffic_video.mp4 --imgsz 640
 ```
 
-### Outputs
+### Show progress bar
 
-- `outputs/safety_events_diffusion_model.csv` – Sampled futures with PET/TTC  
-- `outputs/safety_eval_diffusion_summary.csv` – Aggregated statistics  
+The pipeline now displays a `tqdm` progress bar by default. To disable it, add `--no-progress`.
 
-## SSM Verification & Validation Methodology
-
-### Surrogate Safety Measures
-
-| Metric | Description | Safety Threshold | Reference |
-|--------|-------------|-----------------|-----------|
-| PET | Time difference between leaving/entering conflict zone | < 1.5s: critical, < 3.0s: potential | Allen et al. (1977) |
-| TTC | Time to collision if trajectories maintained | < 2.0s: critical, < 5.0s: potential | Hyd’en (1987) |
-| DRAC | Deceleration rate to avoid collision | > 3.37 m/s²: unsafe | NHTSA guidelines |
-
-### Mathematical Formulation
-
-PET and TTC are defined as:
-
-\[
-\text{PET}_{i,j} = \min_t \left| t_j^{\text{enter}} - t_i^{\text{exit}} \right| 
-\]
-
-\[
-\text{TTC}_{i,j}(t) = \frac{\lVert \mathbf{x}_i(t) - \mathbf{x}_j(t) \rVert}{\lVert \mathbf{v}_i(t) - \mathbf{v}_j(t) \rVert}
-\]
-
-### Error Propagation
-
-| Error Source | Typical Magnitude | Impact on PET |
-|--------------|-------------------|---------------|
-| Detection (ε_d) | 0.1–0.3 m | ±0.05 s |
-| Homography (ε_h) | 0.2–0.5 m | ±0.10 s |
-| Tracking (ε_t) | 0.05–0.15 m | ±0.02 s |
-| Total | 0.25–0.60 m | ±0.12 s |
-
-### Validation Protocol
-
-Three-tier validation per FHWA SSAM framework:
-
-1. Theoretical validation – mathematical correctness  
-2. Simulation validation – against VISSIM, SUMO  
-3. Field validation – correlation with crash data  
-
-## Project Structure
+---
+## 📁 Repository Structure
 
 ```
 nnds/
-├── analysis/                      # Research & evaluation
-│   ├── logging/                   # Reproducibility audit
-│   │   ├── __init__.py
-│   │   └── reproducibility_audit.py
-│   ├── ssm/                       # SSM verification
-│   │   ├── __init__.py
-│   │   ├── ssm_verification.py
-│   │   └── uncertainty_quantifier.py
-│   ├── verification/              # Statistical testing
-│   │   ├── __init__.py
-│   │   └── statistical_testing.py
-│   ├── visualization/             # 26+ plotting functions
-│   │   ├── __init__.py            # Main exports (v2.3.0)
-│   │   ├── industry_standard_viz.py
-│   │   ├── pet_diffusion_plots.py
-│   │   ├── pet_event_plots.py
-│   │   └── video_overlays.py
-│   ├── __init__.py
-│   ├── pet_diffusion_analysis.py  # Diffusion evaluation
-│   ├── pet_summary.py             # PET statistics (v2.0.0)
-│   ├── research_run.py            # Workflow orchestrator
-│   ├── safety_eval_diffusion.py   # Batch safety evaluation
-│   └── safety_eval_diffusion_notebook.py
-├── calibration/                   # Calibration utilities
-│   ├── grid_validation_calibration.py
-│   ├── monte_carlo_calibration_benchmark.py
-│   └── monte_carlo_calibration_notes.md
-├── configs/                       # Configuration files
-│   ├── bev_config.json
-│   ├── gate_config.yaml
-│   ├── giti_calibration_points.json
-│   └── GITI_grid_config.json
-├── docs/                          # Documentation & samples
-│   ├── code_dumps/
-│   └── data_samples/
-│       └── petevents_bev_demo.csv
-├── grid_trajectory/               # Core grid/PET logic
-│   ├── __init__.py
-│   ├── pet_grid.py
-│   ├── sam3_grid_pet.py
-│   └── spatial_grid.py
-├── outputs/                       # Generated artifacts (gitignored)
-├── sample_data/                   # Sample video
-│   └── traffic_video.mp4
-├── tests/                         # Smoke tests
-│   ├── test_configs_smoke.py
-│   ├── test_diffusion_smoke.py
-│   ├── test_imports_smoke.py
-│   ├── test_repo_smoke.py
-│   └── test_traffic_analyzer_cli.py
-├── traffic_diffusion/             # Diffusion models
-│   ├── data/                      # Training data
-│   │   ├── trajdiff_inputs.npy
-│   │   ├── trajdiff_meta.parquet
-│   │   └── trajdiff_targets.npy
-│   ├── __init__.py
-│   ├── episode_reward.py
-│   ├── model_and_sampler.py
-│   ├── pet_safety_metrics.py
-│   ├── sampling_utils.py
-│   ├── train_trajectory_diffusion.py
-│   ├── training_utils.py
-│   └── trajectory_diffusion.py
-├── videos/                        # Input videos
-│   └── traffic_video.mp4
-├── bev_mapper.py                  # BEV transformation
-├── bootstrap_nnds_session.sh      # Session bootstrap
-├── colab_ready.py                 # Colab utilities
-├── CONTRIBUTING.md
-├── gate_counter.py                # Traffic counting
-├── giti_bev_calib.py              # Homography calibration
-├── Makefile
-├── nnds_structure.py              # Structure visualizer
-├── pet_conflict_checker.py        # Conflict detection
-├── pyproject.toml
-├── README.md
+├── configs/                  # JSON/YAML configs (BEV, grid, gates)
+├── data/
+│   ├── models/               # Downloaded pretrained models (ignored by git)
+│   └── sample_data/          # Optional sample videos (ignored)
+├── outputs/                  # Generated CSVs and figures (ignored)
+├── scripts/
+│   ├── run_pipeline.py       # Main entry point
+│   ├── download_models.sh    # Download required models
+│   └── traffic_analyzer_demo.py
+├── src/
+│   ├── analysis/             # Tracking, grid, PET logic, analytics
+│   ├── bev/                  # BEV mapping and calibration
+│   ├── core/                 # Shared types and validation
+│   ├── diffusion/            # Trajectory diffusion model and evaluation
+│   ├── pipeline/             # CLI entry (traffic_analyzer.py)
+│   ├── utils/                # Helpers
+│   └── vlm/                  # Optional VLM integration
+├── tests/                    # Smoke tests
+├── Makefile                  # Convenience targets
 ├── requirements.txt
-├── sam3.pt                        # SAM3 weights (3.2GB, gitignored)
-├── traffic_analyzer.py            # Main entry point
-└── traj_diffusion_normalized.py   # Normalized diffusion experiments
+└── README.md
 ```
 
-## Colab Setup (Recommended)
+---
 
-### One-Cell Bootstrap
+## 🔧 Configuration
 
-The bootstrap script above handles everything:
+Key config files:
 
-- Clones/updates repository on `main` branch  
-- Installs Python dependencies  
-- Downloads demo video from Hugging Face datasets  
-- Downloads SAM3 weights from Hugging Face models  
+| File | Purpose |
+|------|---------|
+| `configs/bev_config.json` | Homography/ROI settings for BEV |
+| `configs/GITI_grid_config.json` | Grid definition |
+| `configs/gate_config.yaml` | Gate definitions for counting |
+| `configs/giti_calibration_points.json` | Calibration points |
 
-### Running in Colab
+Adjust these to match your intersection geometry.
 
-```python
-# After bootstrap, run pipeline
-!cd /content/nnds && PYTHONPATH=. python traffic_analyzer.py \
-    --video videos/traffic_video.mp4
+---
 
-# With frame limit for quick testing
-!cd /content/nnds && PYTHONPATH=. python traffic_analyzer.py \
-    --video videos/traffic_video.mp4 \
-    --max-frames 30 \
-    --out-csv outputs/petevents_bev_test.csv
+## 🧠 Advanced Usage
 
-# Summarize results
-!cd /content/nnds && PYTHONPATH=. python analysis/pet_summary.py \
-    --csv-path outputs/petevents_bev_test.csv \
-    --export --output-dir results/
-```
-
-## PET CSV Format
-
-The default PET CSV contains:
-
-| Column | Description |
-|--------|-------------|
-| `event_id` | Integer conflict index |
-| `pet` | Post-Encroachment Time (seconds) |
-| `frame` | Frame index (may be NaN) |
-| `track_a` | Track ID of first actor |
-| `track_b` | Track ID of second actor |
-| `conflict_type` | Grid cell ID (e.g., `CELL_C_1`) |
-| `world_traj_i` | BEV trajectory for actor a |
-| `world_traj_j` | BEV trajectory for actor b |
-
-## Development
-
-### Running Tests
+### Diffusion training & evaluation
 
 ```bash
-# Smoke tests
-pytest tests/ -v
-
-# Import tests
-PYTHONPATH=. python tests/test_imports_smoke.py
+python src/diffusion/traffic_diffusion/train_trajectory_diffusion.py
+python src/analysis/analysis/safety_eval_diffusion.py
 ```
 
-### Code Quality
+### VLM integration (optional)
 
-```bash
-# Format code
-black .
+See `src/vlm/` for Groq/Ollama/HuggingFace integrations. Requires additional API keys.
 
-# Type checking (if using mypy)
-mypy --ignore-missing-imports .
-```
+---
 
-## Citation
+## 🤝 Contributing
 
-If you use NNDS in your research, please cite:
+Contributions are welcome! Please open an issue or pull request.
 
-```bibtex
-@software{nnds2024,
-  author = {Sharqascc},
-  title = {NNDS: Non-motorized and Heterogeneous Traffic Safety Analysis},
-  year = {2024},
-  url = {https://github.com/Sharqascc/nnds}
-}
-```
+---
 
-## References
+## 📄 License
 
-- Allen, B. L., Shin, B. T., & Cooper, P. J. (1977). Analysis of traffic conflicts and collisions. *Transportation Research Record*, 667, 67–74.  
-- Gettman, D., & Head, L. (2003). Surrogate safety measures from traffic simulation models. FHWA-RD-03-050.  
-- Hyd’en, C. (1987). The Swedish Traffic Conflicts Technique. *Bulletin Lund Institute of Technology*, 70.  
-- Zheng, L., Ismail, K., & Meng, X. (2014). Traffic conflict techniques for road safety analysis. *Accident Analysis & Prevention*.  
-- FHWA. (2008). *Surrogate Safety Assessment Model and Validation*. FHWA-HRT-08-051.  
-
-## License
-
-MIT License – see [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- SAM3 model from Meta AI  
-- Hugging Face for model/dataset hosting  
-- FHWA for SSAM methodology guidance  
-```
-
-## UVH-26 weights
-
-The UVH-26 checkpoint is expected at `weights/uvh26.pt`.
-
-Restore it with:
-
-```bash
-git lfs install
-git lfs pull
-# or
-bash scripts/download_uvh26.sh
-```
-
-## 🚀 Quick Start
-
-The primary entry point is **`traffic_analyzer.py`**. It provides a unified CLI for video processing, object detection, PET extraction, and gate counting.
-
-### Basic Usage
-
-```bash
-# Show help
-python traffic_analyzer.py --help
-
-# Process video with UVH detector (best for Indian traffic)
-python traffic_analyzer.py --video sample_data/traffic_video.mp4 --detector uvh-coco-fused --output outputs/result.mp4 --max-frames 100
-
-# Use custom UVH and COCO person models
-python traffic_analyzer.py --video sample_data/traffic_video.mp4 --detector uvh-coco-fused --uvh-model uvh26.pt --coco-person-model yolo11n.pt --out-csv outputs/pet_events.csv
-
-# Run with gate counting
-python traffic_analyzer.py --video sample_data/traffic_video.mp4 --detector uvh-coco-fused --bev-config configs/bev_config.json --grid-config configs/GITI_grid_config.json --out-csv outputs/pet_events.csv
-
-# Run demo (calibration/speed test)
-python traffic_analyzer.py --demo
-```
-
-### Supported Detectors
-
-| Detector | Description |
-|----------|-------------|
-| `uvh-coco-fused` | UVH-26 for vehicles + COCO person fallback (recommended for Indian traffic) |
-| `sam3` | SAM3 segmentation (default) |
-| `rtdetr` | RT-DETR object detection |
-| `yolo-cpu` | YOLO CPU model |
-
-### Output Files
-
-- **Video**: Annotated output with gates and detections (if `--output` specified).
-- **PET CSV**: `--out-csv` (default: `pet_events.csv`) with conflict events.
-- **Detections CSV**: Saved alongside PET CSV with `_detections.csv` suffix.
-
-### Example: Full Pipeline
-
-```bash
-python traffic_analyzer.py \
-    --video sample_data/traffic_video.mp4 \
-    --detector uvh-coco-fused \
-    --uvh-model uvh26.pt \
-    --coco-person-model yolo11n.pt \
-    --bev-config configs/bev_config.json \
-    --grid-config configs/GITI_grid_config.json \
-    --out-csv outputs/pet_events.csv \
-    --output outputs/result.mp4 \
-    --max-frames 200 \
-    --pet-threshold 2.0
-```
-
-This will process 200 frames, detect vehicles and pedestrians, compute PET events, and save both the annotated video and CSV outputs.
-## 🎥 Video Output
-
-The `traffic_analyzer.py` script does not produce video output; it focuses on PET extraction and CSV generation.
-
-For annotated video with volume counting, use the **Gate Counter**:
-
-```python
-from gate_counter import TrafficVolumeCounter
-from ultralytics import YOLO
-
-model = YOLO("uvh26.pt")
-
-def uvh_detector(frame):
-    results = model(frame, imgsz=640, conf=0.25)
-    detections = []
-    for r in results:
-        boxes = r.boxes
-        if boxes is not None:
-            for box in boxes:
-                x1, y1, x2, y2 = box.xyxy[0].tolist()
-                cx, cy = (x1+x2)/2, (y1+y2)/2
-                detections.append({
-                    "centroid": (cx, cy),
-                    "cls": model.names[int(box.cls)],
-                    "conf": float(box.conf),
-                })
-    return detections
-
-counter = TrafficVolumeCounter(
-    videopath="sample_data/traffic_video.mp4",
-    gate_config="configs/gate_config.yaml",
-    classes_of_interest=["car", "motorcycle", "bus", "truck", "auto", "bicycle"],
-    draw_stats=True,
-    draw_tracks=True,
-)
-
-result = counter.process_video(
-    detector=uvh_detector,
-    output_video="outputs/result.mp4",
-    max_frames=100,
-    show_progress=True,
-)
-print(result)
-```
-
-This will generate an annotated video with gate crossings and counts.
+MIT

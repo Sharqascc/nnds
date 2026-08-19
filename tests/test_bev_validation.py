@@ -1,6 +1,6 @@
 import numpy as np
 
-from core.validation import compute_error_metrics
+from src.core.validation import compute_error_metrics
 
 
 def test_bev_error_metrics():

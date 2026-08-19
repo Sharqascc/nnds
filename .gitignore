@@ -1,7 +1,31 @@
+# Model weights
+*.pt
+*.pth
+*.onnx
+*.engine
+
+# Video files
+*.mp4
+*.avi
+*.mov
+
+# Data outputs
+outputs/
+data/models/
+sample_data/
+!data/sample_data/
+!data/sample_data/traffic_video.mp4
+
+# Backup files
+*.bak
+
+# Python caches
 __pycache__/
 *.pyc
 
-# Generated outputs
-outputs/
-*.log
-.coverage
+# Colab / Jupyter
+.ipynb_checkpoints/
+
+# Large local data / checkpoints
+data/checkpoints/
+data/uvh26_data/
