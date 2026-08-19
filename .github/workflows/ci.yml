@@ -12,6 +12,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Fetch small LFS test fixtures
+        run: |
+          git lfs install --local
+          git lfs pull --include "configs/**" --include "docs/data_samples/petevents_bev_demo.csv"
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
