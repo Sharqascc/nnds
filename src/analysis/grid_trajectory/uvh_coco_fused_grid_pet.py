@@ -403,10 +403,43 @@ def run_uvh_coco_fused_grid_pet(
     valid_tracks = {tid: pts for tid, pts in tracks.items() if len(pts) >= 3}
     track_items = list(valid_tracks.items())
 
+    # Precompute track metadata for fast temporal/spatial pruning
+    track_meta = {}
+    for tid, pts in valid_tracks.items():
+        frames = [p.frame for p in pts]
+        xs = [p.x for p in pts]
+        ys = [p.y for p in pts]
+        track_meta[tid] = {
+            "frames": frames,
+            "min_frame": min(frames),
+            "max_frame": max(frames),
+            "min_x": min(xs),
+            "max_x": max(xs),
+            "min_y": min(ys),
+            "max_y": max(ys),
+        }
+
+    max_frames_diff = int(pet_threshold * fps) + 5  # temporal padding
+    spatial_pad = 50.0  # pixel padding for bounding box check
+
     for i in range(len(track_items)):
         track_a_id, pts_a = track_items[i]
+        meta_a = track_meta[track_a_id]
         for j in range(i + 1, len(track_items)):
             track_b_id, pts_b = track_items[j]
+            meta_b = track_meta[track_b_id]
+
+            # Temporal pruning: skip if track lifetimes are too far apart
+            if (meta_a["min_frame"] > meta_b["max_frame"] + max_frames_diff or
+                meta_b["min_frame"] > meta_a["max_frame"] + max_frames_diff):
+                continue
+
+            # Spatial pruning: skip if bounding boxes do not overlap (with padding)
+            if (meta_a["max_x"] < meta_b["min_x"] - spatial_pad or
+                meta_a["min_x"] > meta_b["max_x"] + spatial_pad or
+                meta_a["max_y"] < meta_b["min_y"] - spatial_pad or
+                meta_a["min_y"] > meta_b["max_y"] + spatial_pad):
+                continue
 
             inter = _pair_conflict_point(pts_a, pts_b)
             if inter is None:
