@@ -125,6 +125,34 @@ python scripts/run_pipeline.py --video data/sample_data/traffic_video.mp4 --imgs
 The pipeline now displays a `tqdm` progress bar by default. To disable it, add `--no-progress`.
 
 ---
+## 📊 PET Output Format
+
+The pipeline writes `outputs/petevents_bev.csv` with the following columns:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `event_id` | int | Sequential event ID |
+| `pet` | float | Post‑Encroachment Time (seconds) |
+| `frame` | int | Reference frame of the conflict |
+| `track_a` | int | First track ID |
+| `track_b` | int | Second track ID |
+| `conflict_type` | string | Conflict category (`image_intersection`) |
+| `grid_cell` | string | Grid cell where trajectories intersected |
+| `entry_frame_a` | int | Frame when track A entered the conflict zone |
+| `exit_frame_a` | int | Frame when track A exited the conflict zone |
+| `entry_frame_b` | int | Frame when track B entered the conflict zone |
+| `exit_frame_b` | int | Frame when track B exited the conflict zone |
+| `world_traj_i` | string | Reference ID for first actor trajectory (`track_<id>`) |
+| `world_traj_j` | string | Reference ID for second actor trajectory (`track_<id>`) |
+| `traj_a_json` | JSON string | Full trajectory A with `frame`, `x_pixel`, `y_pixel`, `world_x`, `world_y` |
+| `traj_b_json` | JSON string | Full trajectory B with `frame`, `x_pixel`, `y_pixel`, `world_x`, `world_y` |
+
+To quickly review events, run:
+
+```bash
+python scripts/inspect_pet.py --csv outputs/petevents_bev.csv --top 10
+```
+
 ## 📁 Repository Structure
 
 ```
