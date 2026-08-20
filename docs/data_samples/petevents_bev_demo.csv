@@ -1,6 +1,3 @@
-event_id,pet,frame,track_a,track_b,conflict_type,world_traj_i,world_traj_j
-0,0.9676232911760382,818,4,11,image_intersection,track_4,track_11
-1,2.3792500507042944,646,2,19,image_intersection,track_2,track_19
-2,1.8433851574379427,20,6,17,image_intersection,track_6,track_17
-3,1.5167132862827395,840,10,8,image_intersection,track_10,track_8
-4,0.4322456690839695,166,4,3,image_intersection,track_4,track_3
+event_id,pet,frame,track_a,track_b,conflict_type,grid_cell,entry_frame_a,exit_frame_a,entry_frame_b,exit_frame_b,world_traj_i,world_traj_j,traj_a_json,traj_b_json
+1,1.2,100,10,20,image_intersection,CELL_A_1,95,110,90,105,track_10,track_20,"[{""frame"":95,""x_pixel"":500.0,""y_pixel"":300.0,""world_x"":730910.0,""world_y"":222005.0}]","[{""frame"":90,""x_pixel"":600.0,""y_pixel"":350.0,""world_x"":730915.0,""world_y"":222008.0}]"
+2,0.8,150,11,21,image_intersection,CELL_B_2,145,160,140,155,track_11,track_21,"[{""frame"":145,""x_pixel"":700.0,""y_pixel"":400.0,""world_x"":730912.0,""world_y"":222010.0}]","[{""frame"":140,""x_pixel"":800.0,""y_pixel"":450.0,""world_x"":730918.0,""world_y"":222012.0}]"

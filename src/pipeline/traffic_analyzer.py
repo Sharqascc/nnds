@@ -539,8 +539,15 @@ def run_video_to_pet(
                 "track_a",
                 "track_b",
                 "conflict_type",
+                "grid_cell",
+                "entry_frame_a",
+                "exit_frame_a",
+                "entry_frame_b",
+                "exit_frame_b",
                 "world_traj_i",
                 "world_traj_j",
+                "traj_a_json",
+                "traj_b_json",
             ]
         )
         empty_df.to_csv(out_csv_path, index=False)

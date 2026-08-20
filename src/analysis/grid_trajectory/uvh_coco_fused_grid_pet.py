@@ -1,8 +1,11 @@
 from __future__ import annotations
 import matplotlib.pyplot as plt
 from src.utils.interactive import show_image, ask_user
+from src.analysis.grid_trajectory.spatial_grid import SpatialGrid
+from src.bev.bev_mapper import BEVMapper
 from tqdm import tqdm
 import sys
+import json
 
 
 from dataclasses import dataclass
@@ -149,6 +152,24 @@ def run_uvh_coco_fused_grid_pet(
 
     if device == "auto":
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+    # Grid + BEV mappers for detailed PET output
+    spatial_grid = None
+    bev_mapper = None
+    try:
+        spatial_grid = SpatialGrid(grid_config_path)
+    except Exception:
+        spatial_grid = None
+    try:
+        import json as _json
+        with open(bev_config_path) as f:
+            bev_cfg = _json.load(f)
+        H = np.array(bev_cfg["H_pixel_to_world"], dtype=np.float32)
+        bounds = bev_cfg
+        bev_res = bev_cfg.get("bev_resolution", bev_cfg.get("resolution", [1000, 800]))
+        bev_mapper = BEVMapper(H, bounds, bev_res)
+    except Exception:
+        bev_mapper = None
 
     # Determine OpenVINO model directories
     def _openvino_dir(model_pt_path: str) -> Path:
@@ -412,6 +433,9 @@ def run_uvh_coco_fused_grid_pet(
                 continue
 
             if pet <= pet_threshold:
+                # Determine grid cell for conflict point
+                grid_cell = spatial_grid.get_cell_from_pixels(cx, cy) if spatial_grid else "UNKNOWN"
+
                 pet_events.append({
                     "event_id": event_id,
                     "pet": float(pet),
@@ -419,8 +443,15 @@ def run_uvh_coco_fused_grid_pet(
                     "track_a": int(first_id),
                     "track_b": int(second_id),
                     "conflict_type": "image_intersection",
+                    "grid_cell": grid_cell,
+                    "entry_frame_a": int(a_entry),
+                    "exit_frame_a": int(a_exit),
+                    "entry_frame_b": int(b_entry),
+                    "exit_frame_b": int(b_exit),
                     "world_traj_i": f"track_{first_id}",
                     "world_traj_j": f"track_{second_id}",
+                    "traj_a_json": _track_to_json(pts_a if first_id == track_a_id else pts_b, bev_mapper),
+                    "traj_b_json": _track_to_json(pts_b if first_id == track_a_id else pts_a, bev_mapper),
                 })
                 event_id += 1
 
@@ -433,8 +464,15 @@ def run_uvh_coco_fused_grid_pet(
             "track_a",
             "track_b",
             "conflict_type",
+            "grid_cell",
+            "entry_frame_a",
+            "exit_frame_a",
+            "entry_frame_b",
+            "exit_frame_b",
             "world_traj_i",
             "world_traj_j",
+            "traj_a_json",
+            "traj_b_json",
         ],
     )
     pet_df.to_csv(output_csv_path, index=False)
@@ -451,6 +489,26 @@ def run_uvh_coco_fused_grid_pet(
         "num_tracks": len(valid_tracks),
     }
 
+
+
+def _track_to_json(points: List[TrackPoint], bev_mapper=None) -> str:
+    """Convert a list of TrackPoint to a JSON string with pixel and world coords."""
+    rows = []
+    for pt in points:
+        row = {
+            "frame": int(pt.frame),
+            "x_pixel": float(pt.x),
+            "y_pixel": float(pt.y),
+            "world_x": None,
+            "world_y": None,
+        }
+        if bev_mapper is not None:
+            world = bev_mapper.pixel_to_world((pt.x, pt.y))
+            if world is not None:
+                row["world_x"] = float(world[0])
+                row["world_y"] = float(world[1])
+        rows.append(row)
+    return json.dumps(rows)
 
 def _can_intersect_temporal(track_a, track_b, fps=25.0, max_pet=2.0):
     """O(1) temporal check: Skip tracks whose lifetime windows do not overlap within max_pet seconds."""

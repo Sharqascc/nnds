@@ -7,7 +7,9 @@ DEMO_CSV = ROOT / "docs/data_samples/petevents_bev_demo.csv"
 
 REQUIRED_COLUMNS = [
     "event_id", "pet", "frame", "track_a", "track_b",
-    "conflict_type", "world_traj_i", "world_traj_j",
+    "conflict_type", "grid_cell", "entry_frame_a", "exit_frame_a",
+    "entry_frame_b", "exit_frame_b", "world_traj_i", "world_traj_j",
+    "traj_a_json", "traj_b_json",
 ]
 
 def test_demo_csv_has_required_columns():
