@@ -1,20 +1,20 @@
 {
   "corners": {
     "top_left": [
-      100,
-      100
+      0,
+      0
     ],
     "top_right": [
-      1500,
-      100
+      1600,
+      0
     ],
     "bottom_left": [
-      100,
-      700
+      0,
+      720
     ],
     "bottom_right": [
-      1500,
-      700
+      1600,
+      720
     ]
   },
   "configuration": {
