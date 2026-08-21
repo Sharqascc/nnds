@@ -92,13 +92,24 @@ def _entry_exit_frames(points: List[TrackPoint], cx: float, cy: float, half_size
     return min(inside_frames), max(inside_frames)
 
 
+def _segment_bbox(p1, p2):
+    return (min(p1[0], p2[0]), min(p1[1], p2[1]), max(p1[0], p2[0]), max(p1[1], p2[1]))
+
+def _bbox_overlap(box1, box2, pad=0.0):
+    return not (box1[2] < box2[0] - pad or box2[2] < box1[0] - pad or
+                box1[3] < box2[1] - pad or box2[3] < box1[1] - pad)
+
 def _pair_conflict_point(track_a: List[TrackPoint], track_b: List[TrackPoint]):
     for i in range(len(track_a) - 1):
         p1 = (track_a[i].x, track_a[i].y)
         p2 = (track_a[i + 1].x, track_a[i + 1].y)
+        bbox_a = _segment_bbox(p1, p2)
         for j in range(len(track_b) - 1):
             q1 = (track_b[j].x, track_b[j].y)
             q2 = (track_b[j + 1].x, track_b[j + 1].y)
+            bbox_b = _segment_bbox(q1, q2)
+            if not _bbox_overlap(bbox_a, bbox_b):
+                continue
             inter = _segment_intersection(p1, p2, q1, q2)
             if inter is not None:
                 return inter
@@ -419,15 +430,39 @@ def run_uvh_coco_fused_grid_pet(
             "max_y": max(ys),
         }
 
+    # Build cell sets for overlap pruning
+    track_cells: Dict[int, set] = {}
+    if spatial_grid is not None:
+        for tid, pts in valid_tracks.items():
+            cells = set()
+            for pt in pts:
+                cell = spatial_grid.get_cell_from_pixels(pt.x, pt.y)
+                if cell != "OUT_OF_BOUNDS":
+                    cells.add(cell)
+            track_cells[tid] = cells
+
     max_frames_diff = int(pet_threshold * fps) + 5  # temporal padding
     spatial_pad = 50.0  # pixel padding for bounding box check
 
-    for i in range(len(track_items)):
+    track_pbar = tqdm(
+        range(len(track_items)),
+        desc="Checking track pairs",
+        unit="track",
+        disable=not show_progress,
+    )
+    for i in track_pbar:
         track_a_id, pts_a = track_items[i]
         meta_a = track_meta[track_a_id]
         for j in range(i + 1, len(track_items)):
             track_b_id, pts_b = track_items[j]
             meta_b = track_meta[track_b_id]
+
+            # Cell overlap pruning: if both track_cells exist and do not intersect, skip
+            if spatial_grid is not None and track_cells:
+                cells_a = track_cells.get(track_a_id, set())
+                cells_b = track_cells.get(track_b_id, set())
+                if cells_a and cells_b and cells_a.isdisjoint(cells_b):
+                    continue
 
             # Temporal pruning: skip if track lifetimes are too far apart
             if (meta_a["min_frame"] > meta_b["max_frame"] + max_frames_diff or
@@ -488,6 +523,7 @@ def run_uvh_coco_fused_grid_pet(
                 })
                 event_id += 1
 
+    track_pbar.close()
     pet_df = pd.DataFrame(
         pet_events,
         columns=[
