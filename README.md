@@ -182,6 +182,28 @@ nnds/
 
 ---
 
+## 🛠 Debugging & Visualization
+
+The repository includes several helper scripts to inspect tracking and PET events:
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/inspect_pet.py` | Print PET events with grid cell, entry/exit frames, and trajectory summaries |
+| `scripts/visualize_pet.py` | Create an annotated video showing full trajectory history for one event |
+| `scripts/visualize_pet_live.py` | Create a live tracking video with current markers and short trails |
+| `scripts/debug_tracking_video.py` | Draw detection boxes with track IDs on the original video |
+| `scripts/diagnose_tracking.py` | Analyze detections CSV for track gaps/jumps and flag suspicious tracks |
+
+### Examples
+
+```bash
+python scripts/inspect_pet.py --csv outputs/petevents_bev.csv --top 10
+python scripts/visualize_pet.py --csv outputs/petevents_bev.csv --event-id 0 --output outputs/event_0.mp4
+python scripts/visualize_pet_live.py --csv outputs/petevents_bev.csv --event-id 0 --output outputs/event_0_live.mp4
+python scripts/debug_tracking_video.py --csv outputs/petevents_bev_detections.csv --start 0 --end 150 --output outputs/debug.mp4
+python scripts/diagnose_tracking.py --csv outputs/petevents_bev_detections.csv
+```
+
 ## 🔧 Configuration
 
 Key config files:
