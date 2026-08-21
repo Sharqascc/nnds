@@ -540,10 +540,10 @@ def run_video_to_pet(
                 "track_b",
                 "conflict_type",
                 "grid_cell",
-                "entry_frame_a",
-                "exit_frame_a",
-                "entry_frame_b",
-                "exit_frame_b",
+                "track_a_entry_frame",
+                "track_a_exit_frame",
+                "track_b_entry_frame",
+                "track_b_exit_frame",
                 "world_traj_i",
                 "world_traj_j",
                 "traj_a_json",
@@ -583,10 +583,10 @@ def run_video_to_pet(
         pet_val = _get(["PET", "pet"], float("inf"))
         conflict_type_val = _get(["conflict_type", "cell_id"], "UNKNOWN")
         grid_cell_val = _get(["grid_cell", "cell_id"], "UNKNOWN")
-        entry_a_val = _get(["entry_frame_a"], -1)
-        exit_a_val = _get(["exit_frame_a"], -1)
-        entry_b_val = _get(["entry_frame_b"], -1)
-        exit_b_val = _get(["exit_frame_b"], -1)
+        entry_a_val = _get(["track_a_entry_frame"], -1)
+        exit_a_val = _get(["track_a_exit_frame"], -1)
+        entry_b_val = _get(["track_b_entry_frame"], -1)
+        exit_b_val = _get(["track_b_exit_frame"], -1)
         world_traj_i_val = _get(["world_traj_i", "traj_i"])
         world_traj_j_val = _get(["world_traj_j", "traj_j"])
         traj_a_json_val = _get(["traj_a_json"], "[]")
@@ -601,10 +601,10 @@ def run_video_to_pet(
                 "track_b": track_b_val,
                 "conflict_type": conflict_type_val,
                 "grid_cell": grid_cell_val,
-                "entry_frame_a": entry_a_val,
-                "exit_frame_a": exit_a_val,
-                "entry_frame_b": entry_b_val,
-                "exit_frame_b": exit_b_val,
+                "track_a_entry_frame": entry_a_val,
+                "track_a_exit_frame": exit_a_val,
+                "track_b_entry_frame": entry_b_val,
+                "track_b_exit_frame": exit_b_val,
                 "world_traj_i": world_traj_i_val,
                 "world_traj_j": world_traj_j_val,
                 "traj_a_json": traj_a_json_val,
@@ -622,10 +622,10 @@ def run_video_to_pet(
             "track_b",
             "conflict_type",
             "grid_cell",
-            "entry_frame_a",
-            "exit_frame_a",
-            "entry_frame_b",
-            "exit_frame_b",
+            "track_a_entry_frame",
+            "track_a_exit_frame",
+            "track_b_entry_frame",
+            "track_b_exit_frame",
             "world_traj_i",
             "world_traj_j",
             "traj_a_json",

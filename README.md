@@ -138,10 +138,10 @@ The pipeline writes `outputs/petevents_bev.csv` with the following columns:
 | `track_b` | int | Second track ID |
 | `conflict_type` | string | Conflict category (`image_intersection`) |
 | `grid_cell` | string | Grid cell where trajectories intersected |
-| `entry_frame_a` | int | Frame when track A entered the conflict zone |
-| `exit_frame_a` | int | Frame when track A exited the conflict zone |
-| `entry_frame_b` | int | Frame when track B entered the conflict zone |
-| `exit_frame_b` | int | Frame when track B exited the conflict zone |
+| `track_a_entry_frame` | int | First frame that track A was inside the conflict zone |
+| `track_a_exit_frame` | int | Last frame that track A was inside the conflict zone |
+| `track_b_entry_frame` | int | First frame that track B was inside the conflict zone |
+| `track_b_exit_frame` | int | Last frame that track B was inside the conflict zone |
 | `world_traj_i` | string | Reference ID for first actor trajectory (`track_<id>`) |
 | `world_traj_j` | string | Reference ID for second actor trajectory (`track_<id>`) |
 | `traj_a_json` | JSON string | Full trajectory A with `frame`, `x_pixel`, `y_pixel`, `world_x`, `world_y` |
