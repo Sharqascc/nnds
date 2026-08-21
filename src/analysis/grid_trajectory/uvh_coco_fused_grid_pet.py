@@ -229,7 +229,7 @@ def run_uvh_coco_fused_grid_pet(
         source=video_path,
         stream=True,
         persist=True,
-        tracker="bytetrack.yaml",
+        tracker="tracktrack.yaml",
         conf=uvh_conf,
         imgsz=imgsz,
         verbose=False,
@@ -240,7 +240,7 @@ def run_uvh_coco_fused_grid_pet(
         source=video_path,
         stream=True,
         persist=True,
-        tracker="bytetrack.yaml",
+        tracker="tracktrack.yaml",
         conf=coco_person_conf,
         imgsz=imgsz,
         verbose=False,
@@ -411,7 +411,12 @@ def run_uvh_coco_fused_grid_pet(
     event_id = 1
     conflict_half_size = 20.0
 
+    # Split tracks with gaps or jumps to avoid mixing different objects
+    tracks = _split_tracks_by_gaps(tracks, max_frame_gap=5, max_spatial_jump=30.0)
+
     valid_tracks = {tid: pts for tid, pts in tracks.items() if len(pts) >= 3}
+
+    print(f"[UVH-COCO] Tracking splitter: original={len(set(tid // 1000 for tid in tracks if tid >= 1000) | {tid for tid in tracks if tid < 1000})}, split={len(tracks)} tracks")
     track_items = list(valid_tracks.items())
 
     # Precompute track metadata for fast temporal/spatial pruning
@@ -578,6 +583,36 @@ def _track_to_json(points: List[TrackPoint], bev_mapper=None) -> str:
                 row["world_y"] = float(world[1])
         rows.append(row)
     return json.dumps(rows)
+
+
+def _split_tracks_by_gaps(tracks: Dict[int, List[TrackPoint]],
+                          max_frame_gap: int = 10,
+                          max_spatial_jump: float = 50.0) -> Dict[int, List[TrackPoint]]:
+    """
+    Split track IDs when there is a long frame gap or huge spatial jump.
+    This helps avoid merging different objects into the same trajectory.
+    """
+    split_tracks: Dict[int, List[TrackPoint]] = {}
+    for tid, pts in tracks.items():
+        pts = sorted(pts, key=lambda p: p.frame)
+        if not pts:
+            continue
+        current_sub = 0
+        start_idx = 0
+        for i in range(1, len(pts)):
+            gap = pts[i].frame - pts[i - 1].frame
+            dx = pts[i].x - pts[i - 1].x
+            dy = pts[i].y - pts[i - 1].y
+            dist = (dx * dx + dy * dy) ** 0.5
+            if gap > max_frame_gap or dist > max_spatial_jump:
+                new_id = tid * 1000 + current_sub
+                split_tracks[new_id] = pts[start_idx:i]
+                current_sub += 1
+                start_idx = i
+        # final segment
+        new_id = tid * 1000 + current_sub
+        split_tracks[new_id] = pts[start_idx:]
+    return split_tracks
 
 def _can_intersect_temporal(track_a, track_b, fps=25.0, max_pet=2.0):
     """O(1) temporal check: Skip tracks whose lifetime windows do not overlap within max_pet seconds."""
