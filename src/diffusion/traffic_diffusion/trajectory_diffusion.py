@@ -101,8 +101,8 @@ class TrajectoryDiffusionModel(nn.Module):
         out = out.permute(0, 2, 1).reshape(B, self.Th, self.N_agents, self.dim)
         return out
 
-    def compute_loss(self, x0, cond):
-        """Rectified Flow Matching velocity field loss: v = noise - x0"""
+    def compute_loss(self, x0, cond, smoothness_weight: float = 0.1):
+        """Rectified Flow Matching velocity field loss with smoothness penalty."""
         B = x0.shape[0]
         device = x0.device
         
@@ -115,7 +115,17 @@ class TrajectoryDiffusionModel(nn.Module):
         v_target = noise - x0
         pred_v = self(xt, cond, t)
         
-        return F.mse_loss(pred_v, v_target)
+        base_loss = F.mse_loss(pred_v, v_target)
+        
+        # Penalize high acceleration in predicted velocity along time dimension.
+        # pred_v shape: (B, Th, N_agents, dim)
+        if pred_v.ndim == 4 and pred_v.shape[1] > 2:
+            acc = torch.diff(pred_v, n=2, dim=1)  # second derivative along time
+            smooth_loss = torch.mean(acc ** 2)
+        else:
+            smooth_loss = 0.0
+        
+        return base_loss + smoothness_weight * smooth_loss
 
     @torch.no_grad()
     def sample(self, cond, num_steps=50):
