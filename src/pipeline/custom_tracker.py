@@ -1,14 +1,13 @@
-import cv2
 """
 Custom motion-based multi-object tracker.
-
-Uses Kalman filters for motion prediction and Hungarian matching to keep
-IDs stable through occlusions and overlaps.
+Uses Kalman filters for motion prediction and Hungarian matching.
+Two-stage association: IoU + predicted-center recovery.
 """
 
-from dataclasses import dataclass
+import cv2
 import numpy as np
 from scipy.optimize import linear_sum_assignment
+from dataclasses import dataclass
 
 
 @dataclass
@@ -37,7 +36,6 @@ class KalmanTrack:
         self.age = 0
         self.time_since_update = 0
 
-        # State: [x, y, w, h, vx, vy] in pixel center form
         w = max(det.x2 - det.x1, 1.0)
         h = max(det.y2 - det.y1, 1.0)
         self.kf = cv2.KalmanFilter(6, 4)
@@ -71,10 +69,6 @@ class KalmanTrack:
         self.time_since_update = 0
 
     @property
-    def state(self):
-        return self.kf.statePost
-
-    @property
     def center(self):
         s = np.asarray(self.kf.statePost).reshape(-1)
         return s[0], s[1]
@@ -90,12 +84,12 @@ class KalmanTrack:
 class CustomTracker:
     """Kalman + Hungarian tracker for stable IDs."""
 
-    def __init__(self, max_age=30, min_hits=1, iou_threshold=0.3):
+    def __init__(self, max_age=60, min_hits=1, iou_threshold=0.2):
         self.max_age = max_age
         self.min_hits = min_hits
         self.iou_threshold = iou_threshold
         self.next_id = 1
-        self.tracks = {}  # id -> KalmanTrack
+        self.tracks = {}
 
     def _iou(self, box1, box2):
         x1 = max(box1[0], box2[0])
@@ -110,15 +104,15 @@ class CustomTracker:
 
     def update(self, detections):
         """Update tracks with new detections; returns dict det_index -> track_id."""
-        # Predict all existing tracks
         for t in self.tracks.values():
             t.predict()
 
         if not detections:
             return {}
 
-        # Build cost matrix (1 - IoU)
         active_ids = list(self.tracks.keys())
+
+        # Stage 1: IoU matching with predicted boxes
         cost = np.zeros((len(active_ids), len(detections)), dtype=np.float32)
         for i, tid in enumerate(active_ids):
             pred_box = self.tracks[tid].box
@@ -127,18 +121,42 @@ class CustomTracker:
                 iou = self._iou(pred_box, det_box)
                 cost[i, j] = 1.0 - iou
 
-        # Hungarian assignment
         row_ind, col_ind = linear_sum_assignment(cost)
         matched = {}
+        matched_track_ids = set()
         unmatched_dets = set(range(len(detections)))
+
         for i, j in zip(row_ind, col_ind):
             if cost[i, j] < 1.0 - self.iou_threshold:  # IoU > threshold
                 tid = active_ids[i]
                 self.tracks[tid].update(detections[j])
                 matched[j] = tid
+                matched_track_ids.add(tid)
                 unmatched_dets.discard(j)
 
-        # Create new tracks for unmatched detections
+        # Stage 2: predicted-center distance matching for remaining detections/tracks
+        remaining_dets = [j for j in unmatched_dets]
+        remaining_tracks = [tid for tid in self.tracks if tid not in matched_track_ids]
+
+        if remaining_dets and remaining_tracks:
+            cost2 = np.zeros((len(remaining_tracks), len(remaining_dets)), dtype=np.float32)
+            for i, tid in enumerate(remaining_tracks):
+                pred_center = self.tracks[tid].center
+                for j, det_idx in enumerate(remaining_dets):
+                    det = detections[det_idx]
+                    dist = np.sqrt((pred_center[0]-det.cx)**2 + (pred_center[1]-det.cy)**2)
+                    cost2[i, j] = dist
+
+            row_ind2, col_ind2 = linear_sum_assignment(cost2)
+            for i, j in zip(row_ind2, col_ind2):
+                if cost2[i, j] < 80.0:
+                    tid = remaining_tracks[i]
+                    det_idx = remaining_dets[j]
+                    self.tracks[tid].update(detections[det_idx])
+                    matched[det_idx] = tid
+                    unmatched_dets.discard(det_idx)
+
+        # Create new tracks for still unmatched detections
         for j in unmatched_dets:
             det = detections[j]
             new_track = KalmanTrack(det, self.next_id)
