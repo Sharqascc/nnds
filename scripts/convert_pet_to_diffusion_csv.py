@@ -56,6 +56,7 @@ def main():
     parser.add_argument("--csv", required=True, help="Detailed PET CSV")
     parser.add_argument("--output", default="outputs/petevents_diffusion_train.csv")
     parser.add_argument("--min-frames", type=int, default=5, help="Minimum common frames per event")
+    parser.add_argument("--max-gap", type=int, default=10, help="Maximum allowed frame gap in an aligned event")
     args = parser.parse_args()
 
     df = pd.read_csv(args.csv)
@@ -67,8 +68,12 @@ def main():
             continue
         rows = align_tracks(traj_a, traj_b, pet_value=row.get('pet', None), scale=0.001)
         if len(rows) >= args.min_frames:
+            frames_in_event = [r["frame"] for r in rows]
+            max_gap = max([frames_in_event[i+1] - frames_in_event[i] for i in range(len(frames_in_event)-1)]) if len(frames_in_event) > 1 else 0
+            if max_gap > args.max_gap:
+                continue
             for r in rows:
-                r["event_id"] = idx  # use CSV row index as event id
+                r["event_id"] = idx
                 all_rows.append(r)
 
     if not all_rows:
