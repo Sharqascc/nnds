@@ -1,14 +1,18 @@
-from pathlib import Path
 """
-Custom motion-based multi-object tracker.
-Uses Kalman filters for motion prediction and Hungarian matching.
-Two-stage association: IoU + predicted-center recovery.
+Custom motion-based multi-object tracker with appearance disambiguation.
+
+Uses:
+  - Kalman filters for motion prediction
+  - Hungarian matching (IoU first, then predicted-center + appearance)
+  - HSV histograms and deep ReID embeddings for occlusion handling
 """
 
 import cv2
 import numpy as np
 from scipy.optimize import linear_sum_assignment
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Optional, List
 
 
 @dataclass
@@ -24,7 +28,8 @@ class Detection:
     cls_name: str
     conf: float
     source: str
-    hist: np.ndarray = None
+    hist: Optional[np.ndarray] = None
+    embedding: Optional[np.ndarray] = None
 
 
 class KalmanTrack:
@@ -37,6 +42,8 @@ class KalmanTrack:
         self.source = det.source
         self.age = 0
         self.time_since_update = 0
+        self.hist = det.hist if det.hist is not None else None
+        self.embedding = det.embedding if det.embedding is not None else None
 
         w = max(det.x2 - det.x1, 1.0)
         h = max(det.y2 - det.y1, 1.0)
@@ -59,7 +66,6 @@ class KalmanTrack:
         self.kf.measurementNoiseCov = np.eye(4, dtype=np.float32) * 10.0
         self.kf.errorCovPost = np.eye(6, dtype=np.float32)
         self.kf.statePost = np.array([det.cx, det.cy, w, h, 0, 0], dtype=np.float32).reshape(-1, 1)
-        self.hist = det.hist if det.hist is not None else None
 
     def predict(self):
         self.kf.predict()
@@ -75,6 +81,11 @@ class KalmanTrack:
                 self.hist = det.hist
             else:
                 self.hist = 0.8 * self.hist + 0.2 * det.hist
+        if det.embedding is not None:
+            if self.embedding is None:
+                self.embedding = det.embedding
+            else:
+                self.embedding = 0.8 * self.embedding + 0.2 * det.embedding
 
     @property
     def center(self):
@@ -90,20 +101,20 @@ class KalmanTrack:
 
 
 class CustomTracker:
-    """Kalman + Hungarian tracker for stable IDs."""
+    """Kalman + Hungarian tracker with appearance matching."""
 
     def __init__(self, max_age=60, min_hits=1, iou_threshold=0.2,
-                 log_overlaps=False, overlap_log_path="outputs/tracking_overlap_debug.log"):
+                 log_overlaps=False, overlap_log_path="outputs/tracking_overlap_debug.log",
+                 reid_encoder=None):
         self.max_age = max_age
         self.min_hits = min_hits
         self.iou_threshold = iou_threshold
         self.log_overlaps = log_overlaps
-        self.overlap_log_path = overlap_log_path
+        self.reid_encoder = reid_encoder
         if log_overlaps and overlap_log_path:
             Path(overlap_log_path).parent.mkdir(parents=True, exist_ok=True)
             self.log_handle = open(overlap_log_path, "w", encoding="utf-8")
             self.log_handle.write("frame,track_a,track_b,iou,pred_cx_a,pred_cy_a,pred_cx_b,pred_cy_b,box_a,box_b\n")
-
         else:
             self.log_handle = None
         self.next_id = 1
@@ -120,7 +131,23 @@ class CustomTracker:
         union = area1 + area2 - inter
         return inter / union if union > 0 else 0.0
 
-    def update(self, detections, frame=None):
+    def _cosine_similarity(self, a, b):
+        if a is None or b is None:
+            return 0.0
+        return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-6))
+
+    def _appearance_cost(self, track_hist, det_hist, track_emb, det_emb):
+        """Return a cost (0=perfect similarity) between track and detection appearance."""
+        # Use deep embedding if both available
+        if track_emb is not None and det_emb is not None:
+            sim = self._cosine_similarity(track_emb, det_emb)
+            return (1.0 - sim) * 100.0  # scale cost
+        # Fallback to HSV histogram if available
+        if track_hist is not None and det_hist is not None:
+            return cv2.compareHist(track_hist.astype(np.float32), det_hist.astype(np.float32), cv2.HISTCMP_BHATTACHARYYA) * 50.0
+        return 0.0
+
+    def update(self, detections, frame_img=None, frame=None):
         """Update tracks with new detections; returns dict det_index -> track_id."""
         for t in self.tracks.values():
             t.predict()
@@ -171,31 +198,33 @@ class CustomTracker:
                 matched_track_ids.add(tid)
                 unmatched_dets.discard(j)
 
-        # Stage 2: predicted-center distance matching for remaining detections/tracks
+        # Stage 2: predicted-center + appearance matching for remaining detections/tracks
         remaining_dets = [j for j in unmatched_dets]
         remaining_tracks = [tid for tid in self.tracks if tid not in matched_track_ids]
 
         if remaining_dets and remaining_tracks:
+            # Compute embeddings for remaining detections on the fly if encoder available
+            det_embeddings = {}
+            for j in remaining_dets:
+                det = detections[j]
+                if self.reid_encoder is not None and frame_img is not None and det.embedding is None:
+                    det.embedding = self.reid_encoder.encode_crop(frame_img, det.x1, det.y1, det.x2, det.y2)
+                det_embeddings[j] = det.embedding
+
             cost2 = np.zeros((len(remaining_tracks), len(remaining_dets)), dtype=np.float32)
             for i, tid in enumerate(remaining_tracks):
                 pred_center = self.tracks[tid].center
                 track_hist = self.tracks[tid].hist
+                track_emb = self.tracks[tid].embedding
                 for j, det_idx in enumerate(remaining_dets):
                     det = detections[det_idx]
                     dist = np.sqrt((pred_center[0]-det.cx)**2 + (pred_center[1]-det.cy)**2)
-
-                    # Appearance similarity
-                    app_cost = 0.0
-                    if track_hist is not None and det.hist is not None:
-                        # Bhattacharyya-like similarity
-                        sim = cv2.compareHist(track_hist.astype(np.float32), det.hist.astype(np.float32), cv2.HISTCMP_BHATTACHARYYA)
-                        app_cost = 50.0 * sim  # small sim -> similar appearance
-
+                    app_cost = self._appearance_cost(track_hist, det.hist, track_emb, det_embeddings[det_idx])
                     cost2[i, j] = dist + app_cost
 
             row_ind2, col_ind2 = linear_sum_assignment(cost2)
             for i, j in zip(row_ind2, col_ind2):
-                if cost2[i, j] < 100.0:  # increased threshold to allow appearance cost
+                if cost2[i, j] < 150.0:  # threshold increased due to appearance cost scale
                     tid = remaining_tracks[i]
                     det_idx = remaining_dets[j]
                     self.tracks[tid].update(detections[det_idx])

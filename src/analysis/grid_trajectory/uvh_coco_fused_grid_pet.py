@@ -18,6 +18,7 @@ import pandas as pd
 from ultralytics import YOLO
 import torch
 from src.pipeline.custom_tracker import CustomTracker, Detection
+from src.pipeline.reid_encoder import ReIDEncoder
 
 def _compute_histogram(frame, x1, y1, x2, y2):
     """Compute normalized HSV histogram for a crop."""
@@ -263,9 +264,11 @@ def run_uvh_coco_fused_grid_pet(
         classes=[0],
     )
 
+    reid_encoder = ReIDEncoder(device=device) if device != "cpu" else ReIDEncoder(device="cpu")
     custom_tracker = CustomTracker(
         max_age=60, min_hits=1, iou_threshold=0.2,
-        log_overlaps=True, overlap_log_path="outputs/tracking_overlap_debug.log"
+        log_overlaps=True, overlap_log_path="outputs/tracking_overlap_debug.log",
+        reid_encoder=reid_encoder
     )
 
     total_iters = total_frames if max_frames is None else min(total_frames, max_frames)
@@ -356,7 +359,7 @@ def run_uvh_coco_fused_grid_pet(
                 raw_dets.append(det)
 
         # Update custom tracker
-        matched = custom_tracker.update(raw_dets, frame_idx)
+        matched = custom_tracker.update(raw_dets, frame_img=uvh_r.orig_img, frame=frame_idx)
 
         # Append detections to rows and tracks
         for det_idx, track_id in matched.items():
