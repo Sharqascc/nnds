@@ -234,6 +234,19 @@ See `src/vlm/` for Groq/Ollama/HuggingFace integrations. Requires additional API
 
 ---
 
+## 🏁 Tracking Performance
+
+Final tracking results on the full sample video (1838 frames, 640px, OpenVINO CPU):
+
+| Metric | Value |
+|--------|-------|
+| Unique tracks | 508 |
+| PET events | 649 |
+| ID switch candidates | 20 |
+| Suspicious tracks | 321 |
+
+The tracker uses a **custom Kalman + Hungarian tracker with appearance disambiguation** to handle overlapping objects and occlusions.
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please open an issue or pull request.
