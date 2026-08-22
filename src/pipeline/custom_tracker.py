@@ -58,7 +58,7 @@ class KalmanTrack:
         self.kf.processNoiseCov = np.eye(6, dtype=np.float32) * 0.1
         self.kf.measurementNoiseCov = np.eye(4, dtype=np.float32) * 10.0
         self.kf.errorCovPost = np.eye(6, dtype=np.float32)
-        self.kf.statePost = np.array([det.cx, det.cy, w, h, 0, 0], dtype=np.float32)
+        self.kf.statePost = np.array([det.cx, det.cy, w, h, 0, 0], dtype=np.float32).reshape(-1, 1)
 
     def predict(self):
         self.kf.predict()
@@ -66,7 +66,7 @@ class KalmanTrack:
         self.time_since_update += 1
 
     def update(self, det: Detection):
-        measurement = np.array([det.cx, det.cy, max(det.x2 - det.x1, 1), max(det.y2 - det.y1, 1)], dtype=np.float32)
+        measurement = np.array([det.cx, det.cy, max(det.x2 - det.x1, 1), max(det.y2 - det.y1, 1)], dtype=np.float32).reshape(-1, 1)
         self.kf.correct(measurement)
         self.time_since_update = 0
 
