@@ -240,12 +240,12 @@ Final tracking results on the full sample video (1838 frames, 640px, OpenVINO CP
 
 | Metric | Value |
 |--------|-------|
-| Unique tracks | 508 |
-| PET events | 649 |
-| ID switch candidates | 20 |
-| Suspicious tracks | 321 |
+| Unique tracks | 408 |
+| PET events | 602 |
+| ID switch candidates | 11 |
+| Suspicious tracks | 278 |
 
-The tracker uses a **custom Kalman + Hungarian tracker with appearance disambiguation** to handle overlapping objects and occlusions.
+The tracker uses a **custom Kalman + Hungarian tracker with deep appearance disambiguation (MobileNetV3)** to handle overlapping objects and occlusions.
 
 ## 🤝 Contributing
 
