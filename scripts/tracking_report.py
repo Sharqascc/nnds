@@ -20,6 +20,7 @@ import argparse
 import pandas as pd
 import numpy as np
 from pathlib import Path
+from tqdm import tqdm
 
 
 def parse_args():
@@ -104,7 +105,7 @@ def main():
     lines.append("-" * 80)
     overlap_count = 0
     track_ids = list(track_stats.keys())
-    for i in range(len(track_ids)):
+    for i in tqdm(range(len(track_ids)), desc="Checking overlaps", unit="track"):
         for j in range(i+1, len(track_ids)):
             tid_a = track_ids[i]
             tid_b = track_ids[j]
@@ -136,7 +137,7 @@ def main():
     lines.append("CANDIDATE ID SWITCHES")
     lines.append("-" * 80)
     switches = []
-    for tid_a, s_a in track_stats.items():
+    for tid_a, s_a in tqdm(track_stats.items(), desc="Checking ID switches", unit="track"):
         for tid_b, s_b in track_stats.items():
             if tid_a == tid_b:
                 continue
