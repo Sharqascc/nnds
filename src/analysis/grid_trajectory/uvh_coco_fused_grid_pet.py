@@ -19,6 +19,24 @@ from ultralytics import YOLO
 import torch
 from src.pipeline.custom_tracker import CustomTracker, Detection
 
+def _compute_histogram(frame, x1, y1, x2, y2):
+    """Compute normalized HSV histogram for a crop."""
+    try:
+        x1i, y1i = max(0, int(x1)), max(0, int(y1))
+        x2i, y2i = min(frame.shape[1], int(x2)), min(frame.shape[0], int(y2))
+        crop = frame[y1i:y2i, x1i:x2i]
+        if crop.size == 0:
+            return None
+        # Convert to HSV
+        hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
+        # 2D histogram over H and S
+        hist = cv2.calcHist([hsv], [0, 1], None, [30, 32], [0, 180, 0, 256])
+        cv2.normalize(hist, hist)
+        return hist.flatten()
+    except Exception:
+        return None
+
+
 
 UVH_DISPLAY_MAP = {
     "Three-wheeler": "auto",
@@ -245,7 +263,10 @@ def run_uvh_coco_fused_grid_pet(
         classes=[0],
     )
 
-    custom_tracker = CustomTracker(max_age=30, min_hits=1, iou_threshold=0.3)
+    custom_tracker = CustomTracker(
+        max_age=60, min_hits=1, iou_threshold=0.2,
+        log_overlaps=True, overlap_log_path="outputs/tracking_overlap_debug.log"
+    )
 
     total_iters = total_frames if max_frames is None else min(total_frames, max_frames)
     pbar = tqdm(total=total_iters, desc="Processing frames", unit="frame", disable=not show_progress)
@@ -279,8 +300,11 @@ def run_uvh_coco_fused_grid_pet(
                 uvh_box = (x1, y1, x2, y2)
                 uvh_boxes_for_suppression.append(uvh_box)
 
+                hist = _compute_histogram(uvh_r.orig_img, x1, y1, x2, y2)
+
                 det = Detection(
                     frame=frame_idx,
+                    hist=hist,
                     x1=x1,
                     y1=y1,
                     x2=x2,
@@ -313,6 +337,8 @@ def run_uvh_coco_fused_grid_pet(
                 cx = (x1 + x2) / 2.0
                 cy = (y1 + y2) / 2.0
                 score = float(confs[i]) if i < len(confs) else 0.0
+                hist = _compute_histogram(coco_r.orig_img, x1, y1, x2, y2)
+
                 det = Detection(
                     frame=frame_idx,
                     x1=x1,
@@ -325,11 +351,12 @@ def run_uvh_coco_fused_grid_pet(
                     cls_name="pedestrian",
                     conf=score,
                     source="coco_person",
+                    hist=hist,
                 )
                 raw_dets.append(det)
 
         # Update custom tracker
-        matched = custom_tracker.update(raw_dets)
+        matched = custom_tracker.update(raw_dets, frame_idx)
 
         # Append detections to rows and tracks
         for det_idx, track_id in matched.items():

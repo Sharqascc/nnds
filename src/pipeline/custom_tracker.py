@@ -1,3 +1,4 @@
+from pathlib import Path
 """
 Custom motion-based multi-object tracker.
 Uses Kalman filters for motion prediction and Hungarian matching.
@@ -23,6 +24,7 @@ class Detection:
     cls_name: str
     conf: float
     source: str
+    hist: np.ndarray = None
 
 
 class KalmanTrack:
@@ -57,6 +59,7 @@ class KalmanTrack:
         self.kf.measurementNoiseCov = np.eye(4, dtype=np.float32) * 10.0
         self.kf.errorCovPost = np.eye(6, dtype=np.float32)
         self.kf.statePost = np.array([det.cx, det.cy, w, h, 0, 0], dtype=np.float32).reshape(-1, 1)
+        self.hist = det.hist if det.hist is not None else None
 
     def predict(self):
         self.kf.predict()
@@ -67,6 +70,11 @@ class KalmanTrack:
         measurement = np.array([det.cx, det.cy, max(det.x2 - det.x1, 1), max(det.y2 - det.y1, 1)], dtype=np.float32).reshape(-1, 1)
         self.kf.correct(measurement)
         self.time_since_update = 0
+        if det.hist is not None:
+            if self.hist is None:
+                self.hist = det.hist
+            else:
+                self.hist = 0.8 * self.hist + 0.2 * det.hist
 
     @property
     def center(self):
@@ -84,10 +92,20 @@ class KalmanTrack:
 class CustomTracker:
     """Kalman + Hungarian tracker for stable IDs."""
 
-    def __init__(self, max_age=60, min_hits=1, iou_threshold=0.2):
+    def __init__(self, max_age=60, min_hits=1, iou_threshold=0.2,
+                 log_overlaps=False, overlap_log_path="outputs/tracking_overlap_debug.log"):
         self.max_age = max_age
         self.min_hits = min_hits
         self.iou_threshold = iou_threshold
+        self.log_overlaps = log_overlaps
+        self.overlap_log_path = overlap_log_path
+        if log_overlaps and overlap_log_path:
+            Path(overlap_log_path).parent.mkdir(parents=True, exist_ok=True)
+            self.log_handle = open(overlap_log_path, "w", encoding="utf-8")
+            self.log_handle.write("frame,track_a,track_b,iou,pred_cx_a,pred_cy_a,pred_cx_b,pred_cy_b,box_a,box_b\n")
+
+        else:
+            self.log_handle = None
         self.next_id = 1
         self.tracks = {}
 
@@ -102,10 +120,29 @@ class CustomTracker:
         union = area1 + area2 - inter
         return inter / union if union > 0 else 0.0
 
-    def update(self, detections):
+    def update(self, detections, frame=None):
         """Update tracks with new detections; returns dict det_index -> track_id."""
         for t in self.tracks.values():
             t.predict()
+
+        if self.log_overlaps and self.log_handle is not None:
+            frame_now = frame if frame is not None else (detections[0].frame if detections else -1)
+            track_ids = list(self.tracks.keys())
+            pred_boxes = {tid: self.tracks[tid].box for tid in track_ids}
+            centers = {tid: self.tracks[tid].center for tid in track_ids}
+            for i in range(len(track_ids)):
+                for j in range(i+1, len(track_ids)):
+                    tid_a = track_ids[i]
+                    tid_b = track_ids[j]
+                    iou = self._iou(pred_boxes[tid_a], pred_boxes[tid_b])
+                    if iou > 0.5:
+                        cx_a, cy_a = centers[tid_a]
+                        cx_b, cy_b = centers[tid_b]
+                        box_a = ",".join(f"{v:.1f}" for v in pred_boxes[tid_a])
+                        box_b = ",".join(f"{v:.1f}" for v in pred_boxes[tid_b])
+                        self.log_handle.write(
+                            f"{frame_now},{tid_a},{tid_b},{iou:.3f},{cx_a:.1f},{cy_a:.1f},{cx_b:.1f},{cy_b:.1f},{box_a},{box_b}\n"
+                        )
 
         if not detections:
             return {}
@@ -142,14 +179,23 @@ class CustomTracker:
             cost2 = np.zeros((len(remaining_tracks), len(remaining_dets)), dtype=np.float32)
             for i, tid in enumerate(remaining_tracks):
                 pred_center = self.tracks[tid].center
+                track_hist = self.tracks[tid].hist
                 for j, det_idx in enumerate(remaining_dets):
                     det = detections[det_idx]
                     dist = np.sqrt((pred_center[0]-det.cx)**2 + (pred_center[1]-det.cy)**2)
-                    cost2[i, j] = dist
+
+                    # Appearance similarity
+                    app_cost = 0.0
+                    if track_hist is not None and det.hist is not None:
+                        # Bhattacharyya-like similarity
+                        sim = cv2.compareHist(track_hist.astype(np.float32), det.hist.astype(np.float32), cv2.HISTCMP_BHATTACHARYYA)
+                        app_cost = 50.0 * sim  # small sim -> similar appearance
+
+                    cost2[i, j] = dist + app_cost
 
             row_ind2, col_ind2 = linear_sum_assignment(cost2)
             for i, j in zip(row_ind2, col_ind2):
-                if cost2[i, j] < 80.0:
+                if cost2[i, j] < 100.0:  # increased threshold to allow appearance cost
                     tid = remaining_tracks[i]
                     det_idx = remaining_dets[j]
                     self.tracks[tid].update(detections[det_idx])
