@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 from ultralytics import YOLO
 import torch
+from src.pipeline.custom_tracker import CustomTracker, Detection
 
 
 UVH_DISPLAY_MAP = {
@@ -225,28 +226,26 @@ def run_uvh_coco_fused_grid_pet(
 
     frame_idx = 0
 
-    uvh_results = uvh_model.track(
+    uvh_results = uvh_model.predict(
         source=video_path,
         stream=True,
-        persist=True,
-        tracker="tracktrack.yaml",
         conf=uvh_conf,
         imgsz=imgsz,
         verbose=False,
         device=device,
     )
 
-    coco_results = coco_model.track(
+    coco_results = coco_model.predict(
         source=video_path,
         stream=True,
-        persist=True,
-        tracker="tracktrack.yaml",
         conf=coco_person_conf,
         imgsz=imgsz,
         verbose=False,
         device=device,
         classes=[0],
     )
+
+    custom_tracker = CustomTracker(max_age=30, min_hits=1, iou_threshold=0.3)
 
     total_iters = total_frames if max_frames is None else min(total_frames, max_frames)
     pbar = tqdm(total=total_iters, desc="Processing frames", unit="frame", disable=not show_progress)
@@ -256,16 +255,14 @@ def run_uvh_coco_fused_grid_pet(
 
         uvh_boxes_for_suppression = []
 
+        # Collect raw detections for this frame
+        raw_dets: List[Detection] = []
+
         uvh_boxes = uvh_r.boxes
         if uvh_boxes is not None and uvh_boxes.xyxy is not None and len(uvh_boxes) > 0:
             xyxy = uvh_boxes.xyxy.cpu().numpy()
             clss = uvh_boxes.cls.cpu().numpy().astype(int) if uvh_boxes.cls is not None else np.array([], dtype=int)
             confs = uvh_boxes.conf.cpu().numpy() if uvh_boxes.conf is not None else np.array([], dtype=float)
-
-            if hasattr(uvh_boxes, "id") and uvh_boxes.id is not None:
-                ids = uvh_boxes.id.cpu().numpy().astype(int)
-            else:
-                ids = np.arange(len(xyxy), dtype=int) + frame_idx * 1000
 
             for i, box in enumerate(xyxy):
                 raw_name = uvh_r.names[int(clss[i])]
@@ -276,48 +273,31 @@ def run_uvh_coco_fused_grid_pet(
                 x1, y1, x2, y2 = map(float, box.tolist())
                 cx = (x1 + x2) / 2.0
                 cy = (y1 + y2) / 2.0
-                track_id = int(ids[i])
-                score = float(confs[i]) if i < len(confs) else 0.0
                 cls_id = int(CLASS_NAME_TO_ID.get(mapped_name, 99))
+                score = float(confs[i]) if i < len(confs) else 0.0
 
                 uvh_box = (x1, y1, x2, y2)
                 uvh_boxes_for_suppression.append(uvh_box)
 
-                detection_rows.append({
-                    "frame": frame_idx,
-                    "track_id": track_id,
-                    "class_id": cls_id,
-                    "class_name": mapped_name,
-                    "conf": score,
-                    "x1": x1,
-                    "y1": y1,
-                    "x2": x2,
-                    "y2": y2,
-                    "cx": cx,
-                    "cy": cy,
-                    "source": "uvh26",
-                })
-
-                tracks.setdefault(track_id, []).append(
-                    TrackPoint(
-                        frame=frame_idx,
-                        x=cx,
-                        y=cy,
-                        cls_id=cls_id,
-                        cls_name=mapped_name,
-                        conf=score,
-                    )
+                det = Detection(
+                    frame=frame_idx,
+                    x1=x1,
+                    y1=y1,
+                    x2=x2,
+                    y2=y2,
+                    cx=cx,
+                    cy=cy,
+                    cls_id=cls_id,
+                    cls_name=mapped_name,
+                    conf=score,
+                    source="uvh26",
                 )
+                raw_dets.append(det)
 
         coco_boxes = coco_r.boxes
         if coco_boxes is not None and coco_boxes.xyxy is not None and len(coco_boxes) > 0:
             xyxy = coco_boxes.xyxy.cpu().numpy()
             confs = coco_boxes.conf.cpu().numpy() if coco_boxes.conf is not None else np.array([], dtype=float)
-
-            if hasattr(coco_boxes, "id") and coco_boxes.id is not None:
-                ids = coco_boxes.id.cpu().numpy().astype(int)
-            else:
-                ids = np.arange(len(xyxy), dtype=int) + frame_idx * 100000 + 50000
 
             for i, box in enumerate(xyxy):
                 x1, y1, x2, y2 = map(float, box.tolist())
@@ -332,36 +312,53 @@ def run_uvh_coco_fused_grid_pet(
 
                 cx = (x1 + x2) / 2.0
                 cy = (y1 + y2) / 2.0
-                track_id = int(ids[i])
                 score = float(confs[i]) if i < len(confs) else 0.0
-                cls_id = 0
-                cls_name = "pedestrian"
-
-                detection_rows.append({
-                    "frame": frame_idx,
-                    "track_id": track_id,
-                    "class_id": cls_id,
-                    "class_name": cls_name,
-                    "conf": score,
-                    "x1": x1,
-                    "y1": y1,
-                    "x2": x2,
-                    "y2": y2,
-                    "cx": cx,
-                    "cy": cy,
-                    "source": "coco_person",
-                })
-
-                tracks.setdefault(track_id, []).append(
-                    TrackPoint(
-                        frame=frame_idx,
-                        x=cx,
-                        y=cy,
-                        cls_id=cls_id,
-                        cls_name=cls_name,
-                        conf=score,
-                    )
+                det = Detection(
+                    frame=frame_idx,
+                    x1=x1,
+                    y1=y1,
+                    x2=x2,
+                    y2=y2,
+                    cx=cx,
+                    cy=cy,
+                    cls_id=0,
+                    cls_name="pedestrian",
+                    conf=score,
+                    source="coco_person",
                 )
+                raw_dets.append(det)
+
+        # Update custom tracker
+        matched = custom_tracker.update(raw_dets)
+
+        # Append detections to rows and tracks
+        for det_idx, track_id in matched.items():
+            det = raw_dets[det_idx]
+            detection_rows.append({
+                "frame": det.frame,
+                "track_id": track_id,
+                "class_id": det.cls_id,
+                "class_name": det.cls_name,
+                "conf": det.conf,
+                "x1": det.x1,
+                "y1": det.y1,
+                "x2": det.x2,
+                "y2": det.y2,
+                "cx": det.cx,
+                "cy": det.cy,
+                "source": det.source,
+            })
+
+            tracks.setdefault(track_id, []).append(
+                TrackPoint(
+                    frame=det.frame,
+                    x=det.cx,
+                    y=det.cy,
+                    cls_id=det.cls_id,
+                    cls_name=det.cls_name,
+                    conf=det.conf,
+                )
+            )
 
         if show_progress and frame_idx % 25 == 0:
             pass
@@ -412,7 +409,7 @@ def run_uvh_coco_fused_grid_pet(
     conflict_half_size = 20.0
 
     # Split tracks with gaps or jumps to avoid mixing different objects
-    tracks = _split_tracks_by_gaps(tracks, max_frame_gap=5, max_spatial_jump=30.0)
+    tracks = _split_tracks_by_gaps(tracks, max_frame_gap=100000, max_spatial_jump=100000.0)
 
     valid_tracks = {tid: pts for tid, pts in tracks.items() if len(pts) >= 3}
 
@@ -587,10 +584,12 @@ def _track_to_json(points: List[TrackPoint], bev_mapper=None) -> str:
 
 def _split_tracks_by_gaps(tracks: Dict[int, List[TrackPoint]],
                           max_frame_gap: int = 10,
-                          max_spatial_jump: float = 50.0) -> Dict[int, List[TrackPoint]]:
+                          max_spatial_jump: float = 50.0,
+                          prediction_tolerance: float = 80.0) -> Dict[int, List[TrackPoint]]:
     """
-    Split track IDs when there is a long frame gap or huge spatial jump.
-    This helps avoid merging different objects into the same trajectory.
+    Split track IDs when there is a long frame gap or huge spatial jump,
+    but skip splitting if the next point matches a linear prediction from
+    the last two points (handles short occlusion).
     """
     split_tracks: Dict[int, List[TrackPoint]] = {}
     for tid, pts in tracks.items():
@@ -604,7 +603,25 @@ def _split_tracks_by_gaps(tracks: Dict[int, List[TrackPoint]],
             dx = pts[i].x - pts[i - 1].x
             dy = pts[i].y - pts[i - 1].y
             dist = (dx * dx + dy * dy) ** 0.5
-            if gap > max_frame_gap or dist > max_spatial_jump:
+
+            # Predict next position using last two points (linear extrapolation)
+            if i >= 2 and gap > 0:
+                prev_prev = pts[i - 2]
+                prev = pts[i - 1]
+                dt1 = prev.frame - prev_prev.frame
+                if dt1 > 0:
+                    vx = (prev.x - prev_prev.x) / dt1
+                    vy = (prev.y - prev_prev.y) / dt1
+                    pred_x = prev.x + vx * gap
+                    pred_y = prev.y + vy * gap
+                    pred_dist = ((pts[i].x - pred_x) ** 2 + (pts[i].y - pred_y) ** 2) ** 0.5
+                else:
+                    pred_dist = float('inf')
+            else:
+                pred_dist = float('inf')
+
+            # Split only if gap/jump is large AND prediction is poor
+            if (gap > max_frame_gap or dist > max_spatial_jump) and pred_dist > prediction_tolerance:
                 new_id = tid * 1000 + current_sub
                 split_tracks[new_id] = pts[start_idx:i]
                 current_sub += 1
