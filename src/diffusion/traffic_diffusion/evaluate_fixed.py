@@ -125,7 +125,7 @@ def run_evaluation(test_csv_path="outputs/petevents_test.csv", ckpt_path="checkp
             
             # Apply Savitzky-Golay smoothing to velocity trajectories
             try:
-                v_sampled = savgol_filter(v_sampled, window_length=5, polyorder=2, axis=1)
+                v_sampled = savgol_filter(v_sampled, window_length=7, polyorder=3, axis=1)
             except Exception:
                 pass
             
