@@ -118,9 +118,8 @@ class TrajectoryDiffusionModel(nn.Module):
         base_loss = F.mse_loss(pred_v, v_target)
         
         # Penalize high acceleration in predicted velocity along time dimension.
-        # pred_v shape: (B, Th, N_agents, dim)
         if pred_v.ndim == 4 and pred_v.shape[1] > 2:
-            acc = torch.diff(pred_v, n=2, dim=1)  # second derivative along time
+            acc = torch.diff(pred_v, n=2, dim=1)
             smooth_loss = torch.mean(acc ** 2)
         else:
             smooth_loss = 0.0
