@@ -101,7 +101,7 @@ class TrajectoryDiffusionModel(nn.Module):
         out = out.permute(0, 2, 1).reshape(B, self.Th, self.N_agents, self.dim)
         return out
 
-    def compute_loss(self, x0, cond, smoothness_weight: float = 1.0):
+    def compute_loss(self, x0, cond, smoothness_weight: float = 5.0):
         """Rectified Flow Matching velocity field loss with smoothness penalty."""
         B = x0.shape[0]
         device = x0.device

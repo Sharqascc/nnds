@@ -99,7 +99,7 @@ def train(train_csv_path="outputs/petevents_train.csv", checkpoint_dir="checkpoi
             batch_cond = batch_cond.to(device)
             
             optimizer.zero_grad()
-            loss = model.compute_loss(batch_vel, batch_cond, smoothness_weight=1.0)
+            loss = model.compute_loss(batch_vel, batch_cond, smoothness_weight=5.0)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
