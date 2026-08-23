@@ -13,6 +13,61 @@ def load_checkpoint_safe(ckpt_path, device):
     except TypeError:
         return torch.load(ckpt_path, map_location=device)
 
+
+def rts_smooth(tracks, dt=0.1, Q=0.1, R=0.5):
+    """Apply Kalman RTS smoothing along time axis (last dim = 2)."""
+    from scipy.linalg import block_diag
+    import numpy as np
+    N, T, D = tracks.shape
+    smoothed = np.zeros_like(tracks)
+    for n in range(N):
+        # State: [x, y, vx, vy]
+        F = np.array([[1, 0, dt, 0],
+                      [0, 1, 0, dt],
+                      [0, 0, 1, 0],
+                      [0, 0, 0, 1]], dtype=np.float64)
+        H = np.array([[1, 0, 0, 0],
+                      [0, 1, 0, 0]], dtype=np.float64)
+        Qmat = np.eye(4) * Q
+        Rmat = np.eye(2) * R
+
+        # Forward pass
+        x = np.array([tracks[n, 0, 0], tracks[n, 0, 1], 0, 0], dtype=np.float64)
+        P = np.eye(4)
+        forward_states = [x]
+        forward_covs = [P]
+        for t in range(1, T):
+            # predict
+            x_pred = F @ x
+            P_pred = F @ P @ F.T + Qmat
+            # update with measurement
+            z = tracks[n, t].reshape(2)
+            y = z - H @ x_pred
+            S = H @ P_pred @ H.T + Rmat
+            K = P_pred @ H.T @ np.linalg.inv(S)
+            x = x_pred + K @ y
+            P = (np.eye(4) - K @ H) @ P_pred
+            forward_states.append(x)
+            forward_covs.append(P)
+
+        # Backward RTS pass
+        smoothed_states = [forward_states[-1]]
+        for t in range(T-2, -1, -1):
+            x_f = forward_states[t]
+            P_f = forward_covs[t]
+            x_pred = F @ x_f
+            P_pred = F @ P_f @ F.T + Qmat
+            G = P_f @ F.T @ np.linalg.inv(P_pred)
+            x_s = x_f + G @ (smoothed_states[-1] - x_pred)
+            smoothed_states.append(x_s)
+        smoothed_states = smoothed_states[::-1]
+
+        # Extract positions
+        for t in range(T):
+            smoothed[n, t, 0] = smoothed_states[t][0]
+            smoothed[n, t, 1] = smoothed_states[t][1]
+    return smoothed
+
 def compute_metrics(gen_trajs, gt_trajs, cond_trajs, real_pets, dt=0.1):
     errors = np.linalg.norm(gen_trajs - gt_trajs, axis=-1)
     ade = np.mean(errors)
@@ -141,6 +196,16 @@ def run_evaluation(test_csv_path="outputs/petevents_test.csv", ckpt_path="checkp
     best_trajs = pred_k_trajs[np.arange(len(pred_k_trajs)), best_k_idx]
 
     # Additional Gaussian smoothing on final positions
+    try:
+        best_trajs = gaussian_filter1d(best_trajs, sigma=1.5, axis=1)
+    except Exception:
+        pass
+
+    # RTS smoothing
+    try:
+        best_trajs = rts_smooth(best_trajs, dt=0.1)
+    except Exception:
+        pass
     try:
         best_trajs = gaussian_filter1d(best_trajs, sigma=1.5, axis=1)
     except Exception:
