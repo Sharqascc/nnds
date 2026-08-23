@@ -30,6 +30,53 @@ def parse_args():
     return parser.parse_args()
 
 
+
+def compute_pet(ta, tb, radius=2.5):
+    """Compute PET for two tracks around their closest approach point."""
+    # Find common rounded time indices
+    common = np.intersect1d(ta["time"], tb["time"], assume_unique=True)
+    if len(common) < 2:
+        return None
+
+    idx_a = np.searchsorted(ta["time"], common)
+    idx_b = np.searchsorted(tb["time"], common)
+    xa = ta["x"][idx_a]
+    ya = ta["y"][idx_a]
+    xb = tb["x"][idx_b]
+    yb = tb["y"][idx_b]
+
+    dist = np.sqrt((xa - xb) ** 2 + (ya - yb) ** 2)
+    min_idx = int(np.argmin(dist))
+    conflict_x = (xa[min_idx] + xb[min_idx]) / 2.0
+    conflict_y = (ya[min_idx] + yb[min_idx]) / 2.0
+
+    def entry_exit(track):
+        d = np.sqrt((track["x"] - conflict_x) ** 2 + (track["y"] - conflict_y) ** 2)
+        inside = np.where(d < radius)[0]
+        if len(inside) == 0:
+            return None
+        # assume continuous interval
+        first = inside[0]
+        last = inside[-1]
+        # time is already rounded to 0.1s -> integer units, divide by 10 for seconds
+        return (float(track["time"][first]) / 10.0, float(track["time"][last]) / 10.0)
+
+    a_interval = entry_exit(ta)
+    b_interval = entry_exit(tb)
+    if a_interval is None or b_interval is None:
+        return None
+
+    a_entry, a_exit = a_interval
+    b_entry, b_exit = b_interval
+
+    if a_exit <= b_entry:
+        pet = b_entry - a_exit
+    elif b_exit <= a_entry:
+        pet = a_entry - b_exit
+    else:
+        pet = 0.0
+    return max(0.0, pet)
+
 def main():
     args = parse_args()
     df = pd.read_csv(args.csv)
@@ -103,7 +150,9 @@ def main():
                 # pet = min(2.0, (common[-1]-common[0])*0.1)  # placeholder, not true PET
                 # We'll store actual common frames and use fixed pet later from track exit/entry if needed.
                 # For now, set pet to min distance time gap to maintain compatibility
-                pet = 1.5
+                pet = compute_pet(ta, tb)
+                if pet is None:
+                    continue
                 for k, f in enumerate(common):
                     events.append({
                         "event_id": event_id,
