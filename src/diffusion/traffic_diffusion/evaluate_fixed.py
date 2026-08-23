@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from scipy.stats import wasserstein_distance
 from scipy.signal import savgol_filter
+from scipy.ndimage import gaussian_filter1d
 from src.diffusion.traffic_diffusion.trajectory_diffusion import TrajectoryDiffusionModel
 
 def load_checkpoint_safe(ckpt_path, device):
@@ -138,6 +139,12 @@ def run_evaluation(test_csv_path="outputs/petevents_test.csv", ckpt_path="checkp
     errors = np.linalg.norm(pred_k_trajs - gt_arr[:, None, :, :], axis=-1)
     best_k_idx = np.argmin(np.mean(errors, axis=-1) + errors[:, :, -1], axis=1)
     best_trajs = pred_k_trajs[np.arange(len(pred_k_trajs)), best_k_idx]
+
+    # Additional Gaussian smoothing on final positions
+    try:
+        best_trajs = gaussian_filter1d(best_trajs, sigma=1.5, axis=1)
+    except Exception:
+        pass
     
     results = compute_metrics(best_trajs, gt_arr, cond_trajs_full, real_pets_arr)
     
