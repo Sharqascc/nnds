@@ -124,17 +124,20 @@ def main():
             tb = tracks[tid_b]
 
             # Compute common time frames
-            common = np.intersect1d(ta["time"], tb["time"], assume_unique=True)
-            if len(common) < args.min_frames:
+            # Find overlapping time interval
+            t_start = max(ta["time"][0], tb["time"][0])
+            t_end = min(ta["time"][-1], tb["time"][-1])
+            if t_end - t_start < (args.min_frames - 1):
                 continue
 
-            # Get positions at common times
-            idx_a = np.searchsorted(ta["time"], common)
-            idx_b = np.searchsorted(tb["time"], common)
-            xa = ta["x"][idx_a]
-            ya = ta["y"][idx_a]
-            xb = tb["x"][idx_b]
-            yb = tb["y"][idx_b]
+            # Create common time grid (0.1s units)
+            common = np.arange(t_start, t_end + 1)  # inclusive integer steps
+            # Interpolate positions to common grid
+            xa = np.interp(common, ta["time"], ta["x"])
+            ya = np.interp(common, ta["time"], ta["y"])
+            xb = np.interp(common, tb["time"], tb["x"])
+            yb = np.interp(common, tb["time"], tb["y"])
+
             dist = np.sqrt((xa - xb)**2 + (ya - yb)**2)
             if dist.min() >= args.max_distance:
                 continue
