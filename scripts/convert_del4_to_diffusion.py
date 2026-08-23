@@ -5,7 +5,7 @@ Convert DEL_4.csv (Indian trajectory dataset) to diffusion training CSV.
 Output columns: event_id, frame, x_i, y_i, x_j, y_j, pet
 - x_i/y_i and x_j/y_j are in metres
 - frame is a 0-based integer time step
-- pet is a rough surrogate PET (seconds) based on time gap at closest approach
+- pet is the real PET (seconds) between two road users in a shared conflict cell
 
 Usage:
   python scripts/convert_del4_to_diffusion.py --csv data/raw/DEL_4.csv --output outputs/diffusion_del4.csv
@@ -27,55 +27,44 @@ def parse_args():
     parser.add_argument("--max-distance", type=float, default=8.0, help="Max distance (m) to consider a pair as interacting")
     parser.add_argument("--min-frames", type=int, default=16, help="Minimum common frames per event")
     parser.add_argument("--max-events", type=int, default=5000, help="Maximum events to output")
+    parser.add_argument("--cell-size", type=float, default=25.0, help="Spatial cell size for conflict detection")
+    parser.add_argument("--conflict-radius", type=float, default=5.0, help="Conflict radius around cell center (m)")
     return parser.parse_args()
 
 
+def compute_pet(ta, tb, shared_cells, cell_size=25.0, radius=5.0):
+    """Compute PET for two tracks around any shared spatial cell center."""
+    for cell in shared_cells:
+        # Cell is (cx_idx, cy_idx) -> center in metres
+        cx = cell[0] * cell_size + cell_size / 2.0
+        cy = cell[1] * cell_size + cell_size / 2.0
 
-def compute_pet(ta, tb, radius=2.5):
-    """Compute PET for two tracks around their closest approach point."""
-    # Find common rounded time indices
-    common = np.intersect1d(ta["time"], tb["time"], assume_unique=True)
-    if len(common) < 2:
-        return None
+        def entry_exit(track):
+            d = np.sqrt((track["x"] - cx) ** 2 + (track["y"] - cy) ** 2)
+            inside = np.where(d < radius)[0]
+            if len(inside) == 0:
+                return None
+            first = inside[0]
+            last = inside[-1]
+            # time is rounded to 0.1s; divide by 10 for seconds
+            return (float(track["time"][first]) / 10.0, float(track["time"][last]) / 10.0)
 
-    idx_a = np.searchsorted(ta["time"], common)
-    idx_b = np.searchsorted(tb["time"], common)
-    xa = ta["x"][idx_a]
-    ya = ta["y"][idx_a]
-    xb = tb["x"][idx_b]
-    yb = tb["y"][idx_b]
+        a_interval = entry_exit(ta)
+        b_interval = entry_exit(tb)
+        if a_interval is None or b_interval is None:
+            continue
+        a_entry, a_exit = a_interval
+        b_entry, b_exit = b_interval
+        if a_exit <= b_entry:
+            pet = b_entry - a_exit
+        elif b_exit <= a_entry:
+            pet = a_entry - b_exit
+        else:
+            pet = 0.0
+        if 0.0 <= pet <= 5.0:
+            return max(0.0, pet)
+    return None
 
-    dist = np.sqrt((xa - xb) ** 2 + (ya - yb) ** 2)
-    min_idx = int(np.argmin(dist))
-    conflict_x = (xa[min_idx] + xb[min_idx]) / 2.0
-    conflict_y = (ya[min_idx] + yb[min_idx]) / 2.0
-
-    def entry_exit(track):
-        d = np.sqrt((track["x"] - conflict_x) ** 2 + (track["y"] - conflict_y) ** 2)
-        inside = np.where(d < radius)[0]
-        if len(inside) == 0:
-            return None
-        # assume continuous interval
-        first = inside[0]
-        last = inside[-1]
-        # time is already rounded to 0.1s -> integer units, divide by 10 for seconds
-        return (float(track["time"][first]) / 10.0, float(track["time"][last]) / 10.0)
-
-    a_interval = entry_exit(ta)
-    b_interval = entry_exit(tb)
-    if a_interval is None or b_interval is None:
-        return None
-
-    a_entry, a_exit = a_interval
-    b_entry, b_exit = b_interval
-
-    if a_exit <= b_entry:
-        pet = b_entry - a_exit
-    elif b_exit <= a_entry:
-        pet = a_entry - b_exit
-    else:
-        pet = 0.0
-    return max(0.0, pet)
 
 def main():
     args = parse_args()
@@ -86,7 +75,7 @@ def main():
     df["x [m]"] = pd.to_numeric(df["x [m]"])
     df["y [m]"] = pd.to_numeric(df["y [m]"])
 
-    # Round time to 2 decimals for common-frame alignment
+    # Round time to 0.1s integer units
     df["time_round"] = (df["Time [s]"] * 10).round().astype(int)
 
     # Keep tracks with enough points
@@ -106,7 +95,7 @@ def main():
 
     # Spatial grid to reduce pairs
     grid = defaultdict(set)
-    cell_size = 25.0
+    cell_size = args.cell_size
     for tid, tr in tracks.items():
         cells = set()
         for x, y in zip(tr["x"], tr["y"]):
@@ -129,13 +118,16 @@ def main():
             if event_id > args.max_events:
                 break
             tid_b = track_ids[j]
-            if not cells_a & grid[tid_b]:
+            shared_cells = cells_a & grid[tid_b]
+            if not shared_cells:
                 continue
             tb = tracks[tid_b]
+
             # Compute common time frames
             common = np.intersect1d(ta["time"], tb["time"], assume_unique=True)
             if len(common) < args.min_frames:
                 continue
+
             # Get positions at common times
             idx_a = np.searchsorted(ta["time"], common)
             idx_b = np.searchsorted(tb["time"], common)
@@ -144,26 +136,25 @@ def main():
             xb = tb["x"][idx_b]
             yb = tb["y"][idx_b]
             dist = np.sqrt((xa - xb)**2 + (ya - yb)**2)
-            if dist.min() < args.max_distance:
-                # Create event: use all common frames
-                # Estimate PET as time gap between closest approach? We'll use a simple heuristic:
-                # pet = min(2.0, (common[-1]-common[0])*0.1)  # placeholder, not true PET
-                # We'll store actual common frames and use fixed pet later from track exit/entry if needed.
-                # For now, set pet to min distance time gap to maintain compatibility
-                pet = compute_pet(ta, tb)
-                if pet is None:
-                    continue
-                for k, f in enumerate(common):
-                    events.append({
-                        "event_id": event_id,
-                        "frame": k,
-                        "x_i": float(xa[k]),
-                        "y_i": float(ya[k]),
-                        "x_j": float(xb[k]),
-                        "y_j": float(yb[k]),
-                        "pet": pet,
-                    })
-                event_id += 1
+            if dist.min() >= args.max_distance:
+                continue
+
+            # Compute real PET
+            pet = compute_pet(ta, tb, shared_cells, cell_size=cell_size, radius=args.conflict_radius)
+            if pet is None:
+                continue
+
+            for k, f in enumerate(common):
+                events.append({
+                    "event_id": event_id,
+                    "frame": k,
+                    "x_i": float(xa[k]),
+                    "y_i": float(ya[k]),
+                    "x_j": float(xb[k]),
+                    "y_j": float(yb[k]),
+                    "pet": pet,
+                })
+            event_id += 1
         if event_id > args.max_events:
             break
 
