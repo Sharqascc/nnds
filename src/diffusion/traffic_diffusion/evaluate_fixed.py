@@ -3,6 +3,7 @@ import torch
 import pandas as pd
 import numpy as np
 from scipy.stats import wasserstein_distance
+from scipy.signal import savgol_filter
 from src.diffusion.traffic_diffusion.trajectory_diffusion import TrajectoryDiffusionModel
 
 def load_checkpoint_safe(ckpt_path, device):
@@ -121,6 +122,12 @@ def run_evaluation(test_csv_path="outputs/petevents_test.csv", ckpt_path="checkp
             v_sampled = (v_sampled_norm * std) + mean
             if v_sampled.ndim == 4:
                 v_sampled = v_sampled.squeeze(2)
+            
+            # Apply Savitzky-Golay smoothing to velocity trajectories
+            try:
+                v_sampled = savgol_filter(v_sampled, window_length=5, polyorder=2, axis=1)
+            except Exception:
+                pass
             
             # Reconstruct absolute positions via cumulative summation of velocities
             gen_pos = np.cumsum(v_sampled, axis=1)
