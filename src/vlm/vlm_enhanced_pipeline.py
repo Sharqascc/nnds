@@ -122,7 +122,7 @@ class VLMEnhancedPipeline:
 if __name__ == "__main__":
     # Look for YOLO weights
     yolo_path = None
-    for candidate in ["weights/best.pt", "yolo11n.pt", "yolo26n.pt"]:
+    for candidate in ["docs/archive/weights/best.pt", "yolo11n.pt", "yolo26n.pt"]:
         if os.path.exists(candidate):
             yolo_path = candidate
             break

@@ -33,7 +33,7 @@ from core import (
 | `pet_conflict_checker.py` | `core/pet_conflict_checker.py` | Phase 2 |
 | `gate_counter.py` | `core/gate_counter.py` | Phase 2 |
 | `giti_bev_calib.py` | `core/calibration.py` | Phase 2 |
-| `dependency_graph.png` | `docs/images/dependency_graph.png` | Phase 2 |
+| `docs/figures/dependency_graph.png` | `docs/images/docs/figures/dependency_graph.png` | Phase 2 |
 
 ### Shell Script Updates
 

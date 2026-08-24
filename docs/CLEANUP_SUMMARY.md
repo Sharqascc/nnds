@@ -32,21 +32,21 @@ This cleanup pass reorganizes the NNDS repository to improve maintainability, re
 #### 2a. Move Image Assets to Docs
 ```bash
 # Move large PNG files to documentation folder
-mv dependency_graph.png docs/images/
-rm nnds_full_deps.png  # (redundant)
+mv docs/figures/dependency_graph.png docs/images/
+rm docs/figures/nnds_full_deps.png  # (redundant)
 ```
 
 **Affected files:**
-- `dependency_graph.png` (2.6 MB) → `docs/images/dependency_graph.png`
-- `nnds_full_deps.png` (606 B) → Remove (redundant)
+- `docs/figures/dependency_graph.png` (2.6 MB) → `docs/images/docs/figures/dependency_graph.png`
+- `docs/figures/nnds_full_deps.png` (606 B) → Remove (redundant)
 
 **Update in README.md:**
 ```markdown
 # From:
-![Dependency Graph](dependency_graph.png)
+![Dependency Graph](docs/figures/dependency_graph.png)
 
 # To:
-![Dependency Graph](docs/images/dependency_graph.png)
+![Dependency Graph](docs/images/docs/figures/dependency_graph.png)
 ```
 
 #### 2b. Clean Root Directory (Phase 2)

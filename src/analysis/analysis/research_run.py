@@ -12,7 +12,7 @@ from typing import List
 
 ROOT = Path(__file__).resolve().parents[1] if "__file__" in globals() else Path("/content/nnds")
 
-DEFAULT_UVH_MODEL = "weights/uvh26.pt"
+DEFAULT_UVH_MODEL = "docs/archive/weights/uvh26.pt"
 DEFAULT_COCO_PERSON_MODEL = "yolo26m-seg.pt"
 
 def log(msg, level="INFO"):
