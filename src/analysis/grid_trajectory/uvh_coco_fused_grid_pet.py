@@ -532,7 +532,7 @@ def run_uvh_coco_fused_grid_pet(
             else:
                 continue
 
-            if pet <= pet_threshold:
+            if pet <= pet_threshold and pet > 0:
                 # Determine grid cell for conflict point
                 grid_cell = spatial_grid.get_cell_from_pixels(cx, cy) if spatial_grid else "UNKNOWN"
 
