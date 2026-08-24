@@ -31,3 +31,6 @@ jobs:
       - name: Run smoke test
         run: |
           pytest -q tests/
+      - name: Validate pipeline outputs
+        run: |
+          python scripts/validate_outputs.py             --detections tests/fixtures/sample_detections.csv             --detections-split tests/fixtures/sample_split_detections.csv             --pet tests/fixtures/sample_pet.csv             --video-frames 100
