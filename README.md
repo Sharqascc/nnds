@@ -204,6 +204,28 @@ python scripts/debug_tracking_video.py --csv outputs/petevents_bev_detections.cs
 python scripts/diagnose_tracking.py --csv outputs/petevents_bev_detections.csv
 ```
 
+## ✅ Validation & Health Checks
+
+The repository includes automated validation scripts to ensure output quality without manual inspection.
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/split_detections.py` | Applies track splitting to raw detections before validation |
+| `scripts/validate_outputs.py` | Checks detections, tracking stability, and PET events |
+
+### Example full validation workflow
+
+```bash
+# 1. Run pipeline
+python scripts/run_pipeline.py --video data/sample_data/traffic_video.mp4 --out-csv outputs/petevents_final.csv
+
+# 2. Split raw detections for validation
+python scripts/split_detections.py --input outputs/petevents_final_detections.csv --output outputs/petevents_final_split_detections.csv
+
+# 3. Validate outputs
+python scripts/validate_outputs.py --detections outputs/petevents_final_detections.csv --detections-split outputs/petevents_final_split_detections.csv --pet outputs/petevents_final.csv
+```
+
 ## 🔧 Configuration
 
 Key config files:
