@@ -25,6 +25,18 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
+def bootstrap_ci(data, n_bootstrap=1000, ci=0.95, seed=42):
+    """Compute bootstrap confidence interval for the median."""
+    rng = np.random.default_rng(seed)
+    medians = []
+    data = np.asarray(data)
+    for _ in range(n_bootstrap):
+        sample = rng.choice(data, size=len(data), replace=True)
+        medians.append(np.median(sample))
+    lower = np.percentile(medians, ((1-ci)/2)*100)
+    upper = np.percentile(medians, (1-(1-ci)/2)*100)
+    return lower, upper
+
 REPO = Path(__file__).resolve().parents[1]
 
 
@@ -46,6 +58,13 @@ def detection_metrics(det_df):
         'class_counts': det_df['class_name'].value_counts().to_dict(),
         'invalid_boxes': int(((det_df['x1'] >= det_df['x2']) | (det_df['y1'] >= det_df['y2'])).sum()),
     }
+    if len(pet_values) >= 10:
+        try:
+            lower, upper = bootstrap_ci(pet_values)
+            metrics['pet_median_ci_lower'] = float(lower)
+            metrics['pet_median_ci_upper'] = float(upper)
+        except Exception:
+            pass
     return metrics
 
 
@@ -77,6 +96,13 @@ def tracking_metrics(det_df, max_gap=10, max_jump=50.0):
         'tracks_with_jump_over': jumps_over,
         'fragmentation_score': float(gaps_over + jumps_over) / max(len(track_lengths), 1),
     }
+    if len(pet_values) >= 10:
+        try:
+            lower, upper = bootstrap_ci(pet_values)
+            metrics['pet_median_ci_lower'] = float(lower)
+            metrics['pet_median_ci_upper'] = float(upper)
+        except Exception:
+            pass
     return metrics
 
 
@@ -106,6 +132,13 @@ def bev_metrics(bev_config_path, calib_path):
         'reprojection_error_std': float(errors.std()),
         'num_calibration_points': len(pixel_pts),
     }
+    if len(pet_values) >= 10:
+        try:
+            lower, upper = bootstrap_ci(pet_values)
+            metrics['pet_median_ci_lower'] = float(lower)
+            metrics['pet_median_ci_upper'] = float(upper)
+        except Exception:
+            pass
     return metrics
 
 
@@ -122,7 +155,16 @@ def pet_metrics(pet_df):
         'median_pet': float(np.median(pet_values)) if len(pet_values) else None,
         'mean_pet': float(np.mean(pet_values)) if len(pet_values) else None,
         'std_pet': float(np.std(pet_values)) if len(pet_values) else None,
+            'pet_median_ci_lower': None,
+        'pet_median_ci_upper': None,
     }
+    if len(pet_values) >= 10:
+        try:
+            lower, upper = bootstrap_ci(pet_values)
+            metrics['pet_median_ci_lower'] = float(lower)
+            metrics['pet_median_ci_upper'] = float(upper)
+        except Exception:
+            pass
     return metrics
 
 
@@ -169,6 +211,8 @@ def generate_report(det_path, pet_path, bev_config_path, calib_path, output_path
         f"- Non-positive PET: {pet_metrics_dict['non_positive_pet']}",
         f"- PET range: [{pet_metrics_dict['min_pet']:.3f}, {pet_metrics_dict['max_pet']:.3f}] s",
         f"- PET median: {pet_metrics_dict['median_pet']:.3f} s",
+        f"- PET median 95% CI: [{pet_metrics_dict['pet_median_ci_lower']:.3f}, {pet_metrics_dict['pet_median_ci_upper']:.3f}] s" if pet_metrics_dict['pet_median_ci_lower'] is not None else "",
+
         f"- PET mean: {pet_metrics_dict['mean_pet']:.3f} s",
         f"- PET std: {pet_metrics_dict['std_pet']:.3f} s",
         "",

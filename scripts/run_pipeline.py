@@ -40,6 +40,9 @@ if __name__ == "__main__":
     # Add project root to Python path so imports like 'src.analysis' work
     root_dir = Path(__file__).parent.parent
     sys.path.insert(0, str(root_dir))
+    from src.utils.seed import set_seed
+    set_seed()
+    set_seed()
 
     ensure_models_if_needed()
 
