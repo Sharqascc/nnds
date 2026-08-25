@@ -11,9 +11,9 @@ Usage:
 """
 
 import argparse
+
 import cv2
 import pandas as pd
-from pathlib import Path
 
 
 def parse_args():
@@ -23,7 +23,12 @@ def parse_args():
     parser.add_argument("--start", type=int, default=0)
     parser.add_argument("--end", type=int, default=150)
     parser.add_argument("--output", default="outputs/tracking_debug.mp4")
-    parser.add_argument("--conf", type=float, default=0.2, help="Only show boxes with confidence above this")
+    parser.add_argument(
+        "--conf",
+        type=float,
+        default=0.2,
+        help="Only show boxes with confidence above this",
+    )
     return parser.parse_args()
 
 
@@ -60,7 +65,9 @@ def main():
             if det.get("conf", 1.0) < args.conf:
                 continue
 
-            x1, y1, x2, y2 = map(int, [det.get("x1"), det.get("y1"), det.get("x2"), det.get("y2")])
+            x1, y1, x2, y2 = map(
+                int, [det.get("x1"), det.get("y1"), det.get("x2"), det.get("y2")]
+            )
             track_id = int(det.get("track_id", -1))
             cls = det.get("class_name", "?")
             conf = det.get("conf", 0.0)
@@ -68,9 +75,19 @@ def main():
             color = (0, 255, 0) if cls in ("pedestrian", "person") else (0, 255, 255)
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
             label = f"ID:{track_id} {cls} {conf:.2f}"
-            cv2.putText(frame, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+            cv2.putText(
+                frame, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2
+            )
 
-        cv2.putText(frame, f"Frame {frame_idx}", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255,255,255), 2)
+        cv2.putText(
+            frame,
+            f"Frame {frame_idx}",
+            (20, 40),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.8,
+            (255, 255, 255),
+            2,
+        )
         writer.write(frame)
 
     cap.release()

@@ -3,13 +3,12 @@ import argparse
 import json
 import logging
 import warnings
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Sequence, Dict
 
 import cv2
 import numpy as np
-import pandas as pd
 
 __version__ = "2.0.0"
 __author__ = "NNDS Team"
@@ -34,7 +33,7 @@ class CompleteTrafficAnalyzer:
         self.world_points_approx: np.ndarray | None = None
         self.pixel_points: np.ndarray | None = None
         self.inlier_mask: np.ndarray | None = None
-        self.calibration_metrics: Dict[str, float] = {}
+        self.calibration_metrics: dict[str, float] = {}
         self.bev_width = bev_width
         self.bev_height = bev_height
         self.bev_x_min: float | None = None
@@ -78,7 +77,9 @@ class CompleteTrafficAnalyzer:
             errors = np.linalg.norm(projected - self.world_points_approx[:, :2], axis=1)
             mae = float(np.mean(errors[self.inlier_mask]))
             self.calibration_metrics["final_mae"] = mae
-            self.calibration_metrics["inlier_ratio"] = inlier_count / len(self.pixel_points)
+            self.calibration_metrics["inlier_ratio"] = inlier_count / len(
+                self.pixel_points
+            )
             self._calculate_bev_scale()
 
         return self.homography, self.inlier_mask
@@ -108,8 +109,12 @@ class CompleteTrafficAnalyzer:
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="NNDS traffic analyzer demo")
-    p.add_argument("--self-test", action="store_true", help="Run a tiny calibration self-test")
-    p.add_argument("--save-json", type=str, default="", help="Write self-test output to JSON")
+    p.add_argument(
+        "--self-test", action="store_true", help="Run a tiny calibration self-test"
+    )
+    p.add_argument(
+        "--save-json", type=str, default="", help="Write self-test output to JSON"
+    )
     return p
 
 

@@ -1,17 +1,25 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, DefaultDict, Dict, List, Optional, Sequence, Tuple
+from typing import Any
 
 # Optional: integrate with core NNDS types if present
 try:
     from src.core.types import (
-        WorldSample as CoreWorldSample,
         Interval as CoreInterval,
+    )
+    from src.core.types import (
         PETEvent as CorePETEvent,
+    )
+    from src.core.types import (
         PETSummary as CorePETSummary,
     )
+    from src.core.types import (
+        WorldSample as CoreWorldSample,
+    )
+
     CORE_TYPES_AVAILABLE = True
 except ImportError:
     CORE_TYPES_AVAILABLE = False
@@ -36,7 +44,7 @@ class Interval:
     cell_id: Any
     t_enter: float
     t_exit: float
-    world_samples: List[WorldSample]
+    world_samples: list[WorldSample]
 
 
 @dataclass
@@ -47,8 +55,8 @@ class PETEvent:
     t_exit_i: float
     t_enter_j: float
     pet: float
-    world_traj_i: List[WorldSample]
-    world_traj_j: List[WorldSample]
+    world_traj_i: list[WorldSample]
+    world_traj_j: list[WorldSample]
     severity: str  # "critical" / "moderate" / "safe"
 
     @property
@@ -75,12 +83,12 @@ class PETEvent:
 @dataclass
 class PETSummary:
     count: int
-    min_pet: Optional[float]
-    max_pet: Optional[float]
-    mean_pet: Optional[float]
-    p5: Optional[float]
-    p50: Optional[float]
-    p95: Optional[float]
+    min_pet: float | None
+    max_pet: float | None
+    mean_pet: float | None
+    p5: float | None
+    p50: float | None
+    p95: float | None
     n_critical: int
     n_moderate: int
     n_safe: int
@@ -124,8 +132,8 @@ class TrajectoryLogger:
         self.fps: float = float(fps)
         self.downsample_every: int = int(downsample_every)
         # track_id -> list[(frame_idx, cell_id, world_x, world_y)]
-        self.tracks: DefaultDict[
-            int, List[Tuple[int, Any, Optional[float], Optional[float]]]
+        self.tracks: defaultdict[
+            int, list[tuple[int, Any, float | None, float | None]]
         ] = defaultdict(list)
 
     def log(
@@ -133,8 +141,8 @@ class TrajectoryLogger:
         track_id: int,
         frame_idx: int,
         cell_id: Any,
-        world_x: Optional[float] = None,
-        world_y: Optional[float] = None,
+        world_x: float | None = None,
+        world_y: float | None = None,
     ) -> None:
         """
         Log a single observation for a track.
@@ -146,7 +154,7 @@ class TrajectoryLogger:
         fi = int(frame_idx)
         self.tracks[tid].append((fi, cell_id, world_x, world_y))
 
-    def build_intervals(self) -> List[IntervalType]:
+    def build_intervals(self) -> list[IntervalType]:
         """
         Build continuous occupancy intervals per (track_id, cell_id),
         with optional downsampling of world samples.
@@ -154,14 +162,14 @@ class TrajectoryLogger:
         Returns:
             List of IntervalType.
         """
-        intervals: List[IntervalType] = []
+        intervals: list[IntervalType] = []
 
         for obj_id, samples in self.tracks.items():
             samples.sort(key=lambda x: x[0])
 
             prev_cell: Any = None
-            start_frame: Optional[int] = None
-            world_samples: List[WorldSampleType] = []
+            start_frame: int | None = None
+            world_samples: list[WorldSampleType] = []
             sample_counter = 0
 
             for frame_idx, cell_id, wx, wy in samples:
@@ -173,7 +181,9 @@ class TrajectoryLogger:
                     if wx is not None and wy is not None:
                         if sample_counter % self.downsample_every == 0:
                             world_samples.append(
-                                WorldSampleType(t=fi / self.fps, x=float(wx), y=float(wy))
+                                WorldSampleType(
+                                    t=fi / self.fps, x=float(wx), y=float(wy)
+                                )
                             )
                         sample_counter += 1
                     continue
@@ -182,7 +192,9 @@ class TrajectoryLogger:
                     if wx is not None and wy is not None:
                         if sample_counter % self.downsample_every == 0:
                             world_samples.append(
-                                WorldSampleType(t=fi / self.fps, x=float(wx), y=float(wy))
+                                WorldSampleType(
+                                    t=fi / self.fps, x=float(wx), y=float(wy)
+                                )
                             )
                         sample_counter += 1
                 else:
@@ -225,7 +237,7 @@ class TrajectoryLogger:
 
         return intervals
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get statistics about logged data."""
         total_samples = sum(len(samples) for samples in self.tracks.values())
         return {
@@ -282,7 +294,7 @@ def summarize_pet(
     mean_pet = sum(pets) / count
 
     def percentile(p: float) -> float:
-        idx = max(0, min(count - 1, int(round(p * (count - 1)))))
+        idx = max(0, min(count - 1, round(p * (count - 1))))
         return pets[idx]
 
     p5 = percentile(0.05)
@@ -317,7 +329,7 @@ def compute_pet(
     pet_threshold: float = 2.0,
     critical_threshold: float = 1.5,
     moderate_threshold: float = 3.0,
-) -> List[PETEventType]:
+) -> list[PETEventType]:
     """
     Compute PET events from intervals with input validation and severity.
 
@@ -330,8 +342,8 @@ def compute_pet(
     if pet_threshold <= 0:
         raise ValueError(f"pet_threshold must be positive, got {pet_threshold}")
 
-    pet_events: List[PETEventType] = []
-    by_cell: Dict[Any, List[IntervalType]] = {}
+    pet_events: list[PETEventType] = []
+    by_cell: dict[Any, list[IntervalType]] = {}
 
     for iv in intervals:
         by_cell.setdefault(iv.cell_id, []).append(iv)

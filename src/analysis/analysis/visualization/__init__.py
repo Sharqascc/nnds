@@ -31,84 +31,80 @@ Compliant with:
 # Import SSM visualization functions
 from .industry_standard_viz import (
     SSMPlotter,
-    plot_pet_distribution,
-    plot_ttc_time_series,
-    plot_severity_scatter,
-    plot_conflict_density_map,
     plot_comparative_boxplot,
-    plot_cumulative_distribution,
+    plot_conflict_density_map,
     plot_correlation_heatmap,
-    plot_temporal_heatmap
+    plot_cumulative_distribution,
+    plot_pet_distribution,
+    plot_severity_scatter,
+    plot_temporal_heatmap,
+    plot_ttc_time_series,
 )
 
 # Import diffusion model evaluation functions
 from .pet_diffusion_plots import (
     DiffusionPETPlotter,
+    plot_bland_altman,
     plot_pet_like_histogram,
+    plot_residual_analysis,
     plot_true_vs_pet_like,
     plot_true_vs_sample_delta,
-    plot_residual_analysis,
-    plot_bland_altman
 )
 
 # Import conflict event visualization functions
 from .pet_event_plots import (
     EventPlotter,
-    load_pet_csv,
     compute_timing_from_traj,
+    get_class_default,
+    load_pet_csv,
     plot_conflict_event,
     plot_multiple_events,
-    get_class_default
 )
 
 # Import video overlay functions
 from .video_overlays import (
     VideoOverlayPlotter,
-    overlay_conflict_frame,
-    generate_conflict_video,
     create_before_during_after,
-    save_conflict_frame
+    generate_conflict_video,
+    overlay_conflict_frame,
+    save_conflict_frame,
 )
 
 __all__ = [
-    # SSM Analysis - Main plotter class
-    'SSMPlotter',
-
-    # SSM Analysis - Individual plot functions
-    'plot_pet_distribution',
-    'plot_ttc_time_series',
-    'plot_severity_scatter',
-    'plot_conflict_density_map',
-    'plot_comparative_boxplot',
-    'plot_cumulative_distribution',
-    'plot_correlation_heatmap',
-    'plot_temporal_heatmap',
-
     # Diffusion Model Evaluation
-    'DiffusionPETPlotter',
-    'plot_pet_like_histogram',
-    'plot_true_vs_pet_like',
-    'plot_true_vs_sample_delta',
-    'plot_residual_analysis',
-    'plot_bland_altman',
-
+    "DiffusionPETPlotter",
     # Conflict Event Visualization
-    'EventPlotter',
-    'load_pet_csv',
-    'compute_timing_from_traj',
-    'plot_conflict_event',
-    'plot_multiple_events',
-    'get_class_default',
-
+    "EventPlotter",
+    # SSM Analysis - Main plotter class
+    "SSMPlotter",
     # Video Overlay Visualization
-    'VideoOverlayPlotter',
-    'overlay_conflict_frame',
-    'generate_conflict_video',
-    'create_before_during_after',
-    'save_conflict_frame',
+    "VideoOverlayPlotter",
+    "compute_timing_from_traj",
+    "create_before_during_after",
+    "generate_conflict_video",
+    "get_class_default",
+    "load_pet_csv",
+    "overlay_conflict_frame",
+    "plot_bland_altman",
+    "plot_comparative_boxplot",
+    "plot_conflict_density_map",
+    "plot_conflict_event",
+    "plot_correlation_heatmap",
+    "plot_cumulative_distribution",
+    "plot_multiple_events",
+    # SSM Analysis - Individual plot functions
+    "plot_pet_distribution",
+    "plot_pet_like_histogram",
+    "plot_residual_analysis",
+    "plot_severity_scatter",
+    "plot_temporal_heatmap",
+    "plot_true_vs_pet_like",
+    "plot_true_vs_sample_delta",
+    "plot_ttc_time_series",
+    "save_conflict_frame",
 ]
 
-__version__ = '2.3.0'  # Updated for video overlays
+__version__ = "2.3.0"  # Updated for video overlays
 
 
 # Quick usage examples

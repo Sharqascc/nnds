@@ -25,11 +25,11 @@ Compliant with:
 """
 
 import os
-import cv2
 import warnings
-from typing import Optional, List, Tuple, Dict, Union
+from typing import Optional
+
+import cv2
 import numpy as np
-from pathlib import Path
 
 try:
     from src.analysis.grid_trajectory.spatial_grid import SpatialGrid
@@ -39,34 +39,29 @@ except ImportError:
 
 
 __all__ = [
-    'VideoOverlayPlotter',
-    'overlay_conflict_frame',
-    'generate_conflict_video',
-    'create_before_during_after',
-    'save_conflict_frame'
+    "VideoOverlayPlotter",
+    "create_before_during_after",
+    "generate_conflict_video",
+    "overlay_conflict_frame",
+    "save_conflict_frame",
 ]
 
 
 # Colorblind-safe palette (Okabe-Ito) in BGR for OpenCV
 COLORS_BGR = {
-    'blue': (178, 114, 0),      # #0072B2
-    'orange': (0, 159, 230),    # #E69F00
-    'green': (115, 158, 0),     # #009E73
-    'yellow': (66, 228, 240),   # #F0E442
-    'purple': (167, 121, 204),  # #CC79A7
-    'cyan': (233, 180, 86),     # #56B4E9
-    'red': (0, 94, 213),        # #D55E00
-    'black': (0, 0, 0)          # #000000
+    "blue": (178, 114, 0),  # #0072B2
+    "orange": (0, 159, 230),  # #E69F00
+    "green": (115, 158, 0),  # #009E73
+    "yellow": (66, 228, 240),  # #F0E442
+    "purple": (167, 121, 204),  # #CC79A7
+    "cyan": (233, 180, 86),  # #56B4E9
+    "red": (0, 94, 213),  # #D55E00
+    "black": (0, 0, 0),  # #000000
 }
 
 
 # Severity thresholds (matching EventPlotter)
-DEFAULT_THRESHOLDS = {
-    'critical': 0.5,
-    'serious': 1.0,
-    'moderate': 1.5,
-    'safe': 5.0
-}
+DEFAULT_THRESHOLDS = {"critical": 0.5, "serious": 1.0, "moderate": 1.5, "safe": 5.0}
 
 
 class VideoOverlayPlotter:
@@ -86,11 +81,11 @@ class VideoOverlayPlotter:
         self,
         dpi: int = 300,
         colorblind_safe: bool = True,
-        thresholds: Optional[Dict[str, float]] = None,
+        thresholds: dict[str, float] | None = None,
         font_scale: float = 0.6,
         line_thickness: int = 2,
         show_grid: bool = True,
-        grid_alpha: float = 0.4
+        grid_alpha: float = 0.4,
     ):
         """
         Args:
@@ -112,39 +107,39 @@ class VideoOverlayPlotter:
 
         self.font = cv2.FONT_HERSHEY_SIMPLEX
 
-    def _get_severity_color(self, pet_value: float) -> Tuple[int, int, int]:
+    def _get_severity_color(self, pet_value: float) -> tuple[int, int, int]:
         """Get BGR color based on PET severity."""
-        if pet_value < self.thresholds['critical']:
-            return COLORS_BGR['red']
-        elif pet_value < self.thresholds['serious']:
-            return COLORS_BGR['orange']
-        elif pet_value < self.thresholds['moderate']:
-            return COLORS_BGR['yellow']
-        elif pet_value < self.thresholds['safe']:
-            return COLORS_BGR['green']
+        if pet_value < self.thresholds["critical"]:
+            return COLORS_BGR["red"]
+        elif pet_value < self.thresholds["serious"]:
+            return COLORS_BGR["orange"]
+        elif pet_value < self.thresholds["moderate"]:
+            return COLORS_BGR["yellow"]
+        elif pet_value < self.thresholds["safe"]:
+            return COLORS_BGR["green"]
         else:
-            return COLORS_BGR['blue']
+            return COLORS_BGR["blue"]
 
     def _get_severity_label(self, pet_value: float) -> str:
         """Get severity category label."""
-        if pet_value < self.thresholds['critical']:
-            return 'CRITICAL'
-        elif pet_value < self.thresholds['serious']:
-            return 'SERIOUS'
-        elif pet_value < self.thresholds['moderate']:
-            return 'MODERATE'
-        elif pet_value < self.thresholds['safe']:
-            return 'SLIGHT'
+        if pet_value < self.thresholds["critical"]:
+            return "CRITICAL"
+        elif pet_value < self.thresholds["serious"]:
+            return "SERIOUS"
+        elif pet_value < self.thresholds["moderate"]:
+            return "MODERATE"
+        elif pet_value < self.thresholds["safe"]:
+            return "SLIGHT"
         else:
-            return 'SAFE'
+            return "SAFE"
 
     def overlay_trajectories(
         self,
         frame: np.ndarray,
-        trajectories: List[List[Tuple[float, float, float]]],
-        track_ids: Optional[List[int]] = None,
-        colors: Optional[List[Tuple[int, int, int]]] = None,
-        show_arrows: bool = True
+        trajectories: list[list[tuple[float, float, float]]],
+        track_ids: list[int] | None = None,
+        colors: list[tuple[int, int, int]] | None = None,
+        show_arrows: bool = True,
     ) -> np.ndarray:
         """
         Overlay trajectories on a video frame.
@@ -164,13 +159,15 @@ class VideoOverlayPlotter:
         if colors is None:
             # Default colorblind-safe colors
             color_cycle = [
-                COLORS_BGR['blue'],
-                COLORS_BGR['orange'],
-                COLORS_BGR['green'],
-                COLORS_BGR['purple'],
-                COLORS_BGR['cyan']
+                COLORS_BGR["blue"],
+                COLORS_BGR["orange"],
+                COLORS_BGR["green"],
+                COLORS_BGR["purple"],
+                COLORS_BGR["cyan"],
             ]
-            colors = [color_cycle[i % len(color_cycle)] for i in range(len(trajectories))]
+            colors = [
+                color_cycle[i % len(color_cycle)] for i in range(len(trajectories))
+            ]
 
         for idx, traj in enumerate(trajectories):
             if len(traj) < 2:
@@ -183,7 +180,7 @@ class VideoOverlayPlotter:
 
             # Draw trajectory line
             for i in range(len(points) - 1):
-                cv2.line(output, points[i], points[i+1], color, self.line_thickness)
+                cv2.line(output, points[i], points[i + 1], color, self.line_thickness)
 
             # Draw circles at each point
             for pt in points:
@@ -191,13 +188,15 @@ class VideoOverlayPlotter:
 
             # Start marker (larger)
             cv2.circle(output, points[0], 6, color, -1)
-            cv2.circle(output, points[0], 8, COLORS_BGR['black'], 2)
+            cv2.circle(output, points[0], 8, COLORS_BGR["black"], 2)
 
             # End marker (arrow if enabled)
             if show_arrows and len(points) >= 2:
                 p1 = points[-2]
                 p2 = points[-1]
-                cv2.arrowedLine(output, p1, p2, color, self.line_thickness + 1, tipLength=0.3)
+                cv2.arrowedLine(
+                    output, p1, p2, color, self.line_thickness + 1, tipLength=0.3
+                )
 
             # Track ID label
             if track_ids and idx < len(track_ids):
@@ -210,7 +209,7 @@ class VideoOverlayPlotter:
                     self.font_scale * 0.8,
                     color,
                     self.line_thickness,
-                    cv2.LINE_AA
+                    cv2.LINE_AA,
                 )
 
         return output
@@ -218,9 +217,9 @@ class VideoOverlayPlotter:
     def overlay_bounding_boxes(
         self,
         frame: np.ndarray,
-        boxes: List[Tuple[int, int, int, int]],
-        track_ids: Optional[List[int]] = None,
-        colors: Optional[List[Tuple[int, int, int]]] = None
+        boxes: list[tuple[int, int, int, int]],
+        track_ids: list[int] | None = None,
+        colors: list[tuple[int, int, int]] | None = None,
     ) -> np.ndarray:
         """
         Overlay bounding boxes on frame.
@@ -237,7 +236,7 @@ class VideoOverlayPlotter:
         output = frame.copy()
 
         if colors is None:
-            colors = [COLORS_BGR['blue']] * len(boxes)
+            colors = [COLORS_BGR["blue"]] * len(boxes)
 
         for idx, (x1, y1, x2, y2) in enumerate(boxes):
             color = colors[idx]
@@ -248,7 +247,9 @@ class VideoOverlayPlotter:
             # Track ID label
             if track_ids and idx < len(track_ids):
                 label = f"ID {track_ids[idx]}"
-                label_size = cv2.getTextSize(label, self.font, self.font_scale, self.line_thickness)[0]
+                label_size = cv2.getTextSize(
+                    label, self.font, self.font_scale, self.line_thickness
+                )[0]
 
                 # Background for text
                 cv2.rectangle(
@@ -256,7 +257,7 @@ class VideoOverlayPlotter:
                     (x1, y1 - label_size[1] - 10),
                     (x1 + label_size[0] + 5, y1),
                     color,
-                    -1
+                    -1,
                 )
 
                 # Text
@@ -266,9 +267,9 @@ class VideoOverlayPlotter:
                     (x1 + 2, y1 - 5),
                     self.font,
                     self.font_scale,
-                    COLORS_BGR['black'],
+                    COLORS_BGR["black"],
                     self.line_thickness,
-                    cv2.LINE_AA
+                    cv2.LINE_AA,
                 )
 
         return output
@@ -277,10 +278,10 @@ class VideoOverlayPlotter:
         self,
         frame: np.ndarray,
         pet_value: float,
-        ttc_value: Optional[float] = None,
-        frame_number: Optional[int] = None,
-        timestamp: Optional[float] = None,
-        position: str = 'top-left'
+        ttc_value: float | None = None,
+        frame_number: int | None = None,
+        timestamp: float | None = None,
+        position: str = "top-left",
     ) -> np.ndarray:
         """
         Overlay conflict statistics on frame.
@@ -303,9 +304,7 @@ class VideoOverlayPlotter:
         severity_label = self._get_severity_label(pet_value)
 
         # Build info text
-        info_lines = [
-            f"PET: {pet_value:.3f}s ({severity_label})"
-        ]
+        info_lines = [f"PET: {pet_value:.3f}s ({severity_label})"]
 
         if ttc_value is not None:
             info_lines.append(f"TTC: {ttc_value:.3f}s")
@@ -327,11 +326,11 @@ class VideoOverlayPlotter:
         box_width = max_width + 20
 
         # Position
-        if position == 'top-left':
+        if position == "top-left":
             x, y = 10, 10
-        elif position == 'top-right':
+        elif position == "top-right":
             x, y = w - box_width - 10, 10
-        elif position == 'bottom-left':
+        elif position == "bottom-left":
             x, y = 10, h - box_height - 10
         else:  # bottom-right
             x, y = w - box_width - 10, h - box_height - 10
@@ -339,21 +338,13 @@ class VideoOverlayPlotter:
         # Draw semi-transparent background
         overlay = output.copy()
         cv2.rectangle(
-            overlay,
-            (x, y),
-            (x + box_width, y + box_height),
-            severity_color,
-            -1
+            overlay, (x, y), (x + box_width, y + box_height), severity_color, -1
         )
         output = cv2.addWeighted(overlay, 0.7, output, 0.3, 0)
 
         # Draw border
         cv2.rectangle(
-            output,
-            (x, y),
-            (x + box_width, y + box_height),
-            severity_color,
-            3
+            output, (x, y), (x + box_width, y + box_height), severity_color, 3
         )
 
         # Draw text
@@ -367,7 +358,7 @@ class VideoOverlayPlotter:
                 self.font_scale,
                 (255, 255, 255),  # White text
                 self.line_thickness,
-                cv2.LINE_AA
+                cv2.LINE_AA,
             )
 
         return output
@@ -375,10 +366,10 @@ class VideoOverlayPlotter:
     def overlay_conflict_zone(
         self,
         frame: np.ndarray,
-        center: Tuple[int, int],
+        center: tuple[int, int],
         radius: int = 50,
-        color: Optional[Tuple[int, int, int]] = None,
-        alpha: float = 0.3
+        color: tuple[int, int, int] | None = None,
+        alpha: float = 0.3,
     ) -> np.ndarray:
         """
         Highlight conflict zone with translucent circle.
@@ -396,7 +387,7 @@ class VideoOverlayPlotter:
         output = frame.copy()
 
         if color is None:
-            color = COLORS_BGR['red']
+            color = COLORS_BGR["red"]
 
         overlay = output.copy()
         cv2.circle(overlay, center, radius, color, -1)
@@ -411,12 +402,12 @@ class VideoOverlayPlotter:
         self,
         video_path: str,
         frame_idx: int,
-        trajectories: List[List[Tuple[float, float, float]]],
-        track_ids: Optional[List[int]] = None,
-        pet_value: Optional[float] = None,
-        conflict_center: Optional[Tuple[int, int]] = None,
-        grid: Optional['SpatialGrid'] = None,
-        cell_id: Optional[str] = None
+        trajectories: list[list[tuple[float, float, float]]],
+        track_ids: list[int] | None = None,
+        pet_value: float | None = None,
+        conflict_center: tuple[int, int] | None = None,
+        grid: Optional["SpatialGrid"] = None,
+        cell_id: str | None = None,
     ) -> np.ndarray:
         """
         Create complete conflict visualization for a single frame.
@@ -459,8 +450,8 @@ class VideoOverlayPlotter:
                         overlay_temp,
                         (int(cx - half), int(cy - half)),
                         (int(cx + half), int(cy + half)),
-                        COLORS_BGR['red'],
-                        -1
+                        COLORS_BGR["red"],
+                        -1,
                     )
                     output = cv2.addWeighted(overlay_temp, 0.3, output, 0.7, 0)
 
@@ -474,19 +465,12 @@ class VideoOverlayPlotter:
         # Statistics
         if pet_value is not None:
             output = self.overlay_conflict_info(
-                output,
-                pet_value,
-                frame_number=frame_idx
+                output, pet_value, frame_number=frame_idx
             )
 
         return output
 
-    def save_frame(
-        self,
-        frame: np.ndarray,
-        save_path: str,
-        dpi: Optional[int] = None
-    ):
+    def save_frame(self, frame: np.ndarray, save_path: str, dpi: int | None = None):
         """
         Save frame with publication quality.
 
@@ -495,10 +479,10 @@ class VideoOverlayPlotter:
             save_path: Output path
             dpi: Optional DPI override
         """
-        os.makedirs(os.path.dirname(save_path) or '.', exist_ok=True)
+        os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
 
         # High quality JPEG or PNG
-        if save_path.lower().endswith('.png'):
+        if save_path.lower().endswith(".png"):
             cv2.imwrite(save_path, frame, [cv2.IMWRITE_PNG_COMPRESSION, 3])
         else:
             cv2.imwrite(save_path, frame, [cv2.IMWRITE_JPEG_QUALITY, 95])
@@ -506,12 +490,12 @@ class VideoOverlayPlotter:
     def generate_conflict_video(
         self,
         video_path: str,
-        frame_range: Tuple[int, int],
-        trajectories: List[List[Tuple[float, float, float]]],
-        track_ids: Optional[List[int]] = None,
-        pet_value: Optional[float] = None,
-        output_path: str = 'output/conflict_video.mp4',
-        fps: int = 30
+        frame_range: tuple[int, int],
+        trajectories: list[list[tuple[float, float, float]]],
+        track_ids: list[int] | None = None,
+        pet_value: float | None = None,
+        output_path: str = "output/conflict_video.mp4",
+        fps: int = 30,
     ):
         """
         Generate video of conflict event with overlays.
@@ -525,13 +509,13 @@ class VideoOverlayPlotter:
             output_path: Output video path
             fps: Output video FPS
         """
-        os.makedirs(os.path.dirname(output_path) or '.', exist_ok=True)
+        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
         cap = cv2.VideoCapture(video_path)
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
         start_frame, end_frame = frame_range
@@ -551,7 +535,7 @@ class VideoOverlayPlotter:
                     processed,
                     pet_value,
                     frame_number=frame_idx,
-                    timestamp=frame_idx / fps
+                    timestamp=frame_idx / fps,
                 )
 
             out.write(processed)
@@ -566,9 +550,9 @@ class VideoOverlayPlotter:
 def overlay_conflict_frame(
     video_path: str,
     frame_idx: int,
-    trajectories: List[List[Tuple[float, float, float]]],
-    pet_value: Optional[float] = None,
-    save_path: Optional[str] = None
+    trajectories: list[list[tuple[float, float, float]]],
+    pet_value: float | None = None,
+    save_path: str | None = None,
 ) -> np.ndarray:
     """Quick function to overlay trajectories on a single frame."""
     plotter = VideoOverlayPlotter()
@@ -584,9 +568,9 @@ def overlay_conflict_frame(
 
 def generate_conflict_video(
     video_path: str,
-    frame_range: Tuple[int, int],
-    trajectories: List[List[Tuple[float, float, float]]],
-    output_path: str = 'output/conflict.mp4'
+    frame_range: tuple[int, int],
+    trajectories: list[list[tuple[float, float, float]]],
+    output_path: str = "output/conflict.mp4",
 ):
     """Quick function to generate conflict video."""
     plotter = VideoOverlayPlotter()
@@ -600,8 +584,8 @@ def create_before_during_after(
     before_idx: int,
     during_idx: int,
     after_idx: int,
-    trajectories: List[List[Tuple[float, float, float]]],
-    save_path: str = 'output/conflict_sequence.png'
+    trajectories: list[list[tuple[float, float, float]]],
+    save_path: str = "output/conflict_sequence.png",
 ):
     """Create 3-panel before/during/after figure."""
     plotter = VideoOverlayPlotter()
@@ -624,7 +608,7 @@ def save_conflict_frame(
     cell_id: str,
     frame_idx: int,
     out_path: str,
-    alpha: float = 0.6
+    alpha: float = 0.6,
 ):
     """
     Backward compatible function (original API).
@@ -657,45 +641,54 @@ def save_conflict_frame(
             overlay,
             (int(cx - half), int(cy - half)),
             (int(cx + half), int(cy + half)),
-            COLORS_BGR['red'],
-            -1
+            COLORS_BGR["red"],
+            -1,
         )
         output = cv2.addWeighted(overlay, 0.3, output, 0.7, 0)
 
     plotter.save_frame(output, out_path)
     return out_path
 
-def overlay_full_visualization(frame, frame_num, grid, detections=None, 
-                                conflict_cell=None, pet_value=None, 
-                                vehicle_ids=None, show_grid=True):
+
+def overlay_full_visualization(
+    frame,
+    frame_num,
+    grid,
+    detections=None,
+    conflict_cell=None,
+    pet_value=None,
+    vehicle_ids=None,
+    show_grid=True,
+):
     """
     Enhanced frame overlay with grid, detections, and IDs.
     """
     # Ensure frame is writable
     frame = frame.copy()
-    
+
     # 1. Add GRID overlay
     if show_grid and grid is not None:
         frame = grid.draw_overlay(frame, alpha=0.3)
-    
+
     # 2. Add SAM3 DETECTIONS
     if detections is not None:
         for det in detections:
-            x1, y1, x2, y2 = map(int, det['bbox'])
-            conf = det.get('confidence', 0.5)
-            track_id = det.get('track_id', '?')
-            
+            x1, y1, x2, y2 = map(int, det["bbox"])
+            conf = det.get("confidence", 0.5)
+            track_id = det.get("track_id", "?")
+
             # Color based on confidence
             color = (0, int(255 * conf), 0) if conf > 0.5 else (0, 255, 255)
-            
+
             # Draw bounding box
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-            
+
             # Draw ID label
             label = f"ID:{track_id}"
-            cv2.putText(frame, label, (x1, y1-5),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-    
+            cv2.putText(
+                frame, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2
+            )
+
     # 3. Highlight CONFLICT CELL
     if conflict_cell and grid is not None:
         cell_center = grid.get_cell_center(conflict_cell)
@@ -703,28 +696,39 @@ def overlay_full_visualization(frame, frame_num, grid, detections=None,
             cx, cy = cell_center
             # Draw red circle around conflict zone
             cv2.circle(frame, (int(cx), int(cy)), 80, (0, 0, 255), 3)
-            cv2.putText(frame, f"CONFLICT: {conflict_cell}", 
-                       (int(cx)-80, int(cy)-90), cv2.FONT_HERSHEY_SIMPLEX, 
-                       0.6, (0, 0, 255), 2)
-    
+            cv2.putText(
+                frame,
+                f"CONFLICT: {conflict_cell}",
+                (int(cx) - 80, int(cy) - 90),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (0, 0, 255),
+                2,
+            )
+
     # 4. Add PET INFO PANEL
     if pet_value is not None:
         panel_height = 120
         overlay = frame.copy()
         cv2.rectangle(overlay, (10, 10), (450, panel_height), (0, 0, 0), -1)
         frame = cv2.addWeighted(overlay, 0.6, frame, 0.4, 0)
-        
+
         info_lines = [
             f"PET = {pet_value:.3f}s",
             f"Conflict Cell: {conflict_cell}",
-            f"Vehicles: {vehicle_ids[0]} & {vehicle_ids[1]}" if vehicle_ids else "Vehicles: ? & ?",
-            f"Frame: {frame_num}"
+            f"Vehicles: {vehicle_ids[0]} & {vehicle_ids[1]}"
+            if vehicle_ids
+            else "Vehicles: ? & ?",
+            f"Frame: {frame_num}",
         ]
-        
+
         for i, line in enumerate(info_lines):
             y_pos = 40 + i * 25
-            color = (0, 0, 255) if "PET" in line and pet_value < 1.5 else (255, 255, 255)
-            cv2.putText(frame, line, (20, y_pos),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
-    
+            color = (
+                (0, 0, 255) if "PET" in line and pet_value < 1.5 else (255, 255, 255)
+            )
+            cv2.putText(
+                frame, line, (20, y_pos), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2
+            )
+
     return frame

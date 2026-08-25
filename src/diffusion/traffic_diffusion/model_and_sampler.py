@@ -1,10 +1,13 @@
-import torch
 import numpy as np
+import torch
 
-from src.diffusion.traffic_diffusion.trajectory_diffusion import TrajectoryDiffusionModel
+from src.diffusion.traffic_diffusion.trajectory_diffusion import (
+    TrajectoryDiffusionModel,
+)
 
 _DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 _MODEL = None
+
 
 def load_model(checkpoint_path: str, traj_shape, cond_dim, hidden_dim=128):
     """
@@ -36,9 +39,15 @@ def load_model(checkpoint_path: str, traj_shape, cond_dim, hidden_dim=128):
 
 
 @torch.no_grad()
-def sample_future_denorm(batch, checkpoint_path: str, num_samples: int = 1,
-                         traj_shape=(9, 2, 2), cond_dim=4, hidden_dim=128,
-                         num_steps=50):
+def sample_future_denorm(
+    batch,
+    checkpoint_path: str,
+    num_samples: int = 1,
+    traj_shape=(9, 2, 2),
+    cond_dim=4,
+    hidden_dim=128,
+    num_steps=50,
+):
     """
     Inputs:
       batch:
@@ -50,7 +59,7 @@ def sample_future_denorm(batch, checkpoint_path: str, num_samples: int = 1,
                      (if you add de-normalization, convert here).
     """
     # Derive shapes
-    B, Th, D = batch["past"].shape
+    B, _Th, _D = batch["past"].shape
     Tf = batch["future"].shape[1]  # future horizon
     # traj_shape = (T, N, F) where T = Tf, N=2 agents, F=2 coords
     T = Tf
@@ -59,7 +68,9 @@ def sample_future_denorm(batch, checkpoint_path: str, num_samples: int = 1,
     traj_shape = (T, N, F)
 
     # Load model once
-    model = load_model(checkpoint_path, traj_shape=traj_shape, cond_dim=cond_dim, hidden_dim=hidden_dim)
+    model = load_model(
+        checkpoint_path, traj_shape=traj_shape, cond_dim=cond_dim, hidden_dim=hidden_dim
+    )
 
     # Build conditioning vector(s) from batch["past"]
     # Here, a simple example: flattened last past step for each agent.

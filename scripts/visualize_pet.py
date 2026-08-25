@@ -12,10 +12,10 @@ Usage:
 
 import argparse
 import json
-import cv2
-import numpy as np
-import pandas as pd
 from pathlib import Path
+
+import cv2
+import pandas as pd
 
 
 def parse_args():
@@ -37,7 +37,7 @@ def draw_tracks(frame, traj_points, color, label):
 
     # Draw lines connecting consecutive points
     for i in range(1, len(traj_points)):
-        p1 = (int(traj_points[i-1]["x_pixel"]), int(traj_points[i-1]["y_pixel"]))
+        p1 = (int(traj_points[i - 1]["x_pixel"]), int(traj_points[i - 1]["y_pixel"]))
         p2 = (int(traj_points[i]["x_pixel"]), int(traj_points[i]["y_pixel"]))
         cv2.line(frame, p1, p2, color, 2)
 
@@ -47,17 +47,23 @@ def draw_tracks(frame, traj_points, color, label):
 
     # Start marker (green square)
     first = traj_points[0]
-    cv2.rectangle(frame,
-                  (int(first["x_pixel"])-5, int(first["y_pixel"])-5),
-                  (int(first["x_pixel"])+5, int(first["y_pixel"])+5),
-                  (0, 255, 0), 2)
+    cv2.rectangle(
+        frame,
+        (int(first["x_pixel"]) - 5, int(first["y_pixel"]) - 5),
+        (int(first["x_pixel"]) + 5, int(first["y_pixel"]) + 5),
+        (0, 255, 0),
+        2,
+    )
 
     # End marker (blue square)
     last = traj_points[-1]
-    cv2.rectangle(frame,
-                  (int(last["x_pixel"])-5, int(last["y_pixel"])-5),
-                  (int(last["x_pixel"])+5, int(last["y_pixel"])+5),
-                  (255, 0, 0), 2)
+    cv2.rectangle(
+        frame,
+        (int(last["x_pixel"]) - 5, int(last["y_pixel"]) - 5),
+        (int(last["x_pixel"]) + 5, int(last["y_pixel"]) + 5),
+        (255, 0, 0),
+        2,
+    )
 
     # Direction arrow from first to second point
     if len(traj_points) >= 2:
@@ -75,7 +81,7 @@ def main():
 
     df = pd.read_csv(csv_path)
     if args.event_id >= len(df) or args.event_id < 0:
-        raise ValueError(f"event-id {args.event_id} out of range (0-{len(df)-1})")
+        raise ValueError(f"event-id {args.event_id} out of range (0-{len(df) - 1})")
 
     row = df.iloc[args.event_id]
     traj_a = json.loads(row["traj_a_json"])
@@ -113,11 +119,20 @@ def main():
         traj_b_so_far = [p for p in traj_b if p["frame"] <= frame_idx]
 
         draw_tracks(frame, traj_a_so_far, (0, 0, 255), f"Track {row['track_a']}")  # Red
-        draw_tracks(frame, traj_b_so_far, (255, 0, 0), f"Track {row['track_b']}")  # Blue
+        draw_tracks(
+            frame, traj_b_so_far, (255, 0, 0), f"Track {row['track_b']}"
+        )  # Blue
 
         # Add legend
-        cv2.putText(frame, f"Event {args.event_id}  Track {row['track_a']} (red) vs Track {row['track_b']} (blue)",
-                    (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+        cv2.putText(
+            frame,
+            f"Event {args.event_id}  Track {row['track_a']} (red) vs Track {row['track_b']} (blue)",
+            (20, 40),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (255, 255, 255),
+            2,
+        )
 
         if writer:
             writer.write(frame)

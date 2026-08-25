@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union, List
+from typing import Any
 
 import cv2
 import numpy as np
@@ -18,6 +18,7 @@ def _col_to_letters(col_idx: int) -> str:
         letters = chr(65 + remainder) + letters
     return letters
 
+OUT_OF_BOUNDS_CELL = "OUT_OF_BOUNDS"
 
 def _letters_to_col(letters: str) -> int:
     """Convert Excel-style column letters to zero-based column index."""
@@ -28,7 +29,7 @@ def _letters_to_col(letters: str) -> int:
 
 @dataclass
 class GridConfig:
-    corners: Dict[str, Tuple[int, int]]
+    corners: dict[str, tuple[int, int]]
     cell_size: int
     naming_style: str
 
@@ -52,13 +53,13 @@ class SpatialGrid:
         }
     """
 
-    def __init__(self, config_path: Union[str, Path]) -> None:
+    def __init__(self, config_path: str | Path) -> None:
         config_path = Path(config_path)
         if not config_path.is_file():
             raise FileNotFoundError(f"Grid config not found: {config_path}")
 
         with config_path.open("r") as f:
-            raw_cfg: Dict[str, Any] = json.load(f)
+            raw_cfg: dict[str, Any] = json.load(f)
 
         corners = raw_cfg.get("corners")
         configuration = raw_cfg.get("configuration", {})
@@ -76,7 +77,11 @@ class SpatialGrid:
 
         if not isinstance(cell_size, int) or cell_size <= 0:
             raise ValueError(f"cell_size must be a positive int, got {cell_size!r}")
-        if not isinstance(naming_style, str) or "{col}" not in naming_style or "{row}" not in naming_style:
+        if (
+            not isinstance(naming_style, str)
+            or "{col}" not in naming_style
+            or "{row}" not in naming_style
+        ):
             raise ValueError(
                 f"naming_style must be a format string with {{col}} and {{row}}, got {naming_style!r}"
             )
@@ -93,11 +98,17 @@ class SpatialGrid:
         self.naming_style = self.config.naming_style
 
         # Boundaries for coordinate checking
-        self.x_min, self.x_max = self.corners["top_left"][0], self.corners["top_right"][0]
-        self.y_min, self.y_max = self.corners["top_left"][1], self.corners["bottom_left"][1]
+        self.x_min, self.x_max = (
+            self.corners["top_left"][0],
+            self.corners["top_right"][0],
+        )
+        self.y_min, self.y_max = (
+            self.corners["top_left"][1],
+            self.corners["bottom_left"][1],
+        )
 
         # Cache for cell centers (minor perf optimization)
-        self._cell_center_cache: Dict[str, Optional[Tuple[int, int]]] = {}
+        self._cell_center_cache: dict[str, tuple[int, int] | None] = {}
 
     def __repr__(self) -> str:
         return (
@@ -127,7 +138,7 @@ class SpatialGrid:
 
         return self.naming_style.format(col=col_letter, row=row_num)
 
-    def get_cell_center(self, cell_id: str) -> Optional[Tuple[int, int]]:
+    def get_cell_center(self, cell_id: str) -> tuple[int, int] | None:
         """
         Reverse a Cell ID back into pixel coordinates (center of the cell).
 
@@ -158,8 +169,16 @@ class SpatialGrid:
                     if col_idx < 0 or row_idx < 0:
                         result = None
                     else:
-                        x = self.x_min + (col_idx * self.cell_size) + (self.cell_size // 2)
-                        y = self.y_min + (row_idx * self.cell_size) + (self.cell_size // 2)
+                        x = (
+                            self.x_min
+                            + (col_idx * self.cell_size)
+                            + (self.cell_size // 2)
+                        )
+                        y = (
+                            self.y_min
+                            + (row_idx * self.cell_size)
+                            + (self.cell_size // 2)
+                        )
                         result = (int(x), int(y))
         except (ValueError, IndexError):
             result = None
@@ -167,7 +186,7 @@ class SpatialGrid:
         self._cell_center_cache[cell_id] = result
         return result
 
-    def get_cell_bounds(self, cell_id: str) -> Optional[Tuple[int, int, int, int]]:
+    def get_cell_bounds(self, cell_id: str) -> tuple[int, int, int, int] | None:
         """
         Get bounding box (x1, y1, x2, y2) of a cell in pixel coordinates.
 
@@ -181,7 +200,7 @@ class SpatialGrid:
         half = self.cell_size // 2
         return (cx - half, cy - half, cx + half, cy + half)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """
         Return basic grid statistics for debugging / logging.
         """
@@ -200,9 +219,9 @@ class SpatialGrid:
         self,
         frame: np.ndarray,
         alpha: float = 0.6,
-        line_color: Tuple[int, int, int] = (0, 255, 255),  # Neon yellow
-        text_color: Tuple[int, int, int] = (0, 255, 255),
-        highlight_cells: Optional[List[str]] = None,
+        line_color: tuple[int, int, int] = (0, 255, 255),  # Neon yellow
+        text_color: tuple[int, int, int] = (0, 255, 255),
+        highlight_cells: list[str] | None = None,
     ) -> np.ndarray:
         """
         Render a high-visibility grid with axis labels over the frame.
@@ -228,8 +247,12 @@ class SpatialGrid:
             if x < self.x_max:
                 label = chr(65 + (i % 26))
                 pos = (x + 10, max(30, self.y_min - 15))
-                cv2.putText(overlay, label, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.8, shadow, 4)
-                cv2.putText(overlay, label, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.8, text_color, 2)
+                cv2.putText(
+                    overlay, label, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.8, shadow, 4
+                )
+                cv2.putText(
+                    overlay, label, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.8, text_color, 2
+                )
 
         # 2. Draw horizontal lines & row headers (1, 2, 3...)
         for i, y in enumerate(range(self.y_min, self.y_max + 1, self.cell_size)):
@@ -239,8 +262,12 @@ class SpatialGrid:
             if y < self.y_max:
                 label = str(i + 1)
                 pos = (max(5, self.x_min - 45), y + 35)
-                cv2.putText(overlay, label, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.8, shadow, 4)
-                cv2.putText(overlay, label, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.8, text_color, 2)
+                cv2.putText(
+                    overlay, label, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.8, shadow, 4
+                )
+                cv2.putText(
+                    overlay, label, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.8, text_color, 2
+                )
 
         # 3. Optionally highlight specific cells
         if highlight_cells:

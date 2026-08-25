@@ -12,10 +12,10 @@ Usage:
 """
 
 import argparse
-import pandas as pd
-import numpy as np
-from pathlib import Path
 from collections import defaultdict
+
+import numpy as np
+import pandas as pd
 from tqdm import tqdm
 
 
@@ -23,12 +23,33 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--csv", required=True, help="Path to DEL_4.csv")
     parser.add_argument("--output", default="outputs/diffusion_del4.csv")
-    parser.add_argument("--min-points", type=int, default=20, help="Minimum points per track")
-    parser.add_argument("--max-distance", type=float, default=8.0, help="Max distance (m) to consider a pair as interacting")
-    parser.add_argument("--min-frames", type=int, default=16, help="Minimum common frames per event")
-    parser.add_argument("--max-events", type=int, default=5000, help="Maximum events to output")
-    parser.add_argument("--cell-size", type=float, default=25.0, help="Spatial cell size for conflict detection")
-    parser.add_argument("--conflict-radius", type=float, default=5.0, help="Conflict radius around cell center (m)")
+    parser.add_argument(
+        "--min-points", type=int, default=20, help="Minimum points per track"
+    )
+    parser.add_argument(
+        "--max-distance",
+        type=float,
+        default=8.0,
+        help="Max distance (m) to consider a pair as interacting",
+    )
+    parser.add_argument(
+        "--min-frames", type=int, default=16, help="Minimum common frames per event"
+    )
+    parser.add_argument(
+        "--max-events", type=int, default=5000, help="Maximum events to output"
+    )
+    parser.add_argument(
+        "--cell-size",
+        type=float,
+        default=25.0,
+        help="Spatial cell size for conflict detection",
+    )
+    parser.add_argument(
+        "--conflict-radius",
+        type=float,
+        default=5.0,
+        help="Conflict radius around cell center (m)",
+    )
     return parser.parse_args()
 
 
@@ -47,7 +68,10 @@ def compute_pet(ta, tb, shared_cells, cell_size=25.0, radius=5.0):
             first = inside[0]
             last = inside[-1]
             # time is rounded to 0.1s; divide by 10 for seconds
-            return (float(track["time"][first]) / 10.0, float(track["time"][last]) / 10.0)
+            return (
+                float(track["time"][first]) / 10.0,
+                float(track["time"][last]) / 10.0,
+            )
 
         a_interval = entry_exit(ta)
         b_interval = entry_exit(tb)
@@ -114,7 +138,7 @@ def main():
         cells_a = grid[tid_a]
         ta = tracks[tid_a]
         # Check only tracks sharing any cell
-        for j in range(i+1, len(track_ids)):
+        for j in range(i + 1, len(track_ids)):
             if event_id > args.max_events:
                 break
             tid_b = track_ids[j]
@@ -138,25 +162,29 @@ def main():
             xb = np.interp(common, tb["time"], tb["x"])
             yb = np.interp(common, tb["time"], tb["y"])
 
-            dist = np.sqrt((xa - xb)**2 + (ya - yb)**2)
+            dist = np.sqrt((xa - xb) ** 2 + (ya - yb) ** 2)
             if dist.min() >= args.max_distance:
                 continue
 
             # Compute real PET
-            pet = compute_pet(ta, tb, shared_cells, cell_size=cell_size, radius=args.conflict_radius)
+            pet = compute_pet(
+                ta, tb, shared_cells, cell_size=cell_size, radius=args.conflict_radius
+            )
             if pet is None:
                 continue
 
             for k, f in enumerate(common):
-                events.append({
-                    "event_id": event_id,
-                    "frame": k,
-                    "x_i": float(xa[k]),
-                    "y_i": float(ya[k]),
-                    "x_j": float(xb[k]),
-                    "y_j": float(yb[k]),
-                    "pet": pet,
-                })
+                events.append(
+                    {
+                        "event_id": event_id,
+                        "frame": k,
+                        "x_i": float(xa[k]),
+                        "y_i": float(ya[k]),
+                        "x_j": float(xb[k]),
+                        "y_j": float(yb[k]),
+                        "pet": pet,
+                    }
+                )
             event_id += 1
         if event_id > args.max_events:
             break
@@ -167,7 +195,9 @@ def main():
 
     out = pd.DataFrame(events)
     out.to_csv(args.output, index=False)
-    print(f"✅ Wrote {len(out)} rows for {out['event_id'].nunique()} events to {args.output}")
+    print(
+        f"✅ Wrote {len(out)} rows for {out['event_id'].nunique()} events to {args.output}"
+    )
 
 
 if __name__ == "__main__":

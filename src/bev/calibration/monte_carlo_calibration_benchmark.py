@@ -28,7 +28,6 @@ import argparse
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 import cv2
 import numpy as np
@@ -47,9 +46,7 @@ IMG_W, IMG_H = 1920, 1080
 
 fx, fy = 1600.0, 1600.0
 cx, cy = IMG_W / 2.0, IMG_H / 2.0
-K = np.array(
-    [[fx, 0.0, cx], [0.0, fy, cy], [0.0, 0.0, 1.0]], dtype=np.float32
-)
+K = np.array([[fx, 0.0, cx], [0.0, fy, cy], [0.0, 0.0, 1.0]], dtype=np.float32)
 
 # Radial distortion only, as in original script
 dist_coeffs = np.array([-0.12, 0.02, 0.0, 0.0, 0.0], dtype=np.float32)
@@ -61,15 +58,15 @@ x_coords = np.linspace(0.0, W_X, NX)
 y_coords = np.linspace(0.0, W_Y, NY)
 XX, YY = np.meshgrid(x_coords, y_coords)
 ZW = np.zeros_like(XX)
-world_points_true = np.stack(
-    [XX.ravel(), YY.ravel(), ZW.ravel()], axis=1
-).astype(np.float32)
+world_points_true = np.stack([XX.ravel(), YY.ravel(), ZW.ravel()], axis=1).astype(
+    np.float32
+)
 
 # Default noise / bias parameters (can be varied in multi-noise mode)
-sigma_px_x_default = 2.0       # pixel noise std in x
-sigma_px_y_default = 3.0       # pixel noise std in y
-rho_noise_default = 0.83       # correlation between x and y noise
-plane_bias_cm_default = 1.5    # max plane bias across X (centimeters)
+sigma_px_x_default = 2.0  # pixel noise std in x
+sigma_px_y_default = 3.0  # pixel noise std in y
+rho_noise_default = 0.83  # correlation between x and y noise
+plane_bias_cm_default = 1.5  # max plane bias across X (centimeters)
 
 
 # -------------------------------------------------------------------------
@@ -124,7 +121,7 @@ def configure_logging(verbose: bool) -> None:
 # -------------------------------------------------------------------------
 # CORE HELPERS
 # -------------------------------------------------------------------------
-def make_example_pose() -> Tuple[np.ndarray, np.ndarray]:
+def make_example_pose() -> tuple[np.ndarray, np.ndarray]:
     """Example camera pose above ground plane, as in original script."""
     rvec = np.array([0.4, 0.0, 0.0], dtype=np.float32)
     R, _ = cv2.Rodrigues(rvec)
@@ -173,9 +170,7 @@ def add_anisotropic_noise_2d(
     cov = [[sx^2, rho*sx*sy], [rho*sx*sy, sy^2]].
     """
     N = points_2d.shape[0]
-    cov = np.array(
-        [[sx**2, rho * sx * sy], [rho * sx * sy, sy**2]], dtype=np.float32
-    )
+    cov = np.array([[sx**2, rho * sx * sy], [rho * sx * sy, sy**2]], dtype=np.float32)
     noise = rng.multivariate_normal(mean=[0.0, 0.0], cov=cov, size=N)
     return points_2d + noise.astype(np.float32)
 
@@ -196,9 +191,9 @@ def world_from_pnp(
     Back-project image points to Z=0 ground plane using estimated pose.
     Returns Nx2 world coordinates.
     """
-    img_pts_undist = cv2.undistortPoints(
-        img_pts.reshape(-1, 1, 2), K_, dist
-    ).reshape(-1, 2)
+    img_pts_undist = cv2.undistortPoints(img_pts.reshape(-1, 1, 2), K_, dist).reshape(
+        -1, 2
+    )
     rays_cam = np.concatenate(
         [img_pts_undist, np.ones((img_pts_undist.shape[0], 1), dtype=np.float32)],
         axis=1,
@@ -206,7 +201,7 @@ def world_from_pnp(
     R_inv = R.T
     t_vec = t.reshape(3)
     cam_center_world = -R_inv @ t_vec
-    pts_world: List[List[float]] = []
+    pts_world: list[list[float]] = []
 
     for d_cam in rays_cam:
         d_world = R_inv @ d_cam
@@ -223,7 +218,7 @@ def world_from_pnp(
 def estimate_homography(
     world_pts: np.ndarray,
     img_pts: np.ndarray,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """Estimate homography from image -> world (X,Y) with RANSAC."""
     src = img_pts.astype(np.float32)
     dst = world_pts[:, :2].astype(np.float32)
@@ -244,7 +239,7 @@ def solve_pnp_world_error(
     world_pts: np.ndarray,
     img_pts: np.ndarray,
     method_flag: int,
-) -> Tuple[float, np.ndarray | None, np.ndarray | None]:
+) -> tuple[float, np.ndarray | None, np.ndarray | None]:
     """
     Solve PnP and compute MAE in world (2D ground).
     Returns (mae, R_est, tvec) or (inf, None, None) on failure.
@@ -264,7 +259,7 @@ def solve_pnp_Z0_world_error(
     world_pts: np.ndarray,
     img_pts: np.ndarray,
     method_flag: int,
-) -> Tuple[float, np.ndarray | None, np.ndarray | None]:
+) -> tuple[float, np.ndarray | None, np.ndarray | None]:
     """PnP assuming Z=0 for all world points before PnP."""
     wp = world_pts.copy()
     wp[:, 2] = 0.0
@@ -304,8 +299,7 @@ def solve_p3p_ransac_world_error(
         R_est, _ = cv2.Rodrigues(rvec)
         world_est = world_from_pnp(R_est, tvec, K, dist_coeffs, img_all)
         mae = mae_world(world_est, world_points_true[:, :2])
-        if mae < best_mae:
-            best_mae = mae
+        best_mae = min(best_mae, mae)
     return best_mae
 
 
@@ -318,7 +312,7 @@ def run_single_trial(
     sigma_px_y: float,
     rho_noise: float,
     plane_bias_cm: float,
-) -> Tuple[float, float, float, float, float]:
+) -> tuple[float, float, float, float, float]:
     """Run a single noisy realization and return MAEs for all methods."""
     rng = np.random.default_rng(seed)
 
@@ -333,9 +327,7 @@ def run_single_trial(
     # Homography with biased Z world
     H_biased, _ = estimate_homography(world_points_biased, img_points_noisy)
     pred_world_h_biased = apply_homography(H_biased, img_points_noisy)
-    mae_h_true_biased = mae_world(
-        pred_world_h_biased, world_points_true[:, :2]
-    )
+    mae_h_true_biased = mae_world(pred_world_h_biased, world_points_true[:, :2])
 
     # Homography with Z=0 world
     H_Z0, _ = estimate_homography(world_points_true, img_points_noisy)
@@ -373,7 +365,7 @@ def run_monte_carlo(
     sigma_px_y: float,
     rho_noise: float,
     plane_bias_cm: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Run multiple trials and stack MAEs into arrays (with progress bar)."""
     rng_global = np.random.default_rng(seed)
     mae_H_biased, mae_H_Z0, mae_PNP, mae_PNP_Z0, mae_P3P = [], [], [], [], []
@@ -402,7 +394,7 @@ def run_monte_carlo(
     )
 
 
-def summarize(name: str, arr: np.ndarray) -> Tuple[float, float]:
+def summarize(name: str, arr: np.ndarray) -> tuple[float, float]:
     """Log and return mean/std for a metric array."""
     mean = float(np.nanmean(arr))
     std = float(np.nanstd(arr))
@@ -422,9 +414,9 @@ def export_summary(
     mae_PNP: np.ndarray,
     mae_PNP_Z0: np.ndarray,
     mae_P3P: np.ndarray,
-) -> Dict:
+) -> dict:
     """Export key Monte Carlo metrics to JSON and return summary dict."""
-    summary: Dict = {
+    summary: dict = {
         "num_trials": int(num_trials),
         "camera": {
             "img_w": IMG_W,
@@ -468,7 +460,7 @@ def export_summary(
     return summary
 
 
-def compare_methods(summary: Dict) -> Dict:
+def compare_methods(summary: dict) -> dict:
     """
     Simple benchmark comparison: how much better is PnP vs homography (biased)?
     Returns a dict with improvement factor (>1 => PnP worse, <1 => PnP better).
@@ -486,7 +478,8 @@ def compare_methods(summary: Dict) -> Dict:
 
 
 def maybe_plot_mae_hist(
-    mae_PNP: np.ndarray, output_path: Path = Path("calibration/calibration_errors_pnp.png")
+    mae_PNP: np.ndarray,
+    output_path: Path = Path("calibration/calibration_errors_pnp.png"),
 ) -> None:
     """Optionally generate a simple histogram of PnP MAE."""
     import matplotlib.pyplot as plt
@@ -514,7 +507,7 @@ def run_single_scenario(
     rho_noise: float,
     plane_bias_cm: float,
     suffix: str | None = None,
-) -> Dict:
+) -> dict:
     """Run one noise scenario, log, export summary, and optionally plot."""
     logger.info(
         "Scenario: sigma_px_x=%.2f, sigma_px_y=%.2f, rho=%.2f, plane_bias_cm=%.2f",
@@ -588,7 +581,7 @@ def main() -> None:
         )
         # Example: sweep a few sigma_x/y levels (y slightly larger as in default)
         noise_levels = [0.5, 1.0, 2.0, 3.0]
-        all_summaries: Dict[str, Dict] = {}
+        all_summaries: dict[str, dict] = {}
         for nl in noise_levels:
             sigma_x = nl
             sigma_y = nl * (sigma_px_y_default / sigma_px_x_default)

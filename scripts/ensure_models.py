@@ -8,6 +8,7 @@ directories for faster CPU inference.
 Usage:
     python scripts/ensure_models.py [--imgsz 640] [--skip-openvino]
 """
+
 import argparse
 import subprocess
 import sys
@@ -33,7 +34,10 @@ def download_models():
 def export_openvino(imgsz=640):
     script = Path(__file__).parent / "export_openvino.py"
     if script.exists():
-        run_cmd([sys.executable, str(script), "--imgsz", str(imgsz)], "Exporting OpenVINO IR models")
+        run_cmd(
+            [sys.executable, str(script), "--imgsz", str(imgsz)],
+            "Exporting OpenVINO IR models",
+        )
     else:
         print("⚠️ export_openvino.py not found; skipping OpenVINO export")
 

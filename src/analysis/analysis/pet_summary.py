@@ -15,8 +15,9 @@ Version: 2.0.0
 import argparse
 import json
 import warnings
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple, Any
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -28,17 +29,17 @@ class PETEventAnalyzer:
 
     # Default safety thresholds (seconds), inspired by traffic conflict literature.[web:37][web:39]
     DEFAULT_THRESHOLDS = {
-        "critical": 1.0,   # <1s: high-risk conflict
-        "serious": 2.0,    # 1–2s: likely evasive action
-        "moderate": 3.0,   # 2–3s: potential conflict
-        "safe": 3.0        # >3s: safe interaction
+        "critical": 1.0,  # <1s: high-risk conflict
+        "serious": 2.0,  # 1–2s: likely evasive action
+        "moderate": 3.0,  # 2–3s: potential conflict
+        "safe": 3.0,  # >3s: safe interaction
     }
 
     def __init__(
         self,
         csv_path: Path,
         conflict_col: str = "conflict_type",
-        thresholds: Optional[Dict[str, float]] = None,
+        thresholds: dict[str, float] | None = None,
     ):
         """
         Initialize PET analyzer.
@@ -91,16 +92,20 @@ class PETEventAnalyzer:
             warnings.warn("Negative PET values found; check data quality.")
 
         if (df["pet"] > 10).any():
-            warnings.warn("Very large PET values (>10 s) found; ensure they are expected.")
+            warnings.warn(
+                "Very large PET values (>10 s) found; ensure they are expected."
+            )
 
         self.df = df
         self.pet_series = df["pet"]
-        print(f"✅ Loaded {len(self.pet_series)} valid PET events from {self.csv_path.name}")
+        print(
+            f"✅ Loaded {len(self.pet_series)} valid PET events from {self.csv_path.name}"
+        )
 
     # ------------------------------------------------------------------ #
     # Core statistics
     # ------------------------------------------------------------------ #
-    def basic_stats(self, ci: float = 0.95) -> Dict[str, Any]:
+    def basic_stats(self, ci: float = 0.95) -> dict[str, Any]:
         """
         Calculate statistical summary with confidence intervals.
 
@@ -108,9 +113,9 @@ class PETEventAnalyzer:
             ci: Confidence interval level (e.g. 0.95).
         """
         pet = self.pet_series
-        n = int(len(pet))
+        n = len(pet)
 
-        stats_dict: Dict[str, Any] = {
+        stats_dict: dict[str, Any] = {
             "count": n,
             "mean": float(pet.mean()),
             "std": float(pet.std(ddof=1)) if n > 1 else float("nan"),
@@ -121,7 +126,9 @@ class PETEventAnalyzer:
             "q75": float(pet.quantile(0.75)),
             "max": float(pet.max()),
             "iqr": float(pet.quantile(0.75) - pet.quantile(0.25)),
-            "cv": float(pet.std(ddof=1) / pet.mean()) if pet.mean() > 0 and n > 1 else float("nan"),
+            "cv": float(pet.std(ddof=1) / pet.mean())
+            if pet.mean() > 0 and n > 1
+            else float("nan"),
             "skew": float(pet.skew()) if n > 2 else float("nan"),
             "kurtosis": float(pet.kurtosis()) if n > 3 else float("nan"),
         }
@@ -167,13 +174,13 @@ class PETEventAnalyzer:
             index=self.df.index,
         )
 
-    def risk_summary(self) -> Dict[str, Any]:
+    def risk_summary(self) -> dict[str, Any]:
         """Summarize distribution of risk levels and conflict rate."""
         risk_df = self.risk_assessment()
         counts = risk_df["risk_level"].value_counts()
-        total = int(len(risk_df))
+        total = len(risk_df)
 
-        summary: Dict[str, Any] = {}
+        summary: dict[str, Any] = {}
         for level in ["Critical", "Serious", "Moderate", "Safe"]:
             c = int(counts.get(level, 0))
             summary[level.lower()] = {
@@ -185,7 +192,9 @@ class PETEventAnalyzer:
         summary["conflict_rate"] = {
             "count": conflict_count,
             "percentage": float(100.0 * conflict_count / total) if total > 0 else 0.0,
-            "per_1000_events": float(1000.0 * conflict_count / total) if total > 0 else 0.0,
+            "per_1000_events": float(1000.0 * conflict_count / total)
+            if total > 0
+            else 0.0,
         }
 
         return summary
@@ -200,7 +209,7 @@ class PETEventAnalyzer:
 
         risk_df = self.risk_assessment()
 
-        rows: List[Dict[str, Any]] = []
+        rows: list[dict[str, Any]] = []
         for conflict_type, group in self.df.groupby(self.conflict_col):
             idx = group.index
             pet = group["pet"]
@@ -209,14 +218,17 @@ class PETEventAnalyzer:
             rows.append(
                 {
                     "conflict_type": str(conflict_type),
-                    "count": int(len(group)),
+                    "count": len(group),
                     "pet_mean": float(pet.mean()),
-                    "pet_std": float(pet.std(ddof=1)) if len(group) > 1 else float("nan"),
+                    "pet_std": float(pet.std(ddof=1))
+                    if len(group) > 1
+                    else float("nan"),
                     "pet_median": float(pet.median()),
                     "critical_rate": float((risk_local == "Critical").mean() * 100.0),
                     "serious_rate": float((risk_local == "Serious").mean() * 100.0),
                     "conflict_rate": float(
-                        ((risk_local == "Critical") | (risk_local == "Serious")).mean() * 100.0
+                        ((risk_local == "Critical") | (risk_local == "Serious")).mean()
+                        * 100.0
                     ),
                 }
             )
@@ -229,7 +241,7 @@ class PETEventAnalyzer:
     # ------------------------------------------------------------------ #
     # Baseline comparison
     # ------------------------------------------------------------------ #
-    def compare_with_baseline(self, baseline_csv: Path) -> Dict[str, Any]:
+    def compare_with_baseline(self, baseline_csv: Path) -> dict[str, Any]:
         """
         Compare this PET distribution with a baseline PET CSV.
 
@@ -277,9 +289,9 @@ class PETEventAnalyzer:
         abs_errors = np.abs(diff)
         rel_errors = abs_errors / (np.abs(baseline_sample) + 1e-8)
         var_base = float(np.var(baseline_sample, ddof=1)) if n > 1 else 0.0
-        mse = float(np.mean(diff ** 2)) if n > 0 else float("nan")
+        mse = float(np.mean(diff**2)) if n > 0 else float("nan")
 
-        comparison: Dict[str, Any] = {
+        comparison: dict[str, Any] = {
             "baseline_file": str(baseline_csv),
             "sample_size": int(n),
             "test_used": test_used,
@@ -295,7 +307,9 @@ class PETEventAnalyzer:
             "mae": float(np.mean(abs_errors)) if n > 0 else float("nan"),
             "rmse": float(np.sqrt(mse)) if n > 0 else float("nan"),
             "mape": float(np.mean(rel_errors) * 100.0) if n > 0 else float("nan"),
-            "r2": float(1.0 - mse / var_base) if var_base > 0 and not np.isnan(mse) else float("nan"),
+            "r2": float(1.0 - mse / var_base)
+            if var_base > 0 and not np.isnan(mse)
+            else float("nan"),
         }
         return comparison
 
@@ -335,9 +349,9 @@ class PETEventAnalyzer:
     def export_results(
         self,
         output_dir: Path,
-        baseline_csv: Optional[Path] = None,
+        baseline_csv: Path | None = None,
         fmt: str = "json",
-    ) -> Dict[str, Path]:
+    ) -> dict[str, Path]:
         """
         Export analysis results to files.
 
@@ -349,7 +363,7 @@ class PETEventAnalyzer:
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        exported: Dict[str, Path] = {}
+        exported: dict[str, Path] = {}
 
         # Statistics
         stats_dict = self.basic_stats()
@@ -415,7 +429,9 @@ class PETEventAnalyzer:
             )
         print(f"   Median PET:          {stats_dict['median']:.3f} s")
         print(f"   IQR:                 {stats_dict['iqr']:.3f} s")
-        print(f"   Range:               [{stats_dict['min']:.3f}, {stats_dict['max']:.3f}]")
+        print(
+            f"   Range:               [{stats_dict['min']:.3f}, {stats_dict['max']:.3f}]"
+        )
         print(f"   CV (dispersion):     {stats_dict['cv']:.3f}")
 
         print(
@@ -471,7 +487,7 @@ class PETEventAnalyzer:
 # ----------------------------------------------------------------------
 # CLI
 # ----------------------------------------------------------------------
-def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
+def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="PET Event Summary & Analysis Tool",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -534,7 +550,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def main(argv: Optional[Sequence[str]] = None) -> None:
+def main(argv: Sequence[str] | None = None) -> None:
     args = parse_args(argv)
 
     thresholds = {
@@ -550,16 +566,16 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         thresholds=thresholds,
     )
 
-    analyzer.print_summary(show_risk_buckets=not args.no-risk_buckets)
-    # NOTE: If you get a syntax error here, replace `args.no-risk_buckets`
+    analyzer.print_summary(show_risk_buckets=not args.no_risk_buckets)
+    # NOTE: If you get a syntax error here, replace `args.no_risk_buckets`
     # with `args.no_risk_buckets` (underscore), depending on your argparse name.
 
     if args.export:
         baseline_path = Path(args.baseline) if args.baseline else None
         exported = analyzer.export_results(
-        Path(args.output_dir),
-        baseline_csv=baseline_path,
-        fmt=args.format,
+            Path(args.output_dir),
+            baseline_csv=baseline_path,
+            fmt=args.format,
         )
         print(f"\n✅ Exported results to {args.output_dir}/")
         for name, p in exported.items():

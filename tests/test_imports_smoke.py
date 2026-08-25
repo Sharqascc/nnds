@@ -1,8 +1,7 @@
-
 from pathlib import Path
-import importlib.util
 
 ROOT = Path(__file__).resolve().parents[1]
+
 
 def _module_exists(module_name: str) -> bool:
     """Check if a module can be found without importing it (avoids heavy deps)."""
@@ -11,9 +10,8 @@ def _module_exists(module_name: str) -> bool:
     if path.with_suffix(".py").exists():
         return True
     # Check package
-    if path.joinpath("__init__.py").exists():
-        return True
-    return False
+    return bool(path.joinpath("__init__.py").exists())
+
 
 def test_core_modules_present():
     required_modules = [

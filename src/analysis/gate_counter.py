@@ -1,9 +1,9 @@
-from IPython.display import display, clear_output
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple, Any
+from typing import Any
 
 import cv2
 import matplotlib.pyplot as plt
@@ -34,21 +34,21 @@ class VirtualGate:
         negative -> positive  => exit
         positive -> negative  => entry
     """
+
     name: str
-    p1: Tuple[int, int]
-    p2: Tuple[int, int]
-    color: Tuple[int, int, int] = (0, 255, 255)   # BGR for OpenCV drawing
+    p1: tuple[int, int]
+    p2: tuple[int, int]
+    color: tuple[int, int, int] = (0, 255, 255)  # BGR for OpenCV drawing
     entry_side: str = "left"
 
     entry_count: int = 0
     exit_count: int = 0
 
     min_frames_between_crossings: int = 10
-    history: Dict[int, int] = field(default_factory=dict)
+    history: dict[int, int] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        if self.min_frames_between_crossings < 1:
-            self.min_frames_between_crossings = 1
+        self.min_frames_between_crossings = max(self.min_frames_between_crossings, 1)
 
     def direction(self) -> np.ndarray:
         v = np.array(self.p2, dtype=float) - np.array(self.p1, dtype=float)
@@ -57,7 +57,7 @@ class VirtualGate:
             return np.array([1.0, 0.0], dtype=float)
         return v / n
 
-    def signed_distance(self, point: Tuple[float, float]) -> float:
+    def signed_distance(self, point: tuple[float, float]) -> float:
         """
         Signed side value of a point relative to the line through p1->p2.
         Only the sign matters for crossing detection.
@@ -70,11 +70,11 @@ class VirtualGate:
 
     def check_crossing(
         self,
-        prev_pos: Optional[Tuple[float, float]],
-        curr_pos: Optional[Tuple[float, float]],
+        prev_pos: tuple[float, float] | None,
+        curr_pos: tuple[float, float] | None,
         track_id: int,
         frame_idx: int,
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Returns:
             "entry", "exit", or None
@@ -93,13 +93,13 @@ class VirtualGate:
         if prev_side * curr_side >= 0:
             return None
 
-        last_frame = self.history.get(track_id, -10**9)
+        last_frame = self.history.get(track_id, -(10**9))
         if frame_idx - last_frame < self.min_frames_between_crossings:
             return None
 
         self.history[track_id] = frame_idx
 
-        neg_to_pos = (prev_side < 0 and curr_side > 0)
+        neg_to_pos = prev_side < 0 and curr_side > 0
 
         if self.entry_side.lower() == "left":
             if neg_to_pos:
@@ -129,19 +129,20 @@ class RobustTracker:
     If 'track_id' is missing, assigns a new ID.
     Keeps tracks alive for up to `max_missing` frames and can drop very old tracks.
     """
+
     max_missing: int = 30
     max_track_age_frames: int = 300
     next_id: int = 1
-    tracks: Dict[int, Dict[str, Any]] = field(default_factory=dict)
+    tracks: dict[int, dict[str, Any]] = field(default_factory=dict)
     _frame_counter: int = 0
 
     def update(
         self,
-        detections: List[Dict[str, Any]],
+        detections: list[dict[str, Any]],
         frame_idx: int = 0,
-    ) -> Dict[int, Dict[str, Any]]:
+    ) -> dict[int, dict[str, Any]]:
         self._frame_counter = frame_idx
-        updated_tracks: Dict[int, Dict[str, Any]] = {}
+        updated_tracks: dict[int, dict[str, Any]] = {}
 
         for det in detections:
             tid = det.get("track_id")
@@ -176,7 +177,7 @@ class RobustTracker:
         return self.tracks
 
     def _cleanup_old_tracks(self) -> None:
-        to_delete: List[int] = []
+        to_delete: list[int] = []
         for tid, t in self.tracks.items():
             last_seen = t.get("last_seen_frame", 0)
             if self._frame_counter - last_seen > self.max_track_age_frames:
@@ -205,9 +206,10 @@ class TrafficVolumeCounter:
             detections = model(frame)
             return [d for d in detections if d.get('cls') == 'car']
     """
+
     videopath: str
-    gate_config: Optional[str] = None
-    classes_of_interest: Optional[List[str]] = None
+    gate_config: str | None = None
+    classes_of_interest: list[str] | None = None
     min_confidence: float = 0.25
 
     # drawing / performance flags
@@ -236,16 +238,16 @@ class TrafficVolumeCounter:
             self._normalize_class_name(c) for c in self.classes_of_interest
         }
 
-        self.gates: Dict[str, VirtualGate] = {}
+        self.gates: dict[str, VirtualGate] = {}
         if self.gate_config is not None:
             self.gates = self.load_gates(self.gate_config)
 
         self.tracker = RobustTracker()
-        self.last_event: Optional[str] = None
+        self.last_event: str | None = None
 
     # ---------- gate config ----------
     @staticmethod
-    def load_gates(configfile: str) -> Dict[str, VirtualGate]:
+    def load_gates(configfile: str) -> dict[str, VirtualGate]:
         """
         Expected YAML:
         gates:
@@ -257,7 +259,7 @@ class TrafficVolumeCounter:
             enabled: true
         """
         path = Path(configfile)
-        gates: Dict[str, VirtualGate] = {}
+        gates: dict[str, VirtualGate] = {}
 
         if not path.exists():
             logger.warning(
@@ -314,17 +316,17 @@ class TrafficVolumeCounter:
         seconds = int(frame_idx / fps)
         return str(timedelta(seconds=seconds))
 
-    def _compute_totals(self) -> Tuple[int, int]:
+    def _compute_totals(self) -> tuple[int, int]:
         total_in = sum(g.entry_count for g in self.gates.values())
         total_out = sum(g.exit_count for g in self.gates.values())
         return total_in, total_out
 
-    def _normalize_class_name(self, cls_name: Optional[str]) -> str:
+    def _normalize_class_name(self, cls_name: str | None) -> str:
         if cls_name is None:
             return "object"
         return str(cls_name).strip().lower()
 
-    def _allowed_detection(self, det: Dict[str, Any]) -> bool:
+    def _allowed_detection(self, det: dict[str, Any]) -> bool:
         conf = float(det.get("conf", 1.0))
         if conf < self.min_confidence:
             return False
@@ -336,10 +338,7 @@ class TrafficVolumeCounter:
             return False
 
         centroid = det.get("centroid")
-        if centroid is None or len(centroid) != 2:
-            return False
-
-        return True
+        return not (centroid is None or len(centroid) != 2)
 
     def _draw_gate_labels(self, vis: np.ndarray) -> None:
         h, w = vis.shape[:2]
@@ -368,7 +367,7 @@ class TrafficVolumeCounter:
                 cv2.LINE_AA,
             )
 
-    def _draw_tracks(self, vis: np.ndarray, tracks: Dict[int, Dict[str, Any]]) -> None:
+    def _draw_tracks(self, vis: np.ndarray, tracks: dict[int, dict[str, Any]]) -> None:
         for tid, t in tracks.items():
             c = t.get("centroid")
             if c is None:
@@ -398,7 +397,7 @@ class TrafficVolumeCounter:
         h, w = frame.shape[:2]
 
         total_in, total_out = self._compute_totals()
-        lines: List[str] = [
+        lines: list[str] = [
             f"Frame: {frame_idx}",
             f"Time: {self._format_time(frame_idx, fps)}",
             f"TOTAL ENTRY: {total_in}",
@@ -482,15 +481,15 @@ class TrafficVolumeCounter:
     # ---------- main processing ----------
     def process_video(
         self,
-        detector: Callable[[np.ndarray], List[Dict[str, Any]]],
-        output_video: Optional[str] = None,
-        max_frames: Optional[int] = None,
+        detector: Callable[[np.ndarray], list[dict[str, Any]]],
+        output_video: str | None = None,
+        max_frames: int | None = None,
         log_visual_debug: bool = False,
         show_progress: bool = False,
-        preview_interval: Optional[int] = None,
-    ) -> Dict[str, Any]:
-        cap: Optional[cv2.VideoCapture] = None
-        out: Optional[cv2.VideoWriter] = None
+        preview_interval: int | None = None,
+    ) -> dict[str, Any]:
+        cap: cv2.VideoCapture | None = None
+        out: cv2.VideoWriter | None = None
         pbar = None
 
         try:
@@ -519,6 +518,7 @@ class TrafficVolumeCounter:
             if show_progress:
                 try:
                     from tqdm.auto import tqdm
+
                     pbar = tqdm(total=total_frames, desc="Gate counting")
                 except ImportError:
                     pbar = None
@@ -527,12 +527,12 @@ class TrafficVolumeCounter:
             self.last_event = None
 
             while True:
-                ret, frame = cap.read()
+                _ret, frame = cap.read()
                 if preview_interval is not None and frame_idx % preview_interval == 0:
                     # Show the frame in Colab
                     plt.imshow(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
                     plt.title(f"Frame {frame_idx}")
-                    plt.axis('off')
+                    plt.axis("off")
                     plt.pause(0.01)
                     plt.clf()
 
@@ -540,7 +540,7 @@ class TrafficVolumeCounter:
                 if max_frames is not None and frame_idx > max_frames:
                     break
                 raw_detections = detector(frame)
-                detections: List[Dict[str, Any]] = []
+                detections: list[dict[str, Any]] = []
 
                 for d in raw_detections:
                     if not self._allowed_detection(d):
@@ -589,7 +589,7 @@ class TrafficVolumeCounter:
                     pbar.update(1)
 
             total_in, total_out = self._compute_totals()
-            result: Dict[str, Any] = {
+            result: dict[str, Any] = {
                 "total_entries": total_in,
                 "total_exits": total_out,
                 "gates": {
@@ -620,7 +620,7 @@ class TrafficVolumeCounter:
 
     # ---------- results export ----------
     @staticmethod
-    def save_results(result: Dict[str, Any], path: str | Path) -> None:
+    def save_results(result: dict[str, Any], path: str | Path) -> None:
         """Save per-gate counts to CSV for downstream analysis."""
         path = Path(path)
         rows = []

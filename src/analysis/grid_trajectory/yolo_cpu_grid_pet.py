@@ -1,15 +1,13 @@
-
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Any
 
 import cv2
 import numpy as np
 import pandas as pd
 from ultralytics import YOLO
-
 
 ALLOWED_CLASSES = {
     0: "person",
@@ -56,17 +54,23 @@ def _segment_intersection(p1, p2, q1, q2):
 
 
 def _point_in_square(px, py, cx, cy, half_size):
-    return (cx - half_size) <= px <= (cx + half_size) and (cy - half_size) <= py <= (cy + half_size)
+    return (cx - half_size) <= px <= (cx + half_size) and (cy - half_size) <= py <= (
+        cy + half_size
+    )
 
 
-def _entry_exit_frames(points: List[TrackPoint], cx: float, cy: float, half_size: float):
-    inside_frames = [pt.frame for pt in points if _point_in_square(pt.x, pt.y, cx, cy, half_size)]
+def _entry_exit_frames(
+    points: list[TrackPoint], cx: float, cy: float, half_size: float
+):
+    inside_frames = [
+        pt.frame for pt in points if _point_in_square(pt.x, pt.y, cx, cy, half_size)
+    ]
     if not inside_frames:
         return None
     return min(inside_frames), max(inside_frames)
 
 
-def _pair_conflict_point(track_a: List[TrackPoint], track_b: List[TrackPoint]):
+def _pair_conflict_point(track_a: list[TrackPoint], track_b: list[TrackPoint]):
     for i in range(len(track_a) - 1):
         p1 = (track_a[i].x, track_a[i].y)
         p2 = (track_a[i + 1].x, track_a[i + 1].y)
@@ -87,7 +91,7 @@ def run_yolo_cpu_grid_pet(
     imgsz: int = 480,
     conf: float = 0.25,
     pet_threshold: float = 2.0,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     video_path = str(Path(video_path).resolve())
     weights_path = str(Path(weights_path).resolve())
     output_csv_path = str(Path(output_csv_path).resolve())
@@ -104,7 +108,7 @@ def run_yolo_cpu_grid_pet(
     cap.release()
 
     detection_rows = []
-    tracks: Dict[int, List[TrackPoint]] = {}
+    tracks: dict[int, list[TrackPoint]] = {}
 
     frame_idx = 0
     results = model.track(
@@ -126,8 +130,16 @@ def run_yolo_cpu_grid_pet(
         boxes = r.boxes
         if boxes is not None and boxes.xyxy is not None and len(boxes) > 0:
             xyxy = boxes.xyxy.cpu().numpy()
-            clss = boxes.cls.cpu().numpy().astype(int) if boxes.cls is not None else np.array([], dtype=int)
-            confs = boxes.conf.cpu().numpy() if boxes.conf is not None else np.array([], dtype=float)
+            clss = (
+                boxes.cls.cpu().numpy().astype(int)
+                if boxes.cls is not None
+                else np.array([], dtype=int)
+            )
+            confs = (
+                boxes.conf.cpu().numpy()
+                if boxes.conf is not None
+                else np.array([], dtype=float)
+            )
 
             if hasattr(boxes, "id") and boxes.id is not None:
                 ids = boxes.id.cpu().numpy().astype(int)
@@ -146,19 +158,21 @@ def run_yolo_cpu_grid_pet(
                 score = float(confs[i]) if i < len(confs) else 0.0
                 cls_name = ALLOWED_CLASSES[cls_id]
 
-                detection_rows.append({
-                    "frame": frame_idx,
-                    "track_id": track_id,
-                    "class_id": cls_id,
-                    "class_name": cls_name,
-                    "conf": score,
-                    "x1": x1,
-                    "y1": y1,
-                    "x2": x2,
-                    "y2": y2,
-                    "cx": cx,
-                    "cy": cy,
-                })
+                detection_rows.append(
+                    {
+                        "frame": frame_idx,
+                        "track_id": track_id,
+                        "class_id": cls_id,
+                        "class_name": cls_name,
+                        "conf": score,
+                        "x1": x1,
+                        "y1": y1,
+                        "x2": x2,
+                        "y2": y2,
+                        "cx": cx,
+                        "cy": cy,
+                    }
+                )
 
                 tracks.setdefault(track_id, []).append(
                     TrackPoint(
@@ -217,16 +231,18 @@ def run_yolo_cpu_grid_pet(
                 continue
 
             if pet <= pet_threshold:
-                pet_events.append({
-                    "event_id": event_id,
-                    "pet": float(pet),
-                    "frame": int(frame_ref),
-                    "track_a": int(first_id),
-                    "track_b": int(second_id),
-                    "conflict_type": "image_intersection",
-                    "world_traj_i": f"track_{first_id}",
-                    "world_traj_j": f"track_{second_id}",
-                })
+                pet_events.append(
+                    {
+                        "event_id": event_id,
+                        "pet": float(pet),
+                        "frame": int(frame_ref),
+                        "track_a": int(first_id),
+                        "track_b": int(second_id),
+                        "conflict_type": "image_intersection",
+                        "world_traj_i": f"track_{first_id}",
+                        "world_traj_j": f"track_{second_id}",
+                    }
+                )
                 event_id += 1
 
     pet_df = pd.DataFrame(

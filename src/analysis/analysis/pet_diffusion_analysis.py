@@ -18,8 +18,9 @@ Integrates with:
 import ast
 import logging
 import warnings
+from collections.abc import Callable
 from pathlib import Path
-from typing import Optional, Tuple, List, Dict, Any, Callable
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -29,29 +30,34 @@ from scipy import stats
 # Optional progress bars
 try:
     from tqdm import tqdm
+
     TQDM_AVAILABLE = True
 except ImportError:
     TQDM_AVAILABLE = False
-    warnings.warn("tqdm not available - progress bars disabled. Install with: pip install tqdm")
+    warnings.warn(
+        "tqdm not available - progress bars disabled. Install with: pip install tqdm"
+    )
+
     # Fallback: dummy tqdm
     def tqdm(iterable, **kwargs):
         return iterable
+
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    'PETDiffusionAnalyzer',
-    'compute_pet_like_metrics',
-    'compare_realPET_samplePET',
-    'parse_trajectory',
-    'compute_error_metrics',
-    'perform_statistical_tests'
+    "PETDiffusionAnalyzer",
+    "compare_realPET_samplePET",
+    "compute_error_metrics",
+    "compute_pet_like_metrics",
+    "parse_trajectory",
+    "perform_statistical_tests",
 ]
 
 
-def parse_trajectory(cell: Any) -> Optional[np.ndarray]:
+def parse_trajectory(cell: Any) -> np.ndarray | None:
     """
     Parse trajectory from CSV cell (string representation of list/array).
 
@@ -74,9 +80,8 @@ def parse_trajectory(cell: Any) -> Optional[np.ndarray]:
 
 
 def compute_distance_to_threshold(
-    traj: np.ndarray,
-    d_thresh: float = 1.0
-) -> Tuple[np.ndarray, Optional[int]]:
+    traj: np.ndarray, d_thresh: float = 1.0
+) -> tuple[np.ndarray, int | None]:
     """
     Compute pairwise distances and find first threshold crossing.
 
@@ -102,9 +107,8 @@ def compute_distance_to_threshold(
 
 
 def compute_error_metrics(
-    real_values: np.ndarray,
-    predicted_values: np.ndarray
-) -> Dict[str, float]:
+    real_values: np.ndarray, predicted_values: np.ndarray
+) -> dict[str, float]:
     """
     Compute comprehensive error metrics.
 
@@ -122,34 +126,35 @@ def compute_error_metrics(
         raise ValueError("Input arrays cannot be empty")
 
     if len(real_values) != len(predicted_values):
-        raise ValueError(f"Array length mismatch: {len(real_values)} vs {len(predicted_values)}")
+        raise ValueError(
+            f"Array length mismatch: {len(real_values)} vs {len(predicted_values)}"
+        )
 
     errors = predicted_values - real_values
     abs_errors = np.abs(errors)
-    sq_errors = errors ** 2
+    sq_errors = errors**2
 
     # Avoid division by zero for R²
-    var_real = np.sum((real_values - np.mean(real_values))**2)
+    var_real = np.sum((real_values - np.mean(real_values)) ** 2)
     r_squared = 1 - (np.sum(sq_errors) / var_real) if var_real > 0 else 0.0
 
     metrics = {
-        'mae': float(np.mean(abs_errors)),
-        'rmse': float(np.sqrt(np.mean(sq_errors))),
-        'mse': float(np.mean(sq_errors)),
-        'mean_error': float(np.mean(errors)),
-        'std_error': float(np.std(errors)),
-        'median_error': float(np.median(errors)),
-        'max_error': float(np.max(abs_errors)),
-        'r_squared': float(r_squared)
+        "mae": float(np.mean(abs_errors)),
+        "rmse": float(np.sqrt(np.mean(sq_errors))),
+        "mse": float(np.mean(sq_errors)),
+        "mean_error": float(np.mean(errors)),
+        "std_error": float(np.std(errors)),
+        "median_error": float(np.median(errors)),
+        "max_error": float(np.max(abs_errors)),
+        "r_squared": float(r_squared),
     }
 
     return metrics
 
 
 def perform_statistical_tests(
-    real_values: np.ndarray,
-    predicted_values: np.ndarray
-) -> Dict[str, Any]:
+    real_values: np.ndarray, predicted_values: np.ndarray
+) -> dict[str, Any]:
     """
     Perform statistical significance tests.
 
@@ -167,7 +172,9 @@ def perform_statistical_tests(
         raise ValueError("Need at least 3 samples for statistical tests")
 
     if len(real_values) != len(predicted_values):
-        raise ValueError(f"Array length mismatch: {len(real_values)} vs {len(predicted_values)}")
+        raise ValueError(
+            f"Array length mismatch: {len(real_values)} vs {len(predicted_values)}"
+        )
 
     # Paired t-test
     t_stat, t_pval = stats.ttest_rel(predicted_values, real_values)
@@ -182,10 +189,10 @@ def perform_statistical_tests(
     rho_corr, rho_pval = stats.spearmanr(real_values, predicted_values)
 
     return {
-        'paired_t_test': {'statistic': float(t_stat), 'p_value': float(t_pval)},
-        'wilcoxon_test': {'statistic': float(w_stat), 'p_value': float(w_pval)},
-        'pearson_corr': {'coefficient': float(r_corr), 'p_value': float(r_pval)},
-        'spearman_corr': {'coefficient': float(rho_corr), 'p_value': float(rho_pval)}
+        "paired_t_test": {"statistic": float(t_stat), "p_value": float(t_pval)},
+        "wilcoxon_test": {"statistic": float(w_stat), "p_value": float(w_pval)},
+        "pearson_corr": {"coefficient": float(r_corr), "p_value": float(r_pval)},
+        "spearman_corr": {"coefficient": float(rho_corr), "p_value": float(rho_pval)},
     }
 
 
@@ -206,9 +213,9 @@ class PETDiffusionAnalyzer:
         d_thresh: float = 1.0,
         fps: float = 30.0,
         scale: float = 1.0,
-        output_dir: str = 'outputs/diffusion_analysis',
+        output_dir: str = "outputs/diffusion_analysis",
         auto_visualize: bool = True,
-        save_results: bool = True
+        save_results: bool = True,
     ):
         """
         Args:
@@ -236,19 +243,22 @@ class PETDiffusionAnalyzer:
         if auto_visualize:
             try:
                 from analysis.visualization import DiffusionPETPlotter
+
                 self.plotter = DiffusionPETPlotter(dpi=300, save_pdf=True)
                 self.viz_available = True
                 logger.info("✅ Visualization module loaded")
             except ImportError as e:
                 logger.warning(f"⚠️ Visualization module not available: {e}")
-                logger.warning("   Install dependencies: pip install matplotlib seaborn")
+                logger.warning(
+                    "   Install dependencies: pip install matplotlib seaborn"
+                )
                 logger.info("   Continuing without automatic visualization...")
 
-    def steps_to_seconds(self, steps: Optional[float]) -> Optional[float]:
+    def steps_to_seconds(self, steps: float | None) -> float | None:
         """Convert step index to seconds."""
         return steps / self.fps if steps is not None else None
 
-    def _validate_batch(self, batch: Dict[str, torch.Tensor]) -> None:
+    def _validate_batch(self, batch: dict[str, torch.Tensor]) -> None:
         """
         Validate batch structure.
 
@@ -258,27 +268,29 @@ class PETDiffusionAnalyzer:
         if batch is None:
             raise ValueError("Batch cannot be None")
 
-        required_keys = ['past', 'future']
+        required_keys = ["past", "future"]
         for key in required_keys:
             if key not in batch:
-                raise KeyError(f"Batch must contain '{key}' key. Found keys: {list(batch.keys())}")
+                raise KeyError(
+                    f"Batch must contain '{key}' key. Found keys: {list(batch.keys())}"
+                )
 
         # Check shapes
-        if batch['past'].shape[0] == 0:
+        if batch["past"].shape[0] == 0:
             raise ValueError("Batch is empty (batch size = 0)")
 
-        if batch['past'].shape[0] != batch['future'].shape[0]:
+        if batch["past"].shape[0] != batch["future"].shape[0]:
             raise ValueError(
                 f"Batch size mismatch: past={batch['past'].shape[0]}, future={batch['future'].shape[0]}"
             )
 
     def compute_pet_like_metrics(
         self,
-        batch: Dict[str, torch.Tensor],
+        batch: dict[str, torch.Tensor],
         sample_future_fn: Callable,
         noise_scale: float = 0.01,
-        verbose: bool = True
-    ) -> Tuple[List[Tuple[Optional[float], Optional[float]]], pd.DataFrame]:
+        verbose: bool = True,
+    ) -> tuple[list[tuple[float | None, float | None]], pd.DataFrame]:
         """
         Compute PET-like metrics comparing real and sampled futures.
 
@@ -335,35 +347,39 @@ class PETDiffusionAnalyzer:
             try:
                 # Compute distances and find PET
                 _, pet_real = compute_distance_to_threshold(real_traj, self.d_thresh)
-                _, pet_sample = compute_distance_to_threshold(sample_traj, self.d_thresh)
+                _, pet_sample = compute_distance_to_threshold(
+                    sample_traj, self.d_thresh
+                )
             except Exception as e:
                 logger.warning(f"Error computing PET for example {b}: {e}")
                 pet_real, pet_sample = None, None
 
             pet_pairs.append((pet_real, pet_sample))
 
-            records.append({
-                'example_idx': b,
-                'pet_real_steps': pet_real,
-                'pet_sample_steps': pet_sample,
-                'pet_real_sec': self.steps_to_seconds(pet_real),
-                'pet_sample_sec': self.steps_to_seconds(pet_sample),
-                'has_real_pet': pet_real is not None,
-                'has_sample_pet': pet_sample is not None,
-                'both_defined': pet_real is not None and pet_sample is not None
-            })
+            records.append(
+                {
+                    "example_idx": b,
+                    "pet_real_steps": pet_real,
+                    "pet_sample_steps": pet_sample,
+                    "pet_real_sec": self.steps_to_seconds(pet_real),
+                    "pet_sample_sec": self.steps_to_seconds(pet_sample),
+                    "has_real_pet": pet_real is not None,
+                    "has_sample_pet": pet_sample is not None,
+                    "both_defined": pet_real is not None and pet_sample is not None,
+                }
+            )
 
         df = pd.DataFrame(records)
 
         # Compute statistics
-        both_defined = df[df['both_defined']]
+        both_defined = df[df["both_defined"]]
 
         if verbose:
             self._print_pet_summary(df, both_defined)
 
         # Save results
         if self.save_results:
-            csv_path = self.output_dir / 'pet_like_metrics.csv'
+            csv_path = self.output_dir / "pet_like_metrics.csv"
             df.to_csv(csv_path, index=False)
             logger.info(f"✅ Results saved to {csv_path}")
 
@@ -376,11 +392,11 @@ class PETDiffusionAnalyzer:
     def compare_with_ground_truth(
         self,
         df_pet_path: str,
-        batch: Dict[str, torch.Tensor],
+        batch: dict[str, torch.Tensor],
         sample_future_fn: Callable,
         noise_scale: float = 0.01,
-        verbose: bool = True
-    ) -> Tuple[List[Tuple], pd.DataFrame]:
+        verbose: bool = True,
+    ) -> tuple[list[tuple], pd.DataFrame]:
         """
         Compare ground truth PET (from CSV) with PET-like metrics from model.
 
@@ -410,7 +426,9 @@ class PETDiffusionAnalyzer:
             raise FileNotFoundError(f"Ground truth file not found: {df_pet_path}")
 
         df_pet = pd.read_csv(df_pet_path)
-        logger.info(f"Loaded {len(df_pet)} ground truth PET records from {pet_path.name}")
+        logger.info(
+            f"Loaded {len(df_pet)} ground truth PET records from {pet_path.name}"
+        )
 
         idxs = batch["idx"].cpu().numpy()
         B = len(idxs)
@@ -444,7 +462,9 @@ class PETDiffusionAnalyzer:
 
             # Ground truth PET from CSV
             if row_idx >= len(df_pet):
-                logger.warning(f"Row index {row_idx} out of bounds (CSV has {len(df_pet)} rows)")
+                logger.warning(
+                    f"Row index {row_idx} out of bounds (CSV has {len(df_pet)} rows)"
+                )
                 continue
 
             true_pet_sec = float(df_pet.loc[row_idx, "PET"])
@@ -454,35 +474,47 @@ class PETDiffusionAnalyzer:
             sample_traj = sample_np[b]
 
             try:
-                _, pet_like_real = compute_distance_to_threshold(real_traj, self.d_thresh)
-                _, pet_like_sample = compute_distance_to_threshold(sample_traj, self.d_thresh)
+                _, pet_like_real = compute_distance_to_threshold(
+                    real_traj, self.d_thresh
+                )
+                _, pet_like_sample = compute_distance_to_threshold(
+                    sample_traj, self.d_thresh
+                )
             except Exception as e:
                 logger.warning(f"Error computing PET for example {b}: {e}")
                 pet_like_real, pet_like_sample = None, None
 
-            records.append({
-                'row_idx': row_idx,
-                'true_pet_sec': true_pet_sec,
-                'pet_like_real_steps': pet_like_real,
-                'pet_like_sample_steps': pet_like_sample,
-                'pet_like_real_sec': self.steps_to_seconds(pet_like_real),
-                'pet_like_sample_sec': self.steps_to_seconds(pet_like_sample),
-                'error_real': (self.steps_to_seconds(pet_like_real) - true_pet_sec) if pet_like_real else None,
-                'error_sample': (self.steps_to_seconds(pet_like_sample) - true_pet_sec) if pet_like_sample else None
-            })
+            records.append(
+                {
+                    "row_idx": row_idx,
+                    "true_pet_sec": true_pet_sec,
+                    "pet_like_real_steps": pet_like_real,
+                    "pet_like_sample_steps": pet_like_sample,
+                    "pet_like_real_sec": self.steps_to_seconds(pet_like_real),
+                    "pet_like_sample_sec": self.steps_to_seconds(pet_like_sample),
+                    "error_real": (self.steps_to_seconds(pet_like_real) - true_pet_sec)
+                    if pet_like_real
+                    else None,
+                    "error_sample": (
+                        self.steps_to_seconds(pet_like_sample) - true_pet_sec
+                    )
+                    if pet_like_sample
+                    else None,
+                }
+            )
 
         df = pd.DataFrame(records)
 
         # Compute error metrics
-        valid_real = df[df['pet_like_real_sec'].notna()]
-        valid_sample = df[df['pet_like_sample_sec'].notna()]
+        valid_real = df[df["pet_like_real_sec"].notna()]
+        valid_sample = df[df["pet_like_sample_sec"].notna()]
 
         if verbose:
             self._print_ground_truth_summary(df, valid_real, valid_sample)
 
         # Save results
         if self.save_results:
-            csv_path = self.output_dir / 'ground_truth_comparison.csv'
+            csv_path = self.output_dir / "ground_truth_comparison.csv"
             df.to_csv(csv_path, index=False)
             logger.info(f"✅ Results saved to {csv_path}")
 
@@ -492,7 +524,12 @@ class PETDiffusionAnalyzer:
 
         # Convert to tuple format for backward compatibility
         records_tuple = [
-            (r['row_idx'], r['true_pet_sec'], r['pet_like_real_steps'], r['pet_like_sample_steps'])
+            (
+                r["row_idx"],
+                r["true_pet_sec"],
+                r["pet_like_real_steps"],
+                r["pet_like_sample_steps"],
+            )
             for _, r in df.iterrows()
         ]
 
@@ -500,65 +537,75 @@ class PETDiffusionAnalyzer:
 
     def _print_pet_summary(self, df: pd.DataFrame, both_defined: pd.DataFrame):
         """Print summary statistics for PET metrics."""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("PET-LIKE METRICS SUMMARY")
-        print("="*60)
+        print("=" * 60)
         print(f"Distance threshold: {self.d_thresh} m")
         print(f"Total examples: {len(df)}")
-        print(f"Real PET defined: {df['has_real_pet'].sum()} ({100*df['has_real_pet'].mean():.1f}%)")
-        print(f"Sample PET defined: {df['has_sample_pet'].sum()} ({100*df['has_sample_pet'].mean():.1f}%)")
-        print(f"Both defined: {len(both_defined)} ({100*len(both_defined)/len(df):.1f}%)")
+        print(
+            f"Real PET defined: {df['has_real_pet'].sum()} ({100 * df['has_real_pet'].mean():.1f}%)"
+        )
+        print(
+            f"Sample PET defined: {df['has_sample_pet'].sum()} ({100 * df['has_sample_pet'].mean():.1f}%)"
+        )
+        print(
+            f"Both defined: {len(both_defined)} ({100 * len(both_defined) / len(df):.1f}%)"
+        )
 
         if len(both_defined) > 0:
-            errors_steps = both_defined['pet_sample_steps'] - both_defined['pet_real_steps']
-            errors_sec = both_defined['pet_sample_sec'] - both_defined['pet_real_sec']
+            errors_steps = (
+                both_defined["pet_sample_steps"] - both_defined["pet_real_steps"]
+            )
+            errors_sec = both_defined["pet_sample_sec"] - both_defined["pet_real_sec"]
 
-            print(f"\nError Statistics (steps):")
+            print("\nError Statistics (steps):")
             print(f"  Mean: {errors_steps.mean():.3f} ± {errors_steps.std():.3f}")
             print(f"  Median: {errors_steps.median():.3f}")
             print(f"  Range: [{errors_steps.min():.3f}, {errors_steps.max():.3f}]")
 
-            print(f"\nError Statistics (seconds):")
+            print("\nError Statistics (seconds):")
             print(f"  Mean: {errors_sec.mean():.3f} ± {errors_sec.std():.3f}")
             print(f"  Median: {errors_sec.median():.3f}")
             print(f"  MAE: {errors_sec.abs().mean():.3f}")
             print(f"  RMSE: {np.sqrt((errors_sec**2).mean()):.3f}")
 
-        print("="*60 + "\n")
+        print("=" * 60 + "\n")
 
     def _print_ground_truth_summary(
-        self,
-        df: pd.DataFrame,
-        valid_real: pd.DataFrame,
-        valid_sample: pd.DataFrame
+        self, df: pd.DataFrame, valid_real: pd.DataFrame, valid_sample: pd.DataFrame
     ):
         """Print summary for ground truth comparison."""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("GROUND TRUTH COMPARISON SUMMARY")
-        print("="*60)
+        print("=" * 60)
         print(f"Total examples: {len(df)}")
-        print(f"PET-like real valid: {len(valid_real)} ({100*len(valid_real)/len(df):.1f}%)")
-        print(f"PET-like sample valid: {len(valid_sample)} ({100*len(valid_sample)/len(df):.1f}%)")
+        print(
+            f"PET-like real valid: {len(valid_real)} ({100 * len(valid_real) / len(df):.1f}%)"
+        )
+        print(
+            f"PET-like sample valid: {len(valid_sample)} ({100 * len(valid_sample) / len(df):.1f}%)"
+        )
 
         if len(valid_real) > 0:
-            print(f"\nReal Trajectory Error vs Ground Truth:")
+            print("\nReal Trajectory Error vs Ground Truth:")
             print(f"  MAE: {valid_real['error_real'].abs().mean():.3f} s")
-            print(f"  RMSE: {np.sqrt((valid_real['error_real']**2).mean()):.3f} s")
+            print(f"  RMSE: {np.sqrt((valid_real['error_real'] ** 2).mean()):.3f} s")
 
         if len(valid_sample) > 0:
-            print(f"\nSampled Trajectory Error vs Ground Truth:")
+            print("\nSampled Trajectory Error vs Ground Truth:")
             print(f"  MAE: {valid_sample['error_sample'].abs().mean():.3f} s")
-            print(f"  RMSE: {np.sqrt((valid_sample['error_sample']**2).mean()):.3f} s")
+            print(
+                f"  RMSE: {np.sqrt((valid_sample['error_sample'] ** 2).mean()):.3f} s"
+            )
 
-        print("="*60 + "\n")
+        print("=" * 60 + "\n")
 
-    def _generate_visualizations(self, pet_pairs: List, both_defined: pd.DataFrame):
+    def _generate_visualizations(self, pet_pairs: list, both_defined: pd.DataFrame):
         """Generate automatic visualizations."""
         try:
             # Histogram of errors
             self.plotter.plot_pet_like_histogram(
-                pet_pairs,
-                save_path=str(self.output_dir / 'pet_error_histogram.png')
+                pet_pairs, save_path=str(self.output_dir / "pet_error_histogram.png")
             )
             logger.info("✅ Generated error histogram")
         except Exception as e:
@@ -568,20 +615,29 @@ class PETDiffusionAnalyzer:
         """Generate visualizations for ground truth comparison."""
         try:
             # Convert to records format (optimized)
-            records = list(df[['row_idx', 'true_pet_sec', 'pet_like_real_steps', 'pet_like_sample_steps']].itertuples(index=False, name=None))
+            records = list(
+                df[
+                    [
+                        "row_idx",
+                        "true_pet_sec",
+                        "pet_like_real_steps",
+                        "pet_like_sample_steps",
+                    ]
+                ].itertuples(index=False, name=None)
+            )
 
             # Scatter plot
             self.plotter.plot_true_vs_pet_like(
                 records,
                 add_regression=True,
-                save_path=str(self.output_dir / 'true_vs_petlike_scatter.png')
+                save_path=str(self.output_dir / "true_vs_petlike_scatter.png"),
             )
 
             # Error analysis
             self.plotter.plot_true_vs_sample_delta(
                 records,
                 add_trend=True,
-                save_path=str(self.output_dir / 'error_vs_truth.png')
+                save_path=str(self.output_dir / "error_vs_truth.png"),
             )
 
             logger.info("✅ Generated ground truth comparison plots")
@@ -591,29 +647,23 @@ class PETDiffusionAnalyzer:
 
 # Backward compatible functions
 def compute_pet_like_metrics(
-    batch: Dict[str, torch.Tensor],
+    batch: dict[str, torch.Tensor],
     sample_future_fn: Callable,
     scale: float,
     noise_scale: float = 0.01,
-    d_thresh: float = 1.0
-) -> List[Tuple[Optional[float], Optional[float]]]:
+    d_thresh: float = 1.0,
+) -> list[tuple[float | None, float | None]]:
     """
     Backward compatible function for computing PET-like metrics.
 
     Recommended: Use PETDiffusionAnalyzer class for more features.
     """
     analyzer = PETDiffusionAnalyzer(
-        d_thresh=d_thresh,
-        scale=scale,
-        auto_visualize=False,
-        save_results=False
+        d_thresh=d_thresh, scale=scale, auto_visualize=False, save_results=False
     )
 
     pet_pairs, _ = analyzer.compute_pet_like_metrics(
-        batch,
-        sample_future_fn,
-        noise_scale=noise_scale,
-        verbose=True
+        batch, sample_future_fn, noise_scale=noise_scale, verbose=True
     )
 
     return pet_pairs
@@ -621,30 +671,23 @@ def compute_pet_like_metrics(
 
 def compare_realPET_samplePET(
     df_pet_path: str,
-    batch: Dict[str, torch.Tensor],
+    batch: dict[str, torch.Tensor],
     sample_future_fn: Callable,
     scale: float,
     noise_scale: float = 0.01,
-    d_thresh: float = 1.0
-) -> List[Tuple]:
+    d_thresh: float = 1.0,
+) -> list[tuple]:
     """
     Backward compatible function for ground truth comparison.
 
     Recommended: Use PETDiffusionAnalyzer class for more features.
     """
     analyzer = PETDiffusionAnalyzer(
-        d_thresh=d_thresh,
-        scale=scale,
-        auto_visualize=False,
-        save_results=False
+        d_thresh=d_thresh, scale=scale, auto_visualize=False, save_results=False
     )
 
     records, _ = analyzer.compare_with_ground_truth(
-        df_pet_path,
-        batch,
-        sample_future_fn,
-        noise_scale=noise_scale,
-        verbose=True
+        df_pet_path, batch, sample_future_fn, noise_scale=noise_scale, verbose=True
     )
 
     return records

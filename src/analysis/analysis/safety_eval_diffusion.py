@@ -1,17 +1,19 @@
 import os
+
 import numpy as np
 import pandas as pd
 import torch
-
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader, Dataset
 
 # -----------------------------
 # 1) Dataset from petevents_bev.csv
 # -----------------------------
 
+
 def parse_traj_txy(cell):
-    arr = np.array(eval(cell), dtype=float)   # (T,3): t,x,y
+    arr = np.array(eval(cell), dtype=float)  # (T,3): t,x,y
     return arr[:, 0], arr[:, 1:3]
+
 
 class TrajDiffusionDatasetNorm(Dataset):
     def __init__(self, csv_path, Th=8):
@@ -44,9 +46,9 @@ class TrajDiffusionDatasetNorm(Dataset):
             xy_j_p = np.pad(xy_j[:T], ((0, pad_len), (0, 0)), mode="edge")
             traj_list.append(np.concatenate([xy_i_p, xy_j_p], axis=-1))
 
-        traj_all = np.stack(traj_list, axis=0)   # (N, T_max, 4)
+        traj_all = np.stack(traj_list, axis=0)  # (N, T_max, 4)
 
-        N, T, D = traj_all.shape
+        N, T, _D = traj_all.shape
         Th = min(Th, T // 2)
         inputs_np = traj_all[:, :Th, :]
         future_np = traj_all[:, Th:, :]
@@ -82,20 +84,24 @@ class TrajDiffusionDatasetNorm(Dataset):
             "center": self.centers[idx],
         }
 
+
 def make_loader(csv_path, batch_size=32, Th=8, shuffle=False):
     ds = TrajDiffusionDatasetNorm(csv_path, Th=Th)
     dl = DataLoader(ds, batch_size=batch_size, shuffle=shuffle, drop_last=False)
     return ds, dl
 
+
 # -----------------------------
 # 2) PET / TTC helpers
 # -----------------------------
+
 
 def first_below_threshold(dist_seq, thresh):
     idxs = np.where(dist_seq < thresh)[0]
     if len(idxs) == 0:
         return None
     return float(idxs[0])
+
 
 def compute_ttc_seq(pos1, pos2, dt, d_thresh=1.0, eps=1e-6):
     v1 = (pos1[1:] - pos1[:-1]) / dt
@@ -119,6 +125,7 @@ def compute_ttc_seq(pos1, pos2, dt, d_thresh=1.0, eps=1e-6):
         else:
             ttc.append(None)
     return ttc
+
 
 @torch.no_grad()
 def eval_safety_over_loader(
@@ -197,7 +204,9 @@ def eval_safety_over_loader(
                 "true_PET": true_pet,
                 "real_pet_like_step": pet_like_real,
                 "real_min_TTC": min_ttc_real,
-                "sample_pet_like_step_mean": float(np.mean(pet_s_f)) if pet_s_f else None,
+                "sample_pet_like_step_mean": float(np.mean(pet_s_f))
+                if pet_s_f
+                else None,
                 "sample_pet_like_step_std": float(np.std(pet_s_f)) if pet_s_f else None,
                 "sample_min_TTC_mean": float(np.mean(ttc_s_f)) if ttc_s_f else None,
                 "sample_min_TTC_std": float(np.std(ttc_s_f)) if ttc_s_f else None,
@@ -206,11 +215,12 @@ def eval_safety_over_loader(
             }
             all_records.append(rec)
 
-        print(f"Processed batch {b_idx+1}, total records: {len(all_records)}")
+        print(f"Processed batch {b_idx + 1}, total records: {len(all_records)}")
 
     df_out = pd.DataFrame.from_records(all_records)
     df_out.to_csv(out_csv_path, index=False)
     print("Saved safety eval to:", out_csv_path)
+
 
 # -----------------------------
 # 3) Entry point (wire your model here)
@@ -220,17 +230,23 @@ def eval_safety_over_loader(
 # -----------------------------
 
 import torch
-import numpy as np
+
 from src.diffusion.traffic_diffusion.model_and_sampler import sample_future_denorm
 
-def sample_future_fn(batch, num_samples=20, checkpoint_path="checkpoints/traj_diffusion_best.pt"):
+
+def sample_future_fn(
+    batch, num_samples=20, checkpoint_path="checkpoints/traj_diffusion_best.pt"
+):
     """
     Wrapper around the clean sampler module.
 
     Returns:
       samples_world: (num_samples, B, T_future, 4)
     """
-    return sample_future_denorm(batch, checkpoint_path=checkpoint_path, num_samples=num_samples)
+    return sample_future_denorm(
+        batch, checkpoint_path=checkpoint_path, num_samples=num_samples
+    )
+
 
 def main():
     csv_path = "docs/data_samples/petevents_bev_demo.csv"
@@ -240,7 +256,11 @@ def main():
 
     def sample_fn(batch, num_samples=20):
         # batch tensors are moved to device inside eval_safety_over_loader
-        return sample_future_fn(batch, num_samples=num_samples, checkpoint_path="checkpoints/traj_diffusion_best.pt")
+        return sample_future_fn(
+            batch,
+            num_samples=num_samples,
+            checkpoint_path="checkpoints/traj_diffusion_best.pt",
+        )
 
     eval_safety_over_loader(
         loader=dl,
@@ -254,6 +274,7 @@ def main():
         max_batches=None,
         device=device,
     )
+
 
 if __name__ == "__main__":
     main()

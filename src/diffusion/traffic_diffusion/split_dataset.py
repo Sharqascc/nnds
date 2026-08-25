@@ -1,6 +1,8 @@
-import pandas as pd
-import numpy as np
 from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
 
 def split_pet_dataset(csv_path, train_ratio=0.6, val_ratio=0.2, seed=42):
     np.random.seed(seed)
@@ -13,9 +15,13 @@ def split_pet_dataset(csv_path, train_ratio=0.6, val_ratio=0.2, seed=42):
 
     # Use interaction/track pair IDs to avoid temporal/spatial data leakage
     if "track_id_i" in df.columns and "track_id_j" in df.columns:
-        df["interaction_id"] = df["track_id_i"].astype(str) + "_" + df["track_id_j"].astype(str)
+        df["interaction_id"] = (
+            df["track_id_i"].astype(str) + "_" + df["track_id_j"].astype(str)
+        )
     elif "track_a" in df.columns and "track_b" in df.columns:
-        df["interaction_id"] = df["track_a"].astype(str) + "_" + df["track_b"].astype(str)
+        df["interaction_id"] = (
+            df["track_a"].astype(str) + "_" + df["track_b"].astype(str)
+        )
     else:
         df["interaction_id"] = df.index
 
@@ -27,8 +33,8 @@ def split_pet_dataset(csv_path, train_ratio=0.6, val_ratio=0.2, seed=42):
     n_val = int(n_total * val_ratio)
 
     train_ids = set(unique_ids[:n_train])
-    val_ids = set(unique_ids[n_train:n_train + n_val])
-    test_ids = set(unique_ids[n_train + n_val:])
+    val_ids = set(unique_ids[n_train : n_train + n_val])
+    test_ids = set(unique_ids[n_train + n_val :])
 
     train_df = df[df["interaction_id"].isin(train_ids)].drop(columns=["interaction_id"])
     val_df = df[df["interaction_id"].isin(val_ids)].drop(columns=["interaction_id"])
@@ -50,6 +56,7 @@ def split_pet_dataset(csv_path, train_ratio=0.6, val_ratio=0.2, seed=42):
     print(f" • Train Set:       {len(train_df)} events -> {train_path}")
     print(f" • Validation Set:  {len(val_df)} events -> {val_path}")
     print(f" • Test Set:        {len(test_df)} events -> {test_path}")
+
 
 if __name__ == "__main__":
     split_pet_dataset("outputs/petevents_recovered.csv")

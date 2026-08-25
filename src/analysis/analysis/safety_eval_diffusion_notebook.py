@@ -15,19 +15,21 @@ from __future__ import annotations
 import argparse
 import logging
 from pathlib import Path
-from typing import Tuple
 
 import numpy as np
 import pandas as pd
 import torch
 
+from src.diffusion.traffic_diffusion.pet_safety_metrics import compute_safety_metrics
+from src.diffusion.traffic_diffusion.sampling_utils import (
+    load_eval_model,
+    sample_future,
+)
 from src.diffusion.traffic_diffusion.training_utils import (
     build_clean_dataloaders,
     create_model,
     train_diffusion_model,
 )
-from src.diffusion.traffic_diffusion.sampling_utils import load_eval_model, sample_future
-from src.diffusion.traffic_diffusion.pet_safety_metrics import compute_safety_metrics
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_DIR = ROOT / "outputs"
@@ -114,7 +116,7 @@ def run_safety_eval_pipeline(
     num_steps: int,
     risk_half_life: float,
     force: bool = False,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Run training + sampling + safety evaluation for the trajectory diffusion model.
 
@@ -144,7 +146,9 @@ def run_safety_eval_pipeline(
     df_summary_model : pd.DataFrame
         Aggregated safety metrics.
     """
-    from src.diffusion.traffic_diffusion.trajectory_diffusion import load_trajdiff_dataset
+    from src.diffusion.traffic_diffusion.trajectory_diffusion import (
+        load_trajdiff_dataset,
+    )
 
     logger.info("Loading trajectory diffusion dataset from %s", ROOT)
     raw_dataset, meta_df = load_trajdiff_dataset(ROOT)
@@ -152,16 +156,18 @@ def run_safety_eval_pipeline(
     N = 1
     F = 4
 
-    logger.info("Building dataloaders (batch_size=%d, T=%d, N=%d, F=%d)", batch_size, T, N, F)
-    train_loader, eval_loader, train_dataset, eval_dataset, stats = build_clean_dataloaders(
-        raw_dataset, batch_size=batch_size, T=T, N=N, F=F
+    logger.info(
+        "Building dataloaders (batch_size=%d, T=%d, N=%d, F=%d)", batch_size, T, N, F
+    )
+    train_loader, eval_loader, _train_dataset, eval_dataset, _stats = (
+        build_clean_dataloaders(raw_dataset, batch_size=batch_size, T=T, N=N, F=F)
     )
 
     logger.info("Creating diffusion model on device=%s", device)
     model = create_model(device, T=T, N=N, F=F, cond_dim=4)
 
     logger.info("Training diffusion model for %d epochs", num_epochs)
-    best_ckpt, last_ckpt, history = train_diffusion_model(
+    best_ckpt, _last_ckpt, history = train_diffusion_model(
         model,
         train_loader,
         device,
@@ -218,9 +224,7 @@ def run_safety_eval_pipeline(
         )
     B_used = min(B_eval, len(meta_eval))
 
-    traj_pred = (
-        df_samples.to_numpy(dtype=np.float32)[:B_used].reshape(B_used, T, N, F)
-    )
+    traj_pred = df_samples.to_numpy(dtype=np.float32)[:B_used].reshape(B_used, T, N, F)
     logger.debug("traj_pred shape: %s", traj_pred.shape)
 
     # Build event-level records with exponential PET-based risk mapping

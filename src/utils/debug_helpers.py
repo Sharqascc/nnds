@@ -1,4 +1,3 @@
-
 """
 Beginner-friendly debugging helpers for NNDS.
 
@@ -12,22 +11,21 @@ Usage in any script:
 
 import pathlib
 import traceback
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
-import numpy as np
-import pandas as pd
 import cv2
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
-
-DEBUG_ROOT = pathlib.Path("/content/nnds/outputs/debug")
+DEBUG_ROOT = pathlib.Path("str(Path(__file__).resolve().parents[1])/outputs/debug")
 
 
 def _ensure_dir(path: pathlib.Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
 
-def debug_print_section(title: str, details: Optional[Dict[str, Any]] = None) -> None:
+def debug_print_section(title: str, details: dict[str, Any] | None = None) -> None:
     """Print a clearly delimited debug section."""
     print("\n" + "=" * 60)
     print(f"🔍 DEBUG: {title}")
@@ -66,7 +64,7 @@ def debug_save_image(
 
     if show:
         plt.figure(figsize=(8, 6))
-        plt.imshow(image_rgb if image_rgb is not locals().get('image_rgb') else image)
+        plt.imshow(image_rgb if image_rgb is not locals().get("image_rgb") else image)
         if title:
             plt.title(title)
         plt.axis("off")
@@ -101,6 +99,7 @@ def debug_print_tensor_info(name: str, tensor: Any) -> None:
     """Print basic info about a torch-like tensor (shape, dtype, NaN/Inf)."""
     try:
         import torch
+
         is_tensor = torch.is_tensor(tensor)
     except Exception:
         is_tensor = hasattr(tensor, "shape") and hasattr(tensor, "dtype")
@@ -109,7 +108,11 @@ def debug_print_tensor_info(name: str, tensor: Any) -> None:
         debug_print_section(f"{name}: not a tensor")
         return
 
-    arr = tensor.detach().cpu().numpy() if hasattr(tensor, "detach") else np.asarray(tensor)
+    arr = (
+        tensor.detach().cpu().numpy()
+        if hasattr(tensor, "detach")
+        else np.asarray(tensor)
+    )
 
     debug_print_section(
         f"{name} info",

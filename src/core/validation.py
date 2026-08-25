@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Dict, Sequence
+from typing import Any
 
 import numpy as np
 
@@ -22,12 +23,14 @@ def compute_error_metrics(errors: Sequence[float] | np.ndarray) -> ValidationMet
     return ValidationMetrics(
         mean_error=float(np.mean(arr)),
         max_error=float(np.max(arr)),
-        rmse=float(np.sqrt(np.mean(arr ** 2))),
+        rmse=float(np.sqrt(np.mean(arr**2))),
         num_samples=int(arr.size),
     )
 
 
-def validate_numeric_array(name: str, value: Any, ndim: int | None = None) -> np.ndarray:
+def validate_numeric_array(
+    name: str, value: Any, ndim: int | None = None
+) -> np.ndarray:
     arr = np.asarray(value, dtype=float)
     if arr.size == 0:
         raise ValueError(f"{name} must not be empty")
@@ -38,9 +41,18 @@ def validate_numeric_array(name: str, value: Any, ndim: int | None = None) -> np
     return arr
 
 
-def validate_bev_result(result: Dict[str, Any]) -> None:
-    required = {"pointerrors", "meanerrorall", "meanerrorinliers", "stderrorall", "maxerror", "rmse"}
+def validate_bev_result(result: dict[str, Any]) -> None:
+    required = {
+        "pointerrors",
+        "meanerrorall",
+        "meanerrorinliers",
+        "stderrorall",
+        "maxerror",
+        "rmse",
+    }
     missing = required - set(result)
     if missing:
         raise ValueError(f"missing validation keys: {sorted(missing)}")
-    validate_numeric_array("pointerrors", [r["error"] for r in result["pointerrors"]], ndim=1)
+    validate_numeric_array(
+        "pointerrors", [r["error"] for r in result["pointerrors"]], ndim=1
+    )

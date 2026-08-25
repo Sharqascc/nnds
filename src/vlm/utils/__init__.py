@@ -6,6 +6,11 @@ Helper functions for VLM analysis.
 """
 
 from .image_utils import extract_frames, prepare_images_for_vlm
-from .visualization import plot_vlm_results, create_heatmap
+from .visualization import create_heatmap, plot_vlm_results
 
-__all__ = ["extract_frames", "prepare_images_for_vlm", "plot_vlm_results", "create_heatmap"]
+__all__ = [
+    "create_heatmap",
+    "extract_frames",
+    "plot_vlm_results",
+    "prepare_images_for_vlm",
+]

@@ -7,9 +7,10 @@ Usage:
     python scripts/run_pipeline.py --video path/to/video.mp4 [options]
     python scripts/run_pipeline.py --video path/to/video.mp4 --skip-ensure
 """
-import sys
+
 import runpy
 import subprocess
+import sys
 from pathlib import Path
 
 

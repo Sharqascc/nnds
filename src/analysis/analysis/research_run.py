@@ -8,22 +8,28 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import List
 
-ROOT = Path(__file__).resolve().parents[1] if "__file__" in globals() else Path("/content/nnds")
+ROOT = (
+    Path(__file__).resolve().parents[1]
+    if "__file__" in globals()
+    else Path("str(Path(__file__).resolve().parents[1])")
+)
 
 DEFAULT_UVH_MODEL = "docs/archive/weights/uvh26.pt"
 DEFAULT_COCO_PERSON_MODEL = "yolo26m-seg.pt"
 
+
 def log(msg, level="INFO"):
     print(f"[{level}] {msg}")
 
-def run_cmd(cmd: List[str], cwd: Path = ROOT) -> None:
+
+def run_cmd(cmd: list[str], cwd: Path = ROOT) -> None:
     log(f"Executing: {' '.join(cmd)}")
     result = subprocess.run(cmd, cwd=cwd)
     if result.returncode != 0:
         log(f"Command failed with return code {result.returncode}", "ERROR")
         raise SystemExit(result.returncode)
+
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="NNDS Research Pipeline")
@@ -37,23 +43,47 @@ def main(argv=None):
     parser.add_argument("--skip-extraction", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--verbose", "-v", action="store_true")
-    parser.add_argument("--auto-download-weights", action="store_true", help="Auto-fetch UVH-26 weights if missing")
+    parser.add_argument(
+        "--auto-download-weights",
+        action="store_true",
+        help="Auto-fetch UVH-26 weights if missing",
+    )
 
-    parser.add_argument("--detector", default="uvh-coco-fused",
-                        choices=["uvh-coco-fused"],
-                        help="Final production detector policy")
-    parser.add_argument("--uvh-model", default=DEFAULT_UVH_MODEL,
-                        help="Primary UVH-26 detector weights")
-    parser.add_argument("--coco-person-model", default=DEFAULT_COCO_PERSON_MODEL,
-                        help="Fallback COCO person-only detector weights")
-    parser.add_argument("--uvh-conf", type=float, default=0.20,
-                        help="UVH-26 confidence threshold")
-    parser.add_argument("--coco-person-conf", type=float, default=0.20,
-                        help="COCO person confidence threshold")
-    parser.add_argument("--detector-imgsz", type=int, default=1280,
-                        help="Inference image size for both detectors")
-    parser.add_argument("--person-suppress-overlap", type=float, default=0.35,
-                        help="Suppress COCO person if overlap/person-area exceeds this threshold")
+    parser.add_argument(
+        "--detector",
+        default="uvh-coco-fused",
+        choices=["uvh-coco-fused"],
+        help="Final production detector policy",
+    )
+    parser.add_argument(
+        "--uvh-model", default=DEFAULT_UVH_MODEL, help="Primary UVH-26 detector weights"
+    )
+    parser.add_argument(
+        "--coco-person-model",
+        default=DEFAULT_COCO_PERSON_MODEL,
+        help="Fallback COCO person-only detector weights",
+    )
+    parser.add_argument(
+        "--uvh-conf", type=float, default=0.20, help="UVH-26 confidence threshold"
+    )
+    parser.add_argument(
+        "--coco-person-conf",
+        type=float,
+        default=0.20,
+        help="COCO person confidence threshold",
+    )
+    parser.add_argument(
+        "--detector-imgsz",
+        type=int,
+        default=1280,
+        help="Inference image size for both detectors",
+    )
+    parser.add_argument(
+        "--person-suppress-overlap",
+        type=float,
+        default=0.35,
+        help="Suppress COCO person if overlap/person-area exceeds this threshold",
+    )
 
     args = parser.parse_args(argv)
 
@@ -65,6 +95,7 @@ def main(argv=None):
     uvh_model_path = Path(args.uvh_model)
     if not uvh_model_path.exists() and args.auto_download_weights:
         import subprocess
+
         for cmd in (["make", "weights"], ["bash", "scripts/download_uvh26.sh"]):
             try:
                 subprocess.run(cmd, check=True)
@@ -91,18 +122,30 @@ def main(argv=None):
     if not args.skip_extraction:
         log("=== Stage 1: Video -> PET ===")
         cmd = [
-            sys.executable, "traffic_analyzer.py",
-            "--video", args.video,
-            "--sam3-weights", args.sam3_weights,
-            "--out-csv", out_csv,
-            "--pet-threshold", str(args.pet_threshold),
-            "--detector", args.detector,
-            "--uvh-model", args.uvh_model,
-            "--coco-person-model", args.coco_person_model,
-            "--uvh-conf", str(args.uvh_conf),
-            "--coco-person-conf", str(args.coco_person_conf),
-            "--imgsz", str(args.detector_imgsz),
-            "--person-suppress-overlap", str(args.person_suppress_overlap),
+            sys.executable,
+            "traffic_analyzer.py",
+            "--video",
+            args.video,
+            "--sam3-weights",
+            args.sam3_weights,
+            "--out-csv",
+            out_csv,
+            "--pet-threshold",
+            str(args.pet_threshold),
+            "--detector",
+            args.detector,
+            "--uvh-model",
+            args.uvh_model,
+            "--coco-person-model",
+            args.coco_person_model,
+            "--uvh-conf",
+            str(args.uvh_conf),
+            "--coco-person-conf",
+            str(args.coco_person_conf),
+            "--imgsz",
+            str(args.detector_imgsz),
+            "--person-suppress-overlap",
+            str(args.person_suppress_overlap),
         ]
         if args.max_frames:
             cmd += ["--max-frames", str(args.max_frames)]
@@ -116,8 +159,12 @@ def main(argv=None):
 
     if args.train_diffusion:
         log("=== Stage 2: Diffusion Training ===")
-        cmd = [sys.executable, "traffic_diffusion/train_trajectory_diffusion.py",
-               "--csv-path", out_csv]
+        cmd = [
+            sys.executable,
+            "traffic_diffusion/train_trajectory_diffusion.py",
+            "--csv-path",
+            out_csv,
+        ]
         if not args.dry_run:
             start = time.time()
             run_cmd(cmd, cwd=ROOT)
@@ -153,6 +200,7 @@ def main(argv=None):
         log(f"Summary saved to {summary_path}")
 
     log(f"\\n=== Done ===\\nPET CSV: {out_csv}")
+
 
 if __name__ == "__main__":
     main()
