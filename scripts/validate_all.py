@@ -137,6 +137,25 @@ def run_full_validation(args):
             "--video-frames", str(args.video_frames),
         ], "Detection/tracking/PET output validation")
 
+    # Generate scientific validation report (if detections/pet files exist)
+    det_for_report = args.detections
+    pet_for_report = args.pet
+    if args.run_e2e:
+        # Use generated files from e2e
+        det_for_report = f"outputs/e2e_validation_pet_detections.csv"
+        pet_for_report = f"outputs/e2e_validation_pet.csv"
+    if Path(det_for_report).exists() and Path(pet_for_report).exists():
+        run_cmd([
+            sys.executable, "scripts/validation_report.py",
+            "--detections", det_for_report,
+            "--pet", pet_for_report,
+            "--bev-config", "configs/bev_config.json",
+            "--calib", "configs/giti_calibration_points.json",
+            "--output", "outputs/validation_report.md",
+        ], "Generating quantitative validation report")
+    else:
+        print("\nℹ️ Skipping validation report due to missing detections/pet files")
+
     print("\n🎉 All validations passed!")
 
 
