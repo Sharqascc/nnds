@@ -119,6 +119,28 @@ def _bbox_overlap(box1, box2, pad=0.0):
     return not (box1[2] < box2[0] - pad or box2[2] < box1[0] - pad or
                 box1[3] < box2[1] - pad or box2[3] < box1[1] - pad)
 
+
+def _compute_pet_from_windows(a_entry, a_exit, b_entry, b_exit, fps):
+    """
+    Pure function: compute Post‑Encroachment Time from two entry/exit windows.
+
+    Returns:
+        (pet, first_id, second_id, frame_ref) if a valid PET can be computed,
+        otherwise None.
+    """
+    if a_exit <= b_entry:
+        pet = (b_entry - a_exit) / fps
+        first_id, second_id = "a", "b"
+        frame_ref = b_entry
+    elif b_exit <= a_entry:
+        pet = (a_entry - b_exit) / fps
+        first_id, second_id = "b", "a"
+        frame_ref = a_entry
+    else:
+        return None
+    return pet, first_id, second_id, frame_ref
+
+
 def _pair_conflict_point(track_a: List[TrackPoint], track_b: List[TrackPoint]):
     for i in range(len(track_a) - 1):
         p1 = (track_a[i].x, track_a[i].y)
@@ -521,16 +543,10 @@ def run_uvh_coco_fused_grid_pet(
             a_entry, a_exit = a_window
             b_entry, b_exit = b_window
 
-            if a_exit <= b_entry:
-                pet = (b_entry - a_exit) / fps
-                first_id, second_id = track_a_id, track_b_id
-                frame_ref = b_entry
-            elif b_exit <= a_entry:
-                pet = (a_entry - b_exit) / fps
-                first_id, second_id = track_b_id, track_a_id
-                frame_ref = a_entry
-            else:
+            pet_result = _compute_pet_from_windows(a_entry, a_exit, b_entry, b_exit, fps)
+            if pet_result is None:
                 continue
+            pet, first_id, second_id, frame_ref = pet_result
 
             if pet <= pet_threshold and pet > 0:
                 # Determine grid cell for conflict point
