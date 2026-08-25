@@ -1,3 +1,23 @@
+
+def _col_to_letters(col_idx: int) -> str:
+    """Convert zero-based column index to Excel-style letters (A, B, ..., Z, AA, AB, ...)."""
+    letters = ""
+    col_idx += 1
+    while col_idx > 0:
+        col_idx, remainder = divmod(col_idx - 1, 26)
+        letters = chr(65 + remainder) + letters
+    return letters
+
+
+def _letters_to_col(letters: str) -> int:
+    """Convert Excel-style column letters to zero-based column index."""
+    col_idx = 0
+    for ch in letters.upper():
+        col_idx = col_idx * 26 + (ord(ch) - 64)
+    return col_idx - 1
+
+
+
 from __future__ import annotations
 
 import json
@@ -108,7 +128,7 @@ class SpatialGrid:
         col_idx = max(col_idx, 0)
         row_idx = max(row_idx, 0)
 
-        col_letter = chr(65 + (col_idx % 26))
+        col_letter = _col_to_letters(col_idx)
         row_num = row_idx + 1
 
         return self.naming_style.format(col=col_letter, row=row_num)
@@ -135,10 +155,10 @@ class SpatialGrid:
                 col_letter = parts[1]
                 row_num = int(parts[2])
 
-                if len(col_letter) != 1 or not col_letter.isalpha():
+                if not col_letter.isalpha():
                     result = None
                 else:
-                    col_idx = ord(col_letter.upper()) - 65
+                    col_idx = _letters_to_col(col_letter)
                     row_idx = row_num - 1
 
                     if col_idx < 0 or row_idx < 0:
