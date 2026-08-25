@@ -7,6 +7,7 @@ Usage:
 """
 import argparse
 import pandas as pd
+import numpy as np
 from scipy.stats import ttest_rel
 
 def main():
@@ -37,10 +38,14 @@ def main():
         return
 
     t_stat, p_value = ttest_rel(sample1, sample2)
+    # Effect size: Cohen's d for paired samples
+    diff = sample1 - sample2
+    d = np.mean(diff) / np.std(diff, ddof=1) if len(diff) > 1 else 0.0
     print(f"Paired t-test between {args.file1} and {args.file2}")
     print(f"  Number of pairs: {len(sample1)}")
     print(f"  t-statistic: {t_stat:.4f}")
     print(f"  p-value: {p_value:.4f}")
+    print(f"  Effect size (Cohen's d): {d:.4f}")
     if p_value < 0.05:
         print("  Result: Statistically significant difference (p < 0.05)")
     else:

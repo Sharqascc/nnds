@@ -25,8 +25,8 @@ def test_core_modules_present():
                 "diffusion.traffic_diffusion.training_utils",
         "diffusion.traffic_diffusion.model_and_sampler",
         "diffusion.traffic_diffusion.trajectory_diffusion",
-                "analysis.analysis.safety_eval_diffusion",
-        "analysis.analysis.pet_summary",
+                "analysis.safety_eval_diffusion",
+        "analysis.pet_summary",
     ]
     missing = [m for m in required_modules if not _module_exists(m)]
     assert not missing, f"Missing core modules: {missing}"
