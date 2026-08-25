@@ -32,3 +32,5 @@ data/uvh26_data/
 
 # Generated CSV outputs
 *.csv
+
+!data/sample_data/anonymized_traffic_video_50f.mp4
