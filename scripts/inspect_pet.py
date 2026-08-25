@@ -10,12 +10,15 @@ import argparse
 import json
 import sys
 from pathlib import Path
+
 import pandas as pd
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Inspect detailed PET events")
-    parser.add_argument("--csv", default="outputs/petevents_bev.csv", help="Path to PET CSV")
+    parser.add_argument(
+        "--csv", default="outputs/petevents_bev.csv", help="Path to PET CSV"
+    )
     parser.add_argument("--top", type=int, default=10, help="Number of events to show")
     return parser.parse_args()
 
@@ -71,8 +74,12 @@ def main():
         print(f"Track A / B:     {row.get('track_a', '-')} / {row.get('track_b', '-')}")
         print(f"Conflict type:   {row.get('conflict_type', '-')}")
         print(f"Grid cell:       {row.get('grid_cell', '-')}")
-        print(f"Entry/Exit A:    {row.get('track_a_entry_frame', '-')} / {row.get('track_a_exit_frame', '-')}")
-        print(f"Entry/Exit B:    {row.get('track_b_entry_frame', '-')} / {row.get('track_b_exit_frame', '-')}")
+        print(
+            f"Entry/Exit A:    {row.get('track_a_entry_frame', '-')} / {row.get('track_a_exit_frame', '-')}"
+        )
+        print(
+            f"Entry/Exit B:    {row.get('track_b_entry_frame', '-')} / {row.get('track_b_exit_frame', '-')}"
+        )
         print(f"Traj A:          {summarize_traj(row.get('traj_a_json', '[]'))}")
         print(f"Traj B:          {summarize_traj(row.get('traj_b_json', '[]'))}")
     print("=" * 80)

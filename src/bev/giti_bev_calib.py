@@ -2,7 +2,7 @@ import json
 import logging
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, Tuple, Union
+from typing import Union
 
 import cv2
 import numpy as np
@@ -23,10 +23,10 @@ def load_giti_homography(
     easting_key: str = "easting",
     northing_key: str = "northing",
     return_stats: bool = False,
-) -> Union[
-    Tuple[np.ndarray, np.ndarray, np.ndarray],
-    Tuple[np.ndarray, np.ndarray, np.ndarray, Dict[str, float]],
-]:
+) -> (
+    tuple[np.ndarray, np.ndarray, np.ndarray]
+    | tuple[np.ndarray, np.ndarray, np.ndarray, dict[str, float]]
+):
     """
     Load GITI-style calibration points and compute a pixel->world homography.
 
@@ -87,8 +87,7 @@ def load_giti_homography(
     points = data.get("calibration_points", [])
     if not points or len(points) < 4:
         raise ValueError(
-            f"Expected at least 4 calibration_points, got {len(points)} "
-            f"in {json_path}"
+            f"Expected at least 4 calibration_points, got {len(points)} in {json_path}"
         )
 
     pts_pix = []
@@ -157,12 +156,11 @@ def load_giti_homography(
         "max_error": max_error,
         "inlier_ratio": float(num_inliers / len(mask)),
         "num_inliers": num_inliers,
-        "num_points": int(len(pts_pix)),
+        "num_points": len(pts_pix),
     }
 
     logger.info(
-        "Calibration stats for %s: mean_error=%.4f, max_error=%.4f, "
-        "inlier_ratio=%.3f",
+        "Calibration stats for %s: mean_error=%.4f, max_error=%.4f, inlier_ratio=%.3f",
         json_path,
         stats["mean_error"],
         stats["max_error"],

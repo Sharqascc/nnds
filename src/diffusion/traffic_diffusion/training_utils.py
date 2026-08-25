@@ -14,31 +14,31 @@ Provides:
 from __future__ import annotations
 
 import warnings
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence, Tuple, Dict, Any, Optional, Union, List
-from dataclasses import dataclass
-import sys
+from typing import Any
 
 import torch
-import numpy as np
-from torch.utils.data import DataLoader, random_split, Subset
+from torch.utils.data import DataLoader, Subset, random_split
 
 # Import core types (once you have them)
 try:
-    from src.core.types import TrajectoryBatch, DiffusionDatasetLike
+    from src.core.types import DiffusionDatasetLike, TrajectoryBatch
+
     CORE_TYPES_AVAILABLE = True
 except ImportError:
     CORE_TYPES_AVAILABLE = False
     warnings.warn("core.types not found. Using fallback types.")
 
 from src.diffusion.traffic_diffusion.trajectory_diffusion import (
-    TrajectoryDiffusionModel,
     TrajectoryDataset,
+    TrajectoryDiffusionModel,
 )
 
 # Try wandb (optional)
 try:
     import wandb  # type: ignore
+
     WANDB_AVAILABLE = True
 except ImportError:
     WANDB_AVAILABLE = False
@@ -88,7 +88,7 @@ class TrainingConfig:
     # Experiment tracking
     use_wandb: bool = False
     wandb_project: str = "nnds_diffusion"
-    wandb_run_name: Optional[str] = None
+    wandb_run_name: str | None = None
 
 
 # ---------------------------------------------------------------------
@@ -98,7 +98,7 @@ def validate_trajectory_data(
     x0: torch.Tensor,
     cond: torch.Tensor,
     allow_nan: bool = False,
-) -> Tuple[bool, str]:
+) -> tuple[bool, str]:
     """
     Validate trajectory data shapes and values.
 
@@ -141,10 +141,10 @@ def clean_nonfinite(tensor: torch.Tensor, fill_value: float = 0.0) -> torch.Tens
 
 def normalize_tensor(
     tensor: torch.Tensor,
-    mean: Optional[torch.Tensor] = None,
-    std: Optional[torch.Tensor] = None,
+    mean: torch.Tensor | None = None,
+    std: torch.Tensor | None = None,
     eps: float = 1e-6,
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     Normalize tensor to zero mean and unit variance.
 
@@ -173,8 +173,8 @@ def stratified_split(
     dataset: torch.utils.data.Dataset,
     train_ratio: float = 0.8,
     seed: int = 42,
-    stratify_by: Optional[torch.Tensor] = None,
-) -> Tuple[Subset, Subset]:
+    stratify_by: torch.Tensor | None = None,
+) -> tuple[Subset, Subset]:
     """
     Split dataset with optional stratification.
 
@@ -201,8 +201,8 @@ def stratified_split(
 
     if stratify_by is not None:
         unique_classes = torch.unique(stratify_by)
-        train_indices: List[int] = []
-        eval_indices: List[int] = []
+        train_indices: list[int] = []
+        eval_indices: list[int] = []
 
         for cls in unique_classes:
             cls_indices = torch.where(stratify_by == cls)[0].tolist()
@@ -250,7 +250,7 @@ def augment_trajectory(
 # Dataloaders
 # ---------------------------------------------------------------------
 def build_clean_dataloaders(
-    raw_dataset: Sequence[Tuple[torch.Tensor, torch.Tensor]],
+    raw_dataset: Sequence[tuple[torch.Tensor, torch.Tensor]],
     batch_size: int = 14,
     T: int = 15,
     N: int = 1,
@@ -258,12 +258,12 @@ def build_clean_dataloaders(
     train_ratio: float = 0.8,
     seed: int = 42,
     stratify: bool = False,
-) -> Tuple[
+) -> tuple[
     DataLoader,
     DataLoader,
     TrajectoryDataset,
     TrajectoryDataset,
-    Dict[str, Any],
+    dict[str, Any],
 ]:
     """
     Build cleaned and normalized dataloaders for diffusion training.
@@ -328,7 +328,7 @@ def build_clean_dataloaders(
         pin_memory=True,
     )
 
-    stats: Dict[str, Any] = {
+    stats: dict[str, Any] = {
         "x_mean": x_mean,
         "x_std": x_std,
         "c_mean": c_mean,
@@ -357,7 +357,7 @@ def create_model(
     num_steps: int = 1000,
     beta_start: float = 1e-4,
     beta_end: float = 0.02,
-    model_kwargs: Optional[Dict[str, Any]] = None,
+    model_kwargs: dict[str, Any] | None = None,
 ) -> TrajectoryDiffusionModel:
     """
     Factory for TrajectoryDiffusionModel with validation.
@@ -395,14 +395,17 @@ def create_model(
 # ---------------------------------------------------------------------
 def setup_logger(
     project_name: str = "nnds_diffusion",
-    config: Optional[TrainingConfig] = None,
-    run_name: Optional[str] = None,
+    config: TrainingConfig | None = None,
+    run_name: str | None = None,
 ):
     """Optional integration with wandb."""
     if not WANDB_AVAILABLE:
         return None
-    wandb.init(project=project_name, config=None if config is None else vars(config),
-               name=run_name)
+    wandb.init(
+        project=project_name,
+        config=None if config is None else vars(config),
+        name=run_name,
+    )
     return wandb
 
 
@@ -415,10 +418,10 @@ def train_diffusion_model(
     device: torch.device,
     num_epochs: int = 50,
     save_dir: str = "checkpoints",
-    optimizer: Optional[torch.optim.Optimizer] = None,
+    optimizer: torch.optim.Optimizer | None = None,
     lr: float = 1e-3,
     gradient_clip: float = 1.0,
-    eval_loader: Optional[DataLoader] = None,
+    eval_loader: DataLoader | None = None,
     early_stopping_patience: int = 10,
     early_stopping_min_delta: float = 1e-4,
     verbose: bool = True,
@@ -432,8 +435,8 @@ def train_diffusion_model(
     use_amp: bool = False,
     use_wandb: bool = False,
     wandb_project: str = "nnds_diffusion",
-    wandb_run_name: Optional[str] = None,
-) -> Tuple[Optional[str], Optional[str], List[Dict[str, Any]]]:
+    wandb_run_name: str | None = None,
+) -> tuple[str | None, str | None, list[dict[str, Any]]]:
     """
     Enhanced training loop with gradient clipping, validation, early stopping,
     LR scheduler, augmentation, gradient accumulation, AMP, and optional wandb.
@@ -454,7 +457,7 @@ def train_diffusion_model(
             verbose=verbose,
         )
 
-    scaler: Optional[torch.cuda.amp.GradScaler] = None
+    scaler: torch.cuda.amp.GradScaler | None = None
     if use_amp and device.type == "cuda":
         scaler = torch.cuda.amp.GradScaler()
 
@@ -463,9 +466,9 @@ def train_diffusion_model(
         wandb_logger = setup_logger(wandb_project, None, wandb_run_name)
 
     best_loss = float("inf")
-    best_ckpt_path: Optional[str] = None
-    last_ckpt_path: Optional[str] = None
-    history: List[Dict[str, Any]] = []
+    best_ckpt_path: str | None = None
+    last_ckpt_path: str | None = None
+    history: list[dict[str, Any]] = []
 
     patience_counter = 0
 
@@ -503,7 +506,9 @@ def train_diffusion_model(
 
             if torch.isnan(loss) or torch.isinf(loss):
                 if verbose:
-                    print(f"⚠️ NaN/Inf loss at epoch {epoch}, batch {batch_idx}, skipping")
+                    print(
+                        f"⚠️ NaN/Inf loss at epoch {epoch}, batch {batch_idx}, skipping"
+                    )
                 continue
 
             # Gradient accumulation
@@ -568,7 +573,7 @@ def train_diffusion_model(
         if scheduler is not None and eval_loader is not None and eval_loss is not None:
             scheduler.step(eval_loss)
 
-        epoch_record: Dict[str, Any] = {"epoch": epoch, "train_loss": train_loss}
+        epoch_record: dict[str, Any] = {"epoch": epoch, "train_loss": train_loss}
         if eval_loss is not None:
             epoch_record["eval_loss"] = eval_loss
         history.append(epoch_record)
@@ -658,7 +663,7 @@ def train_diffusion_model_simple(
     device: torch.device,
     num_epochs: int = 50,
     save_dir: str = "checkpoints",
-) -> Tuple[Optional[str], Optional[str], List[Dict[str, Any]]]:
+) -> tuple[str | None, str | None, list[dict[str, Any]]]:
     """
     Simple training wrapper for backward compatibility with original interface.
     """
@@ -683,7 +688,7 @@ if CORE_TYPES_AVAILABLE:
         x0: torch.Tensor,
         cond: torch.Tensor,
         fps: float = 30.0,
-        meta: Optional[Dict[str, Any]] = None,
+        meta: dict[str, Any] | None = None,
     ) -> TrajectoryBatch:
         """Convert tensors to TrajectoryBatch for typed workflows."""
         return TrajectoryBatch(

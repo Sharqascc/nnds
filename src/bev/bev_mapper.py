@@ -8,7 +8,9 @@ from pathlib import Path
 import numpy as np
 
 
-def compute_homography_dlt(src_points: np.ndarray, dst_points: np.ndarray) -> np.ndarray:
+def compute_homography_dlt(
+    src_points: np.ndarray, dst_points: np.ndarray
+) -> np.ndarray:
     """
     Compute homography matrix using Direct Linear Transform (DLT).
 
@@ -22,7 +24,11 @@ def compute_homography_dlt(src_points: np.ndarray, dst_points: np.ndarray) -> np
     src_points = np.asarray(src_points, dtype=np.float64)
     dst_points = np.asarray(dst_points, dtype=np.float64)
 
-    if src_points.shape != dst_points.shape or src_points.ndim != 2 or src_points.shape[1] != 2:
+    if (
+        src_points.shape != dst_points.shape
+        or src_points.ndim != 2
+        or src_points.shape[1] != 2
+    ):
         raise ValueError("src_points and dst_points must both be Nx2 arrays")
 
     n = len(src_points)
@@ -135,7 +141,11 @@ def test_with_real_calibration(
         if H is None:
             raise RuntimeError("cv2.findHomography returned None")
 
-        mask = mask.ravel().astype(bool) if mask is not None else np.ones(len(pixel_points), dtype=bool)
+        mask = (
+            mask.ravel().astype(bool)
+            if mask is not None
+            else np.ones(len(pixel_points), dtype=bool)
+        )
         print("✓ Homography computed using RANSAC")
         print(f"  Inliers: {int(mask.sum())}/{len(mask)}")
     except Exception as e:
@@ -150,7 +160,9 @@ def test_with_real_calibration(
     resolution = bev_config.get("resolution", bev_config.get("bev_resolution"))
 
     if bounds is None or resolution is None:
-        print("❌ BEV config must contain either ('bounds','resolution') or ('bev_bounds','bev_resolution')")
+        print(
+            "❌ BEV config must contain either ('bounds','resolution') or ('bev_bounds','bev_resolution')"
+        )
         return None
 
     mapper = BEVMapper(
@@ -159,7 +171,7 @@ def test_with_real_calibration(
         bev_resolution=resolution,
     )
 
-    print(f"\n✓ Mapper initialized:")
+    print("\n✓ Mapper initialized:")
     print(f"  {mapper}")
 
     print("\n" + "─" * 80)
@@ -185,7 +197,7 @@ def test_with_real_calibration(
     errors = np.array(errors, dtype=np.float64)
     mean_error = float(np.mean(errors))
     max_error = float(np.max(errors))
-    rmse = float(np.sqrt(np.mean(errors ** 2)))
+    rmse = float(np.sqrt(np.mean(errors**2)))
 
     print("\n  Summary:")
     print(f"    Valid points: {int(valid.sum())}/{len(valid)}")
@@ -221,7 +233,9 @@ def test_with_real_calibration(
 
             if unc is not None and np.isfinite(unc):
                 uncertainties.append(float(unc))
-                print(f"  Point {i}: ±{float(unc):.4f} m  (from ±{pixel_error_std:.1f} px)")
+                print(
+                    f"  Point {i}: ±{float(unc):.4f} m  (from ±{pixel_error_std:.1f} px)"
+                )
     else:
         print("  ⚠ Mapper has no estimate_transformation_error() method")
 
@@ -289,7 +303,7 @@ def test_with_real_calibration(
     print("=" * 80)
 
     results = {
-        "calibration_points": int(len(pixel_points)),
+        "calibration_points": len(pixel_points),
         "inliers": int(mask.sum()),
         "valid_transforms": int(valid.sum()),
         "mean_reprojection_error_m": mean_error,
@@ -390,11 +404,13 @@ if __name__ == "__main__":
 # BEVMapper Class - Added for pipeline compatibility
 # ============================================================
 
+
 class BEVMapper:
     """Bird's Eye View mapper for coordinate conversion."""
-    
+
     def __init__(self, H_pixel_to_world, bev_bounds, bev_resolution):
         import numpy as np
+
         self.H = np.asarray(H_pixel_to_world, dtype=np.float32)
         self.bev_x_min = float(bev_bounds["x_min"])
         self.bev_x_max = float(bev_bounds["x_max"])
@@ -403,9 +419,10 @@ class BEVMapper:
         self.bev_w, self.bev_h = map(int, bev_resolution)
         self.mpp_x = (self.bev_x_max - self.bev_x_min) / max(self.bev_w, 1)
         self.mpp_y = (self.bev_y_max - self.bev_y_min) / max(self.bev_h, 1)
-    
+
     def pixel_to_world(self, p):
         import numpy as np
+
         try:
             x, y = p
             v = np.array([x, y, 1.0], dtype=np.float32)
@@ -422,11 +439,13 @@ class BEVMapper:
 # BEVMapper Class - Added for NNDS Pipeline Compatibility
 # ============================================================================
 
+
 class BEVMapper:
     """Bird's Eye View mapper for converting between pixel, world, and BEV coordinates."""
-    
+
     def __init__(self, H_pixel_to_world, bev_bounds, bev_resolution):
         import numpy as np
+
         self.H = np.asarray(H_pixel_to_world, dtype=np.float32)
         self.bev_x_min = float(bev_bounds["x_min"])
         self.bev_x_max = float(bev_bounds["x_max"])
@@ -435,9 +454,10 @@ class BEVMapper:
         self.bev_w, self.bev_h = map(int, bev_resolution)
         self.mpp_x = (self.bev_x_max - self.bev_x_min) / max(self.bev_w, 1)
         self.mpp_y = (self.bev_y_max - self.bev_y_min) / max(self.bev_h, 1)
-    
+
     def pixel_to_world(self, p):
         import numpy as np
+
         try:
             x, y = p
             v = np.array([x, y, 1.0], dtype=np.float32)
@@ -448,7 +468,7 @@ class BEVMapper:
             return float(w[0]), float(w[1])
         except Exception:
             return None
-    
+
     def world_to_bev(self, world_xy):
         try:
             X, Y = world_xy
@@ -457,7 +477,7 @@ class BEVMapper:
             return u, v
         except Exception:
             return None
-    
+
     def pixel_to_bev(self, p):
         world = self.pixel_to_world(p)
         if world is None:

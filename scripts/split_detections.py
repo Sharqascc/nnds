@@ -9,10 +9,13 @@ Usage:
         --output outputs/petevents_bev_final_split_detections.csv \
         --max-gap 5 --max-jump 30
 """
+
 import argparse
-import pandas as pd
-import numpy as np
 from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
 
 def split_track(group, max_gap=5, max_jump=30.0):
     group = group.sort_values("frame")
@@ -37,6 +40,7 @@ def split_track(group, max_gap=5, max_jump=30.0):
     group["track_id"] = new_ids
     return group
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True)
@@ -50,12 +54,19 @@ def main():
     df = pd.read_csv(input_path)
     if "track_id" not in df.columns:
         raise ValueError("CSV must contain 'track_id'")
-    split_groups = [split_track(g, args.max_gap, args.max_jump) for _, g in df.groupby("track_id")]
-    result = pd.concat(split_groups).sort_values(["frame", "track_id"]).reset_index(drop=True)
+    split_groups = [
+        split_track(g, args.max_gap, args.max_jump) for _, g in df.groupby("track_id")
+    ]
+    result = (
+        pd.concat(split_groups)
+        .sort_values(["frame", "track_id"])
+        .reset_index(drop=True)
+    )
     result.to_csv(args.output, index=False)
     print(f"Original tracks: {df['track_id'].nunique()}")
     print(f"Split tracks:    {result['track_id'].nunique()}")
     print(f"Saved to {args.output}")
+
 
 if __name__ == "__main__":
     main()

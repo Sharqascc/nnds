@@ -10,49 +10,96 @@ This module:
 - Computes PET events and summary stats using grid_trajectory.pet_grid
 """
 
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Union
+import json
 import logging
 import time
-import json
+from collections.abc import Sequence
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Union
 
 import cv2
 
-def overlay_pet_info(frame, frame_idx, fps, pet_value=None, entry_frame=None, exit_frame=None, extra_lines=None):
+
+def overlay_pet_info(
+    frame,
+    frame_idx,
+    fps,
+    pet_value=None,
+    entry_frame=None,
+    exit_frame=None,
+    extra_lines=None,
+):
     t = frame_idx / fps if fps else 0.0
     y = 30
-    cv2.putText(frame, f"t = {t:.2f}s", (20, y), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 255), 2, cv2.LINE_AA)
+    cv2.putText(
+        frame,
+        f"t = {t:.2f}s",
+        (20, y),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.9,
+        (0, 255, 255),
+        2,
+        cv2.LINE_AA,
+    )
     y += 35
     if pet_value is not None:
-        cv2.putText(frame, f"PET = {pet_value:.2f}s", (20, y), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2, cv2.LINE_AA)
+        cv2.putText(
+            frame,
+            f"PET = {pet_value:.2f}s",
+            (20, y),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.9,
+            (0, 0, 255),
+            2,
+            cv2.LINE_AA,
+        )
         y += 35
     if entry_frame is not None and exit_frame is not None:
-        cv2.putText(frame, f"entry={entry_frame} exit={exit_frame}", (20, y), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
+        cv2.putText(
+            frame,
+            f"entry={entry_frame} exit={exit_frame}",
+            (20, y),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (255, 255, 255),
+            2,
+            cv2.LINE_AA,
+        )
         y += 30
     if extra_lines:
         for line in extra_lines[:4]:
-            cv2.putText(frame, line, (20, y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2, cv2.LINE_AA)
+            cv2.putText(
+                frame,
+                line,
+                (20, y),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (0, 255, 0),
+                2,
+                cv2.LINE_AA,
+            )
             y += 25
     return frame
 
+
 import numpy as np
+
 try:
     from ultralytics.models.sam import SAM3VideoSemanticPredictor
 except Exception:
     SAM3VideoSemanticPredictor = None
 
-from src.analysis.grid_trajectory.spatial_grid import SpatialGrid
 from src.analysis.grid_trajectory.pet_grid import (
+    IntervalType,
+    PETEventType,
+    PETSummaryType,
     TrajectoryLogger,
     compute_pet,
     summarize_pet,
-    PETEventType,
-    IntervalType,
-    PETSummaryType,
 )
+from src.analysis.grid_trajectory.spatial_grid import SpatialGrid
 from src.bev.bev_mapper import BEVMapper
-
 
 LoggerType = Union[logging.Logger, Any]
 
@@ -62,10 +109,10 @@ class SAM3GridPETResult:
     fps: float
     frame_count: int
     det_count_total: int
-    intervals: List[IntervalType]
-    pet_events: List[PETEventType]
+    intervals: list[IntervalType]
+    pet_events: list[PETEventType]
     pet_summary: PETSummaryType
-    traj_stats: Dict[str, Any]
+    traj_stats: dict[str, Any]
     processing_time_seconds: float = 0.0
 
     def print_summary(self) -> None:
@@ -94,7 +141,7 @@ def _validate_conf(conf: float) -> None:
         raise ValueError(f"conf must be in [0, 1], got {conf}")
 
 
-def _validate_max_frames(max_frames: Optional[int]) -> None:
+def _validate_max_frames(max_frames: int | None) -> None:
     if max_frames is not None and max_frames <= 0:
         raise ValueError(f"max_frames must be positive, got {max_frames}")
 
@@ -104,7 +151,7 @@ def _validate_frame_stride(frame_stride: int) -> None:
         raise ValueError(f"frame_stride must be positive, got {frame_stride}")
 
 
-def _validate_bev_config(cfg: Dict[str, Any]) -> None:
+def _validate_bev_config(cfg: dict[str, Any]) -> None:
     required_keys = {"H_pixel_to_world", "bev_bounds", "bev_resolution"}
     missing = required_keys - set(cfg.keys())
     if missing:
@@ -120,17 +167,17 @@ def run_sam3_grid_pet(
     output_name: str = "sam3_grid_pet_run",
     conf: float = 0.1,
     pet_threshold: float = 2.0,
-    max_frames: Optional[int] = None,
-    debug_video_rel_path: Optional[str] = None,
+    max_frames: int | None = None,
+    debug_video_rel_path: str | None = None,
     # Configurable SAM3 knobs
     imgsz: int = 640,
     half: bool = True,
-    concepts: Optional[Sequence[str]] = None,
+    concepts: Sequence[str] | None = None,
     # Frame stride for faster debugging
     frame_stride: int = 1,
     # Logging / progress
     show_progress: bool = True,
-    logger: Optional[LoggerType] = None,
+    logger: LoggerType | None = None,
 ) -> SAM3GridPETResult:
     """
     Run SAM3 segmentation + grid mapping + PET extraction on a single video.
@@ -193,7 +240,7 @@ def run_sam3_grid_pet(
     h0, w0 = frame0.shape[:2]
 
     # Optional debug video writer
-    writer: Optional[cv2.VideoWriter] = None
+    writer: cv2.VideoWriter | None = None
     if debug_video_rel_path is not None:
         debug_video_path = root / debug_video_rel_path
         debug_video_path.parent.mkdir(parents=True, exist_ok=True)
@@ -216,17 +263,17 @@ def run_sam3_grid_pet(
     traj_logger = TrajectoryLogger(fps=fps)
 
     # SAM3 overrides
-    overrides = dict(
-        conf=conf,
-        task="segment",
-        mode="predict",
-        imgsz=imgsz,
-        model=str(sam3_path),
-        half=half,
-        save=False,
-        project=str(output_root),
-        name=output_name,
-    )
+    overrides = {
+        "conf": conf,
+        "task": "segment",
+        "mode": "predict",
+        "imgsz": imgsz,
+        "model": str(sam3_path),
+        "half": half,
+        "save": False,
+        "project": str(output_root),
+        "name": output_name,
+    }
     predictor = SAM3VideoSemanticPredictor(overrides=overrides)
 
     # Default concepts if none provided
@@ -351,8 +398,8 @@ def run_sam3_grid_pet(
         if writer is not None:
             writer.release()
 
-    intervals: List[IntervalType] = traj_logger.build_intervals()
-    pet_events: List[PETEventType] = compute_pet(
+    intervals: list[IntervalType] = traj_logger.build_intervals()
+    pet_events: list[PETEventType] = compute_pet(
         intervals,
         pet_threshold=pet_threshold,
     )
@@ -375,9 +422,9 @@ def run_sam3_grid_pet(
 
 def run_sam3_grid_pet_batch(
     project_root: str | Path,
-    video_paths: List[str],
+    video_paths: list[str],
     **kwargs: Any,
-) -> List[SAM3GridPETResult]:
+) -> list[SAM3GridPETResult]:
     """
     Run the SAM3+Grid+PET pipeline on multiple videos (sequentially).
 
@@ -390,7 +437,7 @@ def run_sam3_grid_pet_batch(
         List of SAM3GridPETResult, one per video.
     """
     root = Path(project_root)
-    results: List[SAM3GridPETResult] = []
+    results: list[SAM3GridPETResult] = []
 
     for rel_path in video_paths:
         print(f"\nProcessing: {rel_path}")

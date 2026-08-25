@@ -1,7 +1,7 @@
-
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+
 
 def test_expected_paths_exist():
     expected = [
@@ -35,9 +35,14 @@ def test_expected_paths_exist():
     missing = [p for p in expected if not (ROOT / p).exists()]
     assert not missing, f"Missing expected files: {missing}"
 
+
 def test_diffusion_data_files_present_and_non_empty():
     data_dir = ROOT / "src/diffusion/traffic_diffusion/data"
-    for fname in ["trajdiff_inputs.npy", "trajdiff_targets.npy", "trajdiff_meta.parquet"]:
+    for fname in [
+        "trajdiff_inputs.npy",
+        "trajdiff_targets.npy",
+        "trajdiff_meta.parquet",
+    ]:
         p = data_dir / fname
         assert p.exists(), f"Missing diffusion data file: {p}"
         assert p.stat().st_size > 0, f"Empty diffusion data file: {p}"

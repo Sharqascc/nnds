@@ -12,41 +12,38 @@ Complies with:
 
 from .ssm_verification import (
     SSMVerifier,
+    compare_with_reference,
+    run_verification_suite,
+    verify_drac_calculation,
     verify_pet_calculation,
     verify_ttc_calculation,
-    verify_drac_calculation,
-    run_verification_suite,
-    compare_with_reference
 )
-
 from .uncertainty_quantifier import (
     UncertaintyQuantifier,
     bootstrap_ci,
-    monte_carlo_uq,
     compute_confidence_interval,
     compute_effect_size,
     compute_sample_size,
-    sensitivity_analysis
+    monte_carlo_uq,
+    sensitivity_analysis,
 )
-
 
 __all__ = [
     # SSM Verification
-    'SSMVerifier',
-    'verify_pet_calculation',
-    'verify_ttc_calculation',
-    'verify_drac_calculation',
-    'run_verification_suite',
-    'compare_with_reference',
-    
+    "SSMVerifier",
     # Uncertainty Quantification
-    'UncertaintyQuantifier',
-    'bootstrap_ci',
-    'monte_carlo_uq',
-    'compute_confidence_interval',
-    'compute_effect_size',
-    'compute_sample_size',
-    'sensitivity_analysis',
+    "UncertaintyQuantifier",
+    "bootstrap_ci",
+    "compare_with_reference",
+    "compute_confidence_interval",
+    "compute_effect_size",
+    "compute_sample_size",
+    "monte_carlo_uq",
+    "run_verification_suite",
+    "sensitivity_analysis",
+    "verify_drac_calculation",
+    "verify_pet_calculation",
+    "verify_ttc_calculation",
 ]
 
-__version__ = '2.0.0'
+__version__ = "2.0.0"

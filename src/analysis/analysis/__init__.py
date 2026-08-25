@@ -39,10 +39,10 @@ logger = logging.getLogger(__name__)
 try:
     from .pet_diffusion_analysis import (
         PETDiffusionAnalyzer,
-        compute_pet_like_metrics,
         compare_realPET_samplePET,
-        parse_trajectory,
         compute_error_metrics,
+        compute_pet_like_metrics,
+        parse_trajectory,
         perform_statistical_tests,
     )
 
@@ -101,10 +101,10 @@ if _viz_available:
 if _diffusion_available:
     __all__ += [
         "PETDiffusionAnalyzer",
-        "compute_pet_like_metrics",
         "compare_realPET_samplePET",
-        "parse_trajectory",
         "compute_error_metrics",
+        "compute_pet_like_metrics",
+        "parse_trajectory",
         "perform_statistical_tests",
     ]
 
@@ -120,7 +120,7 @@ __version__ = "1.2.0"
 __author__ = "NNDS Team"
 
 
-def check_installation(use_logging: bool = True) -> Dict[str, bool]:
+def check_installation(use_logging: bool = True) -> dict[str, bool]:
     """
     Check which analysis modules are available.
 
@@ -145,7 +145,9 @@ def check_installation(use_logging: bool = True) -> Dict[str, bool]:
 
     for module, available in status.items():
         symbol = "✅" if available else "❌"
-        lines.append(f"{symbol} {module:20s} : {'Available' if available else 'Not available'}")
+        lines.append(
+            f"{symbol} {module:20s} : {'Available' if available else 'Not available'}"
+        )
 
     lines.append(header)
 

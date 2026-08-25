@@ -1,24 +1,24 @@
 from __future__ import annotations
-import matplotlib.pyplot as plt
-from src.utils.interactive import show_image, ask_user
-from src.analysis.grid_trajectory.spatial_grid import SpatialGrid
-from src.bev.bev_mapper import BEVMapper
-from tqdm import tqdm
-import sys
+
 import json
-
-
+import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Any, Tuple
+from typing import Any
 
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from ultralytics import YOLO
 import torch
+from tqdm import tqdm
+from ultralytics import YOLO
+
+from src.analysis.grid_trajectory.spatial_grid import SpatialGrid
+from src.bev.bev_mapper import BEVMapper
 from src.pipeline.custom_tracker import CustomTracker, Detection
 from src.pipeline.reid_encoder import ReIDEncoder
+
 
 def _compute_histogram(frame, x1, y1, x2, y2):
     """Compute normalized HSV histogram for a crop."""
@@ -36,7 +36,6 @@ def _compute_histogram(frame, x1, y1, x2, y2):
         return hist.flatten()
     except Exception:
         return None
-
 
 
 UVH_DISPLAY_MAP = {
@@ -102,11 +101,17 @@ def _segment_intersection(p1, p2, q1, q2):
 
 
 def _point_in_square(px, py, cx, cy, half_size):
-    return (cx - half_size) <= px <= (cx + half_size) and (cy - half_size) <= py <= (cy + half_size)
+    return (cx - half_size) <= px <= (cx + half_size) and (cy - half_size) <= py <= (
+        cy + half_size
+    )
 
 
-def _entry_exit_frames(points: List[TrackPoint], cx: float, cy: float, half_size: float):
-    inside_frames = [pt.frame for pt in points if _point_in_square(pt.x, pt.y, cx, cy, half_size)]
+def _entry_exit_frames(
+    points: list[TrackPoint], cx: float, cy: float, half_size: float
+):
+    inside_frames = [
+        pt.frame for pt in points if _point_in_square(pt.x, pt.y, cx, cy, half_size)
+    ]
     if not inside_frames:
         return None
     return min(inside_frames), max(inside_frames)
@@ -115,9 +120,6 @@ def _entry_exit_frames(points: List[TrackPoint], cx: float, cy: float, half_size
 def _segment_bbox(p1, p2):
     return (min(p1[0], p2[0]), min(p1[1], p2[1]), max(p1[0], p2[0]), max(p1[1], p2[1]))
 
-def _bbox_overlap(box1, box2, pad=0.0):
-    return not (box1[2] < box2[0] - pad or box2[2] < box1[0] - pad or
-                box1[3] < box2[1] - pad or box2[3] < box1[1] - pad)
 
 
 def _compute_pet_from_windows(a_entry, a_exit, b_entry, b_exit, fps):
@@ -142,6 +144,14 @@ def _compute_pet_from_windows(a_entry, a_exit, b_entry, b_exit, fps):
 
 
 def _pair_conflict_point(track_a: List[TrackPoint], track_b: List[TrackPoint]):
+def _bbox_overlap(box1, box2, pad=0.0):
+    return not (
+        box1[2] < box2[0] - pad
+        or box2[2] < box1[0] - pad
+        or box1[3] < box2[1] - pad
+        or box2[3] < box1[1] - pad
+    )
+def _pair_conflict_point(track_a: list[TrackPoint], track_b: list[TrackPoint]):
     for i in range(len(track_a) - 1):
         p1 = (track_a[i].x, track_a[i].y)
         p2 = (track_a[i + 1].x, track_a[i + 1].y)
@@ -158,7 +168,9 @@ def _pair_conflict_point(track_a: List[TrackPoint], track_b: List[TrackPoint]):
     return None
 
 
-def _box_intersection(a: Tuple[float, float, float, float], b: Tuple[float, float, float, float]) -> float:
+def _box_intersection(
+    a: tuple[float, float, float, float], b: tuple[float, float, float, float]
+) -> float:
     ax1, ay1, ax2, ay2 = a
     bx1, by1, bx2, by2 = b
     x1 = max(ax1, bx1)
@@ -170,12 +182,15 @@ def _box_intersection(a: Tuple[float, float, float, float], b: Tuple[float, floa
     return float((x2 - x1) * (y2 - y1))
 
 
-def _box_area(box: Tuple[float, float, float, float]) -> float:
+def _box_area(box: tuple[float, float, float, float]) -> float:
     x1, y1, x2, y2 = box
     return max(0.0, x2 - x1) * max(0.0, y2 - y1)
 
 
-def _overlap_over_person(person_box: Tuple[float, float, float, float], other_box: Tuple[float, float, float, float]) -> float:
+def _overlap_over_person(
+    person_box: tuple[float, float, float, float],
+    other_box: tuple[float, float, float, float],
+) -> float:
     inter = _box_intersection(person_box, other_box)
     area = _box_area(person_box)
     return 0.0 if area <= 0 else inter / area
@@ -194,10 +209,11 @@ def run_uvh_coco_fused_grid_pet(
     uvh_conf: float = 0.20,
     coco_person_conf: float = 0.20,
     person_suppress_overlap: float = 0.35,
-    show_progress: bool = True, interactive: bool = False,
+    show_progress: bool = True,
+    interactive: bool = False,
     device: str = "auto",
     backend: str = "auto",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     video_path = str(Path(video_path).resolve())
     uvh_model_path = str(Path(uvh_model_path).resolve())
     coco_person_model_path = str(Path(coco_person_model_path).resolve())
@@ -215,6 +231,7 @@ def run_uvh_coco_fused_grid_pet(
         spatial_grid = None
     try:
         import json as _json
+
         with open(bev_config_path) as f:
             bev_cfg = _json.load(f)
         H = np.array(bev_cfg["H_pixel_to_world"], dtype=np.float32)
@@ -235,7 +252,6 @@ def run_uvh_coco_fused_grid_pet(
             device = "cuda:0" if device == "auto" else device
         else:
             try:
-                import openvino
                 ov_uvh_dir = _openvino_dir(uvh_model_path)
                 ov_coco_dir = _openvino_dir(coco_person_model_path)
                 if ov_uvh_dir.exists() and ov_coco_dir.exists():
@@ -263,7 +279,7 @@ def run_uvh_coco_fused_grid_pet(
     cap.release()
 
     detection_rows = []
-    tracks: Dict[int, List[TrackPoint]] = {}
+    tracks: dict[int, list[TrackPoint]] = {}
 
     frame_idx = 0
 
@@ -286,15 +302,25 @@ def run_uvh_coco_fused_grid_pet(
         classes=[0],
     )
 
-    reid_encoder = ReIDEncoder(device=device) if device != "cpu" else ReIDEncoder(device="cpu")
+    reid_encoder = (
+        ReIDEncoder(device=device) if device != "cpu" else ReIDEncoder(device="cpu")
+    )
     custom_tracker = CustomTracker(
-        max_age=60, min_hits=1, iou_threshold=0.2,
-        log_overlaps=True, overlap_log_path="outputs/tracking_overlap_debug.log",
-        reid_encoder=reid_encoder
+        max_age=60,
+        min_hits=1,
+        iou_threshold=0.2,
+        log_overlaps=True,
+        overlap_log_path="outputs/tracking_overlap_debug.log",
+        reid_encoder=reid_encoder,
     )
 
     total_iters = total_frames if max_frames is None else min(total_frames, max_frames)
-    pbar = tqdm(total=total_iters, desc="Processing frames", unit="frame", disable=not show_progress)
+    pbar = tqdm(
+        total=total_iters,
+        desc="Processing frames",
+        unit="frame",
+        disable=not show_progress,
+    )
     for uvh_r, coco_r in zip(uvh_results, coco_results):
         if max_frames is not None and frame_idx >= max_frames:
             break
@@ -302,13 +328,21 @@ def run_uvh_coco_fused_grid_pet(
         uvh_boxes_for_suppression = []
 
         # Collect raw detections for this frame
-        raw_dets: List[Detection] = []
+        raw_dets: list[Detection] = []
 
         uvh_boxes = uvh_r.boxes
         if uvh_boxes is not None and uvh_boxes.xyxy is not None and len(uvh_boxes) > 0:
             xyxy = uvh_boxes.xyxy.cpu().numpy()
-            clss = uvh_boxes.cls.cpu().numpy().astype(int) if uvh_boxes.cls is not None else np.array([], dtype=int)
-            confs = uvh_boxes.conf.cpu().numpy() if uvh_boxes.conf is not None else np.array([], dtype=float)
+            clss = (
+                uvh_boxes.cls.cpu().numpy().astype(int)
+                if uvh_boxes.cls is not None
+                else np.array([], dtype=int)
+            )
+            confs = (
+                uvh_boxes.conf.cpu().numpy()
+                if uvh_boxes.conf is not None
+                else np.array([], dtype=float)
+            )
 
             for i, box in enumerate(xyxy):
                 raw_name = uvh_r.names[int(clss[i])]
@@ -344,9 +378,17 @@ def run_uvh_coco_fused_grid_pet(
                 raw_dets.append(det)
 
         coco_boxes = coco_r.boxes
-        if coco_boxes is not None and coco_boxes.xyxy is not None and len(coco_boxes) > 0:
+        if (
+            coco_boxes is not None
+            and coco_boxes.xyxy is not None
+            and len(coco_boxes) > 0
+        ):
             xyxy = coco_boxes.xyxy.cpu().numpy()
-            confs = coco_boxes.conf.cpu().numpy() if coco_boxes.conf is not None else np.array([], dtype=float)
+            confs = (
+                coco_boxes.conf.cpu().numpy()
+                if coco_boxes.conf is not None
+                else np.array([], dtype=float)
+            )
 
             for i, box in enumerate(xyxy):
                 x1, y1, x2, y2 = map(float, box.tolist())
@@ -381,25 +423,29 @@ def run_uvh_coco_fused_grid_pet(
                 raw_dets.append(det)
 
         # Update custom tracker
-        matched = custom_tracker.update(raw_dets, frame_img=uvh_r.orig_img, frame=frame_idx)
+        matched = custom_tracker.update(
+            raw_dets, frame_img=uvh_r.orig_img, frame=frame_idx
+        )
 
         # Append detections to rows and tracks
         for det_idx, track_id in matched.items():
             det = raw_dets[det_idx]
-            detection_rows.append({
-                "frame": det.frame,
-                "track_id": track_id,
-                "class_id": det.cls_id,
-                "class_name": det.cls_name,
-                "conf": det.conf,
-                "x1": det.x1,
-                "y1": det.y1,
-                "x2": det.x2,
-                "y2": det.y2,
-                "cx": det.cx,
-                "cy": det.cy,
-                "source": det.source,
-            })
+            detection_rows.append(
+                {
+                    "frame": det.frame,
+                    "track_id": track_id,
+                    "class_id": det.cls_id,
+                    "class_name": det.cls_name,
+                    "conf": det.conf,
+                    "x1": det.x1,
+                    "y1": det.y1,
+                    "x2": det.x2,
+                    "y2": det.y2,
+                    "cx": det.cx,
+                    "cy": det.cy,
+                    "source": det.source,
+                }
+            )
 
             tracks.setdefault(track_id, []).append(
                 TrackPoint(
@@ -419,7 +465,7 @@ def run_uvh_coco_fused_grid_pet(
 
         # === INTERACTIVE PAUSE ===
         if interactive and frame_idx % 20 == 0:
-            print("\n" + "="*50)
+            print("\n" + "=" * 50)
             print(f"🔄 Processed {frame_idx} frames.")
             try:
                 cap = cv2.VideoCapture(video_path)
@@ -428,10 +474,11 @@ def run_uvh_coco_fused_grid_pet(
                 cap.release()
                 if ret:
                     from IPython.display import display
+
                     fig = plt.figure()
                     plt.imshow(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
                     plt.title(f"Frame {frame_idx}")
-                    plt.axis('off')
+                    plt.axis("off")
                     display(fig)
                     plt.close(fig)
             except Exception as e:
@@ -440,14 +487,18 @@ def run_uvh_coco_fused_grid_pet(
             print("Press Enter to continue, or type 'stop' and press Enter to abort.")
             sys.stdout.flush()
             user_input = input().strip().lower()
-            if user_input == 'stop':
+            if user_input == "stop":
                 print("⏹️ Stopped by user.")
-                stop_processing = True
                 break
 
     pbar.close()
-    print(f"[UVH-COCO] backend={'openvino' if use_openvino else 'pytorch'} device={device}")
-    print(f"[UVH-COCO] ✅ Frame processing finished ({frame_idx} frames). Initializing track indexing...", flush=True)
+    print(
+        f"[UVH-COCO] backend={'openvino' if use_openvino else 'pytorch'} device={device}"
+    )
+    print(
+        f"[UVH-COCO] ✅ Frame processing finished ({frame_idx} frames). Initializing track indexing...",
+        flush=True,
+    )
 
     det_df = pd.DataFrame(detection_rows)
     out_path = Path(output_csv_path)
@@ -461,11 +512,15 @@ def run_uvh_coco_fused_grid_pet(
     conflict_half_size = 20.0
 
     # Split tracks with gaps or jumps to avoid mixing different objects
-    tracks = _split_tracks_by_gaps(tracks, max_frame_gap=100000, max_spatial_jump=100000.0)
+    tracks = _split_tracks_by_gaps(
+        tracks, max_frame_gap=100000, max_spatial_jump=100000.0
+    )
 
     valid_tracks = {tid: pts for tid, pts in tracks.items() if len(pts) >= 3}
 
-    print(f"[UVH-COCO] Tracking splitter: original={len(set(tid // 1000 for tid in tracks if tid >= 1000) | {tid for tid in tracks if tid < 1000})}, split={len(tracks)} tracks")
+    print(
+        f"[UVH-COCO] Tracking splitter: original={len({tid // 1000 for tid in tracks if tid >= 1000} | {tid for tid in tracks if tid < 1000})}, split={len(tracks)} tracks"
+    )
     track_items = list(valid_tracks.items())
 
     # Precompute track metadata for fast temporal/spatial pruning
@@ -485,7 +540,7 @@ def run_uvh_coco_fused_grid_pet(
         }
 
     # Build cell sets for overlap pruning
-    track_cells: Dict[int, set] = {}
+    track_cells: dict[int, set] = {}
     if spatial_grid is not None:
         for tid, pts in valid_tracks.items():
             cells = set()
@@ -519,15 +574,19 @@ def run_uvh_coco_fused_grid_pet(
                     continue
 
             # Temporal pruning: skip if track lifetimes are too far apart
-            if (meta_a["min_frame"] > meta_b["max_frame"] + max_frames_diff or
-                meta_b["min_frame"] > meta_a["max_frame"] + max_frames_diff):
+            if (
+                meta_a["min_frame"] > meta_b["max_frame"] + max_frames_diff
+                or meta_b["min_frame"] > meta_a["max_frame"] + max_frames_diff
+            ):
                 continue
 
             # Spatial pruning: skip if bounding boxes do not overlap (with padding)
-            if (meta_a["max_x"] < meta_b["min_x"] - spatial_pad or
-                meta_a["min_x"] > meta_b["max_x"] + spatial_pad or
-                meta_a["max_y"] < meta_b["min_y"] - spatial_pad or
-                meta_a["min_y"] > meta_b["max_y"] + spatial_pad):
+            if (
+                meta_a["max_x"] < meta_b["min_x"] - spatial_pad
+                or meta_a["min_x"] > meta_b["max_x"] + spatial_pad
+                or meta_a["max_y"] < meta_b["min_y"] - spatial_pad
+                or meta_a["min_y"] > meta_b["max_y"] + spatial_pad
+            ):
                 continue
 
             inter = _pair_conflict_point(pts_a, pts_b)
@@ -558,25 +617,35 @@ def run_uvh_coco_fused_grid_pet(
 
             if pet <= pet_threshold and pet > 0:
                 # Determine grid cell for conflict point
-                grid_cell = spatial_grid.get_cell_from_pixels(cx, cy) if spatial_grid else "UNKNOWN"
+                grid_cell = (
+                    spatial_grid.get_cell_from_pixels(cx, cy)
+                    if spatial_grid
+                    else "UNKNOWN"
+                )
 
-                pet_events.append({
-                    "event_id": event_id,
-                    "pet": float(pet),
-                    "frame": int(frame_ref),
-                    "track_a": int(first_id),
-                    "track_b": int(second_id),
-                    "conflict_type": "image_intersection",
-                    "grid_cell": grid_cell,
-                    "track_a_entry_frame": int(a_entry),
-                    "track_a_exit_frame": int(a_exit),
-                    "track_b_entry_frame": int(b_entry),
-                    "track_b_exit_frame": int(b_exit),
-                    "world_traj_i": f"track_{first_id}",
-                    "world_traj_j": f"track_{second_id}",
-                    "traj_a_json": _track_to_json(pts_a if first_id == track_a_id else pts_b, bev_mapper),
-                    "traj_b_json": _track_to_json(pts_b if first_id == track_a_id else pts_a, bev_mapper),
-                })
+                pet_events.append(
+                    {
+                        "event_id": event_id,
+                        "pet": float(pet),
+                        "frame": int(frame_ref),
+                        "track_a": int(first_id),
+                        "track_b": int(second_id),
+                        "conflict_type": "image_intersection",
+                        "grid_cell": grid_cell,
+                        "track_a_entry_frame": int(a_entry),
+                        "track_a_exit_frame": int(a_exit),
+                        "track_b_entry_frame": int(b_entry),
+                        "track_b_exit_frame": int(b_exit),
+                        "world_traj_i": f"track_{first_id}",
+                        "world_traj_j": f"track_{second_id}",
+                        "traj_a_json": _track_to_json(
+                            pts_a if first_id == track_a_id else pts_b, bev_mapper
+                        ),
+                        "traj_b_json": _track_to_json(
+                            pts_b if first_id == track_a_id else pts_a, bev_mapper
+                        ),
+                    }
+                )
                 event_id += 1
 
     track_pbar.close()
@@ -615,8 +684,7 @@ def run_uvh_coco_fused_grid_pet(
     }
 
 
-
-def _track_to_json(points: List[TrackPoint], bev_mapper=None) -> str:
+def _track_to_json(points: list[TrackPoint], bev_mapper=None) -> str:
     """Convert a list of TrackPoint to a JSON string with pixel and world coords."""
     rows = []
     for pt in points:
@@ -636,16 +704,18 @@ def _track_to_json(points: List[TrackPoint], bev_mapper=None) -> str:
     return json.dumps(rows)
 
 
-def _split_tracks_by_gaps(tracks: Dict[int, List[TrackPoint]],
-                          max_frame_gap: int = 10,
-                          max_spatial_jump: float = 50.0,
-                          prediction_tolerance: float = 80.0) -> Dict[int, List[TrackPoint]]:
+def _split_tracks_by_gaps(
+    tracks: dict[int, list[TrackPoint]],
+    max_frame_gap: int = 10,
+    max_spatial_jump: float = 50.0,
+    prediction_tolerance: float = 80.0,
+) -> dict[int, list[TrackPoint]]:
     """
     Split track IDs when there is a long frame gap or huge spatial jump,
     but skip splitting if the next point matches a linear prediction from
     the last two points (handles short occlusion).
     """
-    split_tracks: Dict[int, List[TrackPoint]] = {}
+    split_tracks: dict[int, list[TrackPoint]] = {}
     for tid, pts in tracks.items():
         pts = sorted(pts, key=lambda p: p.frame)
         if not pts:
@@ -668,14 +738,18 @@ def _split_tracks_by_gaps(tracks: Dict[int, List[TrackPoint]],
                     vy = (prev.y - prev_prev.y) / dt1
                     pred_x = prev.x + vx * gap
                     pred_y = prev.y + vy * gap
-                    pred_dist = ((pts[i].x - pred_x) ** 2 + (pts[i].y - pred_y) ** 2) ** 0.5
+                    pred_dist = (
+                        (pts[i].x - pred_x) ** 2 + (pts[i].y - pred_y) ** 2
+                    ) ** 0.5
                 else:
-                    pred_dist = float('inf')
+                    pred_dist = float("inf")
             else:
-                pred_dist = float('inf')
+                pred_dist = float("inf")
 
             # Split only if gap/jump is large AND prediction is poor
-            if (gap > max_frame_gap or dist > max_spatial_jump) and pred_dist > prediction_tolerance:
+            if (
+                gap > max_frame_gap or dist > max_spatial_jump
+            ) and pred_dist > prediction_tolerance:
                 new_id = tid * 1000 + current_sub
                 split_tracks[new_id] = pts[start_idx:i]
                 current_sub += 1
@@ -685,12 +759,11 @@ def _split_tracks_by_gaps(tracks: Dict[int, List[TrackPoint]],
         split_tracks[new_id] = pts[start_idx:]
     return split_tracks
 
+
 def _can_intersect_temporal(track_a, track_b, fps=25.0, max_pet=2.0):
     """O(1) temporal check: Skip tracks whose lifetime windows do not overlap within max_pet seconds."""
     max_frames_diff = int(max_pet * fps) + 5
     min_a, max_a = track_a["frames"][0], track_a["frames"][-1]
     min_b, max_b = track_b["frames"][0], track_b["frames"][-1]
-    
-    if min_b > (max_a + max_frames_diff) or min_a > (max_b + max_frames_diff):
-        return False
-    return True
+
+    return not (min_b > max_a + max_frames_diff or min_a > max_b + max_frames_diff)

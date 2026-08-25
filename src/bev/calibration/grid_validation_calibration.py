@@ -19,7 +19,6 @@ import argparse
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
 
 import cv2
 import numpy as np
@@ -101,7 +100,7 @@ def configure_logging(verbose: bool) -> None:
     logging.basicConfig(level=level, format="[%(levelname)s] %(message)s")
 
 
-def load_grid_config(grid_cfg_path: Path) -> Tuple[float, float, float, float]:
+def load_grid_config(grid_cfg_path: Path) -> tuple[float, float, float, float]:
     with grid_cfg_path.open() as f:
         grid_config = json.load(f)
     corners = grid_config["corners"]
@@ -116,10 +115,10 @@ def reprojection_errors(
     pixel_points: np.ndarray,
     world_points_target: np.ndarray,
     H: np.ndarray,
-) -> Tuple[np.ndarray, np.ndarray]:
-    projected = cv2.perspectiveTransform(
-        pixel_points.reshape(-1, 1, 2), H
-    ).reshape(-1, 2)
+) -> tuple[np.ndarray, np.ndarray]:
+    projected = cv2.perspectiveTransform(pixel_points.reshape(-1, 1, 2), H).reshape(
+        -1, 2
+    )
     errs = np.linalg.norm(projected - world_points_target[:, :2], axis=1)
     return errs, projected
 
@@ -135,10 +134,10 @@ def generate_synthetic_grid(
     pixels_per_meter_y: float,
     noise_std: float,
     rng: np.random.Generator,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    pixel_pts: List[List[float]] = []
-    world_pts_noisy: List[List[float]] = []
-    world_pts_true: List[List[float]] = []
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    pixel_pts: list[list[float]] = []
+    world_pts_noisy: list[list[float]] = []
+    world_pts_true: list[list[float]] = []
 
     x_range_px = x_max_px - x_min_px
     y_range_px = y_max_px - y_min_px
@@ -180,12 +179,12 @@ def generate_synthetic_grid(
 
 def load_original_calibration(
     orig_calib_path: Path,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     with orig_calib_path.open() as f:
         orig_calib_data = json.load(f)
 
-    orig_pixel_pts: List[List[float]] = []
-    orig_world_pts: List[List[float]] = []
+    orig_pixel_pts: list[list[float]] = []
+    orig_world_pts: list[list[float]] = []
 
     for p in orig_calib_data["calibration_points"]:
         orig_pixel_pts.append([p["pixel"]["x"], p["pixel"]["y"]])
@@ -197,7 +196,7 @@ def load_original_calibration(
     )
 
 
-def export_results(results: Dict, output_path: Path) -> None:
+def export_results(results: dict, output_path: Path) -> None:
     """Export validation results to JSON for downstream analysis."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as f:
@@ -234,9 +233,7 @@ def main() -> None:
         EXPECTED_WORLD_WIDTH,
         EXPECTED_WORLD_HEIGHT,
     )
-    logger.info(
-        "  Simulated measurement noise (sigma): %.1f cm", NOISE_STD_DEV * 100.0
-    )
+    logger.info("  Simulated measurement noise (sigma): %.1f cm", NOISE_STD_DEV * 100.0)
 
     # ------------------------------------------------------------------
     # LOAD GRID CONFIG (IMAGE SPACE)
@@ -370,8 +367,8 @@ def main() -> None:
     logger.info("K-fold cross-validation (n_splits=%d) against TRUE world.", N_SPLITS)
     kf = KFold(n_splits=N_SPLITS, shuffle=True, random_state=args.seed)
 
-    cv_maes: List[float] = []
-    cv_stds: List[float] = []
+    cv_maes: list[float] = []
+    cv_stds: list[float] = []
 
     for fold, (train_idx_cv, val_idx_cv) in enumerate(kf.split(pixel_pts), start=1):
         pix_train_cv = pixel_pts[train_idx_cv]
@@ -379,7 +376,7 @@ def main() -> None:
         pix_val_cv = pixel_pts[val_idx_cv]
         world_val_cv_true = world_pts_true[val_idx_cv]
 
-        H_cv, mask_cv = cv2.findHomography(
+        H_cv, _mask_cv = cv2.findHomography(
             pix_train_cv,
             world_train_cv_noisy[:, :2],
             cv2.RANSAC,
@@ -453,9 +450,7 @@ def main() -> None:
 
     logger.info("Original calibration:")
     logger.info("  Points: %d", len(orig_pixel_pts))
-    logger.info(
-        "  MAE (self-residual): %.4f m (%.2f cm)", mae_orig, mae_orig * 100.0
-    )
+    logger.info("  MAE (self-residual): %.4f m (%.2f cm)", mae_orig, mae_orig * 100.0)
     logger.info("  Area: %.1f m^2 vs Grid area: %.1f m^2", orig_area, grid_area)
 
     # ------------------------------------------------------------------
@@ -479,7 +474,9 @@ def main() -> None:
         "orig_area_m2": orig_area,
         "grid_area_m2": grid_area,
     }
-    export_results(results, project_root / "calibration" / "grid_validation_summary.json")
+    export_results(
+        results, project_root / "calibration" / "grid_validation_summary.json"
+    )
 
     # ------------------------------------------------------------------
     # TEXTUAL COMPARISON TABLE
@@ -499,8 +496,12 @@ def main() -> None:
     print(f"CV MAE mean (TRUE)    | {'N/A':<20}       | {cv_mae_mean:<20.4f}")
     print()
     print("NOTE:")
-    print("  - 'Self-residual' = error on the same points used for fitting (optimistic).")
-    print("  - 'Val MAE / CV MAE' = error on held-out points w.r.t TRUE world coordinates.")
+    print(
+        "  - 'Self-residual' = error on the same points used for fitting (optimistic)."
+    )
+    print(
+        "  - 'Val MAE / CV MAE' = error on held-out points w.r.t TRUE world coordinates."
+    )
 
     # ------------------------------------------------------------------
     # VISUALIZATION
@@ -583,7 +584,7 @@ def main() -> None:
         ax.text(
             i,
             mae_cv * 100.0 + 0.05,
-            f"{mae_cv*100:.2f} cm",
+            f"{mae_cv * 100:.2f} cm",
             ha="center",
             va="bottom",
             fontsize=9,
@@ -614,7 +615,9 @@ def main() -> None:
         "measurement model.\nFor real deployment, replace synthetic world_pts_noisy "
         "with real surveyed GCPs and keep the same train/val + CV evaluation logic."
     )
-    logger.info("✅ PIPELINE-READY (SIMULATION LEVEL) – NEXT STEP: REAL GCP INTEGRATION")
+    logger.info(
+        "✅ PIPELINE-READY (SIMULATION LEVEL) – NEXT STEP: REAL GCP INTEGRATION"
+    )
 
 
 if __name__ == "__main__":

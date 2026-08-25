@@ -1,5 +1,5 @@
-
 from pathlib import Path
+
 
 def test_demo_script_exists():
     root = Path(__file__).resolve().parents[1]

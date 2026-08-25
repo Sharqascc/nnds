@@ -18,29 +18,27 @@ Compliant with:
 
 from .statistical_testing import (
     StatisticalTester,
+    check_assumptions,
+    chi_square_test,
+    multiple_comparisons,
+    paired_test,
+    test_drac_difference,
     test_pet_difference,
     test_ttc_difference,
-    test_drac_difference,
-    chi_square_test,
-    paired_test,
-    multiple_comparisons,
-    check_assumptions,
 )
 
 __all__ = [
     # Main class
-    'StatisticalTester',
-    
-    # SSM-specific tests
-    'test_pet_difference',
-    'test_ttc_difference',
-    'test_drac_difference',
-    
+    "StatisticalTester",
+    "check_assumptions",
     # General tests
-    'chi_square_test',
-    'paired_test',
-    'multiple_comparisons',
-    'check_assumptions',
+    "chi_square_test",
+    "multiple_comparisons",
+    "paired_test",
+    "test_drac_difference",
+    # SSM-specific tests
+    "test_pet_difference",
+    "test_ttc_difference",
 ]
 
-__version__ = '2.0.0'
+__version__ = "2.0.0"

@@ -1,12 +1,13 @@
-from tqdm import tqdm
 #!/usr/bin/env python
 import argparse
 import json
 import logging
+import re
 import warnings
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List, Sequence, Tuple, Dict, Any
+from typing import Any
 
 import cv2
 import numpy as np
@@ -41,7 +42,7 @@ class CompleteTrafficAnalyzer:
         self.world_points_approx: np.ndarray | None = None
         self.pixel_points: np.ndarray | None = None
         self.inlier_mask: np.ndarray | None = None
-        self.calibration_metrics: Dict[str, float] = {}
+        self.calibration_metrics: dict[str, float] = {}
 
         # Configurable BEV canvas size
         self.bev_width: int = bev_width
@@ -93,9 +94,7 @@ class CompleteTrafficAnalyzer:
                 self.pixel_points.reshape(-1, 1, 2), self.homography
             ).reshape(-1, 2)
 
-            errors = np.linalg.norm(
-                projected - self.world_points_approx[:, :2], axis=1
-            )
+            errors = np.linalg.norm(projected - self.world_points_approx[:, :2], axis=1)
             mae = float(np.mean(errors[self.inlier_mask]))
 
             logger.info("   ✅ Inliers: %d/%d", inlier_count, len(self.pixel_points))
@@ -143,7 +142,7 @@ class CompleteTrafficAnalyzer:
         world_h = self.homography @ pixel_h
         return (world_h[:2] / world_h[2]).flatten()
 
-    def validate_bev(self) -> Dict[str, Any]:
+    def validate_bev(self) -> dict[str, Any]:
         """Validate bird's-eye-view transformation and return detailed statistics."""
         logger.info("")
         logger.info("🔍 Validating Bird's Eye View...")
@@ -155,7 +154,7 @@ class CompleteTrafficAnalyzer:
         ):
             raise RuntimeError("Calibration must be run before BEV validation")
 
-        validation_results: List[Dict[str, Any]] = []
+        validation_results: list[dict[str, Any]] = []
         for i, (pix, world) in enumerate(
             zip(self.pixel_points, self.world_points_approx)
         ):
@@ -204,7 +203,7 @@ class CompleteTrafficAnalyzer:
         pixel_positions: np.ndarray,
         frame_times: np.ndarray,
         fps: float = 30.0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Estimate vehicle speed from trajectory (world coordinates)."""
         logger.info("")
         logger.info("🔍 Step 2: Estimating Vehicle Speed...")
@@ -213,10 +212,12 @@ class CompleteTrafficAnalyzer:
             raise RuntimeError("Homography not initialized; call calibrate() first")
 
         if len(pixel_positions) != len(frame_times):
-            raise ValueError("pixel_positions and frame_times must have the same length")
+            raise ValueError(
+                "pixel_positions and frame_times must have the same length"
+            )
 
-        world_positions: List[np.ndarray] = []
-        valid_idx: List[int] = []
+        world_positions: list[np.ndarray] = []
+        valid_idx: list[int] = []
 
         for i, pos in enumerate(pixel_positions):
             if not np.all(np.isfinite(pos)):
@@ -240,7 +241,7 @@ class CompleteTrafficAnalyzer:
         if len(world_positions_arr) < 5:
             return {"final_speed": 15.0, "speed_std": 2.0}
 
-        speeds: List[float] = []
+        speeds: list[float] = []
         for i in range(1, len(world_positions_arr)):
             dist = float(
                 np.linalg.norm(world_positions_arr[i] - world_positions_arr[i - 1])
@@ -271,7 +272,7 @@ class CompleteTrafficAnalyzer:
 
     # ------------------------ Reporting & Export ------------------------
 
-    def generate_report(self, speed_results: Dict[str, Any]) -> Dict[str, float]:
+    def generate_report(self, speed_results: dict[str, Any]) -> dict[str, float]:
         """Generate concise research report."""
         logger.info("")
         logger.info("=" * 60)
@@ -307,8 +308,10 @@ class CompleteTrafficAnalyzer:
     def save_calibration(self, path: str | Path) -> None:
         """Save calibration results and BEV configuration to JSON."""
         out_path = Path(path)
-        data: Dict[str, Any] = {
-            "homography": self.homography.tolist() if self.homography is not None else None,
+        data: dict[str, Any] = {
+            "homography": self.homography.tolist()
+            if self.homography is not None
+            else None,
             "metrics": self.calibration_metrics,
             "bev_bounds": {
                 "x_min": self.bev_x_min,
@@ -323,7 +326,7 @@ class CompleteTrafficAnalyzer:
             json.dump(data, f, indent=2)
 
 
-def run_demo() -> tuple[CompleteTrafficAnalyzer, Dict[str, Any], Dict[str, float]]:
+def run_demo() -> tuple[CompleteTrafficAnalyzer, dict[str, Any], dict[str, float]]:
     """Minimal in-file demo for calibration and speed estimation.
 
     For real experiments, prefer config-based calibration.
@@ -445,7 +448,7 @@ def run_video_to_pet(
                 "(e.g., `pip install ultralytics supervision`)."
             ) from exc
 
-        project_root = str(Path(".").resolve())
+        project_root = str(Path.cwd())
         result = run_sam3_grid_pet(
             project_root=project_root,
             video_rel_path=str(video_path),
@@ -465,7 +468,9 @@ def run_video_to_pet(
             raise FileNotFoundError(f"YOLO weights not found: {yolo_weights_path}")
 
         try:
-            from src.analysis.grid_trajectory.yolo_cpu_grid_pet import run_yolo_cpu_grid_pet
+            from src.analysis.grid_trajectory.yolo_cpu_grid_pet import (
+                run_yolo_cpu_grid_pet,
+            )
         except ModuleNotFoundError as exc:
             raise ModuleNotFoundError(
                 "Missing dependency for YOLO CPU pipeline."
@@ -479,16 +484,24 @@ def run_video_to_pet(
             imgsz=480,
             conf=0.25,
         )
-        pet_events = result["pet_events"] if isinstance(result, dict) and "pet_events" in result else []
+        pet_events = (
+            result["pet_events"]
+            if isinstance(result, dict) and "pet_events" in result
+            else []
+        )
 
     elif detector == "uvh-coco-fused":
         if not uvh_model_path.exists():
             raise FileNotFoundError(f"UVH model not found: {uvh_model_path}")
         if not coco_person_model_path.exists():
-            raise FileNotFoundError(f"COCO person model not found: {coco_person_model_path}")
+            raise FileNotFoundError(
+                f"COCO person model not found: {coco_person_model_path}"
+            )
 
         try:
-            from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
+            from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
+                run_uvh_coco_fused_grid_pet,
+            )
         except ModuleNotFoundError as exc:
             raise ModuleNotFoundError(
                 "Missing fused detector backend. Expected "
@@ -512,7 +525,11 @@ def run_video_to_pet(
             device=device,
             backend=backend,
         )
-        pet_events = result["pet_events"] if isinstance(result, dict) and "pet_events" in result else []
+        pet_events = (
+            result["pet_events"]
+            if isinstance(result, dict) and "pet_events" in result
+            else []
+        )
 
     else:
         # RT-DETR path declared but not implemented on this branch
@@ -556,6 +573,7 @@ def run_video_to_pet(
 
     rows: list[dict[str, Any]] = []
     for idx, e in enumerate(pet_events):
+
         def _get(keys, default=None):
             if isinstance(e, dict):
                 for k in keys:
@@ -572,14 +590,22 @@ def run_video_to_pet(
             val = _get(keys)
             if val is None or val == -1:
                 return -1
-            if isinstance(val, (int, float)) and not (isinstance(val, float) and np.isnan(val)):
+            if isinstance(val, (int, float)) and not (
+                isinstance(val, float) and np.isnan(val)
+            ):
                 return int(val)
-            m = re.search(r'\d+', str(val))
+            m = re.search(r"\d+", str(val))
             return int(m.group()) if m else -1
 
-        track_a_val = _parse_track_id(["track_a", "obj_i", "track_i", "traj_i_id", "world_traj_i"])
-        track_b_val = _parse_track_id(["track_b", "obj_j", "track_j", "traj_j_id", "world_traj_j"])
-        frame_val = _get(["frame", "conflict_frame", "start_frame", "frame_idx", "t_conflict"])
+        track_a_val = _parse_track_id(
+            ["track_a", "obj_i", "track_i", "traj_i_id", "world_traj_i"]
+        )
+        track_b_val = _parse_track_id(
+            ["track_b", "obj_j", "track_j", "traj_j_id", "world_traj_j"]
+        )
+        frame_val = _get(
+            ["frame", "conflict_frame", "start_frame", "frame_idx", "t_conflict"]
+        )
         pet_val = _get(["PET", "pet"], float("inf"))
         conflict_type_val = _get(["conflict_type", "cell_id"], "UNKNOWN")
         grid_cell_val = _get(["grid_cell", "cell_id"], "UNKNOWN")
@@ -637,33 +663,119 @@ def run_video_to_pet(
     return df
 
 
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Video → SAM3 + grid → BEV → PET events pipeline"
     )
     parser.add_argument("--video", default=None, help="Input video path")
-    parser.add_argument("--bev-config", default="configs/bev_config.json", help="BEV configuration JSON path")
-    parser.add_argument("--grid-config", default="configs/GITI_grid_config.json", help="Grid configuration JSON path")
-    parser.add_argument("--gate-config", default="configs/gate_config.yaml", help="Gate configuration YAML path")
-    parser.add_argument("--sam3-weights", default="sam3.pt", help="SAM3 weights checkpoint path")
-    parser.add_argument("--detector", type=str, default="uvh-coco-fused", choices=["sam3", "rtdetr", "yolo-cpu", "uvh-coco-fused"], help="Detection backend: 'sam3' (default) or 'rtdetr' (experimental)")
-    parser.add_argument("--rtdetr-weights", type=str, default="rtdetr-l.pt", help="RT-DETR weights path (used when --detector rtdetr)")
-    parser.add_argument("--yolo-weights", type=str, default="yolo11n.pt", help="YOLO weights path (used when --detector yolo-cpu)")
-    parser.add_argument("--uvh-model", type=str, default="data/models/uvh26.pt", help="UVH-26 weights path (used when --detector uvh-coco-fused)")
-    parser.add_argument("--coco-person-model", type=str, default="data/models/yolo11n.pt", help="COCO person fallback weights path (used when --detector uvh-coco-fused)")
-    parser.add_argument("--uvh-conf", type=float, default=0.20, help="UVH-26 confidence threshold")
-    parser.add_argument("--coco-person-conf", type=float, default=0.20, help="COCO person confidence threshold")
-    parser.add_argument("--imgsz", type=int, default=1280, help="Inference image size for fused detector")
-    parser.add_argument("--person-suppress-overlap", type=float, default=0.35, help="Suppress COCO person if overlap/person-area exceeds this threshold")
-    parser.add_argument("--device", type=str, default="auto", help="Device to use: 'auto', 'cpu', 'cuda:0', 'cuda:1', etc.")
-    parser.add_argument("--backend", type=str, default="auto", help="Backend to use: 'auto', 'pytorch', 'openvino'")
-    parser.add_argument("--out-csv", default="outputs/petevents_bev.csv", help="Output CSV path for PET events")
-    parser.add_argument("--pet-threshold", type=float, default=2.0, help="PET threshold in seconds")
-    parser.add_argument("--demo", action="store_true", help="Run internal calibration/speed demo instead of video pipeline")
-    parser.add_argument("--max-frames", type=int, default=None, help="Process only the first N frames")
-    parser.add_argument("--no-progress", action="store_true", help="Disable verbose/progress output from SAM3 pipeline")
-    parser.add_argument("--interactive", action="store_true", help="Run in interactive mode with step-by-step prompts and previews")
+    parser.add_argument(
+        "--bev-config",
+        default="configs/bev_config.json",
+        help="BEV configuration JSON path",
+    )
+    parser.add_argument(
+        "--grid-config",
+        default="configs/GITI_grid_config.json",
+        help="Grid configuration JSON path",
+    )
+    parser.add_argument(
+        "--gate-config",
+        default="configs/gate_config.yaml",
+        help="Gate configuration YAML path",
+    )
+    parser.add_argument(
+        "--sam3-weights", default="sam3.pt", help="SAM3 weights checkpoint path"
+    )
+    parser.add_argument(
+        "--detector",
+        type=str,
+        default="uvh-coco-fused",
+        choices=["sam3", "rtdetr", "yolo-cpu", "uvh-coco-fused"],
+        help="Detection backend: 'sam3' (default) or 'rtdetr' (experimental)",
+    )
+    parser.add_argument(
+        "--rtdetr-weights",
+        type=str,
+        default="rtdetr-l.pt",
+        help="RT-DETR weights path (used when --detector rtdetr)",
+    )
+    parser.add_argument(
+        "--yolo-weights",
+        type=str,
+        default="yolo11n.pt",
+        help="YOLO weights path (used when --detector yolo-cpu)",
+    )
+    parser.add_argument(
+        "--uvh-model",
+        type=str,
+        default="data/models/uvh26.pt",
+        help="UVH-26 weights path (used when --detector uvh-coco-fused)",
+    )
+    parser.add_argument(
+        "--coco-person-model",
+        type=str,
+        default="data/models/yolo11n.pt",
+        help="COCO person fallback weights path (used when --detector uvh-coco-fused)",
+    )
+    parser.add_argument(
+        "--uvh-conf", type=float, default=0.20, help="UVH-26 confidence threshold"
+    )
+    parser.add_argument(
+        "--coco-person-conf",
+        type=float,
+        default=0.20,
+        help="COCO person confidence threshold",
+    )
+    parser.add_argument(
+        "--imgsz",
+        type=int,
+        default=1280,
+        help="Inference image size for fused detector",
+    )
+    parser.add_argument(
+        "--person-suppress-overlap",
+        type=float,
+        default=0.35,
+        help="Suppress COCO person if overlap/person-area exceeds this threshold",
+    )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="auto",
+        help="Device to use: 'auto', 'cpu', 'cuda:0', 'cuda:1', etc.",
+    )
+    parser.add_argument(
+        "--backend",
+        type=str,
+        default="auto",
+        help="Backend to use: 'auto', 'pytorch', 'openvino'",
+    )
+    parser.add_argument(
+        "--out-csv",
+        default="outputs/petevents_bev.csv",
+        help="Output CSV path for PET events",
+    )
+    parser.add_argument(
+        "--pet-threshold", type=float, default=2.0, help="PET threshold in seconds"
+    )
+    parser.add_argument(
+        "--demo",
+        action="store_true",
+        help="Run internal calibration/speed demo instead of video pipeline",
+    )
+    parser.add_argument(
+        "--max-frames", type=int, default=None, help="Process only the first N frames"
+    )
+    parser.add_argument(
+        "--no-progress",
+        action="store_true",
+        help="Disable verbose/progress output from SAM3 pipeline",
+    )
+    parser.add_argument(
+        "--interactive",
+        action="store_true",
+        help="Run in interactive mode with step-by-step prompts and previews",
+    )
     return parser.parse_args()
 
 
@@ -681,26 +793,31 @@ def interactive_detector(frame, model, imgsz=640, conf=0.25):
                 cx = (x1 + x2) / 2.0
                 cy = (y1 + y2) / 2.0
                 cls_name = model.names.get(clss[i], "unknown")
-                detections.append({
-                    "centroid": (float(cx), float(cy)),
-                    "cls": cls_name,
-                    "conf": float(confs[i]),
-                })
+                detections.append(
+                    {
+                        "centroid": (float(cx), float(cy)),
+                        "cls": cls_name,
+                        "conf": float(confs[i]),
+                    }
+                )
     return detections
+
 
 def run_interactive_pipeline(args):
     import os
-    import cv2
-    import matplotlib.pyplot as plt
-    import yaml
-    from ultralytics import YOLO
-    from src.analysis.gate_counter import TrafficVolumeCounter
-    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
-    from src.utils.interactive import show_frame, show_image, ask_user
 
-    print("\n" + "="*60)
+    import cv2
+    from ultralytics import YOLO
+
+    from src.analysis.gate_counter import TrafficVolumeCounter
+    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
+        run_uvh_coco_fused_grid_pet,
+    )
+    from src.utils.interactive import ask_user, show_frame, show_image
+
+    print("\n" + "=" * 60)
     print("🚦 INTERACTIVE TRAFFIC ANALYSIS PIPELINE")
-    print("="*60)
+    print("=" * 60)
 
     video_path = args.video
     if not video_path or not os.path.exists(video_path):
@@ -721,7 +838,9 @@ def run_interactive_pipeline(args):
     ret, frame = cap.read()
     cap.release()
     if ret:
-        results = model(frame, imgsz=args.imgsz or 640, conf=args.uvh_conf or 0.25, verbose=False)
+        results = model(
+            frame, imgsz=args.imgsz or 640, conf=args.uvh_conf or 0.25, verbose=False
+        )
         annotated = results[0].plot() if results else frame
         show_image(annotated, title="Detection Example")
     else:
@@ -797,16 +916,16 @@ def run_interactive_pipeline(args):
         coco_person_conf=args.coco_person_conf or 0.20,
         person_suppress_overlap=args.person_suppress_overlap or 0.35,
         show_progress=True,
-        device=getattr(args, 'device', 'auto'),
+        device=getattr(args, "device", "auto"),
     )
 
     print("\n📊 PET Extraction Results:")
     print(f"  Detections CSV: {pet_result.get('detections_csv')}")
     print(f"  PET CSV: {pet_result.get('pet_csv')}")
     print(f"  PET events found: {len(pet_result.get('pet_events', []))}")
-    if pet_result.get('pet_events'):
+    if pet_result.get("pet_events"):
         print("  First 3 events:")
-        for e in pet_result['pet_events'][:3]:
+        for e in pet_result["pet_events"][:3]:
             print(f"    Event {e['event_id']}: PET={e['pet']:.3f}s")
 
     # Stage 5: Final Outputs
@@ -824,31 +943,40 @@ def run_interactive_pipeline(args):
     print("\n🎉 Interactive pipeline complete.")
     return pet_result
 
+
 def run_pipeline(args):
     if args.interactive:
         return run_interactive_pipeline(args)
     # Original batch pipeline continues below
     # Direct mapping from CLI argparse attributes to run_video_to_pet parameter names
     kwargs = {
-        'video_path': getattr(args, 'video', None),
-        'bev_config_path': getattr(args, 'bev_config', 'configs/bev_config.json'),
-        'grid_config_path': getattr(args, 'grid_config', 'configs/GITI_grid_config.json'),
-        'sam3_weights_path': getattr(args, 'sam3_weights', 'sam3.pt'),
-        'out_csv_path': getattr(args, 'out_csv', 'outputs/petevents_bev.csv'),
-        'pet_threshold': getattr(args, 'pet_threshold', 2.0),
-        'max_frames': getattr(args, 'max_frames', None),
-        'show_progress': not getattr(args, 'no_progress', False),
-        'detector': getattr(args, 'detector', 'sam3'),
-        'rtdetr_weights_path': getattr(args, 'rtdetr_weights', 'rtdetr-l.pt'),
-        'yolo_weights_path': getattr(args, 'yolo_weights', 'yolo11n.pt'),
-        'uvh_model_path': getattr(args, 'uvh_model', '/content/nnds/uvh26.pt'),
-        'coco_person_model_path': getattr(args, 'coco_person_model', '/content/nnds/yolo11n.pt'),
-        'uvh_conf': getattr(args, 'uvh_conf', 0.2),
-        'coco_person_conf': getattr(args, 'coco_person_conf', 0.2),
-        'imgsz': getattr(args, 'imgsz', 1280),
-        'person_suppress_overlap': getattr(args, 'person_suppress_overlap', 0.35),
-        'device': getattr(args, 'device', 'auto'),
-        'backend': getattr(args, 'backend', 'auto'),
+        "video_path": getattr(args, "video", None),
+        "bev_config_path": getattr(args, "bev_config", "configs/bev_config.json"),
+        "grid_config_path": getattr(
+            args, "grid_config", "configs/GITI_grid_config.json"
+        ),
+        "sam3_weights_path": getattr(args, "sam3_weights", "sam3.pt"),
+        "out_csv_path": getattr(args, "out_csv", "outputs/petevents_bev.csv"),
+        "pet_threshold": getattr(args, "pet_threshold", 2.0),
+        "max_frames": getattr(args, "max_frames", None),
+        "show_progress": not getattr(args, "no_progress", False),
+        "detector": getattr(args, "detector", "sam3"),
+        "rtdetr_weights_path": getattr(args, "rtdetr_weights", "rtdetr-l.pt"),
+        "yolo_weights_path": getattr(args, "yolo_weights", "yolo11n.pt"),
+        "uvh_model_path": getattr(
+            args, "uvh_model", "str(Path(__file__).resolve().parents[1])/uvh26.pt"
+        ),
+        "coco_person_model_path": getattr(
+            args,
+            "coco_person_model",
+            "str(Path(__file__).resolve().parents[1])/yolo11n.pt",
+        ),
+        "uvh_conf": getattr(args, "uvh_conf", 0.2),
+        "coco_person_conf": getattr(args, "coco_person_conf", 0.2),
+        "imgsz": getattr(args, "imgsz", 1280),
+        "person_suppress_overlap": getattr(args, "person_suppress_overlap", 0.35),
+        "device": getattr(args, "device", "auto"),
+        "backend": getattr(args, "backend", "auto"),
     }
 
     # Filter out None values so internal defaults apply if not specified
@@ -879,19 +1007,20 @@ def main() -> None:
 
 
 __all__ = [
-    "WorldPoint",
     "CompleteTrafficAnalyzer",
-    "run_video_to_pet",
-    "run_demo",
-    "parse_args",
-    "main",
-    "__version__",
+    "WorldPoint",
     "__author__",
+    "__version__",
+    "main",
+    "parse_args",
+    "run_demo",
+    "run_video_to_pet",
 ]
 
 
 if __name__ == "__main__":
     main()
+
 
 def run_video_to_pet_fixed(
     video_path: str,
@@ -900,7 +1029,7 @@ def run_video_to_pet_fixed(
     sam3_weights_path: str = "sam3.pt",
     out_csv_path: str = "outputs/petevents_bev.csv",
     pet_threshold: float = 2.0,
-    max_frames: int = None,
+    max_frames: int | None = None,
 ) -> pd.DataFrame:
     """Fixed version of run_video_to_pet with correct parameters."""
     try:
@@ -911,8 +1040,8 @@ def run_video_to_pet_fixed(
             "for SAM3/Ultralytics before running video mode."
         ) from exc
 
-    project_root = str(Path(".").resolve())
-    
+    project_root = str(Path.cwd())
+
     # Call with correct parameters (no verbose!)
     result = run_sam3_grid_pet(
         project_root=project_root,
@@ -924,7 +1053,7 @@ def run_video_to_pet_fixed(
         conf=0.25,
         pet_threshold=pet_threshold,
         max_frames=max_frames,
-        show_progress=True
+        show_progress=True,
     )
 
     pet_events = result.pet_events if hasattr(result, "pet_events") else []
@@ -933,20 +1062,21 @@ def run_video_to_pet_fixed(
 
     rows = []
     for idx, e in enumerate(pet_events):
-        rows.append({
-            "event_id": idx,
-            "pet": e.get("pet"),
-            "frame": e.get("frame_idx"),
-            "track_a": e.get("track_a"),
-            "track_b": e.get("track_b"),
-            "conflict_type": e.get("conflict_type"),
-        })
+        rows.append(
+            {
+                "event_id": idx,
+                "pet": e.get("pet"),
+                "frame": e.get("frame_idx"),
+                "track_a": e.get("track_a"),
+                "track_b": e.get("track_b"),
+                "conflict_type": e.get("conflict_type"),
+            }
+        )
 
     df = pd.DataFrame(rows)
     df.to_csv(out_path, index=False)
     print(f"✅ Saved {len(df)} PET events to {out_path}")
     return df
-
 
 
 def interactive_detector(frame, model, imgsz=640, conf=0.25):
@@ -963,26 +1093,32 @@ def interactive_detector(frame, model, imgsz=640, conf=0.25):
                 cx = (x1 + x2) / 2.0
                 cy = (y1 + y2) / 2.0
                 cls_name = model.names.get(clss[i], "unknown")
-                detections.append({
-                    "centroid": (float(cx), float(cy)),
-                    "cls": cls_name,
-                    "conf": float(confs[i]),
-                })
+                detections.append(
+                    {
+                        "centroid": (float(cx), float(cy)),
+                        "cls": cls_name,
+                        "conf": float(confs[i]),
+                    }
+                )
     return detections
+
 
 def run_interactive_pipeline(args):
     import os
+
     import cv2
-    import matplotlib.pyplot as plt
     import yaml
     from ultralytics import YOLO
-    from src.analysis.gate_counter import TrafficVolumeCounter
-    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
-    from src.utils.interactive import show_frame, show_image, ask_user
 
-    print("\n" + "="*60)
+    from src.analysis.gate_counter import TrafficVolumeCounter
+    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
+        run_uvh_coco_fused_grid_pet,
+    )
+    from src.utils.interactive import ask_user, show_frame, show_image
+
+    print("\n" + "=" * 60)
     print("🚦 INTERACTIVE TRAFFIC ANALYSIS PIPELINE")
-    print("="*60)
+    print("=" * 60)
 
     video_path = args.video
     if not video_path or not os.path.exists(video_path):
@@ -1003,7 +1139,9 @@ def run_interactive_pipeline(args):
     ret, frame = cap.read()
     cap.release()
     if ret:
-        results = model(frame, imgsz=args.imgsz or 640, conf=args.uvh_conf or 0.25, verbose=False)
+        results = model(
+            frame, imgsz=args.imgsz or 640, conf=args.uvh_conf or 0.25, verbose=False
+        )
         annotated = results[0].plot() if results else frame
         show_image(annotated, title="Detection Example")
     else:
@@ -1019,7 +1157,14 @@ def run_interactive_pipeline(args):
     if not os.path.exists(gate_config_path):
         gate_cfg = {
             "gates": [
-                {"name": "MainGate", "start": [100, 300], "end": [600, 300], "color": [0, 255, 255], "entry_side": "left", "enabled": True}
+                {
+                    "name": "MainGate",
+                    "start": [100, 300],
+                    "end": [600, 300],
+                    "color": [0, 255, 255],
+                    "entry_side": "left",
+                    "enabled": True,
+                }
             ]
         }
         with open(gate_config_path, "w") as f:
@@ -1081,16 +1226,16 @@ def run_interactive_pipeline(args):
         coco_person_conf=args.coco_person_conf or 0.20,
         person_suppress_overlap=args.person_suppress_overlap or 0.35,
         show_progress=True,
-        device=getattr(args, 'device', 'auto'),
+        device=getattr(args, "device", "auto"),
     )
 
     print("\n📊 PET Extraction Results:")
     print(f"  Detections CSV: {pet_result.get('detections_csv')}")
     print(f"  PET CSV: {pet_result.get('pet_csv')}")
     print(f"  PET events found: {len(pet_result.get('pet_events', []))}")
-    if pet_result.get('pet_events'):
+    if pet_result.get("pet_events"):
         print("  First 3 events:")
-        for e in pet_result['pet_events'][:3]:
+        for e in pet_result["pet_events"][:3]:
             print(f"    Event {e['event_id']}: PET={e['pet']:.3f}s")
 
     # Stage 5: Final Outputs
@@ -1108,9 +1253,12 @@ def run_interactive_pipeline(args):
     print("\n🎉 Interactive pipeline complete.")
     return pet_result
 
+
 def run_pipeline(args) -> dict:
     if getattr(args, "detector", "sam3") != "sam3":
-        raise ValueError(f"Unsupported detector policy: {getattr(args, 'detector', None)}")
+        raise ValueError(
+            f"Unsupported detector policy: {getattr(args, 'detector', None)}"
+        )
     return {
         "video": str(args.video),
         "out_csv": str(args.out_csv) if getattr(args, "out_csv", None) else None,

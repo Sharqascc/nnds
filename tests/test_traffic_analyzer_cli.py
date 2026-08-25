@@ -1,9 +1,8 @@
-import sys
 from pathlib import Path
 
 import pytest
-from src.pipeline import traffic_analyzer
 
+from src.pipeline import traffic_analyzer
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -12,8 +11,10 @@ ROOT = Path(__file__).resolve().parents[1]
 # Helpers
 # ---------------------------
 
+
 class DummyArgs:
     """Minimal stand-in for argparse.Namespace when needed."""
+
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
 
@@ -21,6 +22,7 @@ class DummyArgs:
 # ---------------------------
 # Demo-mode tests (existing, slightly strengthened)
 # ---------------------------
+
 
 def test_parse_args_demo(monkeypatch):
     monkeypatch.setattr(
@@ -64,6 +66,7 @@ def test_main_demo_runs(monkeypatch):
 # ---------------------------
 # Main pipeline with --video
 # ---------------------------
+
 
 def test_parse_args_with_video_and_basic_flags(monkeypatch, tmp_path):
     """Ensure core CLI flags parse correctly with a normal video invocation."""
@@ -130,6 +133,7 @@ def test_main_runs_with_video_uses_pipeline(monkeypatch, tmp_path):
 # Argument validation tests
 # ---------------------------
 
+
 def test_invalid_pet_threshold_rejected(monkeypatch):
     """
     If parse_args or main validates pet-threshold, ensure invalid values are handled.
@@ -161,6 +165,7 @@ def test_invalid_pet_threshold_rejected(monkeypatch):
 # Error handling tests: bad/missing video
 # ---------------------------
 
+
 def test_main_errors_on_missing_video_file(monkeypatch, tmp_path):
     """
     When a non-demo run is invoked with a non-existent video, main() should fail
@@ -188,6 +193,7 @@ def test_main_errors_on_missing_video_file(monkeypatch, tmp_path):
 # ---------------------------
 # Config integration tests
 # ---------------------------
+
 
 def test_parse_args_with_bev_and_grid_config(monkeypatch, tmp_path):
     bev_config = tmp_path / "bev_config.json"
@@ -264,6 +270,7 @@ def test_main_uses_configs_when_provided(monkeypatch, tmp_path):
 # Wider monkeypatch: heavy dependencies
 # ---------------------------
 
+
 def test_main_with_video_does_not_touch_heavy_dependencies(monkeypatch, tmp_path):
     """
     Smoke-test that we can run main() with --video while stubbing out the heavy
@@ -278,6 +285,7 @@ def test_main_with_video_does_not_touch_heavy_dependencies(monkeypatch, tmp_path
         def __getattr__(self, _name):
             def _noop(*_args, **_kwargs):
                 return None
+
             return _noop
 
     # Example (uncomment and adjust if needed):

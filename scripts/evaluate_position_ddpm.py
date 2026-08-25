@@ -1,17 +1,19 @@
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import torch
 import numpy as np
 import pandas as pd
+import torch
 from scipy.stats import wasserstein_distance
+
 from src.diffusion.complete_ddpm import LinearNoiseScheduler, TrajectoryUNet1D
+
 
 def load_position_data_subset(csv_path, Th=16, max_events=200):
     df = pd.read_csv(csv_path)
     df = df.sort_values(["event_id", "frame"])
-    events = []
     event_ids = df["event_id"].unique()[:max_events]
     df = df[df["event_id"].isin(event_ids)]
     target_list = []
@@ -28,7 +30,16 @@ def load_position_data_subset(csv_path, Th=16, max_events=200):
         cond_list.append(cond)
     return np.array(target_list), np.array(cond_list)
 
-def evaluate_position_ddpm(csv_path="outputs/diffusion_del4_v4.csv", checkpoint_path="checkpoints_ddpm_pos/position_ddpm_best.pt", Th=16, max_events=200, K=10, num_steps=50, dt=0.1):
+
+def evaluate_position_ddpm(
+    csv_path="outputs/diffusion_del4_v4.csv",
+    checkpoint_path="checkpoints_ddpm_pos/position_ddpm_best.pt",
+    Th=16,
+    max_events=200,
+    K=10,
+    num_steps=50,
+    dt=0.1,
+):
     ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     targets, conds = load_position_data_subset(csv_path, Th=Th, max_events=max_events)
     mean = ckpt["mean"]
@@ -39,7 +50,9 @@ def evaluate_position_ddpm(csv_path="outputs/diffusion_del4_v4.csv", checkpoint_
     cond_tensor = torch.from_numpy(conds_norm[:, :, None, :]).float()
 
     input_dim = Th * 2
-    model = TrajectoryUNet1D(input_dim=input_dim, cond_dim=input_dim, hidden_dim=128, num_layers=3)
+    model = TrajectoryUNet1D(
+        input_dim=input_dim, cond_dim=input_dim, hidden_dim=128, num_layers=3
+    )
     model.load_state_dict(ckpt["model_state_dict"])
     model.eval()
     scheduler = LinearNoiseScheduler(num_timesteps=ckpt["num_timesteps"])
@@ -49,7 +62,7 @@ def evaluate_position_ddpm(csv_path="outputs/diffusion_del4_v4.csv", checkpoint_
     with torch.no_grad():
         for _ in range(K):
             x = torch.randn(N, Th, 1, 2)
-            for t in torch.linspace(ckpt["num_timesteps"]-1, 0, num_steps).long():
+            for t in torch.linspace(ckpt["num_timesteps"] - 1, 0, num_steps).long():
                 t_tensor = torch.full((N,), t, dtype=torch.long)
                 noise_pred = model(x, t_tensor, cond_tensor)
                 x = scheduler.sample_prev_timestep(x, t_tensor, noise_pred)
@@ -77,7 +90,9 @@ def evaluate_position_ddpm(csv_path="outputs/diffusion_del4_v4.csv", checkpoint_
     # PET: use condition trajectories (unnormalized)
     gen_pets = []
     for b in range(N):
-        dist_matrix = np.linalg.norm(best[b][:, None, :] - conds[b][None, :, :], axis=-1)
+        dist_matrix = np.linalg.norm(
+            best[b][:, None, :] - conds[b][None, :, :], axis=-1
+        )
         min_idx = np.unravel_index(np.argmin(dist_matrix), dist_matrix.shape)
         gen_pets.append(abs(min_idx[0] - min_idx[1]) * dt)
 
@@ -93,7 +108,11 @@ def evaluate_position_ddpm(csv_path="outputs/diffusion_del4_v4.csv", checkpoint_
             real_pets.append(0.5)
     real_pets = np.array(real_pets[:N])
 
-    w1 = wasserstein_distance(real_pets, np.array(gen_pets)) if len(real_pets) > 0 else 0.0
+    w1 = (
+        wasserstein_distance(real_pets, np.array(gen_pets))
+        if len(real_pets) > 0
+        else 0.0
+    )
 
     print("=" * 60)
     print("POSITION DDPM EVALUATION")
@@ -107,6 +126,7 @@ def evaluate_position_ddpm(csv_path="outputs/diffusion_del4_v4.csv", checkpoint_
     print(f"Generated PET:    {np.mean(gen_pets):.3f}s ± {np.std(gen_pets):.3f}s")
     print(f"PET W1: {w1:.4f} (Target < 0.150)")
     print("=" * 60)
+
 
 if __name__ == "__main__":
     evaluate_position_ddpm()

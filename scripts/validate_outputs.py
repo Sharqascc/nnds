@@ -10,25 +10,58 @@ Usage:
         --detections-split outputs/petevents_bev_final_split_detections.csv \
         --pet outputs/petevents_bev_final.csv
 """
+
 import argparse
 import json
 import sys
-import pandas as pd
-import numpy as np
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
+
 DETECTION_COLUMNS = [
-    "frame", "track_id", "class_id", "class_name",
-    "conf", "x1", "y1", "x2", "y2", "cx", "cy", "source",
+    "frame",
+    "track_id",
+    "class_id",
+    "class_name",
+    "conf",
+    "x1",
+    "y1",
+    "x2",
+    "y2",
+    "cx",
+    "cy",
+    "source",
 ]
 PET_COLUMNS = [
-    "event_id", "pet", "frame", "track_a", "track_b",
-    "conflict_type", "grid_cell",
-    "track_a_entry_frame", "track_a_exit_frame",
-    "track_b_entry_frame", "track_b_exit_frame",
-    "world_traj_i", "world_traj_j", "traj_a_json", "traj_b_json",
+    "event_id",
+    "pet",
+    "frame",
+    "track_a",
+    "track_b",
+    "conflict_type",
+    "grid_cell",
+    "track_a_entry_frame",
+    "track_a_exit_frame",
+    "track_b_entry_frame",
+    "track_b_exit_frame",
+    "world_traj_i",
+    "world_traj_j",
+    "traj_a_json",
+    "traj_b_json",
 ]
-ALLOWED_CLASSES = {"pedestrian", "person", "bicycle", "car", "bike", "motorcycle", "bus", "truck", "auto"}
+ALLOWED_CLASSES = {
+    "pedestrian",
+    "person",
+    "bicycle",
+    "car",
+    "bike",
+    "motorcycle",
+    "bus",
+    "truck",
+    "auto",
+}
+
 
 def load_csv(path, required_columns, context):
     path = Path(path)
@@ -45,6 +78,7 @@ def load_csv(path, required_columns, context):
         return df, True
     return df, False
 
+
 def validate_detections(det_df):
     problems = []
     bad_boxes = det_df[(det_df["x1"] >= det_df["x2"]) | (det_df["y1"] >= det_df["y2"])]
@@ -58,6 +92,7 @@ def validate_detections(det_df):
         if unknown:
             problems.append(f"Unknown class names: {unknown}")
     return problems
+
 
 def validate_tracking_stability(det_df, max_gap=10, max_jump=50.0):
     problems = []
@@ -73,14 +108,19 @@ def validate_tracking_stability(det_df, max_gap=10, max_jump=50.0):
         gaps = np.diff(frames)
         big_gaps = gaps[gaps > max_gap]
         if len(big_gaps) > 0:
-            problems.append(f"Track {track_id}: {len(big_gaps)} frame gap(s) > {max_gap} (max {big_gaps.max()})")
+            problems.append(
+                f"Track {track_id}: {len(big_gaps)} frame gap(s) > {max_gap} (max {big_gaps.max()})"
+            )
         dx = np.diff(x)
         dy = np.diff(y)
         jumps = np.sqrt(dx**2 + dy**2)
         big_jumps = jumps[jumps > max_jump]
         if len(big_jumps) > 0:
-            problems.append(f"Track {track_id}: {len(big_jumps)} spatial jump(s) > {max_jump}px (max {big_jumps.max():.1f})")
+            problems.append(
+                f"Track {track_id}: {len(big_jumps)} spatial jump(s) > {max_jump}px (max {big_jumps.max():.1f})"
+            )
     return problems
+
 
 def validate_trajectory_json(json_str, label):
     problems = []
@@ -105,6 +145,7 @@ def validate_trajectory_json(json_str, label):
     if len(world_vals) == 0:
         problems.append(f"{label}: all world coordinates are None")
     return problems
+
 
 def validate_pet(pet_df, det_df, video_frames=1838, split_det_df=None):
     problems = []
@@ -132,28 +173,43 @@ def validate_pet(pet_df, det_df, video_frames=1838, split_det_df=None):
             if not bad.empty:
                 problems.append(f"{prefix}: entry > exit in {len(bad)} events")
     # Use split detections if available for ID validation
-    detection_source_df = split_det_df if (split_det_df is not None and not split_det_df.empty) else det_df
+    detection_source_df = (
+        split_det_df
+        if (split_det_df is not None and not split_det_df.empty)
+        else det_df
+    )
     if not detection_source_df.empty and "track_id" in detection_source_df.columns:
         det_track_ids = set(detection_source_df["track_id"].unique())
         for event_track_col in ["track_a", "track_b"]:
             if event_track_col in pet_df.columns:
                 missing_ids = set(pet_df[event_track_col]) - det_track_ids
                 if missing_ids:
-                    problems.append(f"{event_track_col}: track IDs not in split detections: {sorted(missing_ids)[:5]}")
+                    problems.append(
+                        f"{event_track_col}: track IDs not in split detections: {sorted(missing_ids)[:5]}"
+                    )
     if "traj_a_json" in pet_df.columns and "traj_b_json" in pet_df.columns:
         for idx, row in pet_df.iterrows():
             for col, label in [("traj_a_json", "Traj A"), ("traj_b_json", "Traj B")]:
-                problems.extend(validate_trajectory_json(row[col], f"Event {row['event_id']} {label}"))
+                problems.extend(
+                    validate_trajectory_json(
+                        row[col], f"Event {row['event_id']} {label}"
+                    )
+                )
                 if idx > 5:
                     break
             if idx > 5:
                 break
     return problems
 
+
 def main():
     parser = argparse.ArgumentParser(description="Validate NNDS pipeline outputs")
-    parser.add_argument("--detections", default="outputs/petevents_bev_final_detections.csv")
-    parser.add_argument("--detections-split", default="outputs/petevents_bev_final_split_detections.csv")
+    parser.add_argument(
+        "--detections", default="outputs/petevents_bev_final_detections.csv"
+    )
+    parser.add_argument(
+        "--detections-split", default="outputs/petevents_bev_final_split_detections.csv"
+    )
     parser.add_argument("--pet", default="outputs/petevents_bev_final.csv")
     parser.add_argument("--video-frames", type=int, default=1838)
     parser.add_argument("--max-gap", type=int, default=10)
@@ -170,9 +226,13 @@ def main():
     split_det_df = None
     split_det_empty = True
     if Path(args.detections_split).exists():
-        split_det_df, split_det_empty = load_csv(args.detections_split, DETECTION_COLUMNS, "Split detections")
+        split_det_df, split_det_empty = load_csv(
+            args.detections_split, DETECTION_COLUMNS, "Split detections"
+        )
     else:
-        print("⚠️ Split detections not found; tracking stability will be checked on raw detections (may over-report)")
+        print(
+            "⚠️ Split detections not found; tracking stability will be checked on raw detections (may over-report)"
+        )
 
     all_problems = []
 
@@ -187,7 +247,9 @@ def main():
 
     # Tracking stability: use split detections if available
     if not split_det_empty and split_det_df is not None:
-        problems = validate_tracking_stability(split_det_df, args.max_gap, args.max_jump)
+        problems = validate_tracking_stability(
+            split_det_df, args.max_gap, args.max_jump
+        )
         if problems:
             all_problems.extend([f"Tracking: {p}" for p in problems])
         else:
@@ -213,6 +275,7 @@ def main():
     else:
         print("✅ All validation checks passed")
         sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

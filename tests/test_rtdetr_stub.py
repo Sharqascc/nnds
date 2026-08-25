@@ -1,6 +1,7 @@
-
 import pytest
+
 from src.pipeline.traffic_analyzer import run_video_to_pet
+
 
 def test_rtdetr_detector_raises_not_implemented(tmp_path):
     video = tmp_path / "dummy.mp4"
@@ -14,8 +15,7 @@ def test_rtdetr_detector_raises_not_implemented(tmp_path):
     grid.write_text("{}")
 
     with pytest.raises(
-        NotImplementedError,
-        match="RT-DETR video pipeline is not implemented"
+        NotImplementedError, match="RT-DETR video pipeline is not implemented"
     ):
         run_video_to_pet(
             video_path=str(video),

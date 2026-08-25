@@ -1,10 +1,13 @@
-
 import numpy as np
 import torch
 
-def load_eval_model(checkpoint_path, device, T=15, N=1, F=4, cond_dim=4,
-                    hidden_dim=128):
-    from src.diffusion.traffic_diffusion.trajectory_diffusion import TrajectoryDiffusionModel
+
+def load_eval_model(
+    checkpoint_path, device, T=15, N=1, F=4, cond_dim=4, hidden_dim=128
+):
+    from src.diffusion.traffic_diffusion.trajectory_diffusion import (
+        TrajectoryDiffusionModel,
+    )
 
     traj_shape = (T, N, F)
     model = TrajectoryDiffusionModel(
@@ -21,8 +24,8 @@ def load_eval_model(checkpoint_path, device, T=15, N=1, F=4, cond_dim=4,
     model.eval()
     return model
 
-def sample_future(model, loader, device, T=15, N=1, F=4,
-                  num_samples=10, num_steps=50):
+
+def sample_future(model, loader, device, T=15, N=1, F=4, num_samples=10, num_steps=50):
     all_samples = []
     with torch.no_grad():
         for x0_batch, cond_batch in loader:

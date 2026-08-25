@@ -12,9 +12,9 @@ Usage:
 
 import argparse
 import json
+
 import cv2
 import pandas as pd
-from pathlib import Path
 
 
 def parse_args():
@@ -23,7 +23,12 @@ def parse_args():
     parser.add_argument("--event-id", type=int, required=True)
     parser.add_argument("--video", default="data/sample_data/traffic_video.mp4")
     parser.add_argument("--output", default=None)
-    parser.add_argument("--trail-length", type=int, default=5, help="Number of past points to draw for each track")
+    parser.add_argument(
+        "--trail-length",
+        type=int,
+        default=5,
+        help="Number of past points to draw for each track",
+    )
     return parser.parse_args()
 
 
@@ -45,7 +50,9 @@ def main():
     dict_a = to_frame_dict(traj_a)
     dict_b = to_frame_dict(traj_b)
 
-    all_frames = sorted(set([p["frame"] for p in traj_a] + [p["frame"] for p in traj_b]))
+    all_frames = sorted(
+        set([p["frame"] for p in traj_a] + [p["frame"] for p in traj_b])
+    )
     start_frame = min(all_frames)
     end_frame = max(all_frames)
 
@@ -62,7 +69,9 @@ def main():
     trail_a = []
     trail_b = []
 
-    print(f"Live visualization: Event {args.event_id}, frames {start_frame}-{end_frame}")
+    print(
+        f"Live visualization: Event {args.event_id}, frames {start_frame}-{end_frame}"
+    )
 
     for frame_idx in range(start_frame, end_frame + 1):
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
@@ -77,13 +86,13 @@ def main():
             trail_b.append((frame_idx, dict_b[frame_idx]))
 
         # Keep only last N points
-        trail_a = trail_a[-args.trail_length:]
-        trail_b = trail_b[-args.trail_length:]
+        trail_a = trail_a[-args.trail_length :]
+        trail_b = trail_b[-args.trail_length :]
 
         # Draw trails
-        for (f, (x, y)) in trail_a:
+        for f, (x, y) in trail_a:
             cv2.circle(frame, (int(x), int(y)), 4, (0, 0, 255), -1)  # red
-        for (f, (x, y)) in trail_b:
+        for f, (x, y) in trail_b:
             cv2.circle(frame, (int(x), int(y)), 4, (255, 0, 0), -1)  # blue
 
         # Draw bigger current marker
@@ -95,9 +104,33 @@ def main():
             cv2.circle(frame, (int(x), int(y)), 8, (255, 0, 0), 2)
 
         # Legend
-        cv2.putText(frame, f"Frame {frame_idx}", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255,255,255), 2)
-        cv2.putText(frame, f"Red: track {row['track_a']}", (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
-        cv2.putText(frame, f"Blue: track {row['track_b']}", (20, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,0,0), 2)
+        cv2.putText(
+            frame,
+            f"Frame {frame_idx}",
+            (20, 40),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.8,
+            (255, 255, 255),
+            2,
+        )
+        cv2.putText(
+            frame,
+            f"Red: track {row['track_a']}",
+            (20, 70),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (0, 0, 255),
+            2,
+        )
+        cv2.putText(
+            frame,
+            f"Blue: track {row['track_b']}",
+            (20, 100),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (255, 0, 0),
+            2,
+        )
 
         if writer:
             writer.write(frame)
