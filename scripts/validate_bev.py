@@ -52,6 +52,19 @@ def main():
     errors = np.linalg.norm(proj_world - world_pts, axis=1)
 
     cond = np.linalg.cond(H)
+    # Compute normalized condition number using centroid/scale normalization
+    pixel_centroid = pixel_pts.mean(axis=0)
+    pixel_scale = np.sqrt(2) / np.mean(np.linalg.norm(pixel_pts - pixel_centroid, axis=1))
+    world_centroid = world_pts.mean(axis=0)
+    world_scale = np.sqrt(2) / np.mean(np.linalg.norm(world_pts - world_centroid, axis=1))
+    T_pixel = np.array([[pixel_scale, 0, -pixel_scale*pixel_centroid[0]],
+                         [0, pixel_scale, -pixel_scale*pixel_centroid[1]],
+                         [0, 0, 1]])
+    T_world = np.array([[world_scale, 0, -world_scale*world_centroid[0]],
+                         [0, world_scale, -world_scale*world_centroid[1]],
+                         [0, 0, 1]])
+    H_normalized = np.linalg.inv(T_world) @ H @ T_pixel
+    normalized_cond = np.linalg.cond(H_normalized)
     rank = np.linalg.matrix_rank(H)
     # Scale pixel coords to [0,1] to improve conditioning metric
     H_scaled = H.copy()
@@ -63,7 +76,8 @@ def main():
     print("=" * 60)
     print(f"Rank: {rank} (should be 3)")
     print(f"Condition number (raw): {cond:.2e}")
-    print("Note: High condition number is expected due to pixel vs world coordinate scale difference; reprojection error is the meaningful metric.")
+    print(f"Condition number (normalized): {normalized_cond:.2e}")
+    print("Normalized condition number (after Hartley pre-conditioning) should be < 1e6 for good numerical stability.")
     print(f"Reprojection errors (world units): {errors}")
     print(f"  Mean: {errors.mean():.3f}")
     print(f"  Max:  {errors.max():.3f}")

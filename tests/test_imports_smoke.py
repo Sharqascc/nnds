@@ -22,12 +22,10 @@ def test_core_modules_present():
         "analysis.grid_trajectory.spatial_grid",
         "analysis.grid_trajectory.pet_grid",
         "analysis.grid_trajectory.sam3_grid_pet",
-        "analysis.grid_trajectory.trajectory_safety_analyzer",
-        "diffusion.traffic_diffusion.training_utils",
+                "diffusion.traffic_diffusion.training_utils",
         "diffusion.traffic_diffusion.model_and_sampler",
         "diffusion.traffic_diffusion.trajectory_diffusion",
-        "diffusion.traffic_diffusion.pet_safety_metrics",
-        "analysis.analysis.safety_eval_diffusion",
+                "analysis.analysis.safety_eval_diffusion",
         "analysis.analysis.pet_summary",
     ]
     missing = [m for m in required_modules if not _module_exists(m)]

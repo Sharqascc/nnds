@@ -1,0 +1,7 @@
+# Data License
+
+The sample traffic video (`data/sample_data/traffic_video.mp4`) and calibration data are provided for research purposes only. The video contains traffic scenes that may include identifiable vehicles and individuals. If you use this dataset in your research, you are responsible for ensuring compliance with applicable privacy laws and obtaining any necessary consent.
+
+The dataset is licensed under the [Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0)](https://creativecommons.org/licenses/by-nc/4.0/). You may not use the data for commercial purposes without explicit permission.
+
+For questions regarding data provenance or licensing, contact the repository owner.
