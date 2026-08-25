@@ -546,7 +546,15 @@ def run_uvh_coco_fused_grid_pet(
             pet_result = _compute_pet_from_windows(a_entry, a_exit, b_entry, b_exit, fps)
             if pet_result is None:
                 continue
-            pet, first_id, second_id, frame_ref = pet_result
+            pet, first_placeholder, second_placeholder, frame_ref = pet_result
+
+            # Map placeholder IDs back to actual track IDs
+            if first_placeholder == "a":
+                first_id = track_a_id
+                second_id = track_b_id
+            else:
+                first_id = track_b_id
+                second_id = track_a_id
 
             if pet <= pet_threshold and pet > 0:
                 # Determine grid cell for conflict point
