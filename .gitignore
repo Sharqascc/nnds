@@ -29,3 +29,6 @@ __pycache__/
 # Large local data / checkpoints
 data/checkpoints/
 data/uvh26_data/
+
+# Generated CSV outputs
+*.csv
