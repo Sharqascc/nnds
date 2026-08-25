@@ -24,6 +24,7 @@ import sys
 from pathlib import Path
 import pandas as pd
 import numpy as np
+from scipy.stats import shapiro
 
 def bootstrap_ci(data, n_bootstrap=1000, ci=0.95, seed=42):
     """Compute bootstrap confidence interval for the median."""
@@ -155,6 +156,9 @@ def pet_metrics(pet_df):
         'median_pet': float(np.median(pet_values)) if len(pet_values) else None,
         'mean_pet': float(np.mean(pet_values)) if len(pet_values) else None,
         'std_pet': float(np.std(pet_values)) if len(pet_values) else None,
+            'skewness': float(pd.Series(pet_values).skew()) if len(pet_values) else None,
+        'kurtosis': float(pd.Series(pet_values).kurtosis()) if len(pet_values) else None,
+        'shapiro_p': float(shapiro(pet_values).pvalue) if len(pet_values) >= 3 else None,
             'pet_median_ci_lower': None,
         'pet_median_ci_upper': None,
     }
@@ -215,6 +219,9 @@ def generate_report(det_path, pet_path, bev_config_path, calib_path, output_path
 
         f"- PET mean: {pet_metrics_dict['mean_pet']:.3f} s",
         f"- PET std: {pet_metrics_dict['std_pet']:.3f} s",
+            f"- PET skewness: {pet_metrics_dict['skewness']:.3f}" if pet_metrics_dict['skewness'] is not None else "",
+        f"- PET kurtosis: {pet_metrics_dict['kurtosis']:.3f}" if pet_metrics_dict['kurtosis'] is not None else "",
+        f"- Shapiro-Wilk p-value: {pet_metrics_dict['shapiro_p']:.4f}" if pet_metrics_dict['shapiro_p'] is not None else "",
         "",
         "## Interpretation",
         "- Low reprojection error (<0.1 ft) indicates accurate BEV mapping.",
