@@ -1,4 +1,6 @@
 # 🚦 NNDS – Neural Network for Driving Safety
+[![CI](https://github.com/Sharqascc/nnds/actions/workflows/ci.yml/badge.svg)](https://github.com/Sharqascc/nnds/actions/workflows/ci.yml)
+
 
 ### Intersection Safety & Conflict Detection Pipeline
 
