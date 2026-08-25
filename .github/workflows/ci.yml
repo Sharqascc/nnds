@@ -41,3 +41,15 @@ jobs:
       - name: Validate pipeline outputs
         run: |
           python scripts/validate_outputs.py             --detections tests/fixtures/sample_detections.csv             --detections-split tests/fixtures/sample_split_detections.csv             --pet tests/fixtures/sample_pet.csv             --video-frames 100
+      - name: Generate experiment log
+        run: |
+          python scripts/experiment_logger.py \
+            --detections tests/fixtures/sample_detections.csv \
+            --pet tests/fixtures/sample_pet.csv \
+            --output outputs/experiment_log.json
+      - name: Upload experiment log
+        uses: actions/upload-artifact@v4
+        with:
+          name: experiment-log
+          path: outputs/experiment_log.json
+
