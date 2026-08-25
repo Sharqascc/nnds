@@ -23,6 +23,7 @@ DETECTION_COLUMNS = [
 ]
 PET_COLUMNS = [
     "event_id", "pet", "frame", "track_a", "track_b",
+    "orig_track_a", "seg_a", "orig_track_b", "seg_b",
     "conflict_type", "grid_cell",
     "track_a_entry_frame", "track_a_exit_frame",
     "track_b_entry_frame", "track_b_exit_frame",

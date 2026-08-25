@@ -560,12 +560,25 @@ def run_uvh_coco_fused_grid_pet(
                 # Determine grid cell for conflict point
                 grid_cell = spatial_grid.get_cell_from_pixels(cx, cy) if spatial_grid else "UNKNOWN"
 
+                # Decode composite IDs into original track and segment
+                def _decode_composite(cid):
+                    orig = cid // 1000
+                    seg = cid % 1000
+                    return orig, seg
+
+                orig_a, seg_a = _decode_composite(first_id)
+                orig_b, seg_b = _decode_composite(second_id)
+
                 pet_events.append({
                     "event_id": event_id,
                     "pet": float(pet),
                     "frame": int(frame_ref),
                     "track_a": int(first_id),
                     "track_b": int(second_id),
+                    "orig_track_a": int(orig_a),
+                    "seg_a": int(seg_a),
+                    "orig_track_b": int(orig_b),
+                    "seg_b": int(seg_b),
                     "conflict_type": "image_intersection",
                     "grid_cell": grid_cell,
                     "track_a_entry_frame": int(a_entry),
@@ -588,6 +601,10 @@ def run_uvh_coco_fused_grid_pet(
             "frame",
             "track_a",
             "track_b",
+            "orig_track_a",
+            "seg_a",
+            "orig_track_b",
+            "seg_b",
             "conflict_type",
             "grid_cell",
             "track_a_entry_frame",
