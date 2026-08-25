@@ -552,6 +552,7 @@ def run_video_to_pet(
             columns=[
                 "event_id",
                 "pet",
+                "pet_time_based",
                 "frame",
                 "track_a",
                 "track_b",
@@ -649,6 +650,7 @@ def run_video_to_pet(
         columns=[
             "event_id",
             "pet",
+            "pet_time_based",
             "frame",
             "track_a",
             "track_b",

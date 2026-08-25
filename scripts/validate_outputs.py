@@ -22,7 +22,7 @@ DETECTION_COLUMNS = [
     "conf", "x1", "y1", "x2", "y2", "cx", "cy", "source",
 ]
 PET_COLUMNS = [
-    "event_id", "pet", "frame", "track_a", "track_b",
+    "event_id", "pet", "pet_time_based", "frame", "track_a", "track_b",
     "orig_track_a", "seg_a", "orig_track_b", "seg_b",
     "conflict_type", "grid_cell",
     "track_a_entry_frame", "track_a_exit_frame", "track_a_exit_time_sec",

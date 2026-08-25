@@ -569,9 +569,13 @@ def run_uvh_coco_fused_grid_pet(
                 orig_a, seg_a = _decode_composite(first_id)
                 orig_b, seg_b = _decode_composite(second_id)
 
+                # Calculate time-based PET from explicit time columns
+                pet_time_based = float((b_entry / fps) - (a_exit / fps))
+
                 pet_events.append({
                     "event_id": event_id,
-                    "pet": float(pet),
+                    "pet": float(pet),               # frame-based PET
+                    "pet_time_based": pet_time_based, # time-based PET
                     "frame": int(frame_ref),
                     "track_a": int(first_id),
                     "track_b": int(second_id),
@@ -600,6 +604,7 @@ def run_uvh_coco_fused_grid_pet(
         columns=[
             "event_id",
             "pet",
+            "pet_time_based",
             "frame",
             "track_a",
             "track_b",
