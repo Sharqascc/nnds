@@ -1,3 +1,13 @@
+from __future__ import annotations
+
+
+import json
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, Optional, Tuple, Union, List
+
+import cv2
+import numpy as np
 
 def _col_to_letters(col_idx: int) -> str:
     """Convert zero-based column index to Excel-style letters (A, B, ..., Z, AA, AB, ...)."""
@@ -15,22 +25,6 @@ def _letters_to_col(letters: str) -> int:
     for ch in letters.upper():
         col_idx = col_idx * 26 + (ord(ch) - 64)
     return col_idx - 1
-
-
-
-from __future__ import annotations
-
-import json
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union, List
-
-import cv2
-import numpy as np
-
-
-OUT_OF_BOUNDS_CELL = "OUT_OF_BOUNDS"
-
 
 @dataclass
 class GridConfig:
