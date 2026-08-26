@@ -195,6 +195,13 @@ def generate_report(det_path, pet_path, bev_config_path, calib_path, output_path
         f"- PET kurtosis: {pet_metrics_dict['kurtosis']:.3f}" if pet_metrics_dict['kurtosis'] is not None else "",
         f"- Shapiro-Wilk p-value: {pet_metrics_dict['shapiro_p']:.4f}" if pet_metrics_dict['shapiro_p'] is not None else "",
         "",
+
+    # Add explicit notes in report
+    report_lines.append("")
+    report_lines.append("## Methodological Notes")
+    report_lines.append("- PET values are filtered by a configurable threshold (default 2.0 s). This is NOT a hard cap on the underlying distribution, but a conflict inclusion criterion.")
+    report_lines.append("- BEV reprojection error is computed on the same calibration points used to fit H; held-out validation should be performed for independent accuracy assessment.")
+    report_lines.append("- Tracking fragmentation score > 0.5 indicates intentional aggressive splitting to preserve identity purity for PET analysis.")
         "## Interpretation",
         "- Low reprojection error (<0.1 ft) indicates accurate BEV mapping.",
         "- A low fragmentation score (<0.5) indicates stable tracking.",

@@ -52,4 +52,14 @@ jobs:
         with:
           name: experiment-log
           path: outputs/experiment_log.json
+      - name: Run 300-frame e2e validation
+        run: |
+          bash scripts/download_models.sh
+          python scripts/export_openvino.py --imgsz 640
+          python scripts/validate_all.py --run-e2e --frames 300 --check-models --skip-pytest
+      - name: Upload e2e validation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-validation-report
+          path: outputs/e2e_validation_report.md
 
