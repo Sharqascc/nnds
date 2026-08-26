@@ -101,7 +101,7 @@ See [LICENSE](LICENSE) for details.
 
 - **BEV Homography:** Hartley normalized condition number 1.71, held-out reprojection error ~0.000001 ft.
 - **Pipeline:** 300-frame end-to-end validation passes automatically in CI.
-- **PET Analysis:** 156 events in 300 frames, median PET 1.017 s, non-normal distribution confirmed (Shapiro-Wilk p=0.0007). Sensitivity table shows events vary 156→131 across thresholds.
+- **PET Analysis:** At our chosen operating point (max_gap=5, max_jump=30), the pipeline detects 156 PET events with median PET 1.017 s (Shapiro-Wilk p=0.0007, non-normal). A deconfounded sensitivity analysis shows PET metrics vary moderately across tracking thresholds (events 156→127; median PET 1.017→1.133 s). We report the full sensitivity table in `docs/sensitivity_deconfounded.tex` and discuss this trade-off in the manuscript.
 - **Detection/Tracking Metrics:** Ground truth required for standard MOTA/IDF1/mAP. We explicitly document this limitation and provide scripts for when GT becomes available.
 - **Sensitivity:** Track fragmentation impact on PET is quantified via `scripts/sensitivity_pet_fragmentation.py`.
 
