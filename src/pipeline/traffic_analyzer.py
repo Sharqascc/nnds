@@ -791,6 +791,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--max-frames", type=int, default=None, help="Process only the first N frames"
     )
+    parser.add_argument("--max-gap", type=int, default=5, help="Max frame gap for track splitting")
+    parser.add_argument("--max-jump", type=float, default=30.0, help="Max spatial jump for track splitting")
     parser.add_argument(
         "--no-progress",
         action="store_true",
