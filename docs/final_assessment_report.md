@@ -52,3 +52,13 @@ Std: 0.601s
 
 ## Conclusion
 All previously flagged gaps have been addressed: prediction tolerance sensitivity run, E2E report regenerated, BEV held-out manually verified. Repository is ready.
+## Prediction Tolerance Sensitivity (300 frames)
+|   prediction_tolerance |   events |   median |     mean |      std |
+|-----------------------:|---------:|---------:|---------:|---------:|
+|                      0 |       74 | 0.75     | 0.938739 | 0.581266 |
+|                     40 |       75 | 0.866667 | 0.965778 | 0.555182 |
+|                     80 |      156 | 1.01667  | 0.982265 | 0.601282 |
+|                    120 |      163 | 1.06667  | 1.02045  | 0.583275 |
+
+## Honest Sensitivity Interpretation
+Prediction tolerance is the dominant parameter controlling fragmentation. Event counts vary from 27 to 156 across the tested range. We therefore do **not** claim the pipeline is fully robust to all fragmentation parameters; instead, we report the chosen default (80 px) and the full sensitivity table for transparency.

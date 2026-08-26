@@ -113,3 +113,6 @@ We select `max_gap=5` frames and `max_jump=30` pixels as our primary operating p
 The track splitter uses a `prediction_tolerance` parameter to avoid splitting tracks during short, predictable occlusions. When an object reappears after a gap (even >15 frames) but its position closely matches a linear motion prediction, the track is intentionally kept intact to reduce fragmentation and preserve identity continuity. This behavior was verified on the 300‑frame validation sequence: tracks with gaps in the 16–20 frame range remained unsplit because their reappearance was consistent with expected motion. Disabling the prediction tolerance (`prediction_tolerance=0`) does split those tracks, confirming the parameter is active. We keep the default tolerance as a balance between identity purity and fragmentation.
 
 For full details, see the sensitivity scripts and `docs/final_submission_summary.md`.
+
+### BEV Calibration Provenance
+The six calibration points were surveyed under a planar ground assumption; therefore, a planar homography fits them with very low error. Independent field validation with non-planar points is recommended to confirm generalization.
