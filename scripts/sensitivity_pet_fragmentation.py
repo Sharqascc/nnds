@@ -21,7 +21,7 @@ def run_pipeline(video, frames, out_csv, max_gap, max_jump):
         "--out-csv", out_csv,
         "--max-gap", str(max_gap),
         "--max-jump", str(max_jump),
-    ], check=True, capture_output=True, text=True)
+    ], check=True)
 
 def parse_pet(csv_path):
     if not Path(csv_path).exists():

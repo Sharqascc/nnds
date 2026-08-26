@@ -409,6 +409,8 @@ def run_video_to_pet(
     person_suppress_overlap: float = 0.35,
     device: str = "auto",
     backend: str = "auto",
+    max_frame_gap: int = 5,
+    max_spatial_jump: float = 30.0,
 ) -> pd.DataFrame:
     """Video → detections → grid → BEV → PET events CSV (SAM3 or RT-DETR).
 
@@ -524,6 +526,8 @@ def run_video_to_pet(
             show_progress=show_progress,
             device=device,
             backend=backend,
+            max_frame_gap=max_frame_gap,
+            max_spatial_jump=max_spatial_jump,
         )
         pet_events = (
             result["pet_events"]
