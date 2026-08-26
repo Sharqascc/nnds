@@ -65,3 +65,9 @@ Confidence >= 0.9: Precision=0.000, Recall=0.000
 ## Limitations
 - Held-out BEV reprojection error is extremely low (0.000001 ft), which may indicate overfitting or insufficient independent validation. Independent field-surveyed points are recommended.
 - Detection/tracking MOT metrics require manually annotated ground truth.
+
+
+## Occlusion Handling Note
+- The track splitter includes a `prediction_tolerance` safeguard (default 80.0) that prevents splitting when reappearance matches linear motion prediction.
+- Verified: a track with a 19‑frame gap remained unsplit at `max_gap=15` because predicted motion matched; disabling tolerance split it.
+- This is intentional, not a bug.
