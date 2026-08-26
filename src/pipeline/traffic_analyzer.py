@@ -1004,6 +1004,8 @@ def run_pipeline(args):
         "person_suppress_overlap": getattr(args, "person_suppress_overlap", 0.35),
         "device": getattr(args, "device", "auto"),
         "backend": getattr(args, "backend", "auto"),
+        "max_frame_gap": getattr(args, "max_gap", 5),
+        "max_spatial_jump": getattr(args, "max_jump", 30.0),
     }
 
     # Filter out None values so internal defaults apply if not specified
