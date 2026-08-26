@@ -199,6 +199,7 @@ def run_uvh_coco_fused_grid_pet(
     backend: str = "auto",
     max_frame_gap: int = 5,
     max_spatial_jump: float = 30.0,
+    prediction_tolerance: float = 80.0,
 ) -> Dict[str, Any]:
     video_path = str(Path(video_path).resolve())
     uvh_model_path = str(Path(uvh_model_path).resolve())
