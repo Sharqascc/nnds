@@ -27,3 +27,12 @@ Confidence >= 0.9: Precision=0.000, Recall=0.000
 - Full MOT/detection metrics require manually annotated ground truth.
 - Held-out BEV error is extremely low but should be validated against independent surveyed points in the field.
 - Fragmentation sensitivity is quantified; results should be reported with this context.
+
+## Sensitivity Analysis (300 frames)
+```
+ events   median     mean     std  max_gap  max_jump
+    124 1.016667 1.037903 0.56585        5        30
+    124 1.016667 1.037903 0.56585       10        50
+    124 1.016667 1.037903 0.56585       15        80
+    124 1.016667 1.037903 0.56585       20       100
+```
