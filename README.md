@@ -115,4 +115,4 @@ The track splitter uses a `prediction_tolerance` parameter to avoid splitting tr
 For full details, see the sensitivity scripts and `docs/final_submission_summary.md`.
 
 ### BEV Calibration Provenance
-The six calibration points were surveyed under a planar ground assumption; therefore, a planar homography fits them with very low error. Independent field validation with non-planar points is recommended to confirm generalization.
+The six calibration points were surveyed under a planar ground assumption; therefore, a planar homography fits them with very low error. This low error reflects self-consistency of the planarity assumption, not independently validated metric accuracy. Field validation against independently measured distances is recommended.

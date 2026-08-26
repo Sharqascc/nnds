@@ -46,7 +46,7 @@ Std: 0.601s
 
 ## Key Limitations
 - Full MOT metrics require manually annotated ground truth; infrastructure in place.
-- BEV held-out error is extremely low (0.000001 ft); manual trace confirms independence, but independent field validation still recommended.
+- BEV held-out error is extremely low (0.000001 ft) because calibration points and homography share a planar ground assumption. This reflects self-consistency, not independently validated metric accuracy. Field validation against independently measured distances was not performed.
 - Prediction tolerance sensitivity is now quantified; default 80.0 chosen as balance.
 - Single intersection dataset; domain shift possible.
 
@@ -62,3 +62,7 @@ All previously flagged gaps have been addressed: prediction tolerance sensitivit
 
 ## Honest Sensitivity Interpretation
 Prediction tolerance is the dominant parameter controlling fragmentation. Event counts vary from 27 to 156 across the tested range. We therefore do **not** claim the pipeline is fully robust to all fragmentation parameters; instead, we report the chosen default (80 px) and the full sensitivity table for transparency.
+
+
+## Steep Sensitivity Region
+The prediction tolerance sweep shows a sharp nonlinearity between 40 px (75 events) and 80 px (156 events). Our chosen default (80 px) sits near this steep part of the sensitivity curve; small perturbations around this value can alter event counts more than at 0 or 120 px.
