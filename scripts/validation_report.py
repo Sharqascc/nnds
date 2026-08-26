@@ -152,68 +152,68 @@ def generate_report(det_path, pet_path, bev_config_path, calib_path, output_path
     bev_metrics_dict = bev_metrics(bev_config_path, calib_path)
     pet_metrics_dict = pet_metrics(pet)
 
-    report_lines = [
-        "# NNDS Pipeline Validation Report",
-        "",
-        f"Generated: {pd.Timestamp.now().isoformat()}",
-        "",
-        "## Detection Quality",
-        f"- Total detections: {det_metrics['total_detections']}",
-        f"- Unique tracks: {det_metrics['unique_tracks']}",
-        f"- Mean confidence: {det_metrics['mean_conf']:.3f}",
-        f"- Confidence range: [{det_metrics['min_conf']:.3f}, {det_metrics['max_conf']:.3f}]",
-        f"- Invalid bounding boxes: {det_metrics['invalid_boxes']}",
-        f"- Class counts: {det_metrics['class_counts']}",
-        "",
-        "## Tracking Stability",
-        f"- Total tracks: {track_metrics['total_tracks']}",
-        f"- Mean track length: {track_metrics['mean_track_length']:.1f} frames",
-        f"- Median track length: {track_metrics['median_track_length']:.1f} frames",
-        f"- Max track length: {track_metrics['max_track_length']} frames",
-        f"- Tracks with frame gap > 10: {track_metrics['tracks_with_gap_over']}",
-        f"- Tracks with spatial jump > 50 px: {track_metrics['tracks_with_jump_over']}",
-        f"- Fragmentation score: {track_metrics['fragmentation_score']:.3f} (lower is better)",
-        "",
-        "## BEV Homography Accuracy",
-        f"- Rank: {bev_metrics_dict['rank']}",
-        f"- Number of calibration points: {bev_metrics_dict['num_calibration_points']}",
-        f"- Reprojection error (mean): {bev_metrics_dict['reprojection_error_mean']:.4f} ft",
-        f"- Reprojection error (max): {bev_metrics_dict['reprojection_error_max']:.4f} ft",
-        f"- Reprojection error (std): {bev_metrics_dict['reprojection_error_std']:.4f} ft",
-        f"- Raw condition number: {bev_metrics_dict['condition_number_raw']:.2e} (not directly comparable due to scale)",
-        "",
-        "## PET Event Metrics",
-        f"- Total events: {pet_metrics_dict['total_events']}",
-        f"- Non-positive PET: {pet_metrics_dict['non_positive_pet']}",
-        f"- PET range: [{(pet_metrics_dict['min_pet'] if pet_metrics_dict['min_pet'] is not None else 0):.3f}, {(pet_metrics_dict['max_pet'] if pet_metrics_dict['max_pet'] is not None else 0):.3f}] s",
-        f"- PET median: {(pet_metrics_dict['median_pet'] if pet_metrics_dict['median_pet'] is not None else 0):.3f} s",
-        f"- PET median 95% CI: [{pet_metrics_dict['pet_median_ci_lower']:.3f}, {pet_metrics_dict['pet_median_ci_upper']:.3f}] s" if pet_metrics_dict['pet_median_ci_lower'] is not None else "",
-
-        f"- PET mean: {(pet_metrics_dict['mean_pet'] if pet_metrics_dict['mean_pet'] is not None else 0):.3f} s",
-        f"- PET std: {(pet_metrics_dict['std_pet'] if pet_metrics_dict['std_pet'] is not None else 0):.3f} s",
-            f"- PET skewness: {pet_metrics_dict['skewness']:.3f}" if pet_metrics_dict['skewness'] is not None else "",
-        f"- PET kurtosis: {pet_metrics_dict['kurtosis']:.3f}" if pet_metrics_dict['kurtosis'] is not None else "",
-        f"- Shapiro-Wilk p-value: {pet_metrics_dict['shapiro_p']:.4f}" if pet_metrics_dict['shapiro_p'] is not None else "",
-        "",
-
-    # Add explicit notes in report
+    report_lines = []
+    report_lines.append("# NNDS Pipeline Validation Report")
+    report_lines.append("")
+    report_lines.append(f"Generated: {pd.Timestamp.now().isoformat()}")
+    report_lines.append("")
+    report_lines.append("## Detection Quality")
+    report_lines.append(f"- Total detections: {det_metrics['total_detections']}")
+    report_lines.append(f"- Unique tracks: {det_metrics['unique_tracks']}")
+    report_lines.append(f"- Mean confidence: {det_metrics['mean_conf']:.3f}")
+    report_lines.append(f"- Confidence range: [{det_metrics['min_conf']:.3f}, {det_metrics['max_conf']:.3f}]")
+    report_lines.append(f"- Invalid bounding boxes: {det_metrics['invalid_boxes']}")
+    report_lines.append(f"- Class counts: {det_metrics['class_counts']}")
+    report_lines.append("")
+    report_lines.append("## Tracking Stability")
+    report_lines.append(f"- Total tracks: {track_metrics['total_tracks']}")
+    report_lines.append(f"- Mean track length: {track_metrics['mean_track_length']:.1f} frames")
+    report_lines.append(f"- Median track length: {track_metrics['median_track_length']:.1f} frames")
+    report_lines.append(f"- Max track length: {track_metrics['max_track_length']} frames")
+    report_lines.append(f"- Tracks with frame gap > 10: {track_metrics['tracks_with_gap_over']}")
+    report_lines.append(f"- Tracks with spatial jump > 50 px: {track_metrics['tracks_with_jump_over']}")
+    report_lines.append(f"- Fragmentation score: {track_metrics['fragmentation_score']:.3f} (lower is better)")
+    report_lines.append("")
+    report_lines.append("## BEV Homography Accuracy")
+    report_lines.append(f"- Rank: {bev_metrics_dict['rank']}")
+    report_lines.append(f"- Number of calibration points: {bev_metrics_dict['num_calibration_points']}")
+    report_lines.append(f"- Reprojection error (mean): {bev_metrics_dict['reprojection_error_mean']:.4f} ft")
+    report_lines.append(f"- Reprojection error (max): {bev_metrics_dict['reprojection_error_max']:.4f} ft")
+    report_lines.append(f"- Reprojection error (std): {bev_metrics_dict['reprojection_error_std']:.4f} ft")
+    report_lines.append(f"- Raw condition number: {bev_metrics_dict['condition_number_raw']:.2e} (not directly comparable due to scale)")
+    report_lines.append("")
+    report_lines.append("## PET Event Metrics")
+    report_lines.append(f"- Total events: {pet_metrics_dict['total_events']}")
+    report_lines.append(f"- Non-positive PET: {pet_metrics_dict['non_positive_pet']}")
+    if pet_metrics_dict['min_pet'] is not None:
+        report_lines.append(f"- PET range: [{pet_metrics_dict['min_pet']:.3f}, {pet_metrics_dict['max_pet']:.3f}] s")
+        report_lines.append(f"- PET median: {pet_metrics_dict['median_pet']:.3f} s")
+        report_lines.append(f"- PET mean: {pet_metrics_dict['mean_pet']:.3f} s")
+        report_lines.append(f"- PET std: {pet_metrics_dict['std_pet']:.3f} s")
+        if pet_metrics_dict['skewness'] is not None:
+            report_lines.append(f"- PET skewness: {pet_metrics_dict['skewness']:.3f}")
+        if pet_metrics_dict['kurtosis'] is not None:
+            report_lines.append(f"- PET kurtosis: {pet_metrics_dict['kurtosis']:.3f}")
+        if pet_metrics_dict['shapiro_p'] is not None:
+            report_lines.append(f"- Shapiro-Wilk p-value: {pet_metrics_dict['shapiro_p']:.4f}")
+    else:
+        report_lines.append("- No PET events to summarize.")
     report_lines.append("")
     report_lines.append("## Methodological Notes")
     report_lines.append("- PET values are filtered by a configurable threshold (default 2.0 s). This is NOT a hard cap on the underlying distribution, but a conflict inclusion criterion.")
     report_lines.append("- BEV reprojection error is computed on the same calibration points used to fit H; held-out validation should be performed for independent accuracy assessment.")
     report_lines.append("- Tracking fragmentation score > 0.5 indicates intentional aggressive splitting to preserve identity purity for PET analysis.")
-
     report_lines.append("")
     report_lines.append("## Limitations")
     report_lines.append("- Full MOT metrics (MOTA, IDF1, HOTA) are not reported because manually annotated ground-truth tracks are not available for the current dataset.")
     report_lines.append("- Detection confidence analysis can be run via `scripts/detection_confidence_analysis.py` to justify the operating threshold.")
     report_lines.append("- Held-out BEV validation can be run via `scripts/bev_heldout_validation.py` for independent error estimation.")
-        "## Interpretation",
-        "- Low reprojection error (<0.1 ft) indicates accurate BEV mapping.",
-        "- A low fragmentation score (<0.5) indicates stable tracking.",
-        "- All PET values should be positive; median PET in typical intersection studies ranges from 0.5–3.0 s.",
-        "",
-    ]
+    report_lines.append("")
+    report_lines.append("## Interpretation")
+    report_lines.append("- Low reprojection error (<0.1 ft) indicates accurate BEV mapping.")
+    report_lines.append("- A low fragmentation score (<0.5) indicates stable tracking.")
+    report_lines.append("- All PET values should be positive; median PET in typical intersection studies ranges from 0.5–3.0 s.")
+
     report = "\n".join(report_lines)
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
