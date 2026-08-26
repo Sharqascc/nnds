@@ -411,6 +411,7 @@ def run_video_to_pet(
     backend: str = "auto",
     max_frame_gap: int = 5,
     max_spatial_jump: float = 30.0,
+    prediction_tolerance: float = 80.0,
 ) -> pd.DataFrame:
     """Video → detections → grid → BEV → PET events CSV (SAM3 or RT-DETR).
 
@@ -528,6 +529,7 @@ def run_video_to_pet(
             backend=backend,
             max_frame_gap=max_frame_gap,
             max_spatial_jump=max_spatial_jump,
+            prediction_tolerance=prediction_tolerance,
         )
         pet_events = (
             result["pet_events"]
@@ -793,6 +795,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--max-gap", type=int, default=5, help="Max frame gap for track splitting")
     parser.add_argument("--max-jump", type=float, default=30.0, help="Max spatial jump for track splitting")
+    parser.add_argument("--prediction-tolerance", type=float, default=80.0, help="Prediction tolerance for occlusion handling")
     parser.add_argument(
         "--no-progress",
         action="store_true",
@@ -1006,6 +1009,7 @@ def run_pipeline(args):
         "backend": getattr(args, "backend", "auto"),
         "max_frame_gap": getattr(args, "max_gap", 5),
         "max_spatial_jump": getattr(args, "max_jump", 30.0),
+        "prediction_tolerance": getattr(args, "prediction_tolerance", 80.0),
     }
 
     # Filter out None values so internal defaults apply if not specified

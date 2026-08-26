@@ -463,7 +463,7 @@ def run_uvh_coco_fused_grid_pet(
     conflict_half_size = 20.0
 
     # Split tracks with gaps or jumps to avoid mixing different objects
-    tracks = _split_tracks_by_gaps(tracks, max_frame_gap=max_frame_gap, max_spatial_jump=max_spatial_jump)
+    tracks = _split_tracks_by_gaps(tracks, max_frame_gap=max_frame_gap, max_spatial_jump=max_spatial_jump, prediction_tolerance=prediction_tolerance)
     print(f"[DEBUG_SPLIT_PARAMS] max_gap={max_frame_gap}, max_jump={max_spatial_jump}, tracks_after={len(tracks)}")
 
     valid_tracks = {tid: pts for tid, pts in tracks.items() if len(pts) >= 3}
