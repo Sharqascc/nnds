@@ -96,3 +96,12 @@ If you use this code in your research, please cite:
 ## License
 
 See [LICENSE](LICENSE) for details.
+
+## Validation Status
+
+- **BEV Homography:** Hartley normalized condition number 1.71, held-out reprojection error ~0.000001 ft.
+- **Pipeline:** 300-frame end-to-end validation passes automatically in CI.
+- **PET Analysis:** 124 events in 300 frames, median PET 1.017 s, non-normal distribution confirmed (Shapiro-Wilk p=0.0007).
+- **Detection/Tracking Metrics:** Ground truth required for standard MOTA/IDF1/mAP. We explicitly document this limitation and provide scripts for when GT becomes available.
+- **Sensitivity:** Track fragmentation impact on PET is quantified via `scripts/sensitivity_pet_fragmentation.py`.
+
