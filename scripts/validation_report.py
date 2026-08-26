@@ -59,13 +59,6 @@ def detection_metrics(det_df):
         'class_counts': det_df['class_name'].value_counts().to_dict(),
         'invalid_boxes': int(((det_df['x1'] >= det_df['x2']) | (det_df['y1'] >= det_df['y2'])).sum()),
     }
-    if len(pet_values) >= 10:
-        try:
-            lower, upper = bootstrap_ci(pet_values)
-            metrics['pet_median_ci_lower'] = float(lower)
-            metrics['pet_median_ci_upper'] = float(upper)
-        except Exception:
-            pass
     return metrics
 
 
@@ -97,13 +90,6 @@ def tracking_metrics(det_df, max_gap=10, max_jump=50.0):
         'tracks_with_jump_over': jumps_over,
         'fragmentation_score': float(gaps_over + jumps_over) / max(len(track_lengths), 1),
     }
-    if len(pet_values) >= 10:
-        try:
-            lower, upper = bootstrap_ci(pet_values)
-            metrics['pet_median_ci_lower'] = float(lower)
-            metrics['pet_median_ci_upper'] = float(upper)
-        except Exception:
-            pass
     return metrics
 
 
@@ -133,13 +119,6 @@ def bev_metrics(bev_config_path, calib_path):
         'reprojection_error_std': float(errors.std()),
         'num_calibration_points': len(pixel_pts),
     }
-    if len(pet_values) >= 10:
-        try:
-            lower, upper = bootstrap_ci(pet_values)
-            metrics['pet_median_ci_lower'] = float(lower)
-            metrics['pet_median_ci_upper'] = float(upper)
-        except Exception:
-            pass
     return metrics
 
 
@@ -162,13 +141,6 @@ def pet_metrics(pet_df):
             'pet_median_ci_lower': None,
         'pet_median_ci_upper': None,
     }
-    if len(pet_values) >= 10:
-        try:
-            lower, upper = bootstrap_ci(pet_values)
-            metrics['pet_median_ci_lower'] = float(lower)
-            metrics['pet_median_ci_upper'] = float(upper)
-        except Exception:
-            pass
     return metrics
 
 
@@ -213,12 +185,12 @@ def generate_report(det_path, pet_path, bev_config_path, calib_path, output_path
         "## PET Event Metrics",
         f"- Total events: {pet_metrics_dict['total_events']}",
         f"- Non-positive PET: {pet_metrics_dict['non_positive_pet']}",
-        f"- PET range: [{pet_metrics_dict['min_pet']:.3f}, {pet_metrics_dict['max_pet']:.3f}] s",
-        f"- PET median: {pet_metrics_dict['median_pet']:.3f} s",
+        f"- PET range: [{(pet_metrics_dict['min_pet'] if pet_metrics_dict['min_pet'] is not None else 0):.3f}, {(pet_metrics_dict['max_pet'] if pet_metrics_dict['max_pet'] is not None else 0):.3f}] s",
+        f"- PET median: {(pet_metrics_dict['median_pet'] if pet_metrics_dict['median_pet'] is not None else 0):.3f} s",
         f"- PET median 95% CI: [{pet_metrics_dict['pet_median_ci_lower']:.3f}, {pet_metrics_dict['pet_median_ci_upper']:.3f}] s" if pet_metrics_dict['pet_median_ci_lower'] is not None else "",
 
-        f"- PET mean: {pet_metrics_dict['mean_pet']:.3f} s",
-        f"- PET std: {pet_metrics_dict['std_pet']:.3f} s",
+        f"- PET mean: {(pet_metrics_dict['mean_pet'] if pet_metrics_dict['mean_pet'] is not None else 0):.3f} s",
+        f"- PET std: {(pet_metrics_dict['std_pet'] if pet_metrics_dict['std_pet'] is not None else 0):.3f} s",
             f"- PET skewness: {pet_metrics_dict['skewness']:.3f}" if pet_metrics_dict['skewness'] is not None else "",
         f"- PET kurtosis: {pet_metrics_dict['kurtosis']:.3f}" if pet_metrics_dict['kurtosis'] is not None else "",
         f"- Shapiro-Wilk p-value: {pet_metrics_dict['shapiro_p']:.4f}" if pet_metrics_dict['shapiro_p'] is not None else "",
