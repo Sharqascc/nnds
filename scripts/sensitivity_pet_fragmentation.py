@@ -12,10 +12,10 @@ import pandas as pd
 from pathlib import Path
 import json
 
-def run_pipeline(frames, out_csv, max_gap, max_jump):
+def run_pipeline(video, frames, out_csv, max_gap, max_jump):
     subprocess.run([
         sys.executable, "scripts/run_pipeline.py",
-        "--video", args.video,
+        "--video", video,
         "--max-frames", str(frames),
         "--imgsz", "640",
         "--out-csv", out_csv,
@@ -51,7 +51,7 @@ def main():
     results = []
     for th in thresholds:
         out_csv = f"outputs/sensitivity_pet_gap{th['max_gap']}_jump{th['max_jump']}.csv"
-        run_pipeline(args.max_frames, out_csv, th['max_gap'], th['max_jump'])
+        run_pipeline(args.video, args.max_frames, out_csv, th['max_gap'], th['max_jump'])
         metrics = parse_pet(out_csv)
         metrics.update(th)
         results.append(metrics)
