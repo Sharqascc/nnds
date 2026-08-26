@@ -202,6 +202,12 @@ def generate_report(det_path, pet_path, bev_config_path, calib_path, output_path
     report_lines.append("- PET values are filtered by a configurable threshold (default 2.0 s). This is NOT a hard cap on the underlying distribution, but a conflict inclusion criterion.")
     report_lines.append("- BEV reprojection error is computed on the same calibration points used to fit H; held-out validation should be performed for independent accuracy assessment.")
     report_lines.append("- Tracking fragmentation score > 0.5 indicates intentional aggressive splitting to preserve identity purity for PET analysis.")
+
+    report_lines.append("")
+    report_lines.append("## Limitations")
+    report_lines.append("- Full MOT metrics (MOTA, IDF1, HOTA) are not reported because manually annotated ground-truth tracks are not available for the current dataset.")
+    report_lines.append("- Detection confidence analysis can be run via `scripts/detection_confidence_analysis.py` to justify the operating threshold.")
+    report_lines.append("- Held-out BEV validation can be run via `scripts/bev_heldout_validation.py` for independent error estimation.")
         "## Interpretation",
         "- Low reprojection error (<0.1 ft) indicates accurate BEV mapping.",
         "- A low fragmentation score (<0.5) indicates stable tracking.",
