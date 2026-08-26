@@ -105,3 +105,6 @@ See [LICENSE](LICENSE) for details.
 - **Detection/Tracking Metrics:** Ground truth required for standard MOTA/IDF1/mAP. We explicitly document this limitation and provide scripts for when GT becomes available.
 - **Sensitivity:** Track fragmentation impact on PET is quantified via `scripts/sensitivity_pet_fragmentation.py`.
 
+
+### Chosen Tracking Threshold
+We select `max_gap=5` frames and `max_jump=30` pixels as our primary operating point. This choice balances identity preservation and fragmentation: stricter settings over-split short tracks, while looser settings merge distinct vehicles, distorting PET. Our sensitivity analysis (Table in docs) shows this configuration provides the highest PET event count while keeping median PET stable at 1.017 s.
