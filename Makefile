@@ -52,3 +52,8 @@ clean:
 
 weights:
 	bash scripts/download_models.sh
+
+
+.PHONY: full-validate
+full-validate:
+	PYTHONPATH=. $(PYTHON) scripts/validate_all.py --run-e2e --check-models --skip-pytest
