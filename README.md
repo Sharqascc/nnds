@@ -131,3 +131,11 @@ pip install -r requirements-vlm.txt
 ```
 
 If the VLM dependencies are not installed, the estimator returns `"unknown"` and the pipeline continues normally.
+
+## Optional Event Utilities
+
+- `scripts/generate_event_descriptions.py` – deterministic natural language descriptions for each PET event.
+
+- `scripts/extract_event_frames.py` – save before/closest/after frames for manual inspection or VLM audits.
+
+- `scripts/generate_safety_report_groq.py` – optional LLM-based report generation (requires `GROQ_API_KEY`). Not part of core results.
