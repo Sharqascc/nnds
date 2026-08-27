@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from src.utils.interactive import show_image, ask_user
 from src.analysis.grid_trajectory.spatial_grid import SpatialGrid
 from src.bev.bev_mapper import BEVMapper
+from src.analysis.conflict_classifier import classify_conflict_geometry
 from tqdm import tqdm
 import sys
 import json
