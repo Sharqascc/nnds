@@ -56,4 +56,4 @@ weights:
 
 .PHONY: full-validate
 full-validate:
-	PYTHONPATH=. $(PYTHON) scripts/validate_all.py --run-e2e --check-models --skip-pytest
+	PYTHONPATH=. $(PYTHON) scripts/validate_all.py --run-e2e --frames 300 --check-models
