@@ -13,7 +13,10 @@ import argparse
 import tempfile
 import cv2
 import os
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 def main():
     parser = argparse.ArgumentParser()
@@ -51,11 +54,7 @@ def main():
                 continue
             img_path = os.path.join(tmpdir, f"frame_{idx}.jpg")
             cv2.imwrite(img_path, frame)
-            prompt = (
-                "Based on the lighting, shadows, and sun position in this traffic camera image, "
-                "is it likely morning (9-11 AM) or evening (4:30-6:30 PM)? "
-                "Answer only with 'morning', 'evening', or 'unknown'."
-            )
+            prompt = "Is it morning or evening? Answer with one word."
             try:
                 answer = vlm.analyze_image(img_path, prompt).strip().lower()
                 if "morning" in answer:
