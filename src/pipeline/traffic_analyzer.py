@@ -391,6 +391,8 @@ def run_demo() -> tuple[CompleteTrafficAnalyzer, dict[str, Any], dict[str, float
 # ======================== Video → PET CLI ========================
 def run_video_to_pet(
     video_path: Path | str,
+    video_source: str = None,
+    time_of_day_label: str = None,
     bev_config_path: Path | str = "configs/bev_config.json",
     grid_config_path: Path | str = "configs/GITI_grid_config.json",
     sam3_weights_path: Path | str = "sam3.pt",
@@ -530,6 +532,8 @@ def run_video_to_pet(
             max_frame_gap=max_frame_gap,
             max_spatial_jump=max_spatial_jump,
             prediction_tolerance=prediction_tolerance,
+            video_source=video_source,
+            time_of_day_label=time_of_day_label,
         )
         pet_events = (
             result["pet_events"]
@@ -578,6 +582,8 @@ def run_video_to_pet(
                 "world_traj_j",
                 "traj_a_json",
                 "traj_b_json",
+                "video_source",
+                "time_of_day_label",
             ]
         )
         empty_df.to_csv(out_csv_path, index=False)
@@ -683,6 +689,8 @@ def run_video_to_pet(
             "world_traj_j",
             "traj_a_json",
             "traj_b_json",
+            "video_source",
+            "time_of_day_label",
         ],
     )
     df.to_csv(out_csv_path, index=False)
@@ -695,6 +703,8 @@ def parse_args() -> argparse.Namespace:
         description="Video → SAM3 + grid → BEV → PET events pipeline"
     )
     parser.add_argument("--video", default=None, help="Input video path")
+    parser.add_argument("--video-source", default=None, help="Label for video source (e.g., intersection name)")
+    parser.add_argument("--time-of-day", default=None, help="Time-of-day label (e.g., morning, evening, unknown)")
     parser.add_argument(
         "--bev-config",
         default="configs/bev_config.json",
@@ -981,6 +991,8 @@ def run_pipeline(args):
     # Direct mapping from CLI argparse attributes to run_video_to_pet parameter names
     kwargs = {
         "video_path": getattr(args, "video", None),
+        "video_source": getattr(args, "video_source", None),
+        "time_of_day_label": getattr(args, "time_of_day", None),
         "bev_config_path": getattr(args, "bev_config", "configs/bev_config.json"),
         "grid_config_path": getattr(
             args, "grid_config", "configs/GITI_grid_config.json"

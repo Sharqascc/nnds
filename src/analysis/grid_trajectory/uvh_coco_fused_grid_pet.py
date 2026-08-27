@@ -200,6 +200,8 @@ def run_uvh_coco_fused_grid_pet(
     max_frame_gap: int = 5,
     max_spatial_jump: float = 30.0,
     prediction_tolerance: float = 80.0,
+    video_source: str = None,
+    time_of_day_label: str = None,
 ) -> Dict[str, Any]:
     video_path = str(Path(video_path).resolve())
     uvh_model_path = str(Path(uvh_model_path).resolve())
@@ -604,6 +606,8 @@ def run_uvh_coco_fused_grid_pet(
                     "world_traj_j": f"track_{second_id}",
                     "traj_a_json": _track_to_json(pts_a if first_id == track_a_id else pts_b, bev_mapper),
                     "traj_b_json": _track_to_json(pts_b if first_id == track_a_id else pts_a, bev_mapper),
+                    "video_source": video_source if video_source is not None else Path(video_path).stem,
+                    "time_of_day_label": time_of_day_label if time_of_day_label is not None else "unknown",
                 })
                 event_id += 1
 
@@ -633,6 +637,8 @@ def run_uvh_coco_fused_grid_pet(
             "world_traj_j",
             "traj_a_json",
             "traj_b_json",
+            "video_source",
+            "time_of_day_label",
         ],
     )
     pet_df.to_csv(output_csv_path, index=False)
