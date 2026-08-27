@@ -46,6 +46,26 @@ if __name__ == "__main__":
 
     ensure_models_if_needed()
 
+    # Auto time-of-day using VLM if requested and no explicit label
+    if "--auto-time-of-day" in sys.argv and "--time-of-day" not in sys.argv:
+        video_arg_idx = None
+        for i, arg in enumerate(sys.argv):
+            if arg == "--video" and i + 1 < len(sys.argv):
+                video_arg_idx = i + 1
+                break
+        if video_arg_idx:
+            video_path = sys.argv[video_arg_idx]
+            print("\n[run_pipeline] Estimating time-of-day via VLM...")
+            result = subprocess.run(
+                [sys.executable, "scripts/estimate_time_of_day.py", "--video", video_path],
+                capture_output=True, text=True
+            )
+            label = result.stdout.strip() or "unknown"
+            print(f"[run_pipeline] Estimated time-of-day: {label}")
+            sys.argv.extend(["--time-of-day", label])
+        else:
+            print("[run_pipeline] --video not found; cannot auto-estimate time-of-day.")
+
     # Run the actual pipeline script
     pipeline_path = root_dir / "src" / "pipeline" / "traffic_analyzer.py"
     if not pipeline_path.exists():
