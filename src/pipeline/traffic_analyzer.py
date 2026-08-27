@@ -534,6 +534,7 @@ def run_video_to_pet(
             prediction_tolerance=prediction_tolerance,
             video_source=video_source,
             time_of_day_label=time_of_day_label,
+            gate_config_path=gate_config_path,
         )
         pet_events = (
             result["pet_events"]
@@ -584,6 +585,8 @@ def run_video_to_pet(
                 "traj_b_json",
                 "video_source",
                 "time_of_day_label",
+                "gate_a_entry",
+                "gate_b_entry",
             ]
         )
         empty_df.to_csv(out_csv_path, index=False)
@@ -691,6 +694,8 @@ def run_video_to_pet(
             "traj_b_json",
             "video_source",
             "time_of_day_label",
+            "gate_a_entry",
+            "gate_b_entry",
         ],
     )
     df.to_csv(out_csv_path, index=False)
@@ -993,6 +998,7 @@ def run_pipeline(args):
         "video_path": getattr(args, "video", None),
         "video_source": getattr(args, "video_source", None),
         "time_of_day_label": getattr(args, "time_of_day", None),
+        "gate_config_path": getattr(args, "gate_config", "configs/gate_config.yaml"),
         "bev_config_path": getattr(args, "bev_config", "configs/bev_config.json"),
         "grid_config_path": getattr(
             args, "grid_config", "configs/GITI_grid_config.json"

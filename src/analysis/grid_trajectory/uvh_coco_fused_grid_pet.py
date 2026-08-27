@@ -182,6 +182,52 @@ def _overlap_over_person(person_box: Tuple[float, float, float, float], other_bo
     return 0.0 if area <= 0 else inter / area
 
 
+
+
+def _load_gates(gate_config_path):
+    """Load virtual gates from YAML config."""
+    import yaml
+    with open(gate_config_path) as f:
+        cfg = yaml.safe_load(f)
+    gates = []
+    for g in cfg['gates']:
+        gates.append({
+            'name': g['name'],
+            'p1': tuple(g['start']),
+            'p2': tuple(g['end']),
+            'entry_side': g.get('entry_side', 'left')
+        })
+    return gates
+
+
+def _line_side(p, p1, p2):
+    """Return signed side of point p relative to line p1->p2."""
+    ax, ay = p1
+    bx, by = p2
+    px, py = p
+    return (bx - ax) * (py - ay) - (by - ay) * (px - ax)
+
+
+def _get_entry_gate(points, gates):
+    """Determine the first gate a track enters, or 'unknown' if none."""
+    if len(points) < 2:
+        return 'unknown'
+    # Sort by frame
+    sorted_pts = sorted(points, key=lambda p: p.frame)
+    prev = sorted_pts[0]
+    for curr in sorted_pts[1:]:
+        for gate in gates:
+            side_prev = _line_side((prev.x, prev.y), gate['p1'], gate['p2'])
+            side_curr = _line_side((curr.x, curr.y), gate['p1'], gate['p2'])
+            if side_prev * side_curr < 0:
+                # crossing detected, check entry side
+                if gate['entry_side'] == 'left' and side_prev < 0 and side_curr > 0:
+                    return gate['name']
+                elif gate['entry_side'] == 'right' and side_prev > 0 and side_curr < 0:
+                    return gate['name']
+        prev = curr
+    return 'unknown'
+
 def run_uvh_coco_fused_grid_pet(
     video_path: str,
     bev_config_path: str,
@@ -203,6 +249,7 @@ def run_uvh_coco_fused_grid_pet(
     prediction_tolerance: float = 80.0,
     video_source: str = None,
     time_of_day_label: str = None,
+    gate_config_path: str = "configs/gate_config.yaml",
 ) -> Dict[str, Any]:
     video_path = str(Path(video_path).resolve())
     uvh_model_path = str(Path(uvh_model_path).resolve())
@@ -211,6 +258,12 @@ def run_uvh_coco_fused_grid_pet(
 
     if device == "auto":
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+    # Load gates for entry detection
+    try:
+        gates = _load_gates(gate_config_path)
+    except Exception:
+        gates = []
 
     # Grid + BEV mappers for detailed PET output
     spatial_grid = None
@@ -601,6 +654,8 @@ def run_uvh_coco_fused_grid_pet(
                         int(frame_ref),
                         fps
                     ),
+                    "gate_a_entry": _get_entry_gate(pts_a if first_id == track_a_id else pts_b, gates),
+                    "gate_b_entry": _get_entry_gate(pts_b if first_id == track_a_id else pts_a, gates),
                     "grid_cell": grid_cell,
                     "track_a_entry_frame": int(a_entry),
                     "track_a_exit_frame": int(a_exit),
@@ -645,6 +700,8 @@ def run_uvh_coco_fused_grid_pet(
             "traj_b_json",
             "video_source",
             "time_of_day_label",
+            "gate_a_entry",
+            "gate_b_entry",
         ],
     )
     pet_df.to_csv(output_csv_path, index=False)

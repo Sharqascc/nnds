@@ -12,6 +12,7 @@ REQUIRED_COLUMNS = [
     "track_b_entry_frame", "track_b_entry_time_sec", "track_b_exit_frame", "world_traj_i", "world_traj_j",
     "traj_a_json", "traj_b_json",
     "video_source", "time_of_day_label",
+    "gate_a_entry", "gate_b_entry",
 ]
 
 def test_demo_csv_has_required_columns():
