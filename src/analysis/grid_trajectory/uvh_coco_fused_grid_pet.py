@@ -594,7 +594,12 @@ def run_uvh_coco_fused_grid_pet(
                     "seg_a": int(seg_a),
                     "orig_track_b": int(orig_b),
                     "seg_b": int(seg_b),
-                    "conflict_type": "image_intersection",
+                    "conflict_type": classify_conflict_geometry(
+                        _track_to_json(pts_a if first_id == track_a_id else pts_b, bev_mapper),
+                        _track_to_json(pts_b if first_id == track_a_id else pts_a, bev_mapper),
+                        int(frame_ref),
+                        fps
+                    ),
                     "grid_cell": grid_cell,
                     "track_a_entry_frame": int(a_entry),
                     "track_a_exit_frame": int(a_exit),
