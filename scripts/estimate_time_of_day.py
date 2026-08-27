@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """
+EXPERIMENTAL / FUTURE WORK.
 Estimate time of day (morning/evening/unknown) from a video using VLM.
 
 Samples a few frames, sends them to the VLM with a prompt about lighting/shadows,

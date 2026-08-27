@@ -116,3 +116,18 @@ For full details, see the sensitivity scripts and `docs/final_submission_summary
 
 ### BEV Calibration Provenance
 The six calibration points were surveyed under a planar ground assumption; therefore, a planar homography fits them with very low error. This low error reflects self-consistency of the planarity assumption, not independently validated metric accuracy. Field validation against independently measured distances is recommended.
+
+## Optional: Time-of-Day Estimation (Future Work)
+
+The pipeline includes an **optional** VLM-based time-of-day estimator (`scripts/estimate_time_of_day.py`).
+It samples frames and uses a vision-language model to classify the scene as `morning`, `evening`, or `unknown`.
+
+This feature is **not part of the core validated pipeline** and is not required for any results in the paper.
+All reported metrics use manually specified time labels (`--time-of-day`).
+To enable the experimental VLM estimator, install the optional dependencies:
+
+```bash
+pip install -r requirements-vlm.txt
+```
+
+If the VLM dependencies are not installed, the estimator returns `"unknown"` and the pipeline continues normally.
