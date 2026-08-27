@@ -139,3 +139,21 @@ If the VLM dependencies are not installed, the estimator returns `"unknown"` and
 - `scripts/extract_event_frames.py` – save before/closest/after frames for manual inspection or VLM audits.
 
 - `scripts/generate_safety_report_groq.py` – optional LLM-based report generation (requires `GROQ_API_KEY`). Not part of core results.
+
+## ⚠️ VLM Utilities – Optional & Experimental
+
+The repository includes optional Vision‑Language Model (VLM) utilities for:
+
+- Time‑of‑day estimation (`scripts/estimate_time_of_day.py`)
+- Qualitative scene description (`src/vlm/analyzer.py`)
+- Experimental conflict‑type classification (`scripts/classify_conflict_type_vlm.py`)
+
+These are **not used in the main quantitative analysis** of the paper.
+All reported PET, conflict type, gate entry, and sensitivity metrics are deterministic and derived from trajectory geometry, not from VLM output.
+
+Preliminary tests showed that small VQA models (e.g., BLIP) cannot reliably distinguish traffic conflict types from static frames, often returning generic labels. Therefore, **conflict type is always computed geometrically** (`src/analysis/conflict_classifier.py`).
+
+To install optional VLM dependencies (if desired):
+```bash
+pip install -r requirements-vlm.txt
+```
