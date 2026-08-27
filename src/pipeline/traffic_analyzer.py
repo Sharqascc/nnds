@@ -414,6 +414,7 @@ def run_video_to_pet(
     max_frame_gap: int = 5,
     max_spatial_jump: float = 30.0,
     prediction_tolerance: float = 80.0,
+    gate_config_path: str = "configs/gate_config.yaml",
 ) -> pd.DataFrame:
     """Video → detections → grid → BEV → PET events CSV (SAM3 or RT-DETR).
 
@@ -664,6 +665,8 @@ def run_video_to_pet(
                 "world_traj_j": world_traj_j_val,
                 "traj_a_json": traj_a_json_val,
                 "traj_b_json": traj_b_json_val,
+                "gate_a_entry": _get(["gate_a_entry"], "unknown"),
+                "gate_b_entry": _get(["gate_b_entry"], "unknown"),
             }
         )
 
