@@ -2,61 +2,75 @@ meta:
   coordinate_system: image_pixels
   origin: top_left
   direction: x_right_y_down
-  description: Full-boundary virtual gates to minimize unknown entries.
+  description: Virtual gates for gate_counter.py tuned to traffic_video.mp4
 gates:
-- name: North_Gate
-  type: volume
-  mode: all
-  start:
-  - 0
-  - 150
-  end:
-  - 1600
-  - 150
-  entry_side: left
-  color:
-  - 255
-  - 0
-  - 255
-- name: South_Gate
-  type: volume
-  mode: all
-  start:
-  - 0
-  - 570
-  end:
-  - 1600
-  - 570
-  entry_side: right
-  color:
-  - 0
-  - 0
-  - 255
 - name: West_Gate
   type: volume
   mode: all
   start:
-  - 150
-  - 0
+  - 210
+  - 170
   end:
+  - 450
   - 150
-  - 720
-  entry_side: right
   color:
   - 255
   - 0
   - 0
+  entry_side: right
+- name: SouthWest_Gate
+  type: volume
+  mode: all
+  start:
+  - 205
+  - 211
+  end:
+  - 143
+  - 375
+  color:
+  - 0
+  - 255
+  - 0
+  entry_side: left
+- name: South_Gate
+  type: volume
+  mode: all
+  start:
+  - 125
+  - 420
+  end:
+  - 840
+  - 710
+  color:
+  - 0
+  - 0
+  - 255
+  entry_side: left
 - name: East_Gate
   type: volume
   mode: all
   start:
-  - 1450
-  - 0
+  - 1455
+  - 255
   end:
-  - 1450
-  - 720
-  entry_side: left
+  - 925
+  - 625
   color:
   - 255
   - 255
   - 0
+  entry_side: right
+- name: North_Gate
+  type: volume
+  mode: all
+  start:
+  - 1460
+  - 240
+  end:
+  - 840
+  - 190
+  color:
+  - 255
+  - 0
+  - 255
+  entry_side: left
