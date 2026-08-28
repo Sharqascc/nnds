@@ -30,7 +30,7 @@
   ],
   "notes": {
     "updated": "expanded bounds for realistic BEV footprint",
-    "target_width_ft": 20.0,
-    "target_height_ft": 16.0
+    "target_width_m": 20.0,
+    "target_height_m": 16.0
   }
 }
