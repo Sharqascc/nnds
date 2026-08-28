@@ -14,3 +14,7 @@ Figure `bev_dual_panel_validation.png` shows:
 - Camera perspective with numbered calibration points (a)
 - BEV projected points with one held-out point and its residual error vector (b)
 This demonstrates self-consistency under the planar assumption, not independent field accuracy.
+
+## BEV Held-out Validation Figure
+- The `bev_dual_panel_validation.png` includes a magnified inset to show the sub-micron separation between true and projected held-out points.
+- This demonstrates numerical self-consistency, not independent field accuracy.
