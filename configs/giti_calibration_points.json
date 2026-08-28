@@ -10,7 +10,47 @@
     "updated": "expanded calibration footprint",
     "review": "mid-edge points corrected for BEV rectangle consistency",
     "target_width_m": 20.0,
-    "target_height_m": 16.0
+    "target_height_m": 16.0,
+    "camera_intrinsics": {
+      "fx": 2982.2714708587982,
+      "fy": 2983.007166994622,
+      "cx": 1495.5006051867124,
+      "cy": 1985.8695126015184
+    },
+    "distortion_coefficients": [
+      [
+        0.1391338686080078,
+        -0.8351394748565204,
+        0.00044397639000515155,
+        -0.0005480278785216465,
+        1.4781322879925363
+      ]
+    ],
+    "camera_matrix": [
+      [
+        2982.2714708587982,
+        0.0,
+        1495.5006051867124
+      ],
+      [
+        0.0,
+        2983.007166994622,
+        1985.8695126015184
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "checkerboard": {
+      "pattern_size": [
+        9,
+        6
+      ],
+      "square_size_mm": 23.5,
+      "images_used": 12
+    }
   },
   "calibration_points": [
     {

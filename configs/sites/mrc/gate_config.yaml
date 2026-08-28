@@ -1,0 +1,6 @@
+meta:
+  coordinate_system: image_pixels
+  origin: top_left
+  direction: x_right_y_down
+  description: Placeholder gates for MRC - to be annotated on video frame
+gates: []
