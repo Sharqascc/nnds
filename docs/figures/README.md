@@ -18,3 +18,8 @@ This demonstrates self-consistency under the planar assumption, not independent 
 ## BEV Held-out Validation Figure
 - The `bev_dual_panel_validation.png` includes a magnified inset to show the sub-micron separation between true and projected held-out points.
 - This demonstrates numerical self-consistency, not independent field accuracy.
+
+## BEV Calibration Geometry
+- `bev_calibration_geometry.png` shows the camera correspondences and rectified local metric ROI.
+- This figure demonstrates **numerical conditioning and planar geometry**, not independent physical validation.
+- Hartley-normalized DLT condition number: 1.71.
