@@ -2,15 +2,15 @@
   "metadata": {
     "timestamp": "2024-02-22",
     "description": "G-ITI Intersection Calibration Points",
-    "coordinate_system": "Northing, Easting, Elevation (feet)",
+    "coordinate_system": "Northing, Easting, Elevation (US survey feet)",
     "origin": "Point 1 (222006.49, 730911.81, 197)",
     "total_points": 6,
     "image_size": "1600x720",
     "camera_used": "Mobile Phone",
     "updated": "expanded calibration footprint",
-    "target_width_m": 20.0,
-    "target_height_m": 16.0,
-    "review": "mid-edge points corrected for BEV rectangle consistency"
+    "review": "mid-edge points corrected for BEV rectangle consistency",
+    "target_width_ft": 20.0,
+    "target_height_ft": 16.0
   },
   "calibration_points": [
     {

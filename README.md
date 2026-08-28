@@ -157,3 +157,11 @@ To install optional VLM dependencies (if desired):
 ```bash
 pip install -r requirements-vlm.txt
 ```
+
+## ⚠️ Calibration & Units
+
+- World coordinates in `configs/` are in **US survey feet**.
+- The calibration region is a synthetic **20 ft × 16 ft** rectangle.
+- BEV visualizations may show local metres after conversion (`1 ft = 0.3048 m`).
+- The reported condition number and reprojection residual document **numerical conditioning and internal consistency**, not independent field accuracy.
+- See `docs/calibration_provenance.md` for full provenance.
