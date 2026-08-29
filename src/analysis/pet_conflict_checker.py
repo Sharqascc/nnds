@@ -987,7 +987,12 @@ class PETConflictChecker:
         )
 
         speeds = np.sqrt(dx**2 + dy**2) / np.maximum(dt, 0.001)
-        return float(np.median(speeds))
+        # Filter out non-finite values (NaN, inf) from speed estimation
+        valid_speeds = speeds[np.isfinite(speeds)]
+        if len(valid_speeds) == 0:
+            return 5.0  # Fallback if all speeds are invalid
+
+        return float(np.median(valid_speeds))
 
     # --- Pipeline integration hooks -----------------------------------------
 
