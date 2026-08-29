@@ -36,7 +36,7 @@ def _get_velocity_vector(points: List[Dict], before_frame: int, window: int = 5)
         return (0.0, 0.0)
 
     # Prefer world coordinates if available, else pixel
-    if all(k in p1 and k in p2 for k in ['world_x', 'world_y']):
+    if all(p1.get(k) is not None and p2.get(k) is not None for k in ['world_x', 'world_y']):
         vx = (p2['world_x'] - p1['world_x']) / dt
         vy = (p2['world_y'] - p1['world_y']) / dt
     else:

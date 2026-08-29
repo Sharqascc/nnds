@@ -278,7 +278,13 @@ def run_uvh_coco_fused_grid_pet(
             bev_cfg = _json.load(f)
         H = np.array(bev_cfg["H_pixel_to_world"], dtype=np.float32)
         bounds = bev_cfg
-        bev_res = bev_cfg.get("bev_resolution", bev_cfg.get("resolution", [1000, 800]))
+        bev_res = bev_cfg.get("bev_resolution", None)
+        if bev_res is None:
+            # Compute pixel dimensions from resolution (m/px) and bounds
+            res = bev_cfg.get("resolution", 0.1)
+            bev_w = int((bev_cfg["x_max"] - bev_cfg["x_min"]) / res)
+            bev_h = int((bev_cfg["y_max"] - bev_cfg["y_min"]) / res)
+            bev_res = [bev_w, bev_h]
         bev_mapper = BEVMapper(H, bounds, bev_res)
     except Exception:
         bev_mapper = None
