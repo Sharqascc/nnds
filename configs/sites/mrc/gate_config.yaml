@@ -2,5 +2,33 @@ meta:
   coordinate_system: image_pixels
   origin: top_left
   direction: x_right_y_down
-  description: Placeholder gates for MRC - to be annotated on video frame
-gates: []
+  description: MRC intersection gate configuration (4 gates)
+gates:
+- name: MRC_North
+  type: volume
+  mode: all
+  start: [8, 251]
+  end: [592, 93]
+  color: [255, 0, 0]  # distinct colors
+  entry_side: both
+- name: MRC_East
+  type: volume
+  mode: all
+  start: [1269, 192]
+  end: [1918, 398]
+  color: [215, 50, 60]  # distinct colors
+  entry_side: both
+- name: MRC_South
+  type: volume
+  mode: all
+  start: [1917, 480]
+  end: [1368, 773]
+  color: [175, 100, 120]  # distinct colors
+  entry_side: both
+- name: MRC_West
+  type: volume
+  mode: all
+  start: [1189, 1024]
+  end: [5, 445]
+  color: [135, 150, 180]  # distinct colors
+  entry_side: both
