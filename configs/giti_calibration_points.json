@@ -1,133 +1,83 @@
 {
   "metadata": {
-    "timestamp": "2024-02-22",
-    "description": "G-ITI Intersection Calibration Points",
-    "coordinate_system": "Northing, Easting (metres), Elevation (feet)",
-    "origin": "Point 1 (222006.49, 730911.81, 197)",
+    "site": "GITI",
+    "coordinate_system": "Local planar (metres), origin at P4",
+    "description": "GITI Intersection Calibration Points (synthetic rectangle)",
     "total_points": 6,
     "image_size": "1600x720",
     "camera_used": "Mobile Phone",
-    "updated": "expanded calibration footprint",
-    "review": "mid-edge points corrected for BEV rectangle consistency",
-    "target_width_m": 20.0,
-    "target_height_m": 16.0,
-    "camera_intrinsics": {
-      "fx": 2982.2714708587982,
-      "fy": 2983.007166994622,
-      "cx": 1495.5006051867124,
-      "cy": 1985.8695126015184
-    },
-    "distortion_coefficients": [
-      [
-        0.1391338686080078,
-        -0.8351394748565204,
-        0.00044397639000515155,
-        -0.0005480278785216465,
-        1.4781322879925363
-      ]
-    ],
-    "camera_matrix": [
-      [
-        2982.2714708587982,
-        0.0,
-        1495.5006051867124
-      ],
-      [
-        0.0,
-        2983.007166994622,
-        1985.8695126015184
-      ],
-      [
-        0.0,
-        0.0,
-        1.0
-      ]
-    ],
-    "checkerboard": {
-      "pattern_size": [
-        9,
-        6
-      ],
-      "square_size_mm": 23.5,
-      "images_used": 12
-    }
+    "origin": "P4 (0,0); synthetic 20m x 16m rectangle"
   },
   "calibration_points": [
     {
       "id": 1,
-      "description": "Expanded corner 1",
       "pixel": {
         "x": 194.0,
         "y": 124.0
       },
       "world": {
-        "easting": 730900.97,
-        "northing": 221998.35,
+        "easting": 0.0,
+        "northing": 16.0,
         "elevation_ft": 197.0
       }
     },
     {
       "id": 2,
-      "description": "Expanded corner 2",
       "pixel": {
         "x": 1455.0,
         "y": 124.0
       },
       "world": {
-        "easting": 730920.97,
-        "northing": 221998.35,
+        "easting": 20.0,
+        "northing": 16.0,
         "elevation_ft": 197.0
       }
     },
     {
       "id": 3,
-      "description": "Expanded corner 3",
       "pixel": {
         "x": 1455.0,
         "y": 715.0
       },
       "world": {
-        "easting": 730920.97,
-        "northing": 222014.35,
+        "easting": 20.0,
+        "northing": 0.0,
         "elevation_ft": 197.0
       }
     },
     {
       "id": 4,
-      "description": "Expanded corner 4",
       "pixel": {
         "x": 194.0,
         "y": 715.0
       },
       "world": {
-        "easting": 730900.97,
-        "northing": 222014.35,
+        "easting": 0.0,
+        "northing": 0.0,
         "elevation_ft": 197.0
       }
     },
     {
       "id": 5,
-      "description": "Expanded mid-edge east",
       "pixel": {
         "x": 1455.0,
         "y": 419.5
       },
       "world": {
-        "easting": 730920.97,
-        "northing": 222006.35,
+        "easting": 20.0,
+        "northing": 8.0,
         "elevation_ft": 197.0
       }
     },
     {
       "id": 6,
-      "description": "Expanded mid-edge west",
       "pixel": {
         "x": 194.0,
         "y": 419.5
       },
       "world": {
-        "easting": 730900.97,
-        "northing": 222006.35,
+        "easting": 0.0,
+        "northing": 8.0,
         "elevation_ft": 197.0
       }
     }

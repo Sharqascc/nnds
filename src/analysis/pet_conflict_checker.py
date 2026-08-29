@@ -40,6 +40,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from scipy.signal import savgol_filter
 import pandas as pd
 
 # Import core types (ensure core.types exists)
@@ -995,6 +996,52 @@ class PETConflictChecker:
         return float(np.median(valid_speeds))
 
     # --- Pipeline integration hooks -----------------------------------------
+
+    def _estimate_velocity_savgol(self, traj: pd.DataFrame, window: int = 7, polyorder: int = 2) -> float:
+        """Estimate median instantaneous planar speed using Savitzky-Golay smoothing.
+
+        Requires uniformly sampled timestamps. Falls back to median-displacement estimator
+        if timestamps are non-uniform or trajectory is too short.
+        """
+        required = {"x", "y", "timestamp"}
+        if not required.issubset(traj.columns):
+            return np.nan
+
+        # Sort and drop NaNs
+        traj = traj.sort_values("timestamp").dropna(subset=["x", "y", "timestamp"])
+        if len(traj) < 3:
+            return self._estimate_velocity(traj)
+
+        t = traj["timestamp"].to_numpy(dtype=float)
+        x = traj["x"].to_numpy(dtype=float)
+        y = traj["y"].to_numpy(dtype=float)
+
+        # Check for strictly increasing timestamps
+        if np.any(np.diff(t) <= 0):
+            return self._estimate_velocity(traj)
+
+        # Check if timestamps are approximately uniform
+        dt = float(np.median(np.diff(t)))
+        if not np.allclose(np.diff(t), dt, rtol=0.05, atol=1e-6):
+            return self._estimate_velocity(traj)
+
+        # Adjust window: must be odd, > polyorder, and <= len(traj)
+        if window % 2 == 0:
+            window -= 1
+        window = min(window, len(traj) if len(traj) % 2 == 1 else len(traj) - 1)
+        if window < polyorder + 2 or window <= 0:
+            return self._estimate_velocity(traj)
+
+        # Apply Savitzky-Golay derivative
+        vx = savgol_filter(x, window, polyorder, deriv=1, delta=dt)
+        vy = savgol_filter(y, window, polyorder, deriv=1, delta=dt)
+        speeds = np.hypot(vx, vy)
+
+        # Filter non-finite and return median
+        valid = np.isfinite(speeds)
+        if not np.any(valid):
+            return np.nan
+        return float(np.median(speeds[valid]))
 
     def extract_trajectories(
         self,
