@@ -14,7 +14,6 @@ outputs/
 data/models/
 sample_data/
 !data/sample_data/
-!data/sample_data/traffic_video.mp4
 
 # Backup files
 *.bak
