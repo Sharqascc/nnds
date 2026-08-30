@@ -643,8 +643,13 @@ def run_uvh_coco_fused_grid_pet(
                 else:
                     pet_time_based = float('nan')
 
+                # Exclude events where both tracks originate from the same original track (segments of same vehicle)
+                if orig_a == orig_b:
+                    continue
+
                 pet_events.append({
                     "event_id": event_id,
+                    "site": video_source if video_source is not None else Path(video_path).stem,
                     "pet": float(pet),               # frame-based PET
                     "pet_time_based": pet_time_based, # time-based PET
                     "frame": int(frame_ref),
@@ -683,6 +688,7 @@ def run_uvh_coco_fused_grid_pet(
         pet_events,
         columns=[
             "event_id",
+            "site",
             "pet",
             "pet_time_based",
             "frame",
