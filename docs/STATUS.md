@@ -53,3 +53,17 @@ Do NOT use them for manuscript claims:
 - `MIGRATION_GUIDE.md`
 - `PUBLICATION_READINESS.md` (70 bytes - incomplete)
 - `DEBUGGING.md` (debug log)
+
+## Event Count Reconciliation (168 → 153)
+
+| Version | Count | Change | Reason |
+|---------|-------|--------|--------|
+| 168 | Buggy BEV mapper | - | World coordinates null, PET computed incorrectly |
+| 164 | After BEV mapper fix | -4 | Same-origin exclusion (orig_a == orig_b) removed 4 events |
+| **153** | **After PET < 0.10s screen** | **-11** | Removed 11 temporal-resolution artifacts (PET < 3 frames) |
+
+**Net change: 168 → 153 = 15 events removed**
+- 4 removed by same-origin exclusion
+- 11 removed by PET < 0.10s screen
+
+The 164 raw count is after same-origin exclusion, and the 153 screened count is after PET threshold.

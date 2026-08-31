@@ -41,3 +41,19 @@ not affected by conflict-type classification.
 
 **For the paper:** Report conflict types as "descriptive" and do not draw safety conclusions
 based on MRC conflict-type breakdown.
+
+## Temporal-Duplicate Rule Justification (10 frames)
+
+**Rule:** Same vehicle pair in same grid cell must be separated by ≥ 10 frames (0.33s) to be considered distinct episodes.
+
+**Justification:**
+- At 30 FPS, 10 frames = 0.33s.
+- Grid cell size = 100 px = 1 m (at 10 px/m BEV resolution).
+- At typical urban speeds (5-10 m/s), a vehicle takes 0.1-0.2s to traverse 1 m.
+- However, considering acceleration, deceleration, and detection lag, 10 frames (0.33s) is a conservative lower bound for a vehicle to fully enter, traverse, and exit a conflict zone.
+- Two events separated by < 10 frames likely represent the same physical interaction counted twice due to tracking noise or ID switches.
+- Events separated by ≥ 10 frames are distinct temporal episodes where vehicles interacted, left the zone, and interacted again.
+
+**Empirical validation from current GITI screened dataset:**
+- Minimum temporal separation between duplicate (pair, grid_cell) events = 33 frames (1.10s) — well above the 10-frame threshold.
+- All 7 duplicate groups have separations ≥ 33 frames (≥ 1.10s), confirming they are distinct interactions.
