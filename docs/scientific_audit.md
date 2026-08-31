@@ -57,3 +57,12 @@ based on MRC conflict-type breakdown.
 **Empirical validation from current GITI screened dataset:**
 - Minimum temporal separation between duplicate (pair, grid_cell) events = 33 frames (1.10s) — well above the 10-frame threshold.
 - All 7 duplicate groups have separations ≥ 33 frames (≥ 1.10s), confirming they are distinct interactions.
+
+## MRC Gate Function Correction
+
+The `_get_entry_gate` function in `uvh_coco_fused_grid_pet.py` originally only handled
+`entry_side='left'` and `entry_side='right'`. All MRC gates have `entry_side='both'`,
+so the function always returned `'unknown'`. This was fixed by adding a condition to
+handle `entry_side='both'` (treating it as a crossing in either direction).
+
+**Result:** 11/34 MRC events now have at least one known gate entry (up from 0/34).
