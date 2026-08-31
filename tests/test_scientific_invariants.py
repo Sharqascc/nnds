@@ -8,6 +8,7 @@ If they are not present (e.g., in CI without videos), tests will be skipped.
 """
 
 import pandas as pd
+import numpy as np
 import json
 import pytest
 from pathlib import Path
@@ -41,10 +42,21 @@ def test_no_same_orig():
     assert (giti['orig_track_a'] != giti['orig_track_b']).all()
 
 @pytest.mark.skipif(not _output_exists(), reason="Screened outputs not generated")
-def test_unique_pairs():
-    giti, _ = _load_results()
-    pairs = giti.apply(lambda r: tuple(sorted([r['orig_track_a'], r['orig_track_b']])), axis=1)
-    assert pairs.is_unique
+def test_no_temporal_duplicates():
+    """
+    Same vehicle pair must not produce two events in the same grid cell
+    within a short temporal window (< 10 frames / 0.33s).
+    If they are separated by >= 10 frames, they are distinct episodes.
+    """
+    giti, mrc = _load_results()
+    for df, site in [(giti, 'GITI'), (mrc, 'MRC')]:
+        key = df.apply(lambda r: tuple(sorted([r['orig_track_a'], r['orig_track_b']])) + (r['grid_cell'],), axis=1)
+        for key_val in key[key.duplicated(keep=False)].unique():
+            group = df[key == key_val].sort_values('frame')
+            frames = group['frame'].values
+            if len(frames) > 1:
+                min_sep = min(np.diff(frames))
+                assert min_sep >= 10, f"{site}: Duplicate (pair, grid) in {key_val[2]} with temporal separation {min_sep} frames < 10!"
 
 @pytest.mark.skipif(not _output_exists(), reason="Screened outputs not generated")
 def test_world_coords():
@@ -70,3 +82,10 @@ def test_mrc_invariants():
     _, mrc = _load_results()
     assert (mrc['pet'] > 0).all()
     assert (mrc['orig_track_a'] != mrc['orig_track_b']).all()
+    key = mrc.apply(lambda r: tuple(sorted([r['orig_track_a'], r['orig_track_b']])) + (r['grid_cell'],), axis=1)
+    for key_val in key[key.duplicated(keep=False)].unique():
+        group = mrc[key == key_val].sort_values('frame')
+        frames = group['frame'].values
+        if len(frames) > 1:
+            min_sep = min(np.diff(frames))
+            assert min_sep >= 10, f"MRC: Duplicate (pair, grid) in {key_val[2]} with temporal separation {min_sep} frames < 10!"
