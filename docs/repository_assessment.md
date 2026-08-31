@@ -1,3 +1,5 @@
+> **DEPRECATED** — This document contains historical results. See `STATUS.md` for current results.
+
 # Final Repository Assessment Report
 
 **Date:** 2026-08-25T12:08:21.445090  

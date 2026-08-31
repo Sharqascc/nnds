@@ -1,3 +1,5 @@
+> **DEPRECATED** — This document contains historical results. See `STATUS.md` for current results.
+
 # Final Submission Summary
 
 **Test count:** 59

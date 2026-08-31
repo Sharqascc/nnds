@@ -46,7 +46,13 @@ def test_no_temporal_duplicates():
     """
     Same vehicle pair must not produce two events in the same grid cell
     within a short temporal window (< 10 frames / 0.33s).
-    If they are separated by >= 10 frames, they are distinct episodes.
+
+    Justification: At 30 FPS, 10 frames = 0.33s. A vehicle entering a grid cell
+    takes at least 10 frames to traverse and exit the cell (based on cell size
+    ~100px and typical vehicle speeds). Two events separated by < 10 frames
+    likely represent the same physical interaction being counted twice.
+    Events separated by >= 10 frames are distinct temporal episodes where the
+    vehicles interacted, left the zone, and interacted again.
     """
     giti, mrc = _load_results()
     for df, site in [(giti, 'GITI'), (mrc, 'MRC')]:

@@ -1,3 +1,5 @@
+> **DEPRECATED** — This document contains historical results. See `STATUS.md` for current results.
+
 # Tracking System Full Details Report
 
 **Generated on:** 2026-08-25T13:14:38.194856  

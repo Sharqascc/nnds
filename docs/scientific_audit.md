@@ -30,3 +30,14 @@
 3. Tracking errors may persist; low-PET needs manual review.
 4. Conflict type heuristic.
 5. PET cutoff at 3.0s.
+
+## MRC Conflict Type Limitation
+
+At MRC, 25/34 screened events (73.5%) are classified as "other" by the geometric conflict classifier.
+This high proportion indicates that the heuristic classifier (based on velocity-vector angle)
+is not well-suited for MRC's traffic layout. This is a **stated limitation**: conflict-type
+labels are descriptive and not validated against ground truth. The PET values themselves are
+not affected by conflict-type classification.
+
+**For the paper:** Report conflict types as "descriptive" and do not draw safety conclusions
+based on MRC conflict-type breakdown.

@@ -1,3 +1,5 @@
+> **DEPRECATED** — This document contains historical results. See `STATUS.md` for current results.
+
 # Full Repository Details Report (Post-Final Polish)
 
 **Generated on:** 2026-08-25T12:54:20.699186  

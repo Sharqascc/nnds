@@ -1,3 +1,5 @@
+> **DEPRECATED** — This document contains historical results. See `STATUS.md` for current results.
+
 # NNDS Repository Comprehensive Assessment Report
 
 **Generated:** 2026-08-26T19:04:50.535170  

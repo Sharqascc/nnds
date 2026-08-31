@@ -1,3 +1,5 @@
+> **DEPRECATED** — This document contains historical results. See `STATUS.md` for current results.
+
 # NNDS Migration Guide
 
 ## For Users Upgrading to Cleaned Repository

@@ -1,3 +1,5 @@
+> **DEPRECATED** — This document contains historical results. See `STATUS.md` for current results.
+
 # NNDS System Cleanup Summary
 
 **Date:** 2026-05-07  

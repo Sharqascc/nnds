@@ -1,3 +1,5 @@
+> **DEPRECATED** — This document contains historical results. See `STATUS.md` for current results.
+
 # Final Comprehensive Assessment Report (Complete)
 
 **Generated:** 2026-08-26T19:24:31.763852  
