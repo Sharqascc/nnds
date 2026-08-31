@@ -1,3 +1,42 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:d5bcf07bd0c082dc3c3206d9764812f77d8bd36221f12359c93d128313638fad
-size 1267
+{
+  "site": "GITI",
+  "experiment": "conditional_speed_sensitivity_monte_carlo",
+  "trials_per_sigma": 200,
+  "seed": 42,
+  "calibration_point_noise_distribution": "Gaussian",
+  "calibration_point_noise_sigma_px": [
+    0.5,
+    1.0,
+    2.0
+  ],
+  "vehicle_footpoint_noise_px": 0.0,
+  "trajectory_type": "synthetic_straight_constant_speed",
+  "nominal_speed_mps": 10.0,
+  "nominal_speed_kmh": 36.0,
+  "fps": 30.0,
+  "speed_estimator": "median_interframe_displacement",
+  "homography_method": "Hartley_normalized_DLT",
+  "results": {
+    "0.5": {
+      "mean_abs_error_kmh": 0.035,
+      "median_abs_error_kmh": 0.034,
+      "p95_kmh": 0.084,
+      "max_kmh": 0.122,
+      "relative_error_pct": 0.096
+    },
+    "1.0": {
+      "mean_abs_error_kmh": 0.072,
+      "median_abs_error_kmh": 0.071,
+      "p95_kmh": 0.172,
+      "max_kmh": 0.257,
+      "relative_error_pct": 0.201
+    },
+    "2.0": {
+      "mean_abs_error_kmh": 0.148,
+      "median_abs_error_kmh": 0.146,
+      "p95_kmh": 0.364,
+      "max_kmh": 0.469,
+      "relative_error_pct": 0.412
+    }
+  }
+}

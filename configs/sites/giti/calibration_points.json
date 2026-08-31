@@ -1,3 +1,84 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:6ac8d91c289f37c6f79911cbc6cd3142cca1469924f332ee0073d2fd0ff5d083
-size 1501
+{
+  "metadata": {
+    "site": "GITI",
+    "coordinate_system": "Local planar (metres), origin at P4",
+    "description": "GITI Calibration Points (synthetic rectangle)",
+    "total_points": 6,
+    "image_size": "1600x720",
+    "camera_used": "Mobile Phone"
+  },
+  "calibration_points": [
+    {
+      "id": 1,
+      "pixel": {
+        "x": 194.0,
+        "y": 124.0
+      },
+      "world": {
+        "easting": 0.0,
+        "northing": 16.0,
+        "elevation_ft": 197.0
+      }
+    },
+    {
+      "id": 2,
+      "pixel": {
+        "x": 1455.0,
+        "y": 124.0
+      },
+      "world": {
+        "easting": 20.0,
+        "northing": 16.0,
+        "elevation_ft": 197.0
+      }
+    },
+    {
+      "id": 3,
+      "pixel": {
+        "x": 1455.0,
+        "y": 715.0
+      },
+      "world": {
+        "easting": 20.0,
+        "northing": 0.0,
+        "elevation_ft": 197.0
+      }
+    },
+    {
+      "id": 4,
+      "pixel": {
+        "x": 194.0,
+        "y": 715.0
+      },
+      "world": {
+        "easting": 0.0,
+        "northing": 0.0,
+        "elevation_ft": 197.0
+      }
+    },
+    {
+      "id": 5,
+      "pixel": {
+        "x": 1455.0,
+        "y": 419.5
+      },
+      "world": {
+        "easting": 20.0,
+        "northing": 8.0,
+        "elevation_ft": 197.0
+      }
+    },
+    {
+      "id": 6,
+      "pixel": {
+        "x": 194.0,
+        "y": 419.5
+      },
+      "world": {
+        "easting": 0.0,
+        "northing": 8.0,
+        "elevation_ft": 197.0
+      }
+    }
+  ]
+}

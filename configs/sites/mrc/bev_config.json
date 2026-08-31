@@ -1,3 +1,34 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:f2450a714f2c4bc03f1e28810a7b9254cd9549d2a2cea0b1f15ffc0574198aa7
-size 625
+{
+  "x_min": -2.0,
+  "x_max": 22.0,
+  "y_min": -2.0,
+  "y_max": 18.0,
+  "resolution": 0.1,
+  "bev_resolution": [
+    240,
+    200
+  ],
+  "H_pixel_to_world": [
+    [
+      0.009005298245671867,
+      0.0017785824302085672,
+      -2.1403789996497395
+    ],
+    [
+      -0.003857978301015707,
+      -0.01981946655122168,
+      19.020533338900115
+    ],
+    [
+      -0.00034514417077876784,
+      0.0002662579369545729,
+      1.0
+    ]
+  ],
+  "site": "MRC",
+  "coordinate_system": "Local planar (metres)",
+  "notes": {
+    "description": "MRC BEV using synthetic rectangle calibration",
+    "method": "Hartley-normalized DLT"
+  }
+}

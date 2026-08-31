@@ -1,3 +1,84 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:f42625ed83296e88b4f6b572b19d35094e6f49d7eb00109b1cb7c4d6edd21d5c
-size 1499
+{
+  "metadata": {
+    "site": "MRC",
+    "coordinate_system": "Local planar (metres), origin at P4",
+    "description": "MRC Calibration Points (synthetic rectangle)",
+    "total_points": 6,
+    "image_size": "1920x1080",
+    "camera_used": "Mobile Phone"
+  },
+  "calibration_points": [
+    {
+      "id": 1,
+      "pixel": {
+        "x": 210.0,
+        "y": 140.0
+      },
+      "world": {
+        "easting": 0.0,
+        "northing": 16.0,
+        "elevation_ft": 197.0
+      }
+    },
+    {
+      "id": 2,
+      "pixel": {
+        "x": 1442.0,
+        "y": 225.0
+      },
+      "world": {
+        "easting": 20.0,
+        "northing": 16.0,
+        "elevation_ft": 197.0
+      }
+    },
+    {
+      "id": 3,
+      "pixel": {
+        "x": 1539.0,
+        "y": 660.0
+      },
+      "world": {
+        "easting": 20.0,
+        "northing": 0.0,
+        "elevation_ft": 197.0
+      }
+    },
+    {
+      "id": 4,
+      "pixel": {
+        "x": 50.0,
+        "y": 950.0
+      },
+      "world": {
+        "easting": 0.0,
+        "northing": 0.0,
+        "elevation_ft": 197.0
+      }
+    },
+    {
+      "id": 5,
+      "pixel": {
+        "x": 1487.0,
+        "y": 428.0
+      },
+      "world": {
+        "easting": 20.0,
+        "northing": 8.0,
+        "elevation_ft": 197.0
+      }
+    },
+    {
+      "id": 6,
+      "pixel": {
+        "x": 140.0,
+        "y": 495.0
+      },
+      "world": {
+        "easting": 0.0,
+        "northing": 8.0,
+        "elevation_ft": 197.0
+      }
+    }
+  ]
+}

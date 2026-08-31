@@ -1,3 +1,26 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:6b92fb685e50468222bf6f132625e74bad689ae92e602d3c7ab7421253eaca64
-size 350
+{
+  "corners": {
+    "top_left": [
+      0,
+      0
+    ],
+    "top_right": [
+      1600,
+      0
+    ],
+    "bottom_left": [
+      0,
+      720
+    ],
+    "bottom_right": [
+      1600,
+      720
+    ]
+  },
+  "configuration": {
+    "cell_size": 100,
+    "naming_style": "cell_{col}_{row}"
+  },
+  "site": "GITI",
+  "description": "GITI spatial grid (100px cells)"
+}

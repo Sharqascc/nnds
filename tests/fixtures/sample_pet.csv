@@ -1,3 +1,4 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:da5db82082c225ac38eb982168080384f808e7122a5994bd9ecbdbbe6b6fd44f
-size 1009068
+event_id,site,pet,conflict_type,grid_cell,orig_track_a,orig_track_b
+0,GITI,0.5,side_swipe,cell_A_1,1,2
+1,GITI,0.8,head_on,cell_B_2,3,4
+2,MRC,0.6,crossing,cell_C_3,5,6

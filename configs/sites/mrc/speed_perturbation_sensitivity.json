@@ -1,3 +1,42 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:3358900189885b6198a2edab7818ee926bdc1b997d5d1fa8f88c462380ae1047
-size 1265
+{
+  "site": "MRC",
+  "experiment": "conditional_speed_sensitivity_monte_carlo",
+  "trials_per_sigma": 200,
+  "seed": 42,
+  "calibration_point_noise_distribution": "Gaussian",
+  "calibration_point_noise_sigma_px": [
+    0.5,
+    1.0,
+    2.0
+  ],
+  "vehicle_footpoint_noise_px": 0.0,
+  "trajectory_type": "synthetic_straight_constant_speed",
+  "nominal_speed_mps": 10.0,
+  "nominal_speed_kmh": 36.0,
+  "fps": 30.0,
+  "speed_estimator": "median_interframe_displacement",
+  "homography_method": "Hartley_normalized_DLT",
+  "results": {
+    "0.5": {
+      "mean_abs_error_kmh": 0.037,
+      "median_abs_error_kmh": 0.036,
+      "p95_kmh": 0.096,
+      "max_kmh": 0.136,
+      "relative_error_pct": 0.104
+    },
+    "1.0": {
+      "mean_abs_error_kmh": 0.078,
+      "median_abs_error_kmh": 0.077,
+      "p95_kmh": 0.181,
+      "max_kmh": 0.289,
+      "relative_error_pct": 0.218
+    },
+    "2.0": {
+      "mean_abs_error_kmh": 0.16,
+      "median_abs_error_kmh": 0.158,
+      "p95_kmh": 0.391,
+      "max_kmh": 0.561,
+      "relative_error_pct": 0.445
+    }
+  }
+}

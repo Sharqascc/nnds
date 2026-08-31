@@ -1,3 +1,32 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:ce8aa4e891b656347deced41be02002841e94b3f6be7323acc3692499f40df6e
-size 504
+{
+  "site": "MRC",
+  "experiment": "position_perturbation_sensitivity",
+  "trials_per_sigma": 200,
+  "seed": 42,
+  "calibration_point_noise_distribution": "Gaussian",
+  "calibration_point_noise_sigma_px": [
+    0.5,
+    1.0,
+    2.0
+  ],
+  "results": {
+    "0.5": {
+      "mean_m": 0.011,
+      "median_m": 0.01,
+      "p95_m": 0.019,
+      "max_m": 0.026
+    },
+    "1.0": {
+      "mean_m": 0.022,
+      "median_m": 0.021,
+      "p95_m": 0.036,
+      "max_m": 0.05
+    },
+    "2.0": {
+      "mean_m": 0.045,
+      "median_m": 0.041,
+      "p95_m": 0.075,
+      "max_m": 0.112
+    }
+  }
+}

@@ -1,3 +1,26 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:afc72969dfe15202dab99b13db0053c9add35b8a94ae2a71fef3ded3a5cf288d
-size 350
+{
+  "corners": {
+    "top_left": [
+      0,
+      0
+    ],
+    "top_right": [
+      1920,
+      0
+    ],
+    "bottom_left": [
+      0,
+      1080
+    ],
+    "bottom_right": [
+      1920,
+      1080
+    ]
+  },
+  "configuration": {
+    "cell_size": 100,
+    "naming_style": "cell_{col}_{row}"
+  },
+  "site": "MRC",
+  "description": "MRC spatial grid (100px cells)"
+}
