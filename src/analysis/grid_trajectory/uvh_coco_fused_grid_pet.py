@@ -209,7 +209,7 @@ def _line_side(p, p1, p2):
 
 
 def _get_entry_gate(points, gates):
-    """Determine the first gate a track enters, or 'unknown' if none."""
+    """Determine the first gate a track enters, or "unknown" if none."""
     if len(points) < 2:
         return 'unknown'
     # Sort by frame
@@ -221,13 +221,15 @@ def _get_entry_gate(points, gates):
             side_curr = _line_side((curr.x, curr.y), gate['p1'], gate['p2'])
             if side_prev * side_curr < 0:
                 # crossing detected, check entry side
-                if gate['entry_side'] == 'left' and side_prev < 0 and side_curr > 0:
+                entry_side = gate['entry_side']
+                if entry_side == 'both':
                     return gate['name']
-                elif gate['entry_side'] == 'right' and side_prev > 0 and side_curr < 0:
+                elif entry_side == 'left' and side_prev < 0 and side_curr > 0:
+                    return gate['name']
+                elif entry_side == 'right' and side_prev > 0 and side_curr < 0:
                     return gate['name']
         prev = curr
     return 'unknown'
-
 def run_uvh_coco_fused_grid_pet(
     video_path: str,
     bev_config_path: str,
