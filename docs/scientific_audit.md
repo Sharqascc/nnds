@@ -115,3 +115,24 @@ We recomputed PET using **world/BEV coordinates** (meters) instead of pixel spac
 | GITI median PET | 1.566s | 1.167s | Lower (overlap events were previously dropped) |
 | MRC events | 34 | 32 + 2 overlap | Overlap events now explicitly counted |
 | MRC median PET | 1.600s | 1.283s | Lower (overlap events were previously dropped) |
+
+## Final BEV PET Results (Ablation Method)
+
+**Method**: Original trajectory intersection point + BEV 2m × 2m square
+
+| Site | Sequential | Overlap | Total | Median Sequential PET |
+|------|-----------|---------|-------|----------------------|
+| GITI | 96 | 57 | 153 | 0.983s |
+| MRC | 30 | 3 | 34 | 1.200s |
+
+**Interpretation**:
+- Overlap events are explicitly counted (57 GITI / 3 MRC)
+- Sequential PET events have well-defined temporal separation
+- The original pixel method was silently dropping overlaps (counted them as sequential)
+- This method gives a more complete accounting of interactions
+
+**Why intersection point over closest-approach**:
+- Closest-approach + temporal constraint produced 30 sequential + 106 overlap (GITI)
+- This is because closest-approach point is the midpoint of vehicles when closest
+- Both vehicles are often within 1m of this midpoint simultaneously → overlap
+- Intersection point is where paths cross, which may occur at different times → sequential
