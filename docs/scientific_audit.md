@@ -88,3 +88,30 @@ To maintain scientific transparency:
 | MRC  | 10 | 24 |
 
 Primary PET and conflict-type analyses do **not** depend on gate assignment. Gate attributes are secondary metadata for exploratory directional analysis.
+
+## BEV-Based PET Computation (Improved)
+
+We recomputed PET using **world/BEV coordinates** (meters) instead of pixel space. This addresses the concern that a 20px image-space square has non-uniform physical meaning.
+
+### Method
+1. **World coordinates**: Trajectory points were converted to BEV/world coordinates (meters).
+2. **Conflict point**: The point of closest approach between two vehicles was computed in world space.
+3. **Conflict zone**: A **2m × 2m** square (half-size = 1m) was used, defined in meters.
+4. **Gap interpolation**: Small gaps (≤3 frames) were linearly interpolated in world coordinates.
+5. **Overlap accounting**: Simultaneous occupancy events were explicitly recorded as a separate category.
+
+### Results
+
+| Site | Sequential PET | Overlap Events | Median Sequential PET |
+|------|---------------|---------------|----------------------|
+| GITI | 103 | 50 | 1.167s |
+| MRC | 32 | 2 | 1.283s |
+
+### Comparison with Original Pixel-Based PET
+
+| Metric | Original | BEV-Based | Change |
+|--------|----------|-----------|--------|
+| GITI events | 153 | 103 + 50 overlap | Overlap events now explicitly counted |
+| GITI median PET | 1.566s | 1.167s | Lower (overlap events were previously dropped) |
+| MRC events | 34 | 32 + 2 overlap | Overlap events now explicitly counted |
+| MRC median PET | 1.600s | 1.283s | Lower (overlap events were previously dropped) |
