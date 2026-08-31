@@ -66,3 +66,25 @@ so the function always returned `'unknown'`. This was fixed by adding a conditio
 handle `entry_side='both'` (treating it as a crossing in either direction).
 
 **Result:** 11/34 MRC events now have at least one known gate entry (up from 0/34).
+
+## Gate Attribution Methodology
+
+Gate entry labels were derived using a two-tier system:
+
+1. **Observed Crossing (high confidence)**: When a vehicle's trajectory crosses a gate line, the gate is assigned directly.
+2. **Nearest Start Fallback (low confidence)**: For events where no gate crossing was detected, an approximate gate is assigned as the gate line segment closest to the vehicle's first observed position (using point-to-segment distance).
+
+To maintain scientific transparency:
+- `gate_a_entry` / `gate_b_entry` retain the original value (may be `"unknown"`).
+- `gate_a_entry_approx` / `gate_b_entry_approx` contain the approximate label (filled with nearest segment fallback).
+- `gate_a_entry_method` / `gate_b_entry_method` record whether the label came from `"observed_crossing"` or `"nearest_start"`.
+- `gate_a_entry_confidence` / `gate_b_entry_confidence` indicate `"high"` for observed crossings and `"low"` for fallback assignments.
+
+### Gate Attribution Summary
+
+| Site | Observed (Track A) | Nearest Fallback (Track A) |
+|------|-------------------|---------------------------|
+| GITI | 79 | 74 |
+| MRC  | 10 | 24 |
+
+Primary PET and conflict-type analyses do **not** depend on gate assignment. Gate attributes are secondary metadata for exploratory directional analysis.
