@@ -40,8 +40,8 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from scipy.signal import savgol_filter
 import pandas as pd
+from scipy.signal import savgol_filter
 
 # Import core types (ensure core.types exists)
 try:

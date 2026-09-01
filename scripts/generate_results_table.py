@@ -6,6 +6,7 @@ Usage: python scripts/generate_results_table.py
 """
 import pandas as pd
 
+
 def main():
     data = {
         "Method": ["Constant Velocity", "Constant Acceleration", "Kalman Filter", "Social Force", "Diffusion (proposed)"],

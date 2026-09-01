@@ -5,9 +5,11 @@ Comprehensive tracking assessment via logs (no visual output).
 Reads a detections CSV and generates a detailed per-track log.
 """
 import argparse
-import pandas as pd
-import numpy as np
 from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
 
 def main():
     parser = argparse.ArgumentParser()

@@ -7,9 +7,12 @@ uses Blip2ForConditionalGeneration with proper loading (no .to after device_map)
 import torch
 from PIL import Image
 from transformers import (
-    BlipProcessor, BlipForQuestionAnswering,
-    Blip2Processor, Blip2ForConditionalGeneration
+    Blip2ForConditionalGeneration,
+    Blip2Processor,
+    BlipForQuestionAnswering,
+    BlipProcessor,
 )
+
 
 class VLLMAnalyzer:
     def __init__(self, model_name="Salesforce/blip-vqa-base", device="cpu"):

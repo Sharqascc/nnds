@@ -15,10 +15,9 @@ Trajectory JSON format: list of dicts with keys 'frame', 'x_pixel', 'y_pixel',
 """
 
 import math
-from typing import List, Dict, Tuple
 
 
-def _get_velocity_vector(points: List[Dict], before_frame: int, window: int = 5) -> Tuple[float, float]:
+def _get_velocity_vector(points: list[dict], before_frame: int, window: int = 5) -> tuple[float, float]:
     """Compute average velocity vector from the last `window` points before `before_frame`."""
     # Filter points before before_frame, sorted by frame
     pts = [p for p in points if p.get('frame', 0) < before_frame]
@@ -46,7 +45,7 @@ def _get_velocity_vector(points: List[Dict], before_frame: int, window: int = 5)
     return (vx, vy)
 
 
-def _angle_between(v1: Tuple[float, float], v2: Tuple[float, float]) -> float:
+def _angle_between(v1: tuple[float, float], v2: tuple[float, float]) -> float:
     """Angle between two 2D vectors in degrees [0, 180]."""
     dot = v1[0] * v2[0] + v1[1] * v2[1]
     mag1 = math.hypot(*v1)

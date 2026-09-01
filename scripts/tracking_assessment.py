@@ -17,9 +17,10 @@ Usage:
   python scripts/tracking_assessment.py --detections outputs/tracking_e2e_300_detections.csv
 """
 import argparse
-import pandas as pd
-import numpy as np
 from pathlib import Path
+
+import numpy as np
+import pandas as pd
 
 
 def main():

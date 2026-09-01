@@ -6,9 +6,8 @@ Usage:
     python scripts/run_tracking_baselines.py --video data/sample_data/traffic_video.mp4 --max-frames 100 --imgsz 640
 """
 import argparse
-import subprocess
 import sys
-from pathlib import Path
+
 
 def run_tracker(tracker_name, args):
     out_csv = f"outputs/baseline_{tracker_name}_detections.csv"

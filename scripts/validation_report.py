@@ -20,11 +20,12 @@ Usage:
 """
 import argparse
 import json
-import sys
 from pathlib import Path
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 from scipy.stats import shapiro
+
 
 def bootstrap_ci(data, n_bootstrap=1000, ci=0.95, seed=42):
     """Compute bootstrap confidence interval for the median."""

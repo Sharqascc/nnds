@@ -7,11 +7,12 @@ outputs/mrc_screened.csv) to be generated via `scripts/reproduce_pipeline.sh`.
 If they are not present (e.g., in CI without videos), tests will be skipped.
 """
 
-import pandas as pd
-import numpy as np
 import json
-import pytest
 from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import pytest
 
 REPO = Path(__file__).parent.parent
 

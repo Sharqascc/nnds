@@ -6,9 +6,11 @@ Usage:
     python scripts/paired_ttest.py --file1 outputs/method1.csv --file2 outputs/method2.csv
 """
 import argparse
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 from scipy.stats import ttest_rel
+
 
 def main():
     parser = argparse.ArgumentParser()

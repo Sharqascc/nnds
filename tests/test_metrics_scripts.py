@@ -1,5 +1,7 @@
-import subprocess, sys, os, tempfile
+import subprocess
+import sys
 from pathlib import Path
+
 import pandas as pd
 
 repo = Path(__file__).resolve().parents[1]

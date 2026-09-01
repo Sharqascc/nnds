@@ -15,9 +15,10 @@ Usage:
 
 import argparse
 import json
+from pathlib import Path
+
 import cv2
 import numpy as np
-from pathlib import Path
 
 
 def load_calibration(calib_path):

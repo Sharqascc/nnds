@@ -6,9 +6,11 @@ Usage:
     python scripts/extract_event_frames.py --pet-csv outputs/e2e_validation_pet.csv --video data/sample_data/traffic_video.mp4 --output-dir outputs/event_frames
 """
 import argparse
+from pathlib import Path
+
 import cv2
 import pandas as pd
-from pathlib import Path
+
 
 def main():
     parser = argparse.ArgumentParser()

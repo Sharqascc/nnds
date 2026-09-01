@@ -8,8 +8,10 @@ Usage:
     python scripts/generate_event_descriptions.py --pet-csv outputs/e2e_validation_pet.csv --output outputs/event_descriptions.md
 """
 import argparse
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
+
 
 def main():
     parser = argparse.ArgumentParser()

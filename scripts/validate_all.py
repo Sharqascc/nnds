@@ -21,10 +21,8 @@ Usage examples:
 """
 
 import argparse
-import json
 import subprocess
 import sys
-import shutil
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -142,8 +140,8 @@ def run_full_validation(args):
     pet_for_report = args.pet
     if args.run_e2e:
         # Use generated files from e2e
-        det_for_report = f"outputs/e2e_validation_pet_detections.csv"
-        pet_for_report = f"outputs/e2e_validation_pet.csv"
+        det_for_report = "outputs/e2e_validation_pet_detections.csv"
+        pet_for_report = "outputs/e2e_validation_pet.csv"
     if Path(det_for_report).exists() and Path(pet_for_report).exists():
         run_cmd([
             sys.executable, "scripts/validation_report.py",

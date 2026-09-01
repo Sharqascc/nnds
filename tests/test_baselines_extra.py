@@ -1,10 +1,13 @@
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+import numpy as np
 
 from baselines.constant_acceleration import constant_acceleration_predict
 from baselines.social_force import SocialForceModel
-import numpy as np
+
 
 def test_constant_acceleration_predict():
     past = [(0,0,0), (1,1,1), (2,4,4)]  # v=(1,1), a=(2,2)

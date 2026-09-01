@@ -5,8 +5,10 @@ from pathlib import Path
 repo = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(repo))
 
-from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import _compute_pet_from_windows
-from src.analysis.grid_trajectory.spatial_grid import SpatialGrid
+from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
+    _compute_pet_from_windows,
+)
+
 
 class TestPETLogic:
     def test_a_exits_before_b_enters(self):
@@ -40,7 +42,10 @@ class TestPETLogic:
 
 class TestGridColumnNaming:
     def test_excel_style_helpers(self):
-        from src.analysis.grid_trajectory.spatial_grid import _col_to_letters, _letters_to_col
+        from src.analysis.grid_trajectory.spatial_grid import (
+            _col_to_letters,
+            _letters_to_col,
+        )
 
         # Forward
         assert _col_to_letters(0) == "A"

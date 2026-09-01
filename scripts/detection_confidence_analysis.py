@@ -6,8 +6,9 @@ Usage:
     python scripts/detection_confidence_analysis.py --detections outputs/det.csv --ground-truth tests/fixtures/ground_truth_sample.csv
 """
 import argparse
+
 import pandas as pd
-import numpy as np
+
 
 def iou(box1, box2):
     x1 = max(box1[0], box2[0]); y1 = max(box1[1], box2[1])

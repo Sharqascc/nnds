@@ -15,9 +15,8 @@ Usage:
         --iou-threshold 0.5
 """
 import argparse
+
 import pandas as pd
-import numpy as np
-from pathlib import Path
 
 
 def compute_iou(box1, box2):

@@ -1,25 +1,25 @@
 from __future__ import annotations
-import matplotlib.pyplot as plt
-from src.utils.interactive import show_image, ask_user
-from src.analysis.grid_trajectory.spatial_grid import SpatialGrid
-from src.bev.bev_mapper import BEVMapper
-from src.analysis.conflict_classifier import classify_conflict_geometry
-from tqdm import tqdm
-import sys
+
 import json
-
-
+import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Any, Tuple
+from typing import Any
 
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from ultralytics import YOLO
 import torch
+from tqdm import tqdm
+from ultralytics import YOLO
+
+from src.analysis.conflict_classifier import classify_conflict_geometry
+from src.analysis.grid_trajectory.spatial_grid import SpatialGrid
+from src.bev.bev_mapper import BEVMapper
 from src.pipeline.custom_tracker import CustomTracker, Detection
 from src.pipeline.reid_encoder import ReIDEncoder
+
 
 def _compute_histogram(frame, x1, y1, x2, y2):
     """Compute normalized HSV histogram for a crop."""
@@ -106,7 +106,7 @@ def _point_in_square(px, py, cx, cy, half_size):
     return (cx - half_size) <= px <= (cx + half_size) and (cy - half_size) <= py <= (cy + half_size)
 
 
-def _entry_exit_frames(points: List[TrackPoint], cx: float, cy: float, half_size: float):
+def _entry_exit_frames(points: list[TrackPoint], cx: float, cy: float, half_size: float):
     inside_frames = [pt.frame for pt in points if _point_in_square(pt.x, pt.y, cx, cy, half_size)]
     if not inside_frames:
         return None
@@ -142,7 +142,7 @@ def _compute_pet_from_windows(a_entry, a_exit, b_entry, b_exit, fps):
     return pet, first_id, second_id, frame_ref
 
 
-def _pair_conflict_point(track_a: List[TrackPoint], track_b: List[TrackPoint]):
+def _pair_conflict_point(track_a: list[TrackPoint], track_b: list[TrackPoint]):
     for i in range(len(track_a) - 1):
         p1 = (track_a[i].x, track_a[i].y)
         p2 = (track_a[i + 1].x, track_a[i + 1].y)
@@ -159,7 +159,7 @@ def _pair_conflict_point(track_a: List[TrackPoint], track_b: List[TrackPoint]):
     return None
 
 
-def _box_intersection(a: Tuple[float, float, float, float], b: Tuple[float, float, float, float]) -> float:
+def _box_intersection(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> float:
     ax1, ay1, ax2, ay2 = a
     bx1, by1, bx2, by2 = b
     x1 = max(ax1, bx1)
@@ -171,12 +171,12 @@ def _box_intersection(a: Tuple[float, float, float, float], b: Tuple[float, floa
     return float((x2 - x1) * (y2 - y1))
 
 
-def _box_area(box: Tuple[float, float, float, float]) -> float:
+def _box_area(box: tuple[float, float, float, float]) -> float:
     x1, y1, x2, y2 = box
     return max(0.0, x2 - x1) * max(0.0, y2 - y1)
 
 
-def _overlap_over_person(person_box: Tuple[float, float, float, float], other_box: Tuple[float, float, float, float]) -> float:
+def _overlap_over_person(person_box: tuple[float, float, float, float], other_box: tuple[float, float, float, float]) -> float:
     inter = _box_intersection(person_box, other_box)
     area = _box_area(person_box)
     return 0.0 if area <= 0 else inter / area
@@ -222,11 +222,7 @@ def _get_entry_gate(points, gates):
             if side_prev * side_curr < 0:
                 # crossing detected, check entry side
                 entry_side = gate['entry_side']
-                if entry_side == 'both':
-                    return gate['name']
-                elif entry_side == 'left' and side_prev < 0 and side_curr > 0:
-                    return gate['name']
-                elif entry_side == 'right' and side_prev > 0 and side_curr < 0:
+                if entry_side == 'both' or entry_side == 'left' and side_prev < 0 and side_curr > 0 or entry_side == 'right' and side_prev > 0 and side_curr < 0:
                     return gate['name']
         prev = curr
     return 'unknown'
@@ -252,7 +248,7 @@ def run_uvh_coco_fused_grid_pet(
     video_source: str = None,
     time_of_day_label: str = None,
     gate_config_path: str = "configs/gate_config.yaml",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     video_path = str(Path(video_path).resolve())
     uvh_model_path = str(Path(uvh_model_path).resolve())
     coco_person_model_path = str(Path(coco_person_model_path).resolve())
@@ -302,7 +298,6 @@ def run_uvh_coco_fused_grid_pet(
             device = "cuda:0" if device == "auto" else device
         else:
             try:
-                import openvino
                 ov_uvh_dir = _openvino_dir(uvh_model_path)
                 ov_coco_dir = _openvino_dir(coco_person_model_path)
                 if ov_uvh_dir.exists() and ov_coco_dir.exists():
@@ -330,7 +325,7 @@ def run_uvh_coco_fused_grid_pet(
     cap.release()
 
     detection_rows = []
-    tracks: Dict[int, List[TrackPoint]] = {}
+    tracks: dict[int, list[TrackPoint]] = {}
 
     frame_idx = 0
 
@@ -369,7 +364,7 @@ def run_uvh_coco_fused_grid_pet(
         uvh_boxes_for_suppression = []
 
         # Collect raw detections for this frame
-        raw_dets: List[Detection] = []
+        raw_dets: list[Detection] = []
 
         uvh_boxes = uvh_r.boxes
         if uvh_boxes is not None and uvh_boxes.xyxy is not None and len(uvh_boxes) > 0:
@@ -553,7 +548,7 @@ def run_uvh_coco_fused_grid_pet(
         }
 
     # Build cell sets for overlap pruning
-    track_cells: Dict[int, set] = {}
+    track_cells: dict[int, set] = {}
     if spatial_grid is not None:
         for tid, pts in valid_tracks.items():
             cells = set()
@@ -734,7 +729,7 @@ def run_uvh_coco_fused_grid_pet(
 
 
 
-def _track_to_json(points: List[TrackPoint], bev_mapper=None) -> str:
+def _track_to_json(points: list[TrackPoint], bev_mapper=None) -> str:
     """Convert a list of TrackPoint to a JSON string with pixel and world coords."""
     rows = []
     for pt in points:
@@ -754,16 +749,16 @@ def _track_to_json(points: List[TrackPoint], bev_mapper=None) -> str:
     return json.dumps(rows)
 
 
-def _split_tracks_by_gaps(tracks: Dict[int, List[TrackPoint]],
+def _split_tracks_by_gaps(tracks: dict[int, list[TrackPoint]],
                           max_frame_gap: int = 10,
                           max_spatial_jump: float = 50.0,
-                          prediction_tolerance: float = 80.0) -> Dict[int, List[TrackPoint]]:
+                          prediction_tolerance: float = 80.0) -> dict[int, list[TrackPoint]]:
     """
     Split track IDs when there is a long frame gap or huge spatial jump,
     but skip splitting if the next point matches a linear prediction from
     the last two points (handles short occlusion).
     """
-    split_tracks: Dict[int, List[TrackPoint]] = {}
+    split_tracks: dict[int, list[TrackPoint]] = {}
     for tid, pts in tracks.items():
         pts = sorted(pts, key=lambda p: p.frame)
         if not pts:

@@ -1,6 +1,8 @@
 
+import subprocess
+import sys
 from pathlib import Path
-import subprocess, sys
+
 
 def test_estimator_script_exists():
     assert Path("scripts/estimate_time_of_day.py").exists()

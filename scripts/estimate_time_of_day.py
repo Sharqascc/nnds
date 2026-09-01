@@ -10,11 +10,12 @@ Usage:
     python scripts/estimate_time_of_day.py --video data/sample_data/traffic_video.mp4 [--max-frames 5]
 """
 import argparse
-import tempfile
-import cv2
 import os
 import sys
+import tempfile
 from pathlib import Path
+
+import cv2
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -33,7 +34,7 @@ def main():
     try:
         from src.vlm.analyzer import VLLMAnalyzer
         vlm = VLLMAnalyzer()
-    except Exception as e:
+    except Exception:
         print("unknown")
         return
 

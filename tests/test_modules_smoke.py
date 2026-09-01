@@ -1,13 +1,20 @@
 import sys
 from pathlib import Path
+
 import pandas as pd
-import numpy as np
 
 repo = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(repo))
 
-from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import _split_tracks_by_gaps, TrackPoint
-from scripts.validate_outputs import validate_detections, validate_pet, DETECTION_COLUMNS, PET_COLUMNS
+from scripts.validate_outputs import (
+    validate_detections,
+    validate_pet,
+)
+from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
+    TrackPoint,
+    _split_tracks_by_gaps,
+)
+
 
 class TestTrackSplitter:
     def test_splits_on_large_jump(self):

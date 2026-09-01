@@ -9,16 +9,17 @@ Usage:
     GROQ_API_KEY=xxx python scripts/generate_safety_report_groq.py --pet-csv outputs/e2e_validation_pet.csv --output outputs/safety_report_groq.md
 """
 import argparse
-import os
 import json
-import sys
-import pandas as pd
+import os
 from pathlib import Path
+
+import pandas as pd
+
 
 def build_metrics(pet_csv):
     pet = pd.read_csv(pet_csv)
     metrics = {
-        "total_events": int(len(pet)),
+        "total_events": len(pet),
         "median_pet": float(pet['pet'].median()) if not pet.empty else None,
         "mean_pet": float(pet['pet'].mean()) if not pet.empty else None,
         "std_pet": float(pet['pet'].std()) if not pet.empty else None,

@@ -7,8 +7,9 @@ Usage:
     python scripts/anonymize_video.py --input data/sample_data/traffic_video.mp4 --output data/sample_data/anonymized_traffic_video.mp4
 """
 import argparse
+
 import cv2
-from pathlib import Path
+
 
 def anonymize_frame(frame, kernel_size=51):
     return cv2.GaussianBlur(frame, (kernel_size | 1, kernel_size | 1), 0)

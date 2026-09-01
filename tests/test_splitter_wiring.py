@@ -1,8 +1,13 @@
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import _split_tracks_by_gaps, TrackPoint
+from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
+    TrackPoint,
+    _split_tracks_by_gaps,
+)
+
 
 def test_splitter_threshold_changes_output():
     # Create a track with a large gap and jump

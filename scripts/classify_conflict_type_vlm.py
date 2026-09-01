@@ -9,17 +9,17 @@ Usage:
     python scripts/classify_conflict_type_vlm.py --pet-csv outputs/petevents.csv --video data/sample_data/traffic_video.mp4 --max-events 10
 """
 import argparse
-import sys
-from pathlib import Path
-import pandas as pd
-import cv2
-import tempfile
 import os
+import sys
+import tempfile
+from pathlib import Path
+
+import cv2
+import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.vlm.analyzer import VLLMAnalyzer
-
 
 CONFLICT_TYPES = ["rear-end", "head-on", "crossing", "side-swipe", "other", "unknown"]
 

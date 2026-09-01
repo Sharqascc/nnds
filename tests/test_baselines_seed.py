@@ -1,11 +1,14 @@
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+import numpy as np
 
 from baselines.constant_velocity import constant_velocity_predict
 from baselines.kalman_filter import SimpleKalmanFilter
 from src.utils.seed import set_seed
-import numpy as np
+
 
 def test_constant_velocity_predict():
     past = [(0, 0, 0), (1, 1, 2)]

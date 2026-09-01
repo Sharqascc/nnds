@@ -13,9 +13,10 @@ Usage:
 import argparse
 import json
 import sys
-import pandas as pd
-import numpy as np
 from pathlib import Path
+
+import numpy as np
+import pandas as pd
 
 DETECTION_COLUMNS = [
     "frame", "track_id", "class_id", "class_name",

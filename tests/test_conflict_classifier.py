@@ -2,9 +2,11 @@
 import json
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.analysis.conflict_classifier import classify_conflict_geometry
+
 
 def _make_traj(points):
     return json.dumps([{"frame": p[0], "x_pixel": p[1], "y_pixel": p[2],

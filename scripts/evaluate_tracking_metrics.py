@@ -9,8 +9,10 @@ Usage:
     python scripts/evaluate_tracking_metrics.py --tracked outputs/tracked.csv --ground-truth tests/fixtures/gt_tracks.csv
 """
 import argparse
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+
 
 def compute_iou(box1, box2):
     x1 = max(box1[0], box2[0])

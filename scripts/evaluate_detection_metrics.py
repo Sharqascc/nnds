@@ -9,8 +9,10 @@ Usage:
     python scripts/evaluate_detection_metrics.py --detections outputs/det.csv --ground-truth tests/fixtures/ground_truth_sample.csv
 """
 import argparse
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+
 
 def iou(box1, box2):
     x1 = max(box1[0], box2[0])

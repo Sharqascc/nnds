@@ -10,8 +10,10 @@ Usage:
 import argparse
 import subprocess
 import sys
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
+
 
 def run_pipeline(video, frames, out_csv, max_gap, max_jump):
     subprocess.run([

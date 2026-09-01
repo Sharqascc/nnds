@@ -9,9 +9,11 @@ Usage:
     python scripts/bev_heldout_validation.py
 """
 import json
+from pathlib import Path
+
 import cv2
 import numpy as np
-from pathlib import Path
+
 
 def hartley_normalize(pts):
     centroid = pts.mean(axis=0)
