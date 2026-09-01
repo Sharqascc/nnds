@@ -33,3 +33,7 @@ data/uvh26_data/
 *.csv
 
 !data/sample_data/anonymized_traffic_video_50f.mp4
+
+# Coverage files
+.coverage
+htmlcov/
