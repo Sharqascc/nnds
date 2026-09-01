@@ -1,34 +1,150 @@
 
-import json
-import sys
-from pathlib import Path
+import pytest
+from src.analysis.conflict_classifier import (
+    _get_velocity_vector,
+    _angle_between,
+    classify_conflict_geometry,
+)
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.analysis.conflict_classifier import classify_conflict_geometry
+def test_get_velocity_vector_insufficient_points():
+    """Line 28: fewer than 2 points before before_frame."""
+    points = [{'frame': 5, 'x_pixel': 10, 'y_pixel': 10}]
+    assert _get_velocity_vector(points, before_frame=10) == (0.0, 0.0)
+
+
+def test_get_velocity_vector_window_one():
+    """Line 35: after slicing last window=1, fewer than 2 points remain."""
+    points = [
+        {'frame': 1, 'x_pixel': 0, 'y_pixel': 0},
+        {'frame': 2, 'x_pixel': 10, 'y_pixel': 10},
+    ]
+    # window=1 reduces to last 1 point, triggering len(pts) < 2
+    assert _get_velocity_vector(points, before_frame=3, window=1) == (0.0, 0.0)
+
+
+def test_get_velocity_vector_pixel_fallback():
+    """Lines 42-43: no world coordinates, use pixel coords."""
+    points = [
+        {'frame': 1, 'x_pixel': 0, 'y_pixel': 0},
+        {'frame': 2, 'x_pixel': 10, 'y_pixel': 20},
+    ]
+    vx, vy = _get_velocity_vector(points, before_frame=3)
+    assert vx == 10.0
+    assert vy == 20.0
+
+
+def test_angle_between_zero_magnitude():
+    """Line 54: one vector has zero magnitude."""
+    assert _angle_between((0, 0), (1, 1)) == 0.0
+
+
+def test_classify_conflict_geometry_invalid_json():
+    """Lines 74-75: invalid JSON returns 'other'."""
+    assert classify_conflict_geometry("not json", "{}", conflict_frame=10) == 'other'
 
 
 def _make_traj(points):
-    return json.dumps([{"frame": p[0], "x_pixel": p[1], "y_pixel": p[2],
-                        "world_x": p[1] * 0.1, "world_y": p[2] * 0.1} for p in points])
+    import json
+    return json.dumps(points)
 
-def test_head_on():
-    # Two tracks moving toward each other along x-axis
-    traj_a = _make_traj([(0, 0, 0), (1, 10, 0), (2, 20, 0), (3, 30, 0)])
-    traj_b = _make_traj([(0, 100, 0), (1, 90, 0), (2, 80, 0), (3, 70, 0)])
-    result = classify_conflict_geometry(traj_a, traj_b, conflict_frame=4, fps=30.0)
-    assert result == 'head_on', f"Expected head_on, got {result}"
 
-def test_crossing():
-    # One moving along x, other along y
-    traj_a = _make_traj([(0, 0, 0), (1, 10, 0), (2, 20, 0), (3, 30, 0)])
-    traj_b = _make_traj([(0, 50, 0), (1, 50, 10), (2, 50, 20), (3, 50, 30)])
-    result = classify_conflict_geometry(traj_a, traj_b, conflict_frame=4, fps=30.0)
-    assert result == 'crossing', f"Expected crossing, got {result}"
+def test_classify_rear_end():
+    """Lines 95-96: same direction, significant speed difference."""
+    # Track A fast, Track B slow, same direction along x-axis
+    traj_a = _make_traj([
+        {'frame': 1, 'x_pixel': 0, 'y_pixel': 0, 'world_x': 0, 'world_y': 0},
+        {'frame': 2, 'x_pixel': 100, 'y_pixel': 0, 'world_x': 100, 'world_y': 0},
+    ])
+    traj_b = _make_traj([
+        {'frame': 1, 'x_pixel': 0, 'y_pixel': 0, 'world_x': 0, 'world_y': 0},
+        {'frame': 2, 'x_pixel': 10, 'y_pixel': 0, 'world_x': 10, 'world_y': 0},
+    ])
+    result = classify_conflict_geometry(traj_a, traj_b, conflict_frame=3)
+    assert result == 'rear_end'
 
-def test_rear_end():
-    # Same direction, one faster
-    traj_a = _make_traj([(0, 0, 0), (1, 5, 0), (2, 10, 0), (3, 15, 0)])
-    traj_b = _make_traj([(0, 20, 0), (1, 25, 0), (2, 30, 0), (3, 35, 0)])
-    result = classify_conflict_geometry(traj_a, traj_b, conflict_frame=4, fps=30.0)
-    assert result in ['rear_end', 'side_swipe'], f"Expected rear_end/side_swipe, got {result}"
+
+def test_classify_side_swipe():
+    """Lines 97-98: same direction, similar speeds."""
+    traj_a = _make_traj([
+        {'frame': 1, 'x_pixel': 0, 'y_pixel': 0, 'world_x': 0, 'world_y': 0},
+        {'frame': 2, 'x_pixel': 10, 'y_pixel': 0, 'world_x': 10, 'world_y': 0},
+    ])
+    traj_b = _make_traj([
+        {'frame': 1, 'x_pixel': 0, 'y_pixel': 0, 'world_x': 0, 'world_y': 0},
+        {'frame': 2, 'x_pixel': 12, 'y_pixel': 0, 'world_x': 12, 'world_y': 0},
+    ])
+    result = classify_conflict_geometry(traj_a, traj_b, conflict_frame=3)
+    assert result == 'side_swipe'
+
+
+def test_classify_other_angle():
+    """Line 104: angle not in any specific category."""
+    traj_a = _make_traj([
+        {'frame': 1, 'x_pixel': 0, 'y_pixel': 0, 'world_x': 0, 'world_y': 0},
+        {'frame': 2, 'x_pixel': 10, 'y_pixel': 0, 'world_x': 10, 'world_y': 0},
+    ])
+    traj_b = _make_traj([
+        {'frame': 1, 'x_pixel': 0, 'y_pixel': 0, 'world_x': 0, 'world_y': 0},
+        {'frame': 2, 'x_pixel': 7, 'y_pixel': 7, 'world_x': 7, 'world_y': 7},
+    ])
+    result = classify_conflict_geometry(traj_a, traj_b, conflict_frame=3)
+    assert result == 'other'
+
+
+def test_get_velocity_vector_same_frame():
+    """Line 35: two points with same frame -> dt <= 0."""
+    points = [
+        {'frame': 1, 'x_pixel': 0, 'y_pixel': 0},
+        {'frame': 1, 'x_pixel': 10, 'y_pixel': 10},
+    ]
+    assert _get_velocity_vector(points, before_frame=2) == (0.0, 0.0)
+
+
+def test_classify_conflict_geometry_empty_input():
+    """Line 69: empty trajectory strings."""
+    assert classify_conflict_geometry('', '{}', conflict_frame=10) == 'other'
+    assert classify_conflict_geometry('{}', '', conflict_frame=10) == 'other'
+    assert classify_conflict_geometry('', '', conflict_frame=10) == 'other'
+
+
+def test_classify_conflict_geometry_zero_velocity():
+    """Line 81: one track has zero velocity vector."""
+    traj_a = _make_traj([
+        {'frame': 1, 'x_pixel': 0, 'y_pixel': 0, 'world_x': 0, 'world_y': 0},
+        {'frame': 2, 'x_pixel': 10, 'y_pixel': 0, 'world_x': 10, 'world_y': 0},
+    ])
+    # Track B has only one point before conflict_frame -> zero velocity
+    traj_b = _make_traj([
+        {'frame': 1, 'x_pixel': 0, 'y_pixel': 0, 'world_x': 0, 'world_y': 0},
+    ])
+    result = classify_conflict_geometry(traj_a, traj_b, conflict_frame=3)
+    assert result == 'other'
+
+
+def test_classify_head_on():
+    """Line 100: angle > 150 degrees."""
+    traj_a = _make_traj([
+        {'frame': 1, 'x_pixel': 0, 'y_pixel': 0, 'world_x': 0, 'world_y': 0},
+        {'frame': 2, 'x_pixel': 10, 'y_pixel': 0, 'world_x': 10, 'world_y': 0},
+    ])
+    traj_b = _make_traj([
+        {'frame': 1, 'x_pixel': 0, 'y_pixel': 0, 'world_x': 0, 'world_y': 0},
+        {'frame': 2, 'x_pixel': -10, 'y_pixel': 0, 'world_x': -10, 'world_y': 0},
+    ])
+    result = classify_conflict_geometry(traj_a, traj_b, conflict_frame=3)
+    assert result == 'head_on'
+
+
+def test_classify_crossing():
+    """Line 102: angle between 60 and 120 degrees."""
+    traj_a = _make_traj([
+        {'frame': 1, 'x_pixel': 0, 'y_pixel': 0, 'world_x': 0, 'world_y': 0},
+        {'frame': 2, 'x_pixel': 10, 'y_pixel': 0, 'world_x': 10, 'world_y': 0},
+    ])
+    traj_b = _make_traj([
+        {'frame': 1, 'x_pixel': 0, 'y_pixel': 0, 'world_x': 0, 'world_y': 0},
+        {'frame': 2, 'x_pixel': 0, 'y_pixel': 10, 'world_x': 0, 'world_y': 10},
+    ])
+    result = classify_conflict_geometry(traj_a, traj_b, conflict_frame=3)
+    assert result == 'crossing'
