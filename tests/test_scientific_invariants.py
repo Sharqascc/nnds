@@ -96,3 +96,52 @@ def test_mrc_invariants():
         if len(frames) > 1:
             min_sep = min(np.diff(frames))
             assert min_sep >= 10, f"MRC: Duplicate (pair, grid) in {key_val[2]} with temporal separation {min_sep} frames < 10!"
+
+
+# ------------------- Helper function coverage -------------------
+
+def test_output_exists_false(tmp_path, monkeypatch):
+    import tests.test_scientific_invariants as sci
+    monkeypatch.setattr(sci, 'REPO', tmp_path)
+    assert sci._output_exists() == False
+
+def test_output_exists_true(tmp_path, monkeypatch):
+    import tests.test_scientific_invariants as sci
+    monkeypatch.setattr(sci, 'REPO', tmp_path)
+    (tmp_path/'outputs').mkdir()
+    (tmp_path/'outputs'/'giti_screened.csv').write_text('pet\n1.0\n')
+    (tmp_path/'outputs'/'mrc_screened.csv').write_text('pet\n1.0\n')
+    assert sci._output_exists() == True
+
+def test_load_results_valid(tmp_path, monkeypatch):
+    import tests.test_scientific_invariants as sci
+    monkeypatch.setattr(sci, 'REPO', tmp_path)
+    (tmp_path/'outputs').mkdir()
+    giti_path = tmp_path/'outputs'/'giti_screened.csv'
+    mrc_path = tmp_path/'outputs'/'mrc_screened.csv'
+    # Create minimal valid DataFrames
+    giti_df = pd.DataFrame({
+        'pet': [1.0],
+        'orig_track_a': [1],
+        'orig_track_b': [2],
+        'grid_cell': ['G_A_1'],
+        'frame': [10],
+        'traj_a_json': ['[{"world_x": 1.0, "world_y": 2.0}]'],
+        'site': ['GITI']
+    })
+    mrc_df = giti_df.copy()
+    mrc_df['site'] = ['MRC']
+    giti_df.to_csv(giti_path, index=False)
+    mrc_df.to_csv(mrc_path, index=False)
+    giti, mrc = sci._load_results()
+    assert 'pet' in giti.columns
+    assert len(giti) == 1
+
+def test_load_results_skip_on_missing_pet(tmp_path, monkeypatch):
+    import tests.test_scientific_invariants as sci
+    monkeypatch.setattr(sci, 'REPO', tmp_path)
+    (tmp_path/'outputs').mkdir()
+    (tmp_path/'outputs'/'giti_screened.csv').write_text('foo\n1\n')
+    (tmp_path/'outputs'/'mrc_screened.csv').write_text('foo\n1\n')
+    with pytest.raises(pytest.skip.Exception):
+        sci._load_results()
