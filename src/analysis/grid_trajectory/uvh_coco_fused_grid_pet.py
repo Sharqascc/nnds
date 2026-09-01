@@ -79,22 +79,28 @@ class TrackPoint:
 
 
 def _segment_intersection(p1, p2, q1, q2):
-    p = np.array(p1, dtype=float)
-    r = np.array(p2, dtype=float) - p
-    q = np.array(q1, dtype=float)
-    s = np.array(q2, dtype=float) - q
+    """Find intersection point of two 2D line segments.
 
-    rxs = np.cross(r, s)
+    Uses 3D cross product internally (z=0) to avoid numpy 2.x issues
+    with 2D np.cross.
+    """
+    # Convert to 3D (z=0) for cross product compatibility
+    p = np.array([p1[0], p1[1], 0.0], dtype=float)
+    r = np.array([p2[0], p2[1], 0.0], dtype=float) - p
+    q = np.array([q1[0], q1[1], 0.0], dtype=float)
+    s = np.array([q2[0], q2[1], 0.0], dtype=float) - q
+
+    rxs = np.cross(r, s)[2]  # z-component
     q_p = q - p
-    qpxr = np.cross(q_p, r)
+    qpxr = np.cross(q_p, r)[2]  # z-component
 
     if abs(rxs) < 1e-9 and abs(qpxr) < 1e-9:
         return None
     if abs(rxs) < 1e-9 and abs(qpxr) >= 1e-9:
         return None
 
-    t = np.cross(q_p, s) / rxs
-    u = np.cross(q_p, r) / rxs
+    t = np.cross(q_p, s)[2] / rxs
+    u = np.cross(q_p, r)[2] / rxs
 
     if 0.0 <= t <= 1.0 and 0.0 <= u <= 1.0:
         inter = p + t * r
