@@ -19,7 +19,16 @@ Current PET uses a **pixel-space conflict zone** (20 px radius). This is a traje
 
 ## Outputs
 
-Final outputs in `outputs/final/`:
-- `giti_pet_events.csv`
-- `mrc_pet_events.csv`
-- `pet_summary_table.csv`
+Actual final outputs in `outputs/`:
+- `giti_screened.csv`
+- `mrc_screened.csv`
+- `giti_screened_with_gates.csv`
+- `mrc_screened_with_gates.csv`
+- `giti_raw.csv`
+- `mrc_raw.csv`
+- `final_screened_summary.json`
+- `final_dual_site_figure.png`
+- `reproducibility_manifest.json`
+- `petevents_bev.csv`
+
+The `make reproduce-final` target is expected to generate these files.
