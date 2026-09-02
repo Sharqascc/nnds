@@ -46,3 +46,7 @@ At commit `4ebeef7`, run:
 pytest tests/ -m "not integration and not slow" --cov=src --cov-branch --cov-report=term-missing --cov-fail-under=84
 ```
 Coverage figures refer to the selected core modules only.
+
+## Clean Clone Verification
+
+A clean clone was tested: `make reproduce-final` initially failed due to missing PYTHONPATH; this has been fixed in the Makefile target by adding `PYTHONPATH=.`.

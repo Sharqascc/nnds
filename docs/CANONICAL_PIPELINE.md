@@ -4,6 +4,10 @@ The authoritative workflow for final PET event CSV and figures.
 
 ## Command
 
+> **Requires** the full repository environment with video/model files. The Makefile target sets `PYTHONPATH=.` automatically.
+
+
+
 ```bash
 make reproduce-final
 ```
