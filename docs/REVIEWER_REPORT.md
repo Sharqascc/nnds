@@ -1,11 +1,13 @@
 # Repository Quality Report
 
+Generated at: 2026-09-02 18:35:17
+
 ## 1. General Information
 
 - **Branch:** `cleanup/system-reorganization`
-- **Latest commit:** `4ebeef7758cedcf3b3c6bc6b8967e4f57b92d9fc`
+- **Latest commit:** `8cee185d53eeba8a5cbbf5078dae5348a3a16f91`
 
-## 2. Full Directory Tree
+## 2. Directory Tree (excluding .git, caches)
 
 ```
 docs
@@ -26,6 +28,7 @@ docs
   final_assessment_report.md
   MIGRATION_GUIDE.md
   tracking_system_report.md
+  REVIEWER_REPORT.md
   scientific_audit.md
   mrc_annotated_points.jpg
   CLEANUP_SUMMARY.md
@@ -308,7 +311,6 @@ tests
   test_speed_estimation.py
   test_visualization_modules.py
   test_smoke.py
-  test_property_based.py
   test_traffic_analyzer_missing_coverage.py
   test_uncertainty_quantifier.py
   test_reproducibility_audit.py
@@ -394,17 +396,15 @@ baselines
 data
   sample_data
     anonymized_traffic_video_50f.mp4
+.coverage
 ```
 
-## 3. Test Suite Summary
+## 3. Test Collection Summary
 
-- **Total collected tests:** 940 tests collected, 1 error in 17.04s
+- **Total collected tests:** 940 tests collected in 19.23s
+- **Collection return code:** 0
 
-- **Test files:** 79
-
-- **Smoke tests:** 9 file(s)
-- **Property-based tests:** 2 file(s)
-- **Snapshot tests:** 2 file(s)
+- **Test files:** 78
 
 ## 4. Coverage Configuration
 
@@ -551,13 +551,57 @@ Current PET uses a **pixel-space conflict zone** (20 px radius). This is a traje
 
 ## Outputs
 
-Final outputs in `outputs/final/`:
-- `giti_pet_events.csv`
-- `mrc_pet_events.csv`
-- `pet_summary_table.csv`
+Actual final outputs in `outputs/`:
+- `giti_screened.csv`
+- `mrc_screened.csv`
+- `giti_screened_with_gates.csv`
+- `mrc_screened_with_gates.csv`
+- `giti_raw.csv`
+- `mrc_raw.csv`
+- `final_screened_summary.json`
+- `final_dual_site_figure.png`
+- `reproducibility_manifest.json`
+- `petevents_bev.csv`
 
-## 8. Recent Git History
+The `make reproduce-final` target is expected to generate these files.
 
+## 8. Contributing Guide
+
+# Contributing to NNDS
+
+We welcome contributions! Please follow these guidelines:
+
+## Reporting Issues
+- Use the GitHub issue tracker.
+- Provide a clear description and steps to reproduce.
+
+## Pull Requests
+- Fork the repository and create a new branch.
+- Ensure your code passes all tests (`pytest`).
+- Format your code with `black` and `isort`.
+- Write clear commit messages.
+
+## Development Setup
+
+```bash
+pip install -e .[dev]
+pre-commit install
+```
+
+## Code Style
+- We follow PEP 8.
+- Use `black` (line length 100) and `isort`.
+
+## Testing
+- Write tests for new features.
+- Run `pytest` to ensure no regressions.
+
+Thank you for contributing!
+
+## 9. Recent Git History
+
+8cee185 Align canonical pipeline outputs with actual generated files
+828a17f Fix collection error by removing duplicate property test alias
 4ebeef7 Fix CI coverage guard, align Python versions, add missing tests, canonical docs
 f0700a9 Add nightly CI workflow and fix property-based test import
 0ee5e3e Add property-based and VLM mock tests, snapshot tests, CI workflows, and testing docs
@@ -566,5 +610,3 @@ e19f34f Add VLM mocks, BEV snapshot, nightly CI, and mutation results
 f16a468 Add CI workflow, testing docs, smoke and property-based tests
 9014a7f Achieve 100% coverage for pet_conflict_checker
 910f11c Improve gate_counter and validate_outputs coverage
-f318ccf Achieve 100% coverage for test_gate_counter.py
-244dfaa Achieve 100% coverage for traffic_analyzer.py; add comprehensive tests; remove dead code
