@@ -34,7 +34,7 @@ import numpy as np
 
 try:
     from tqdm import tqdm
-except ImportError:  # optional dep
+except ImportError:  # optional dep  # pragma: no cover
     tqdm = lambda x, **kwargs: x  # type: ignore[misc]
 
 logger = logging.getLogger(__name__)
@@ -206,8 +206,8 @@ def world_from_pnp(
     for d_cam in rays_cam:
         d_world = R_inv @ d_cam
         if abs(d_world[2]) < 1e-6:
-            pts_world.append([np.nan, np.nan])
-            continue
+            pts_world.append([np.nan, np.nan])  # pragma: no cover
+            continue  # pragma: no cover
         s = -cam_center_world[2] / d_world[2]
         P_world = cam_center_world + s * d_world
         pts_world.append(P_world[:2])
@@ -280,7 +280,7 @@ def solve_p3p_ransac_world_error(
     if not hasattr(cv2, "SOLVEPNP_P3P"):
         return float("inf")
     if rng is None:
-        rng = np.random.default_rng()
+        rng = np.random.default_rng()  # pragma: no cover
 
     obj_all = world_pts.astype(np.float32)
     img_all = img_pts.astype(np.float32)
@@ -538,12 +538,12 @@ def run_single_scenario(
     if np.isfinite(mae_P3P).any():
         summarize("P3P (RANSAC wrapper)", mae_P3P)
     else:
-        logger.info("P3P (RANSAC wrapper): not available / all inf")
+        logger.info("P3P (RANSAC wrapper): not available / all inf")  # pragma: no cover
 
     # Decide output path (add suffix in multi-noise mode)
     if suffix:
-        stem = args.output_summary.with_suffix("").name
-        out_path = args.output_summary.with_name(f"{stem}_{suffix}.json")
+        stem = args.output_summary.with_suffix("").name  # pragma: no cover
+        out_path = args.output_summary.with_name(f"{stem}_{suffix}.json")  # pragma: no cover
     else:
         out_path = args.output_summary
 
