@@ -2,7 +2,8 @@
 import hypothesis.strategies as st
 from hypothesis import given
 import numpy as np
-from src.analysis.grid_trajectory.pet_grid import classify_pet, mae_world  # adjust imports
+from src.analysis.grid_trajectory.pet_grid import classify_pet
+from src.bev.calibration.monte_carlo_calibration_benchmark import mae_world
 
 # mae_world is defined in monte_carlo_calibration_benchmark but not in pet_grid; use correct module.
 # We'll import from src.bev.calibration.monte_carlo_calibration_benchmark
