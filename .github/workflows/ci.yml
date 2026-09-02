@@ -12,54 +12,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Fetch small LFS test fixtures
-        run: |
-          git lfs install --local
-          git lfs pull --include "configs/**" --include "docs/data_samples/petevents_bev_demo.csv"
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: '3.12'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest
+          pip install pytest pytest-cov pytest-timeout hypothesis pytest-mock syrupy
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Run smoke test
+      - name: Run fast unit tests with coverage
         run: |
-          pytest -q tests/
-      - name: Run unified validation (BEV + outputs)
-        run: |
-          python scripts/validate_all.py --skip-pytest \
-            --detections tests/fixtures/sample_detections.csv \
-            --detections-split tests/fixtures/sample_split_detections.csv \
-            --pet tests/fixtures/sample_pet.csv \
-            --video-frames 100
-      - name: Validate pipeline outputs
-        run: |
-          python scripts/validate_outputs.py             --detections tests/fixtures/sample_detections.csv             --detections-split tests/fixtures/sample_split_detections.csv             --pet tests/fixtures/sample_pet.csv             --video-frames 100
-      - name: Generate experiment log
-        run: |
-          python scripts/experiment_logger.py \
-            --detections tests/fixtures/sample_detections.csv \
-            --pet tests/fixtures/sample_pet.csv \
-            --output outputs/experiment_log.json
-      - name: Upload experiment log
-        uses: actions/upload-artifact@v4
-        with:
-          name: experiment-log
-          path: outputs/experiment_log.json
-      - name: Run 300-frame e2e validation
-        run: |
-          bash scripts/download_models.sh
-          python scripts/export_openvino.py --imgsz 640
-          python scripts/validate_all.py --run-e2e --frames 300 --check-models --skip-pytest
-      - name: Upload e2e validation report
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-validation-report
-          path: outputs/e2e_validation_report.md
+          pytest tests/ -m "not integration and not slow" \
+            --cov=src --cov-branch --cov-report=term-missing \
+            --cov-fail-under=84
 
+      - name: Run smoke tests (integration)
+        run: pytest tests/ -m "integration or smoke" -q

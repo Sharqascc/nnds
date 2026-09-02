@@ -57,3 +57,8 @@ weights:
 .PHONY: full-validate
 full-validate:
 	PYTHONPATH=. $(PYTHON) scripts/validate_all.py --run-e2e --frames 300 --check-models
+
+reproduce-final:
+	python src/analysis/grid_trajectory/uvh_coco_fused_grid_pet.py --detector uvh-coco-fused
+	python scripts/validate_outputs.py --detections outputs/petevents_bev_final_detections.csv --pet outputs/petevents_bev_final.csv
+	python scripts/generate_results_table.py
