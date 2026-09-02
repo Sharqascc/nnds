@@ -16,6 +16,8 @@
 
 ## Mutation Testing
 The installed `mutmut` version (3.7.0) does not support `--paths-to-mutate`.
+A manual mutation testing process has been demonstrated on one module (`conflict_classifier.py`); the same procedure can be applied to other core modules as needed.
+
 A manual mutation test can be performed as follows:
 
 1. Copy a core file, e.g., `src/analysis/conflict_classifier.py`.
@@ -35,4 +37,12 @@ pytest tests/ -m "not integration and not slow" --cov=src --cov-branch --cov-fai
 ```
 
 ## Property-Based Testing
-Uses Hypothesis to test invariants in PET computation and severity classification. See `tests/test_property_based.py`.
+Uses Hypothesis to test invariants in PET computation and severity classification. See `tests/test_property_based_more.py`.
+
+## Coverage Command
+
+At commit `4ebeef7`, run:
+```bash
+pytest tests/ -m "not integration and not slow" --cov=src --cov-branch --cov-report=term-missing --cov-fail-under=84
+```
+Coverage figures refer to the selected core modules only.

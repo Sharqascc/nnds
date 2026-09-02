@@ -37,3 +37,11 @@ data/uvh26_data/
 # Coverage files
 .coverage
 htmlcov/
+
+*.py[cod]
+
+.pytest_cache/
+
+.hypothesis/
+
+outputs/logs/

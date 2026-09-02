@@ -1,11 +1,11 @@
 # Repository Quality Report
 
-Generated at: 2026-09-02 18:35:17
+Generated at: 2026-09-02 18:39:16
 
 ## 1. General Information
 
 - **Branch:** `cleanup/system-reorganization`
-- **Latest commit:** `8cee185d53eeba8a5cbbf5078dae5348a3a16f91`
+- **Latest commit:** `37ee6bca3987be70cb9e0b873caf9d8d94eb4c2d`
 
 ## 2. Directory Tree (excluding .git, caches)
 
@@ -401,7 +401,7 @@ data
 
 ## 3. Test Collection Summary
 
-- **Total collected tests:** 940 tests collected in 19.23s
+- **Total collected tests:** 940 tests collected in 19.22s
 - **Collection return code:** 0
 
 - **Test files:** 78
@@ -600,6 +600,7 @@ Thank you for contributing!
 
 ## 9. Recent Git History
 
+37ee6bc Generate updated reviewer report
 8cee185 Align canonical pipeline outputs with actual generated files
 828a17f Fix collection error by removing duplicate property test alias
 4ebeef7 Fix CI coverage guard, align Python versions, add missing tests, canonical docs
@@ -609,4 +610,3 @@ e19f34f Add VLM mocks, BEV snapshot, nightly CI, and mutation results
 2e9e368 Add snapshot test for PET summary and adjust pytest.ini
 f16a468 Add CI workflow, testing docs, smoke and property-based tests
 9014a7f Achieve 100% coverage for pet_conflict_checker
-910f11c Improve gate_counter and validate_outputs coverage

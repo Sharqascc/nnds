@@ -15,7 +15,7 @@ This runs:
 
 ## Coordinate System
 
-Current PET uses a **pixel-space conflict zone** (20 px radius). This is a trajectory-based PET proxy, not a physically calibrated BEV PET. Document this in any manuscript.
+Current PET uses a **pixel-space conflict zone** (20 px half-size square). This is a trajectory-based PET proxy, not a physically calibrated BEV PET. Document this in any manuscript.
 
 ## Outputs
 
