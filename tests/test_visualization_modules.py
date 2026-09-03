@@ -27,6 +27,7 @@ from src.analysis.visualization.pet_diffusion_plots import (
     plot_true_vs_pet_like,
     plot_true_vs_sample_delta,
     plot_bland_altman,
+    plot_residual_analysis,
     DiffusionPETPlotter,
 )
 
@@ -269,3 +270,18 @@ def test_diffusion_plotter_plot_all(tmp_path):
          patch('src.analysis.visualization.pet_diffusion_plots.plot_bland_altman') as p5:
         plotter.plot_all(pet_pairs=[(1,2)], records=[(1,1,1,1)], out_dir=str(tmp_path/"out"))
     assert p1.called and p2.called and p3.called and p4.called and p5.called
+
+
+def test_plot_residual_analysis_direct():
+    records = [(1, 2.0, 1.5, 1.8), (2, 3.0, 2.5, 2.8)]
+    axes = np.empty((2, 2), dtype=object)
+    for i in range(2):
+        for j in range(2):
+            axes[i, j] = MagicMock()
+    with patch('matplotlib.pyplot.subplots', return_value=(MagicMock(), axes)), \
+         patch('matplotlib.pyplot.show') as show_mock, \
+         patch('matplotlib.pyplot.tight_layout'), \
+         patch('matplotlib.pyplot.suptitle'), \
+         patch('scipy.stats.probplot'):
+        plot_residual_analysis(records, out_path=None)
+    show_mock.assert_called()
