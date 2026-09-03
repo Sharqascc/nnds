@@ -384,3 +384,63 @@ def test_checker_wrappers_get_pairs_and_filter():
     roi = {"xmin":0, "xmax":6, "ymin":0, "ymax":6}
     out = checker.filter_by_roi(df_roi, roi)
     assert len(out) == 2
+
+
+# ---------- Additional coverage for missing branches ----------
+
+def test_compute_pet_nonmonotonic_both_warn():
+    with pytest.warns(RuntimeWarning):
+        compute_pet([1.0, 0.5], [2.0, 1.0])
+
+
+def test_detect_from_trajectories_batch_logger_and_skip_and_exception():
+    checker = PETConflictChecker(enable_logging=True, enable_uncertainty=True, pet_threshold=2.0)
+    checker.logger = MagicMock()
+    traj_a = pd.DataFrame({"track_id":[1,1], "frame":[0,1], "timestamp":[0.0, 0.1], "x":[0,1], "y":[0,1]})
+    traj_b = pd.DataFrame({"track_id":[2,2], "frame":[0,1], "timestamp":[0.2, 0.3], "x":[2,3], "y":[2,3]})
+    pairs = [(traj_a, traj_b), (traj_a, traj_b)]
+    with patch('src.analysis.pet_conflict_checker.compute_pet', side_effect=[3.0, Exception("boom")]):
+        results = checker.detect_from_trajectories_batch(pairs, fps=10)
+    assert len(results) == 0
+    assert checker.logger.info.called
+    assert checker.logger.warning.called
+
+
+def test_estimate_velocity_all_invalid_speeds():
+    checker = PETConflictChecker(enable_logging=False)
+    traj = pd.DataFrame({
+        "x": [0.0, np.nan, 2.0],
+        "y": [0.0, np.nan, 2.0],
+        "timestamp": [0.0, 1.0, 2.0]
+    })
+    assert checker._estimate_velocity(traj) == 5.0
+
+
+def test_estimate_velocity_savgol_window_adjust_and_fallback():
+    checker = PETConflictChecker(enable_logging=False)
+    # len=3, window=2 (even -> adjusted to 1), polyorder=2 triggers fallback
+    traj = pd.DataFrame({
+        "x": [0.0, 1.0, 2.0],
+        "y": [0.0, 1.0, 2.0],
+        "timestamp": [0.0, 1.0, 2.0]
+    })
+    assert checker._estimate_velocity_savgol(traj, window=2, polyorder=2) == checker._estimate_velocity(traj)
+
+
+def test_estimate_velocity_savgol_return_nan_for_invalid_speeds():
+    checker = PETConflictChecker(enable_logging=False)
+    traj = pd.DataFrame({
+        "x": [0.0, 1.0, 2.0, 3.0, 4.0],
+        "y": [0.0, 1.0, 2.0, 3.0, 4.0],
+        "timestamp": [0.0, 1.0, 2.0, 3.0, 4.0]
+    })
+    with patch('src.analysis.pet_conflict_checker.savgol_filter', side_effect=[np.array([np.nan]*5), np.array([np.nan]*5)]):
+        assert np.isnan(checker._estimate_velocity_savgol(traj, window=5, polyorder=2))
+
+
+def test_process_video_stub_with_logger():
+    checker = PETConflictChecker(enable_logging=True)
+    checker.logger = MagicMock()
+    out = checker.process_video("dummy.mp4", "weights.pt")
+    assert out.empty
+    assert checker.logger.warning.called
