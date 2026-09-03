@@ -368,3 +368,49 @@ def test_main_if_name_main_block(monkeypatch):
     with patch.object(sys, 'argv', ['prog', '--help']):
         with pytest.raises(SystemExit):
             runpy.run_module('scripts.validate_outputs', run_name='__main__')
+
+
+def test_validate_pet_loop_break_after_six_rows():
+    # Ensure idx > 5 triggers the break lines 152 and 154
+    base = make_pet_df()
+    pet = pd.concat([base] * 7, ignore_index=True)
+    pet["event_id"] = range(7)
+    problems = validate_pet(pet, pd.DataFrame())
+    assert isinstance(problems, list)
+
+
+def test_main_tracking_problems_exit_1(tmp_path):
+    det = pd.DataFrame({
+        "frame": [0, 1, 0, 1],
+        "track_id": [1, 1, 2, 2],
+        "class_id": [2, 2, 2, 2],
+        "class_name": ["car", "car", "car", "car"],
+        "conf": [0.9, 0.9, 0.9, 0.9],
+        "x1": [0, 0, 10, 10],
+        "y1": [0, 0, 10, 10],
+        "x2": [10, 10, 20, 20],
+        "y2": [10, 10, 20, 20],
+        "cx": [5, 100, 15, 15],   # big jump for track 1
+        "cy": [5, 100, 15, 15],
+        "source": ["uvh", "uvh", "uvh", "uvh"],
+    })
+    pet = _complete_pet_df()
+    det_path = tmp_path / "detections.csv"
+    split_path = tmp_path / "split_detections.csv"
+    pet_path = tmp_path / "pet.csv"
+    det.to_csv(det_path, index=False)
+    det.to_csv(split_path, index=False)
+    pet.to_csv(pet_path, index=False)
+
+    test_args = [
+        'prog',
+        '--detections', str(det_path),
+        '--detections-split', str(split_path),
+        '--pet', str(pet_path),
+        '--max-gap', '10',
+        '--max-jump', '50',
+    ]
+    with patch.object(sys, 'argv', test_args):
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
