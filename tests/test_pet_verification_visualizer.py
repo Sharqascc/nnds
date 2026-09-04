@@ -372,3 +372,38 @@ def test_generate_video_with_video_background_success(sample_event_df, tmp_path)
         out = viz.generate_video(1, str(tmp_path/"out.mp4"), fps=10)
     assert out is not None
     assert writer.write.call_count == 2
+
+
+def test_generate_video_max_frames_cap(sample_event_df, tmp_path):
+    csv_path = tmp_path / "events.csv"
+    sample_event_df.to_csv(csv_path, index=False)
+    viz = PETVerificationVisualizer(str(csv_path), str(tmp_path/"dummy.mp4"), background_mode='video')
+    cap = MagicMock()
+    cap.isOpened.return_value = True
+    # Simulate 1000-frame video
+    cap.get.side_effect = lambda prop: {
+        cv2.CAP_PROP_FRAME_COUNT: 1000,
+        cv2.CAP_PROP_FRAME_WIDTH: 320,
+        cv2.CAP_PROP_FRAME_HEIGHT: 240
+    }.get(prop, 0)
+    cap.read.return_value = (True, np.zeros((240,320,3), dtype=np.uint8))
+    writer = MagicMock()
+    writer.isOpened.return_value = True
+    with patch('cv2.VideoCapture', return_value=cap), patch('cv2.VideoWriter', return_value=writer):
+        viz.generate_video(1, str(tmp_path/"out.mp4"), fps=30, max_frames=200)
+    # Should write exactly 200 frames
+    assert writer.write.call_count == 200
+
+
+def test_draw_grid_cell_with_center():
+    viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
+    viz.colors = {
+        'track_a': (255, 0, 0),
+        'track_b': (0, 165, 255),
+        'grid': (0, 255, 255),
+        'conflict': (0, 0, 255),
+        'text': (255, 255, 255),
+    }
+    frame = np.full((200, 300, 3), 255, dtype=np.uint8)
+    out = viz.draw_grid_cell(frame, 'G_A_1', center=(150,100), radius=40)
+    assert out.shape == frame.shape

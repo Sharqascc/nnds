@@ -93,12 +93,22 @@ class PETVerificationVisualizer:
                 cv2.circle(frame, best_pt, 6, color, -1)
         return frame
 
-    def draw_grid_cell(self, frame, cell_name):
+    def draw_grid_cell(self, frame, cell_name, center=None, radius=None):
         h, w = frame.shape[:2]
-        center = (w // 2, h // 2)
-        cv2.circle(frame, center, self.conflict_zone_radius, self.colors['conflict'], 2)
-        cv2.putText(frame, f"Cell: {cell_name}", (center[0] - 60, center[1] - 60),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, self.colors['grid'], 2)
+        if center is None:
+            center = (w // 2, h // 2)
+        if radius is None:
+            radius = self.conflict_zone_radius
+        # Draw rectangle around the grid cell region
+        x1 = max(0, center[0] - radius)
+        y1 = max(0, center[1] - radius)
+        x2 = min(w, center[0] + radius)
+        y2 = min(h, center[1] + radius)
+        cv2.rectangle(frame, (x1, y1), (x2, y2), self.colors['grid'], 2, cv2.LINE_AA)
+        # Label the cell
+        label = f"Cell: {cell_name}"
+        cv2.putText(frame, label, (x1 + 5, max(20, y1 - 10)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.colors['grid'], 2, cv2.LINE_AA)
         return frame
 
 
@@ -165,7 +175,7 @@ class PETVerificationVisualizer:
         lab2 = cv2.merge((l2, a, b))
         return cv2.cvtColor(lab2, cv2.COLOR_LAB2BGR)
 
-    def generate_video(self, event_id, output_path, fps=10):
+    def generate_video(self, event_id, output_path, fps=10, max_frames=200):
         event = self.load_event(event_id)
         traj_a = self.parse_traj(event.get('traj_a_json', event.get('world_traj_i')))
         traj_b = self.parse_traj(event.get('traj_b_json', event.get('world_traj_j')))
@@ -193,7 +203,11 @@ class PETVerificationVisualizer:
                 raise RuntimeError("Video has no frames")
             width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            video_idx_range = range(total_video_frames)
+            # Cap number of video frames to max_frames by sampling evenly
+            if total_video_frames > max_frames:
+                video_idx_range = np.linspace(0, total_video_frames - 1, max_frames, dtype=int)
+            else:
+                video_idx_range = range(total_video_frames)
 
         # Determine trajectory frame range
         frames_a = [int(p.get('frame', 0)) for p in traj_a]
@@ -257,6 +271,8 @@ class PETVerificationVisualizer:
                 overlay = frame.copy()
                 cv2.circle(overlay, center, self.conflict_zone_radius, self.colors['conflict'], -1)
                 frame = cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0)
+                # Draw grid cell rectangle and label
+                frame = self.draw_grid_cell(frame, event.get('grid_cell', ''), center=center, radius=self.conflict_zone_radius)
 
             # Timing and event info
             frame = self.draw_timing_info(frame, event)
