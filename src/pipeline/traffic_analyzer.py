@@ -101,9 +101,7 @@ class CompleteTrafficAnalyzer:
             logger.info("   ✅ MAE: %.3f m", mae)
 
             self.calibration_metrics["final_mae"] = mae
-            self.calibration_metrics["inlier_ratio"] = inlier_count / len(
-                self.pixel_points
-            )
+            self.calibration_metrics["inlier_ratio"] = inlier_count / len(self.pixel_points)
 
             # Use all points for BEV bounds with safety margin
             self._calculate_bev_scale()
@@ -155,9 +153,7 @@ class CompleteTrafficAnalyzer:
             raise RuntimeError("Calibration must be run before BEV validation")
 
         validation_results: list[dict[str, Any]] = []
-        for i, (pix, world) in enumerate(
-            zip(self.pixel_points, self.world_points_approx)
-        ):
+        for i, (pix, world) in enumerate(zip(self.pixel_points, self.world_points_approx)):
             world_computed = self.pixel_to_world(pix)
             error = float(np.linalg.norm(world_computed - world[:2]))
             validation_results.append(
@@ -165,9 +161,7 @@ class CompleteTrafficAnalyzer:
             )
 
         all_errors = np.array([r["error"] for r in validation_results])
-        inlier_errors = np.array(
-            [r["error"] for r in validation_results if r["inlier"]]
-        )
+        inlier_errors = np.array([r["error"] for r in validation_results if r["inlier"]])
 
         mean_all = float(np.mean(all_errors))
         mean_inliers = float(np.mean(inlier_errors))
@@ -212,9 +206,7 @@ class CompleteTrafficAnalyzer:
             raise RuntimeError("Homography not initialized; call calibrate() first")
 
         if len(pixel_positions) != len(frame_times):
-            raise ValueError(
-                "pixel_positions and frame_times must have the same length"
-            )
+            raise ValueError("pixel_positions and frame_times must have the same length")
 
         world_positions: list[np.ndarray] = []
         valid_idx: list[int] = []
@@ -243,9 +235,7 @@ class CompleteTrafficAnalyzer:
 
         speeds: list[float] = []
         for i in range(1, len(world_positions_arr)):
-            dist = float(
-                np.linalg.norm(world_positions_arr[i] - world_positions_arr[i - 1])
-            )
+            dist = float(np.linalg.norm(world_positions_arr[i] - world_positions_arr[i - 1]))
             time_diff = float(frame_times_valid[i] - frame_times_valid[i - 1])
 
             if time_diff > 0:
@@ -309,9 +299,7 @@ class CompleteTrafficAnalyzer:
         """Save calibration results and BEV configuration to JSON."""
         out_path = Path(path)
         data: dict[str, Any] = {
-            "homography": self.homography.tolist()
-            if self.homography is not None
-            else None,
+            "homography": self.homography.tolist() if self.homography is not None else None,
             "metrics": self.calibration_metrics,
             "bev_bounds": {
                 "x_min": self.bev_x_min,
@@ -478,9 +466,7 @@ def run_video_to_pet(
                 run_yolo_cpu_grid_pet,
             )
         except ModuleNotFoundError as exc:
-            raise ModuleNotFoundError(
-                "Missing dependency for YOLO CPU pipeline."
-            ) from exc
+            raise ModuleNotFoundError("Missing dependency for YOLO CPU pipeline.") from exc
 
         result = run_yolo_cpu_grid_pet(
             video_path=str(video_path),
@@ -491,18 +477,14 @@ def run_video_to_pet(
             conf=0.25,
         )
         pet_events = (
-            result["pet_events"]
-            if isinstance(result, dict) and "pet_events" in result
-            else []
+            result["pet_events"] if isinstance(result, dict) and "pet_events" in result else []
         )
 
     elif detector == "uvh-coco-fused":
         if not uvh_model_path.exists():
             raise FileNotFoundError(f"UVH model not found: {uvh_model_path}")
         if not coco_person_model_path.exists():
-            raise FileNotFoundError(
-                f"COCO person model not found: {coco_person_model_path}"
-            )
+            raise FileNotFoundError(f"COCO person model not found: {coco_person_model_path}")
 
         try:
             from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
@@ -538,9 +520,7 @@ def run_video_to_pet(
             gate_config_path=gate_config_path,
         )
         pet_events = (
-            result["pet_events"]
-            if isinstance(result, dict) and "pet_events" in result
-            else []
+            result["pet_events"] if isinstance(result, dict) and "pet_events" in result else []
         )
 
     else:
@@ -613,22 +593,14 @@ def run_video_to_pet(
             val = _get(keys)
             if val is None or val == -1:
                 return -1
-            if isinstance(val, (int, float)) and not (
-                isinstance(val, float) and np.isnan(val)
-            ):
+            if isinstance(val, (int, float)) and not (isinstance(val, float) and np.isnan(val)):
                 return int(val)
             m = re.search(r"\d+", str(val))
             return int(m.group()) if m else -1
 
-        track_a_val = _parse_track_id(
-            ["track_a", "obj_i", "track_i", "traj_i_id", "world_traj_i"]
-        )
-        track_b_val = _parse_track_id(
-            ["track_b", "obj_j", "track_j", "traj_j_id", "world_traj_j"]
-        )
-        frame_val = _get(
-            ["frame", "conflict_frame", "start_frame", "frame_idx", "t_conflict"]
-        )
+        track_a_val = _parse_track_id(["track_a", "obj_i", "track_i", "traj_i_id", "world_traj_i"])
+        track_b_val = _parse_track_id(["track_b", "obj_j", "track_j", "traj_j_id", "world_traj_j"])
+        frame_val = _get(["frame", "conflict_frame", "start_frame", "frame_idx", "t_conflict"])
         pet_val = _get(["PET", "pet"], float("inf"))
         conflict_type_val = _get(["conflict_type", "cell_id"], "UNKNOWN")
         grid_cell_val = _get(["grid_cell", "cell_id"], "UNKNOWN")
@@ -707,12 +679,14 @@ def run_video_to_pet(
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Video → SAM3 + grid → BEV → PET events pipeline"
-    )
+    parser = argparse.ArgumentParser(description="Video → SAM3 + grid → BEV → PET events pipeline")
     parser.add_argument("--video", default=None, help="Input video path")
-    parser.add_argument("--video-source", default=None, help="Label for video source (e.g., intersection name)")
-    parser.add_argument("--time-of-day", default=None, help="Time-of-day label (e.g., morning, evening, unknown)")
+    parser.add_argument(
+        "--video-source", default=None, help="Label for video source (e.g., intersection name)"
+    )
+    parser.add_argument(
+        "--time-of-day", default=None, help="Time-of-day label (e.g., morning, evening, unknown)"
+    )
     parser.add_argument(
         "--bev-config",
         default="configs/bev_config.json",
@@ -728,9 +702,7 @@ def parse_args() -> argparse.Namespace:
         default="configs/gate_config.yaml",
         help="Gate configuration YAML path",
     )
-    parser.add_argument(
-        "--sam3-weights", default="sam3.pt", help="SAM3 weights checkpoint path"
-    )
+    parser.add_argument("--sam3-weights", default="sam3.pt", help="SAM3 weights checkpoint path")
     parser.add_argument(
         "--detector",
         type=str,
@@ -762,9 +734,7 @@ def parse_args() -> argparse.Namespace:
         default="data/models/yolo11n.pt",
         help="COCO person fallback weights path (used when --detector uvh-coco-fused)",
     )
-    parser.add_argument(
-        "--uvh-conf", type=float, default=0.20, help="UVH-26 confidence threshold"
-    )
+    parser.add_argument("--uvh-conf", type=float, default=0.20, help="UVH-26 confidence threshold")
     parser.add_argument(
         "--coco-person-conf",
         type=float,
@@ -800,9 +770,7 @@ def parse_args() -> argparse.Namespace:
         default="outputs/petevents_bev.csv",
         help="Output CSV path for PET events",
     )
-    parser.add_argument(
-        "--pet-threshold", type=float, default=2.0, help="PET threshold in seconds"
-    )
+    parser.add_argument("--pet-threshold", type=float, default=2.0, help="PET threshold in seconds")
     parser.add_argument(
         "--demo",
         action="store_true",
@@ -812,8 +780,15 @@ def parse_args() -> argparse.Namespace:
         "--max-frames", type=int, default=None, help="Process only the first N frames"
     )
     parser.add_argument("--max-gap", type=int, default=5, help="Max frame gap for track splitting")
-    parser.add_argument("--max-jump", type=float, default=30.0, help="Max spatial jump for track splitting")
-    parser.add_argument("--prediction-tolerance", type=float, default=80.0, help="Prediction tolerance for occlusion handling")
+    parser.add_argument(
+        "--max-jump", type=float, default=30.0, help="Max spatial jump for track splitting"
+    )
+    parser.add_argument(
+        "--prediction-tolerance",
+        type=float,
+        default=80.0,
+        help="Prediction tolerance for occlusion handling",
+    )
     parser.add_argument(
         "--no-progress",
         action="store_true",
@@ -825,10 +800,6 @@ def parse_args() -> argparse.Namespace:
         help="Run in interactive mode with step-by-step prompts and previews",
     )
     return parser.parse_args()
-
-
-
-
 
 
 def main() -> None:
@@ -951,9 +922,7 @@ def interactive_detector(frame, model, imgsz=640, conf=0.25):
 
 def run_pipeline(args) -> dict:
     if getattr(args, "detector", "sam3") != "sam3":
-        raise ValueError(
-            f"Unsupported detector policy: {getattr(args, 'detector', None)}"
-        )
+        raise ValueError(f"Unsupported detector policy: {getattr(args, 'detector', None)}")
     return {
         "video": str(args.video),
         "out_csv": str(args.out_csv) if getattr(args, "out_csv", None) else None,

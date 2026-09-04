@@ -5,6 +5,7 @@ Perform paired t-test on PET values from two output CSV files.
 Usage:
     python scripts/paired_ttest.py --file1 outputs/method1.csv --file2 outputs/method2.csv
 """
+
 import argparse
 
 import numpy as np
@@ -26,11 +27,15 @@ def main():
         raise ValueError(f"Column '{args.pet_column}' missing in one of the files")
 
     # Align by event_id if present; otherwise use index
-    if 'event_id' in df1.columns and 'event_id' in df2.columns:
-        merged = pd.merge(df1[[ 'event_id', args.pet_column]], df2[['event_id', args.pet_column]],
-                          on='event_id', suffixes=('_1', '_2'))
-        sample1 = merged[f'{args.pet_column}_1'].values
-        sample2 = merged[f'{args.pet_column}_2'].values
+    if "event_id" in df1.columns and "event_id" in df2.columns:
+        merged = pd.merge(
+            df1[["event_id", args.pet_column]],
+            df2[["event_id", args.pet_column]],
+            on="event_id",
+            suffixes=("_1", "_2"),
+        )
+        sample1 = merged[f"{args.pet_column}_1"].values
+        sample2 = merged[f"{args.pet_column}_2"].values
     else:
         sample1 = df1[args.pet_column].values
         sample2 = df2[args.pet_column].values
@@ -52,6 +57,7 @@ def main():
         print("  Result: Statistically significant difference (p < 0.05)")
     else:
         print("  Result: No statistically significant difference")
+
 
 if __name__ == "__main__":
     main()

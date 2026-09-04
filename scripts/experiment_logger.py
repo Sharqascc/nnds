@@ -5,6 +5,7 @@ Generate a JSON experiment log from pipeline outputs.
 Usage:
     python scripts/experiment_logger.py --detections outputs/petevents_detections.csv --pet outputs/petevents.csv --output outputs/experiment_log.json
 """
+
 import argparse
 import json
 import time
@@ -34,8 +35,8 @@ def main():
             "file": str(det_path),
             "rows": len(det),
             "columns": list(det.columns),
-            "unique_tracks": int(det['track_id'].nunique()) if 'track_id' in det.columns else None,
-            "mean_conf": float(det['conf'].mean()) if 'conf' in det.columns else None,
+            "unique_tracks": int(det["track_id"].nunique()) if "track_id" in det.columns else None,
+            "mean_conf": float(det["conf"].mean()) if "conf" in det.columns else None,
         }
     else:
         log["detections"] = {"file": str(det_path), "exists": False}
@@ -46,8 +47,12 @@ def main():
             "file": str(pet_path),
             "rows": len(pet),
             "columns": list(pet.columns),
-            "mean_pet": float(pet['pet'].mean()) if 'pet' in pet.columns and not pet.empty else None,
-            "median_pet": float(pet['pet'].median()) if 'pet' in pet.columns and not pet.empty else None,
+            "mean_pet": float(pet["pet"].mean())
+            if "pet" in pet.columns and not pet.empty
+            else None,
+            "median_pet": float(pet["pet"].median())
+            if "pet" in pet.columns and not pet.empty
+            else None,
         }
     else:
         log["pet"] = {"file": str(pet_path), "exists": False}
@@ -56,6 +61,7 @@ def main():
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(log, indent=2))
     print(f"✅ Experiment log saved to {output_path}")
+
 
 if __name__ == "__main__":
     main()

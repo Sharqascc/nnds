@@ -204,9 +204,7 @@ def eval_safety_over_loader(
                 "true_PET": true_pet,
                 "real_pet_like_step": pet_like_real,
                 "real_min_TTC": min_ttc_real,
-                "sample_pet_like_step_mean": float(np.mean(pet_s_f))
-                if pet_s_f
-                else None,
+                "sample_pet_like_step_mean": float(np.mean(pet_s_f)) if pet_s_f else None,
                 "sample_pet_like_step_std": float(np.std(pet_s_f)) if pet_s_f else None,
                 "sample_min_TTC_mean": float(np.mean(ttc_s_f)) if ttc_s_f else None,
                 "sample_min_TTC_std": float(np.std(ttc_s_f)) if ttc_s_f else None,
@@ -234,18 +232,14 @@ import torch
 from src.diffusion.traffic_diffusion.model_and_sampler import sample_future_denorm
 
 
-def sample_future_fn(
-    batch, num_samples=20, checkpoint_path="checkpoints/traj_diffusion_best.pt"
-):
+def sample_future_fn(batch, num_samples=20, checkpoint_path="checkpoints/traj_diffusion_best.pt"):
     """
     Wrapper around the clean sampler module.
 
     Returns:
       samples_world: (num_samples, B, T_future, 4)
     """
-    return sample_future_denorm(
-        batch, checkpoint_path=checkpoint_path, num_samples=num_samples
-    )
+    return sample_future_denorm(batch, checkpoint_path=checkpoint_path, num_samples=num_samples)
 
 
 def main():

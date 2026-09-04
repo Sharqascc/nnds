@@ -1,10 +1,7 @@
-
 import json
 import sys
-import tempfile
-from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
@@ -12,33 +9,33 @@ import pytest
 
 from src.pipeline.traffic_analyzer import (
     CompleteTrafficAnalyzer,
-    WorldPoint,
+    interactive_detector,
+    run_pipeline,
     run_video_to_pet,
     run_video_to_pet_fixed,
-    run_pipeline,
-    interactive_detector,
-    parse_args,
 )
-
 
 # ---------------- CompleteTrafficAnalyzer.calibrate ----------------
 
+
 def test_calibrate_homography_failure():
     analyzer = CompleteTrafficAnalyzer()
-    pixel = np.array([[0,0],[100,0],[100,100],[0,100]], dtype=np.float32)
-    world = np.array([[0,0],[10,0],[10,10],[0,10]], dtype=np.float32)
-    with patch("cv2.findHomography", return_value=(None, None)):
-        with pytest.raises(RuntimeError):
-            analyzer.calibrate(pixel, world)
+    pixel = np.array([[0, 0], [100, 0], [100, 100], [0, 100]], dtype=np.float32)
+    world = np.array([[0, 0], [10, 0], [10, 10], [0, 10]], dtype=np.float32)
+    with patch("cv2.findHomography", return_value=(None, None)), pytest.raises(RuntimeError):
+        analyzer.calibrate(pixel, world)
 
 
 def test_calibrate_success_with_mask(tmp_path):
     analyzer = CompleteTrafficAnalyzer()
-    pixel = np.array([[0,0],[100,0],[100,100],[0,100]], dtype=np.float32)
-    world = np.array([[0,0],[10,0],[10,10],[0,10]], dtype=np.float32)
+    pixel = np.array([[0, 0], [100, 0], [100, 100], [0, 100]], dtype=np.float32)
+    world = np.array([[0, 0], [10, 0], [10, 10], [0, 10]], dtype=np.float32)
     H = np.eye(3, dtype=np.float32)
-    mask = np.ones((4,1), dtype=np.uint8)
-    with patch("cv2.findHomography", return_value=(H, mask)),          patch("cv2.perspectiveTransform", side_effect=lambda pts, h: pts.reshape(-1,2)):
+    mask = np.ones((4, 1), dtype=np.uint8)
+    with (
+        patch("cv2.findHomography", return_value=(H, mask)),
+        patch("cv2.perspectiveTransform", side_effect=lambda pts, h: pts.reshape(-1, 2)),
+    ):
         H_out, mask_out = analyzer.calibrate(pixel, world)
     assert H_out is not None
     assert mask_out is not None
@@ -47,8 +44,8 @@ def test_calibrate_success_with_mask(tmp_path):
 
 def test_calibrate_success_no_mask():
     analyzer = CompleteTrafficAnalyzer()
-    pixel = np.array([[0,0],[100,0],[100,100],[0,100]], dtype=np.float32)
-    world = np.array([[0,0],[10,0],[10,10],[0,10]], dtype=np.float32)
+    pixel = np.array([[0, 0], [100, 0], [100, 100], [0, 100]], dtype=np.float32)
+    world = np.array([[0, 0], [10, 0], [10, 10], [0, 10]], dtype=np.float32)
     H = np.eye(3, dtype=np.float32)
     with patch("cv2.findHomography", return_value=(H, None)):
         H_out, mask_out = analyzer.calibrate(pixel, world)
@@ -57,6 +54,7 @@ def test_calibrate_success_no_mask():
 
 
 # ---------------- _calculate_bev_scale ----------------
+
 
 def test_calculate_bev_scale_missing_data():
     analyzer = CompleteTrafficAnalyzer()
@@ -67,7 +65,7 @@ def test_calculate_bev_scale_missing_data():
 
 def test_calculate_bev_scale_valid():
     analyzer = CompleteTrafficAnalyzer()
-    analyzer.world_points_approx = np.array([[0,0],[10,10]], dtype=np.float32)
+    analyzer.world_points_approx = np.array([[0, 0], [10, 10]], dtype=np.float32)
     analyzer.inlier_mask = np.array([True, True])
     analyzer.bev_width = 100
     analyzer.bev_height = 100
@@ -79,11 +77,12 @@ def test_calculate_bev_scale_valid():
 
 # ---------------- validate_bev ----------------
 
+
 def test_validate_bev_success():
     analyzer = CompleteTrafficAnalyzer()
     analyzer.homography = np.eye(3, dtype=np.float32)
-    analyzer.pixel_points = np.array([[0,0],[100,0],[0,100]], dtype=np.float32)
-    analyzer.world_points_approx = np.array([[0,0],[100,0],[0,100]], dtype=np.float32)
+    analyzer.pixel_points = np.array([[0, 0], [100, 0], [0, 100]], dtype=np.float32)
+    analyzer.world_points_approx = np.array([[0, 0], [100, 0], [0, 100]], dtype=np.float32)
     analyzer.inlier_mask = np.array([True, True, True])
     result = analyzer.validate_bev()
     assert "mean_error_all" in result
@@ -98,11 +97,12 @@ def test_validate_bev_requires_calibration():
 
 # ---------------- estimate_speed ----------------
 
+
 def test_estimate_speed_too_few_valid_world_positions():
     analyzer = CompleteTrafficAnalyzer()
     analyzer.homography = np.eye(3, dtype=np.float32)
-    pixel_positions = np.array([[0,0],[1,1]], dtype=np.float32)  # only 2
-    frame_times = np.array([0, 1/30.0])
+    pixel_positions = np.array([[0, 0], [1, 1]], dtype=np.float32)  # only 2
+    frame_times = np.array([0, 1 / 30.0])
     result = analyzer.estimate_speed(pixel_positions, frame_times)
     assert result["final_speed"] == 15.0
 
@@ -110,8 +110,10 @@ def test_estimate_speed_too_few_valid_world_positions():
 def test_estimate_speed_non_finite_positions_skipped():
     analyzer = CompleteTrafficAnalyzer()
     analyzer.homography = np.eye(3, dtype=np.float32)
-    pixel_positions = np.array([[0,0],[np.nan,1],[2,2],[3,3],[4,4],[5,5],[6,6],[7,7]], dtype=np.float32)
-    frame_times = np.arange(8)/30.0
+    pixel_positions = np.array(
+        [[0, 0], [np.nan, 1], [2, 2], [3, 3], [4, 4], [5, 5], [6, 6], [7, 7]], dtype=np.float32
+    )
+    frame_times = np.arange(8) / 30.0
     result = analyzer.estimate_speed(pixel_positions, frame_times)
     assert result["final_speed"] == 15.0  # after removing NaN, <5 valid
 
@@ -120,13 +122,14 @@ def test_estimate_speed_insufficient_speeds():
     analyzer = CompleteTrafficAnalyzer()
     analyzer.homography = np.eye(3, dtype=np.float32)
     # 5 valid points but distances/time give speeds outside range -> no speeds collected
-    pixel_positions = np.array([[0,0],[0,0],[0,0],[0,0],[0,0]], dtype=np.float32)
+    pixel_positions = np.array([[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]], dtype=np.float32)
     frame_times = np.array([0, 1, 2, 3, 4])
     result = analyzer.estimate_speed(pixel_positions, frame_times)
     assert result["final_speed"] == 15.0
 
 
 # ---------------- save_calibration ----------------
+
 
 def test_save_calibration(tmp_path):
     analyzer = CompleteTrafficAnalyzer()
@@ -144,10 +147,12 @@ def test_save_calibration(tmp_path):
 
 # ---------------- run_video_to_pet ----------------
 
+
 def make_temp_file(tmp_path, name, content=""):
     p = tmp_path / name
     p.write_text(content)
     return p
+
 
 def make_dummy_args(tmp_path):
     video = make_temp_file(tmp_path, "video.mp4")
@@ -159,9 +164,9 @@ def make_dummy_args(tmp_path):
 def test_run_video_to_pet_missing_video(tmp_path):
     with pytest.raises(SystemExit):
         run_video_to_pet(
-            video_path=tmp_path/"missing.mp4",
-            bev_config_path=tmp_path/"bev.json",
-            grid_config_path=tmp_path/"grid.json",
+            video_path=tmp_path / "missing.mp4",
+            bev_config_path=tmp_path / "bev.json",
+            grid_config_path=tmp_path / "grid.json",
         )
 
 
@@ -174,7 +179,7 @@ def test_run_video_to_pet_sam3_missing_weights(tmp_path):
             video_path=video,
             bev_config_path=bev,
             grid_config_path=grid,
-            sam3_weights_path=tmp_path/"sam3.pt",
+            sam3_weights_path=tmp_path / "sam3.pt",
             detector="sam3",
             max_frames=1,
         )
@@ -188,7 +193,7 @@ def test_run_video_to_pet_yolo_cpu_missing_weights(tmp_path):
             video_path=video,
             bev_config_path=bev,
             grid_config_path=grid,
-            yolo_weights_path=tmp_path/"yolo.pt",
+            yolo_weights_path=tmp_path / "yolo.pt",
             detector="yolo-cpu",
         )
 
@@ -200,8 +205,8 @@ def test_run_video_to_pet_uvh_coco_missing_models(tmp_path):
             video_path=video,
             bev_config_path=bev,
             grid_config_path=grid,
-            uvh_model_path=tmp_path/"uvh.pt",
-            coco_person_model_path=tmp_path/"coco.pt",
+            uvh_model_path=tmp_path / "uvh.pt",
+            coco_person_model_path=tmp_path / "coco.pt",
             detector="uvh-coco-fused",
         )
 
@@ -226,7 +231,9 @@ def test_run_video_to_pet_empty_events(tmp_path):
     out_csv = tmp_path / "out.csv"
     mock_module = MagicMock()
     mock_module.run_uvh_coco_fused_grid_pet = MagicMock(return_value={"pet_events": []})
-    with patch.dict(sys.modules, {"src.analysis.grid_trajectory.uvh_coco_fused_grid_pet": mock_module}):
+    with patch.dict(
+        sys.modules, {"src.analysis.grid_trajectory.uvh_coco_fused_grid_pet": mock_module}
+    ):
         df = run_video_to_pet(
             video_path=video,
             bev_config_path=bev,
@@ -265,7 +272,9 @@ def test_run_video_to_pet_with_event_dicts(tmp_path):
     ]
     mock_module = MagicMock()
     mock_module.run_uvh_coco_fused_grid_pet = MagicMock(return_value={"pet_events": events})
-    with patch.dict(sys.modules, {"src.analysis.grid_trajectory.uvh_coco_fused_grid_pet": mock_module}):
+    with patch.dict(
+        sys.modules, {"src.analysis.grid_trajectory.uvh_coco_fused_grid_pet": mock_module}
+    ):
         df = run_video_to_pet(
             video_path=video,
             bev_config_path=bev,
@@ -281,11 +290,16 @@ def test_run_video_to_pet_with_event_dicts(tmp_path):
 
 # ---------------- run_video_to_pet_fixed ----------------
 
+
 def test_run_video_to_pet_fixed(tmp_path):
     video, bev, grid = make_dummy_args(tmp_path)
     sam3 = make_temp_file(tmp_path, "sam3.pt", "dummy")
     out_csv = tmp_path / "out_fixed.csv"
-    fake_result = MagicMock(pet_events=[{"pet": 1.0, "frame_idx": 1, "track_a": 1, "track_b": 2, "conflict_type": "crossing"}])
+    fake_result = MagicMock(
+        pet_events=[
+            {"pet": 1.0, "frame_idx": 1, "track_a": 1, "track_b": 2, "conflict_type": "crossing"}
+        ]
+    )
     mock_module = MagicMock()
     mock_module.run_sam3_grid_pet = MagicMock(return_value=fake_result)
     with patch.dict(sys.modules, {"src.analysis.grid_trajectory.sam3_grid_pet": mock_module}):
@@ -302,6 +316,7 @@ def test_run_video_to_pet_fixed(tmp_path):
 
 # ---------------- run_pipeline final version ----------------
 
+
 def test_run_pipeline_unsupported_detector():
     args = SimpleNamespace(detector="invalid", video="dummy")
     with pytest.raises(ValueError):
@@ -310,19 +325,24 @@ def test_run_pipeline_unsupported_detector():
 
 # ---------------- interactive_detector ----------------
 
+
 class DummyTensor:
     def __init__(self, data):
         self.data = data
+
     def cpu(self):
         return self
+
     def numpy(self):
         return self.data
 
+
 class DummyBoxes:
     def __init__(self):
-        self.xyxy = DummyTensor(np.array([[10,10,20,20],[30,30,40,40]], dtype=np.float32))
+        self.xyxy = DummyTensor(np.array([[10, 10, 20, 20], [30, 30, 40, 40]], dtype=np.float32))
         self.conf = DummyTensor(np.array([0.9, 0.8], dtype=np.float32))
         self.cls = DummyTensor(np.array([0, 1], dtype=np.int64))
+
     def __len__(self):
         return len(self.xyxy.data)
 
@@ -335,13 +355,14 @@ class DummyResult:
 class DummyModel:
     def __init__(self):
         self.names = {0: "car", 1: "person"}
+
     def __call__(self, frame, **kwargs):
         return [DummyResult()]
 
 
 def test_interactive_detector_full():
     model = DummyModel()
-    frame = np.zeros((100,100,3), dtype=np.uint8)
+    frame = np.zeros((100, 100, 3), dtype=np.uint8)
     detections = interactive_detector(frame, model)
     assert len(detections) == 2
     assert detections[0]["cls"] == "car"
@@ -349,17 +370,18 @@ def test_interactive_detector_full():
 
 def test_interactive_detector_no_results():
     model = MagicMock(return_value=[])
-    frame = np.zeros((100,100,3), dtype=np.uint8)
+    frame = np.zeros((100, 100, 3), dtype=np.uint8)
     detections = interactive_detector(frame, model)
     assert detections == []
 
 
 # ---------------- additional coverage ----------------
 
+
 def test_estimate_speed_length_mismatch():
     analyzer = CompleteTrafficAnalyzer()
     analyzer.homography = np.eye(3, dtype=np.float32)
-    pixel = np.array([[0,0],[1,1]], dtype=np.float32)
+    pixel = np.array([[0, 0], [1, 1]], dtype=np.float32)
     times = np.array([0.0])  # length mismatch
     with pytest.raises(ValueError):
         analyzer.estimate_speed(pixel, times)
@@ -400,12 +422,15 @@ def test_run_video_to_pet_sam3_import_error(tmp_path):
     video, bev, grid = make_dummy_args(tmp_path)
     sam3 = make_temp_file(tmp_path, "sam3.pt", "dummy")
     import builtins
+
     original_import = builtins.__import__
+
     def fake_import(name, *args, **kwargs):
         if name == "src.analysis.grid_trajectory.sam3_grid_pet":
             raise ModuleNotFoundError("mock sam3 missing")
         return original_import(name, *args, **kwargs)
-    with patch.object(builtins, '__import__', side_effect=fake_import):
+
+    with patch.object(builtins, "__import__", side_effect=fake_import):
         with pytest.raises(ModuleNotFoundError):
             run_video_to_pet(
                 video_path=video,
@@ -421,12 +446,15 @@ def test_run_video_to_pet_uvh_coco_import_error(tmp_path):
     uvh = make_temp_file(tmp_path, "uvh.pt", "dummy")
     coco = make_temp_file(tmp_path, "coco.pt", "dummy")
     import builtins
+
     original_import = builtins.__import__
+
     def fake_import(name, *args, **kwargs):
         if name == "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet":
             raise ModuleNotFoundError("mock fused missing")
         return original_import(name, *args, **kwargs)
-    with patch.object(builtins, '__import__', side_effect=fake_import):
+
+    with patch.object(builtins, "__import__", side_effect=fake_import):
         with pytest.raises(ModuleNotFoundError):
             run_video_to_pet(
                 video_path=video,

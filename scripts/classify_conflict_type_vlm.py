@@ -8,6 +8,7 @@ asks a lightweight VLM to classify the conflict type, and outputs a new CSV.
 Usage:
     python scripts/classify_conflict_type_vlm.py --pet-csv outputs/petevents.csv --video data/sample_data/traffic_video.mp4 --max-events 10
 """
+
 import argparse
 import os
 import sys
@@ -23,6 +24,7 @@ from src.vlm.analyzer import VLLMAnalyzer
 
 CONFLICT_TYPES = ["rear-end", "head-on", "crossing", "side-swipe", "other", "unknown"]
 
+
 def classify_frame(vlm, img_path):
     prompt = "What type of traffic conflict is shown? Answer with one of: rear-end, head-on, crossing, side-swipe, other, unknown."
     ans = vlm.analyze_image(img_path, prompt).strip().lower()
@@ -30,6 +32,7 @@ def classify_frame(vlm, img_path):
         if t in ans:
             return t
     return "unknown"
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -63,26 +66,34 @@ def main():
     results = []
     with tempfile.TemporaryDirectory() as tmpdir:
         for idx, row in pet.iterrows():
-            frame_num = int(row.get('frame', -1))
+            frame_num = int(row.get("frame", -1))
             if frame_num < 0:
                 continue
             cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
             ret, frame = cap.read()
             if not ret:
-                results.append({'event_id': row.get('event_id', idx),
-                                'frame': frame_num,
-                                'conflict_type_original': row.get('conflict_type', 'image_intersection'),
-                                'conflict_type_vlm': 'unknown'})
+                results.append(
+                    {
+                        "event_id": row.get("event_id", idx),
+                        "frame": frame_num,
+                        "conflict_type_original": row.get("conflict_type", "image_intersection"),
+                        "conflict_type_vlm": "unknown",
+                    }
+                )
                 continue
             img_path = os.path.join(tmpdir, f"event_{idx}.jpg")
             cv2.imwrite(img_path, frame)
             label = classify_frame(vlm, img_path)
-            results.append({'event_id': row.get('event_id', idx),
-                            'frame': frame_num,
-                            'track_a': row.get('track_a', None),
-                            'track_b': row.get('track_b', None),
-                            'conflict_type_original': row.get('conflict_type', 'image_intersection'),
-                            'conflict_type_vlm': label})
+            results.append(
+                {
+                    "event_id": row.get("event_id", idx),
+                    "frame": frame_num,
+                    "track_a": row.get("track_a", None),
+                    "track_b": row.get("track_b", None),
+                    "conflict_type_original": row.get("conflict_type", "image_intersection"),
+                    "conflict_type_vlm": label,
+                }
+            )
     cap.release()
 
     if results:
@@ -94,6 +105,7 @@ def main():
         print(out_df.to_string(index=False))
     else:
         print("No results produced.")
+
 
 if __name__ == "__main__":
     main()

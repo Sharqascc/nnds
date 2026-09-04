@@ -266,9 +266,7 @@ def setup_conflict_logger(
     ch.setLevel(logging.INFO)
 
     # Formatter
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     fh.setFormatter(formatter)
     ch.setFormatter(formatter)
 
@@ -327,14 +325,10 @@ def compute_pet(
     # Monotonicity check (warn, don't fail)
     if validate_monotonic:
         if ta.size > 1 and not np.all(np.diff(ta) >= 0):
-            warnings.warn(
-                "times_a is not monotonically increasing", RuntimeWarning, stacklevel=2
-            )
+            warnings.warn("times_a is not monotonically increasing", RuntimeWarning, stacklevel=2)
 
         if tb.size > 1 and not np.all(np.diff(tb) >= 0):
-            warnings.warn(
-                "times_b is not monotonically increasing", RuntimeWarning, stacklevel=2
-            )
+            warnings.warn("times_b is not monotonically increasing", RuntimeWarning, stacklevel=2)
 
     # Compute PET
     diff_matrix = np.abs(ta[:, None] - tb[None, :])
@@ -412,8 +406,7 @@ def compute_grid_pet(
     """
     if grid_a.shape != grid_b.shape:
         raise ValueError(
-            f"grid_a and grid_b must have the same shape "
-            f"(got {grid_a.shape} vs {grid_b.shape})"
+            f"grid_a and grid_b must have the same shape (got {grid_a.shape} vs {grid_b.shape})"
         )
 
     T = grid_a.shape[0]
@@ -471,9 +464,7 @@ def estimate_pet_uncertainty(
         PET: 2.50 ± 0.047s
     """
     # Total position uncertainty (root-sum-square combination)
-    sigma_total = np.sqrt(
-        detection_error_m**2 + homography_error_m**2 + tracking_error_m**2
-    )
+    sigma_total = np.sqrt(detection_error_m**2 + homography_error_m**2 + tracking_error_m**2)
 
     # Avoid division by zero for stationary actors
     velocity_safe = max(velocity_mps, 0.1)
@@ -617,18 +608,14 @@ def detect_conflicts(
         if velocity_col and velocity_col in df.columns:
             # Vectorized computation (10-50x faster than apply)
             sigma_total = np.sqrt(
-                DEFAULT_DETECTION_ERROR**2
-                + DEFAULT_HOMOGRAPHY_ERROR**2
-                + DEFAULT_TRACKING_ERROR**2
+                DEFAULT_DETECTION_ERROR**2 + DEFAULT_HOMOGRAPHY_ERROR**2 + DEFAULT_TRACKING_ERROR**2
             )
             velocity_safe = np.maximum(conflicts[velocity_col].values, 0.1)
             conflicts["pet_uncertainty_std"] = sigma_total / velocity_safe
         else:
             # Use default velocity (5.0 m/s)
             sigma_total = np.sqrt(
-                DEFAULT_DETECTION_ERROR**2
-                + DEFAULT_HOMOGRAPHY_ERROR**2
-                + DEFAULT_TRACKING_ERROR**2
+                DEFAULT_DETECTION_ERROR**2 + DEFAULT_HOMOGRAPHY_ERROR**2 + DEFAULT_TRACKING_ERROR**2
             )
             velocity_safe = 5.0  # Default velocity
             conflicts["pet_uncertainty_std"] = sigma_total / velocity_safe
@@ -707,25 +694,17 @@ def dataframe_to_pet_events(
         track_a = int(row[track_a_col]) if track_a_col in df.columns else -1
         track_b = int(row[track_b_col]) if track_b_col in df.columns else -1
         conflict_type = (
-            str(row[conflict_type_col])
-            if conflict_type_col in df.columns
-            else "UNKNOWN"
+            str(row[conflict_type_col]) if conflict_type_col in df.columns else "UNKNOWN"
         )
         frame = (
-            int(row[frame_col])
-            if frame_col in df.columns and not pd.isna(row[frame_col])
-            else None
+            int(row[frame_col]) if frame_col in df.columns and not pd.isna(row[frame_col]) else None
         )
 
         traj_i_data = row.get(traj_i_col, None)
         traj_j_data = row.get(traj_j_col, None)
 
-        traj_i = _row_to_trajectory(
-            traj_i_data, track_id=track_a, source="pipeline_csv"
-        )
-        traj_j = _row_to_trajectory(
-            traj_j_data, track_id=track_b, source="pipeline_csv"
-        )
+        traj_i = _row_to_trajectory(traj_i_data, track_id=track_a, source="pipeline_csv")
+        traj_j = _row_to_trajectory(traj_j_data, track_id=track_b, source="pipeline_csv")
 
         # Metadata: keep extra columns
         metadata: dict[str, Any] = {}
@@ -824,9 +803,7 @@ class PETConflictChecker:
 
     # --- High-level CSV API ------------------------------------------------
 
-    def detect_from_csv(
-        self, csv_path: str, velocity_col: str | None = None
-    ) -> pd.DataFrame:
+    def detect_from_csv(self, csv_path: str, velocity_col: str | None = None) -> pd.DataFrame:
         """
         Load PET CSV and return conflict events as DataFrame.
 
@@ -854,9 +831,7 @@ class PETConflictChecker:
             n_total = len(df)
             pct = (n_conflicts / n_total * 100) if n_total > 0 else 0
 
-            self.logger.info(
-                f"Detected {n_conflicts} conflicts ({pct:.1f}% of {n_total} events)"
-            )
+            self.logger.info(f"Detected {n_conflicts} conflicts ({pct:.1f}% of {n_total} events)")
 
             # Log severity breakdown
             if "severity" in conflicts.columns:
@@ -949,9 +924,7 @@ class PETConflictChecker:
                         pet=pet,
                         severity=severity,
                         uncertainty=uncertainty,
-                        frame_start=int(
-                            min(traj_a["frame"].min(), traj_b["frame"].min())
-                        )
+                        frame_start=int(min(traj_a["frame"].min(), traj_b["frame"].min()))
                         if "frame" in traj_a.columns
                         else None,
                         frame_end=int(max(traj_a["frame"].max(), traj_b["frame"].max()))
@@ -962,9 +935,7 @@ class PETConflictChecker:
 
             except Exception as e:
                 if self.logger:
-                    self.logger.warning(
-                        f"Conflict detection failed for pair {idx}: {e}"
-                    )
+                    self.logger.warning(f"Conflict detection failed for pair {idx}: {e}")
 
         if self.logger:
             self.logger.info(f"Detected {len(results)} conflicts from batch")
@@ -997,7 +968,9 @@ class PETConflictChecker:
 
     # --- Pipeline integration hooks -----------------------------------------
 
-    def _estimate_velocity_savgol(self, traj: pd.DataFrame, window: int = 7, polyorder: int = 2) -> float:
+    def _estimate_velocity_savgol(
+        self, traj: pd.DataFrame, window: int = 7, polyorder: int = 2
+    ) -> float:
         """Estimate median instantaneous planar speed using Savitzky-Golay smoothing.
 
         Requires uniformly sampled timestamps. Falls back to median-displacement estimator

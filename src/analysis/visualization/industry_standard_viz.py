@@ -215,15 +215,11 @@ class SSMPlotter:
         # Check for negative values
         if not allow_negative and np.any(clean < 0):
             neg_count = np.sum(clean < 0)
-            results["warnings"].append(
-                f"{metric_name}: {neg_count} negative values found"
-            )
+            results["warnings"].append(f"{metric_name}: {neg_count} negative values found")
 
         if len(clean) == 0:
             results["valid"] = False
-            results["errors"].append(
-                f"{metric_name}: No valid finite values after cleaning"
-            )
+            results["errors"].append(f"{metric_name}: No valid finite values after cleaning")
             return results
 
         results["clean_data"] = clean
@@ -374,13 +370,9 @@ class SSMPlotter:
                 color=self.COLORS["yellow"],
                 label=f"Moderate ({pet_thresh['serious']}-{pet_thresh['moderate']}s)",
             ),
-            mpatches.Patch(
-                color=self.COLORS["green"], label=f"Safe (>{pet_thresh['safe']}s)"
-            ),
+            mpatches.Patch(color=self.COLORS["green"], label=f"Safe (>{pet_thresh['safe']}s)"),
         ]
-        ax.legend(
-            handles=legend_elements, loc="upper right", fontsize=self.font_size - 1
-        )
+        ax.legend(handles=legend_elements, loc="upper right", fontsize=self.font_size - 1)
 
         ax.xaxis.set_major_locator(MaxNLocator(nbins=10))
         plt.tight_layout()
@@ -568,9 +560,7 @@ class SSMPlotter:
 
         # Regression line
         if add_regression and len(pet_data) > 2:
-            slope, intercept, r_value, p_value, _std_err = stats.linregress(
-                pet_data, ttc_data
-            )
+            slope, intercept, r_value, p_value, _std_err = stats.linregress(pet_data, ttc_data)
             x_line = np.linspace(pet_data.min(), pet_data.max(), 100)
             y_line = slope * x_line + intercept
 
@@ -605,12 +595,8 @@ class SSMPlotter:
         )
 
         # Quadrant shading (critical zone)
-        ax.axvspan(
-            0, self.thresholds["pet"]["serious"], alpha=0.1, color=self.COLORS["red"]
-        )
-        ax.axhspan(
-            0, self.thresholds["ttc"]["critical"], alpha=0.1, color=self.COLORS["red"]
-        )
+        ax.axvspan(0, self.thresholds["pet"]["serious"], alpha=0.1, color=self.COLORS["red"])
+        ax.axhspan(0, self.thresholds["ttc"]["critical"], alpha=0.1, color=self.COLORS["red"])
 
         # Colorbar
         cbar = plt.colorbar(scatter, ax=ax, pad=0.02)
@@ -693,9 +679,7 @@ class SSMPlotter:
         # Statistical testing (if requested)
         if show_stats and len(data_list) == 2:
             # Two-sample t-test
-            _t_stat, p_value = stats.ttest_ind(
-                data_list[0], data_list[1], equal_var=False
-            )
+            _t_stat, p_value = stats.ttest_ind(data_list[0], data_list[1], equal_var=False)
 
             # Add p-value annotation
             y_max = max(np.max(d) for d in data_list)
@@ -785,9 +769,7 @@ class SSMPlotter:
             ]
         else:
             bands = custom_bands
-            labels = [
-                f"{bands[i]:.1f}-{bands[i + 1]:.1f}s" for i in range(len(bands) - 1)
-            ]
+            labels = [f"{bands[i]:.1f}-{bands[i + 1]:.1f}s" for i in range(len(bands) - 1)]
             colors = plt.cm.RdYlGn_r(np.linspace(0, 1, len(labels)))
 
         # Count events in each band
@@ -858,9 +840,7 @@ class SSMPlotter:
         """
         fig, ax = plt.subplots(figsize=(8.0, 6.0), dpi=self.dpi)
 
-        color_cycle = [
-            self.COLORS[c] for c in ["blue", "orange", "green", "purple", "red"]
-        ]
+        color_cycle = [self.COLORS[c] for c in ["blue", "orange", "green", "purple", "red"]]
 
         for i, (name, data) in enumerate(data_groups.items()):
             validation = self.validate_ssm_data(data, name)
@@ -1014,9 +994,7 @@ def plot_comparative_boxplot(
 ) -> plt.Figure:
     """Standalone comparative boxplot."""
     plotter = SSMPlotter(style=style)
-    return plotter.plot_comparative_boxplot(
-        data_groups, metric_name, save_path=save_path
-    )
+    return plotter.plot_comparative_boxplot(data_groups, metric_name, save_path=save_path)
 
 
 def plot_cumulative_distribution(
@@ -1027,9 +1005,7 @@ def plot_cumulative_distribution(
 ) -> plt.Figure:
     """Standalone ECDF plot."""
     plotter = SSMPlotter(style=style)
-    return plotter.plot_cumulative_distribution(
-        data_groups, metric_name, save_path=save_path
-    )
+    return plotter.plot_cumulative_distribution(data_groups, metric_name, save_path=save_path)
 
 
 def plot_correlation_heatmap(
@@ -1097,9 +1073,7 @@ def plot_temporal_heatmap(
     fig, ax = plt.subplots(figsize=(10, 6), dpi=300)
 
     # Create 2D histogram
-    H, _xedges, _yedges = np.histogram2d(
-        timestamps, pet_values, bins=[time_bins, severity_bins]
-    )
+    H, _xedges, _yedges = np.histogram2d(timestamps, pet_values, bins=[time_bins, severity_bins])
 
     # Smooth with Gaussian filter
     H_smooth = gaussian_filter(H.T, sigma=1.0)
@@ -1118,9 +1092,7 @@ def plot_temporal_heatmap(
 
     ax.set_xlabel("Time (s)", fontsize=11)
     ax.set_ylabel("PET (s)", fontsize=11)
-    ax.set_title(
-        "Temporal Conflict Density Heatmap", fontsize=12, fontweight="bold", pad=15
-    )
+    ax.set_title("Temporal Conflict Density Heatmap", fontsize=12, fontweight="bold", pad=15)
 
     plt.tight_layout()
 

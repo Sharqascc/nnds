@@ -1,4 +1,5 @@
 import importlib
+
 import pytest
 
 # Modules that initially had 0% coverage.
@@ -27,11 +28,11 @@ zero_modules = [
     "src.vlm.analyzer",
     "src.vlm.config",
     "src.vlm.gate_validator",
-    
     "src.vlm.utils.image_utils",
     "src.vlm.utils.visualization",
     "src.vlm.vlm_enhanced_pipeline",
 ]
+
 
 @pytest.mark.parametrize("module_name", zero_modules)
 def test_import_module(module_name):
@@ -40,6 +41,7 @@ def test_import_module(module_name):
         importlib.import_module(module_name)
     except Exception as e:
         pytest.fail(f"Failed to import {module_name}: {e}")
+
 
 # Explicitly skip the notebook module with a reason
 @pytest.mark.skip(reason="Converted notebook, not a regular module and may fail on import")

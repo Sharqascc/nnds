@@ -1,10 +1,11 @@
-
-import pandas as pd
-import numpy as np
-import pytest
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
+import pytest
+
 REPO = Path(__file__).resolve().parents[1]
+
 
 @pytest.mark.skipif(
     not (REPO / "outputs" / "combined_screened_simplified.csv").exists(),
@@ -19,17 +20,27 @@ def test_combined_simplified_site_labels_valid():
     counts = df["site"].str.upper().value_counts().to_dict()
     assert len(counts) >= 1
 
+
 @pytest.mark.skipif(
     not (REPO / "outputs" / "combined_screened_simplified.csv").exists(),
     reason="Simplified combined PET outputs not generated",
 )
 def test_combined_simplified_has_provenance_fields():
     df = pd.read_csv(REPO / "outputs" / "combined_screened_simplified.csv")
-    for col in ["run_id", "pipeline_version", "git_commit", "config_hash", "fps",
-                "pet_method", "conflict_zone_coordinate_system", "conflict_zone_half_size_m"]:
+    for col in [
+        "run_id",
+        "pipeline_version",
+        "git_commit",
+        "config_hash",
+        "fps",
+        "pet_method",
+        "conflict_zone_coordinate_system",
+        "conflict_zone_half_size_m",
+    ]:
         assert col in df.columns, f"Missing provenance column: {col}"
         assert df[col].notna().all(), f"Column {col} has NaN values"
     assert (df["config_hash"] != "not_computed").all(), "config_hash not computed"
+
 
 @pytest.mark.skipif(
     not (REPO / "outputs" / "combined_screened_simplified.csv").exists(),
@@ -43,6 +54,7 @@ def test_direction_fields_recompute_pet():
     # Tolerance for frame precision
     assert np.allclose(recomputed_pet, df["pet"], atol=0.001)
     assert np.allclose(recomputed_pet, df["pet_s"], atol=0.001)
+
 
 @pytest.mark.skipif(
     not (REPO / "outputs" / "combined_screened_simplified.csv").exists(),

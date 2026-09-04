@@ -222,9 +222,7 @@ def stratified_split(
         eval_dataset = Subset(dataset, eval_indices)
     else:
         generator = torch.Generator().manual_seed(seed)
-        train_dataset, eval_dataset = random_split(
-            dataset, [n_train, n_eval], generator=generator
-        )
+        train_dataset, eval_dataset = random_split(dataset, [n_train, n_eval], generator=generator)
 
     return train_dataset, eval_dataset
 
@@ -506,9 +504,7 @@ def train_diffusion_model(
 
             if torch.isnan(loss) or torch.isinf(loss):
                 if verbose:
-                    print(
-                        f"⚠️ NaN/Inf loss at epoch {epoch}, batch {batch_idx}, skipping"
-                    )
+                    print(f"⚠️ NaN/Inf loss at epoch {epoch}, batch {batch_idx}, skipping")
                 continue
 
             # Gradient accumulation

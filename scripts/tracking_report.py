@@ -106,9 +106,7 @@ def main():
         f"{'track':<8}{'class':<12}{'start':<8}{'end':<8}{'det':<6}{'max_gap':<9}{'max_jump':<10}{'avg_jump':<10}"
     )
     lines.append("-" * 80)
-    sorted_tracks = sorted(
-        track_stats.items(), key=lambda x: x[1]["num_det"], reverse=True
-    )
+    sorted_tracks = sorted(track_stats.items(), key=lambda x: x[1]["num_det"], reverse=True)
     for tid, s in sorted_tracks[:30]:
         lines.append(
             f"{tid:<8}{s['main_class']:<12}{s['start']:<8}{s['end']:<8}{s['num_det']:<6}{s['max_gap']:<9}{s['max_jump']:<10.2f}{s['avg_jump']:<10.2f}"
@@ -152,9 +150,7 @@ def main():
     lines.append("CANDIDATE ID SWITCHES")
     lines.append("-" * 80)
     switches = []
-    for tid_a, s_a in tqdm(
-        track_stats.items(), desc="Checking ID switches", unit="track"
-    ):
+    for tid_a, s_a in tqdm(track_stats.items(), desc="Checking ID switches", unit="track"):
         for tid_b, s_b in track_stats.items():
             if tid_a == tid_b:
                 continue
@@ -163,8 +159,7 @@ def main():
                 last_a = df[df["track_id"] == tid_a].sort_values("frame").iloc[-1]
                 first_b = df[df["track_id"] == tid_b].sort_values("frame").iloc[0]
                 dist = np.sqrt(
-                    (last_a["cx"] - first_b["cx"]) ** 2
-                    + (last_a["cy"] - first_b["cy"]) ** 2
+                    (last_a["cx"] - first_b["cx"]) ** 2 + (last_a["cy"] - first_b["cy"]) ** 2
                 )
                 if dist < args.max_distance:
                     switches.append((tid_a, tid_b, gap, dist, s_a["main_class"]))
@@ -184,13 +179,9 @@ def main():
     lines.append(f"Overlapping pairs: {overlap_count}")
     lines.append(f"ID switch candidates: {len(switches)}")
     suspicious = sum(
-        1
-        for s in track_stats.values()
-        if s["max_gap"] > args.max_gap or s["max_jump"] > 80
+        1 for s in track_stats.values() if s["max_gap"] > args.max_gap or s["max_jump"] > 80
     )
-    lines.append(
-        f"Suspicious tracks (max_gap > {args.max_gap} or max_jump > 80): {suspicious}"
-    )
+    lines.append(f"Suspicious tracks (max_gap > {args.max_gap} or max_jump > 80): {suspicious}")
     lines.append("=" * 80)
 
     report = "\n".join(lines)

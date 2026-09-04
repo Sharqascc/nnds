@@ -5,6 +5,7 @@ Extract representative frames (before, closest, after) for each PET event.
 Usage:
     python scripts/extract_event_frames.py --pet-csv outputs/e2e_validation_pet.csv --video data/sample_data/traffic_video.mp4 --output-dir outputs/event_frames
 """
+
 import argparse
 from pathlib import Path
 
@@ -29,11 +30,11 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
 
     for idx, row in pet.iterrows():
-        frame_conflict = int(row['frame'])
-        event_id = row['event_id']
+        frame_conflict = int(row["frame"])
+        event_id = row["event_id"]
         event_dir = out_dir / f"event_{event_id:03d}"
         event_dir.mkdir(exist_ok=True)
-        for offset, label in [(-5, 'before'), (0, 'closest'), (5, 'after')]:
+        for offset, label in [(-5, "before"), (0, "closest"), (5, "after")]:
             cap.set(cv2.CAP_PROP_POS_FRAMES, max(0, frame_conflict + offset))
             ret, frame = cap.read()
             if ret:
@@ -41,6 +42,7 @@ def main():
 
     cap.release()
     print(f"✅ Saved event frames to {out_dir}")
+
 
 if __name__ == "__main__":
     main()

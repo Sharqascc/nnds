@@ -58,9 +58,7 @@ x_coords = np.linspace(0.0, W_X, NX)
 y_coords = np.linspace(0.0, W_Y, NY)
 XX, YY = np.meshgrid(x_coords, y_coords)
 ZW = np.zeros_like(XX)
-world_points_true = np.stack([XX.ravel(), YY.ravel(), ZW.ravel()], axis=1).astype(
-    np.float32
-)
+world_points_true = np.stack([XX.ravel(), YY.ravel(), ZW.ravel()], axis=1).astype(np.float32)
 
 # Default noise / bias parameters (can be varied in multi-noise mode)
 sigma_px_x_default = 2.0  # pixel noise std in x
@@ -191,9 +189,7 @@ def world_from_pnp(
     Back-project image points to Z=0 ground plane using estimated pose.
     Returns Nx2 world coordinates.
     """
-    img_pts_undist = cv2.undistortPoints(img_pts.reshape(-1, 1, 2), K_, dist).reshape(
-        -1, 2
-    )
+    img_pts_undist = cv2.undistortPoints(img_pts.reshape(-1, 1, 2), K_, dist).reshape(-1, 2)
     rays_cam = np.concatenate(
         [img_pts_undist, np.ones((img_pts_undist.shape[0], 1), dtype=np.float32)],
         axis=1,
@@ -317,9 +313,7 @@ def run_single_trial(
     rng = np.random.default_rng(seed)
 
     world_points_biased = add_plane_bias(world_points_true, plane_bias_cm)
-    img_points_ideal = project_points(
-        world_points_biased, R_true, t_true, K, dist_coeffs
-    )
+    img_points_ideal = project_points(world_points_biased, R_true, t_true, K, dist_coeffs)
     img_points_noisy = add_anisotropic_noise_2d(
         img_points_ideal, rng, sigma_px_x, sigma_px_y, rho_noise
     )
@@ -345,9 +339,7 @@ def run_single_trial(
     )
 
     # P3P (if available)
-    mae_p3p = solve_p3p_ransac_world_error(
-        world_points_biased, img_points_noisy, rng=rng
-    )
+    mae_p3p = solve_p3p_ransac_world_error(world_points_biased, img_points_noisy, rng=rng)
 
     return (
         mae_h_true_biased,
@@ -576,9 +568,7 @@ def main() -> None:
     configure_logging(args.verbose)
 
     if args.multi_noise:
-        logger.info(
-            "Running multi-noise Monte Carlo: %d trials per scenario.", args.num_trials
-        )
+        logger.info("Running multi-noise Monte Carlo: %d trials per scenario.", args.num_trials)
         # Example: sweep a few sigma_x/y levels (y slightly larger as in default)
         noise_levels = [0.5, 1.0, 2.0, 3.0]
         all_summaries: dict[str, dict] = {}

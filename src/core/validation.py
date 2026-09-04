@@ -28,9 +28,7 @@ def compute_error_metrics(errors: Sequence[float] | np.ndarray) -> ValidationMet
     )
 
 
-def validate_numeric_array(
-    name: str, value: Any, ndim: int | None = None
-) -> np.ndarray:
+def validate_numeric_array(name: str, value: Any, ndim: int | None = None) -> np.ndarray:
     arr = np.asarray(value, dtype=float)
     if arr.size == 0:
         raise ValueError(f"{name} must not be empty")
@@ -53,6 +51,4 @@ def validate_bev_result(result: dict[str, Any]) -> None:
     missing = required - set(result)
     if missing:
         raise ValueError(f"missing validation keys: {sorted(missing)}")
-    validate_numeric_array(
-        "pointerrors", [r["error"] for r in result["pointerrors"]], ndim=1
-    )
+    validate_numeric_array("pointerrors", [r["error"] for r in result["pointerrors"]], ndim=1)

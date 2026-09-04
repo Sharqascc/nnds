@@ -1,17 +1,14 @@
-
-import sys
-from pathlib import Path
-from unittest.mock import patch, MagicMock
-
-import numpy as np
-import pytest
+from unittest.mock import MagicMock, patch
 
 from src.vlm.analyzer import VLLMAnalyzer
 
+
 def test_init_small_model_mocks():
-    with patch('src.vlm.analyzer.torch.cuda.is_available', return_value=False), \
-         patch('src.vlm.analyzer.BlipProcessor.from_pretrained') as mock_proc_from, \
-         patch('src.vlm.analyzer.BlipForQuestionAnswering.from_pretrained') as mock_model_from:
+    with (
+        patch("src.vlm.analyzer.torch.cuda.is_available", return_value=False),
+        patch("src.vlm.analyzer.BlipProcessor.from_pretrained") as mock_proc_from,
+        patch("src.vlm.analyzer.BlipForQuestionAnswering.from_pretrained") as mock_model_from,
+    ):
         mock_proc = MagicMock()
         mock_model = MagicMock()
         mock_proc_from.return_value = mock_proc
@@ -24,9 +21,11 @@ def test_init_small_model_mocks():
 
 
 def test_init_blip2_model_mocks():
-    with patch('src.vlm.analyzer.torch.cuda.is_available', return_value=True), \
-         patch('src.vlm.analyzer.Blip2Processor.from_pretrained') as mock_proc2_from, \
-         patch('src.vlm.analyzer.Blip2ForConditionalGeneration.from_pretrained') as mock_model2_from:
+    with (
+        patch("src.vlm.analyzer.torch.cuda.is_available", return_value=True),
+        patch("src.vlm.analyzer.Blip2Processor.from_pretrained") as mock_proc2_from,
+        patch("src.vlm.analyzer.Blip2ForConditionalGeneration.from_pretrained") as mock_model2_from,
+    ):
         mock_proc2 = MagicMock()
         mock_model2 = MagicMock()
         mock_proc2_from.return_value = mock_proc2
@@ -39,11 +38,13 @@ def test_init_blip2_model_mocks():
 
 
 def test_analyze_image_mocks():
-    with patch('src.vlm.analyzer.torch.cuda.is_available', return_value=False), \
-         patch('src.vlm.analyzer.BlipProcessor.from_pretrained') as mock_proc_from, \
-         patch('src.vlm.analyzer.BlipForQuestionAnswering.from_pretrained') as mock_model_from, \
-         patch('PIL.Image.open') as mock_image_open, \
-         patch('torch.no_grad') as mock_no_grad:
+    with (
+        patch("src.vlm.analyzer.torch.cuda.is_available", return_value=False),
+        patch("src.vlm.analyzer.BlipProcessor.from_pretrained") as mock_proc_from,
+        patch("src.vlm.analyzer.BlipForQuestionAnswering.from_pretrained") as mock_model_from,
+        patch("PIL.Image.open") as mock_image_open,
+        patch("torch.no_grad") as mock_no_grad,
+    ):
         mock_proc = MagicMock()
         mock_model = MagicMock()
         mock_proc_from.return_value = mock_proc
@@ -52,7 +53,11 @@ def test_analyze_image_mocks():
         mock_img.convert.return_value = "image"
         mock_image_open.return_value = mock_img
         # Configure processor
-        mock_proc.return_value = {"pixel_values": MagicMock(), "input_ids": MagicMock(), "attention_mask": MagicMock()}
+        mock_proc.return_value = {
+            "pixel_values": MagicMock(),
+            "input_ids": MagicMock(),
+            "attention_mask": MagicMock(),
+        }
         mock_proc.decode.return_value = "mocked answer"
         mock_model.generate.return_value = MagicMock()
         mock_model.generate.return_value[0] = "ids"

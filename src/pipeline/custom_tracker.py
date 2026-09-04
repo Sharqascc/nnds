@@ -71,9 +71,7 @@ class KalmanTrack:
         self.kf.processNoiseCov = np.eye(6, dtype=np.float32) * 0.1
         self.kf.measurementNoiseCov = np.eye(4, dtype=np.float32) * 10.0
         self.kf.errorCovPost = np.eye(6, dtype=np.float32)
-        self.kf.statePost = np.array(
-            [det.cx, det.cy, w, h, 0, 0], dtype=np.float32
-        ).reshape(-1, 1)
+        self.kf.statePost = np.array([det.cx, det.cy, w, h, 0, 0], dtype=np.float32).reshape(-1, 1)
 
     def predict(self):
         self.kf.predict()
@@ -179,11 +177,7 @@ class CustomTracker:
             t.predict()
 
         if self.log_overlaps and self.log_handle is not None:
-            frame_now = (
-                frame
-                if frame is not None
-                else (detections[0].frame if detections else -1)
-            )
+            frame_now = frame if frame is not None else (detections[0].frame if detections else -1)
             track_ids = list(self.tracks.keys())
             pred_boxes = {tid: self.tracks[tid].box for tid in track_ids}
             centers = {tid: self.tracks[tid].center for tid in track_ids}
@@ -247,18 +241,14 @@ class CustomTracker:
                     )
                 det_embeddings[j] = det.embedding
 
-            cost2 = np.zeros(
-                (len(remaining_tracks), len(remaining_dets)), dtype=np.float32
-            )
+            cost2 = np.zeros((len(remaining_tracks), len(remaining_dets)), dtype=np.float32)
             for i, tid in enumerate(remaining_tracks):
                 pred_center = self.tracks[tid].center
                 track_hist = self.tracks[tid].hist
                 track_emb = self.tracks[tid].embedding
                 for j, det_idx in enumerate(remaining_dets):
                     det = detections[det_idx]
-                    dist = np.sqrt(
-                        (pred_center[0] - det.cx) ** 2 + (pred_center[1] - det.cy) ** 2
-                    )
+                    dist = np.sqrt((pred_center[0] - det.cx) ** 2 + (pred_center[1] - det.cy) ** 2)
                     app_cost = self._appearance_cost(
                         track_hist, det.hist, track_emb, det_embeddings[det_idx]
                     )
@@ -266,9 +256,7 @@ class CustomTracker:
 
             row_ind2, col_ind2 = linear_sum_assignment(cost2)
             for i, j in zip(row_ind2, col_ind2):
-                if (
-                    cost2[i, j] < 150.0
-                ):  # threshold increased due to appearance cost scale
+                if cost2[i, j] < 150.0:  # threshold increased due to appearance cost scale
                     tid = remaining_tracks[i]
                     det_idx = remaining_dets[j]
                     self.tracks[tid].update(detections[det_idx])
@@ -285,9 +273,7 @@ class CustomTracker:
 
         # Remove dead tracks
         self.tracks = {
-            tid: t
-            for tid, t in self.tracks.items()
-            if t.time_since_update < self.max_age
+            tid: t for tid, t in self.tracks.items() if t.time_since_update < self.max_age
         }
 
         return matched

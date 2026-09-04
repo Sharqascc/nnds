@@ -29,7 +29,5 @@ class RTDetrDetector:
         scores = results.boxes.conf.cpu().numpy()
         classes = results.boxes.cls.cpu().numpy().astype(int)
         for (x1, y1, x2, y2), s, c in zip(boxes_xyxy, scores, classes):
-            dets.append(
-                Detection(float(x1), float(y1), float(x2), float(y2), float(s), int(c))
-            )
+            dets.append(Detection(float(x1), float(y1), float(x2), float(y2), float(s), int(c)))
         return dets

@@ -60,9 +60,7 @@ class TrajectoryDiffusionModel(nn.Module):
             nn.Linear(hidden_dim, hidden_dim),
         )
 
-        self.input_proj = nn.Conv1d(
-            self.input_dim, hidden_dim, kernel_size=3, padding=1
-        )
+        self.input_proj = nn.Conv1d(self.input_dim, hidden_dim, kernel_size=3, padding=1)
 
         self.blocks = nn.ModuleList(
             [

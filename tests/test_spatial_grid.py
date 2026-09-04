@@ -1,15 +1,13 @@
-
 import json
-import pytest
+
 import numpy as np
-import cv2
-from pathlib import Path
+import pytest
 
 from src.analysis.grid_trajectory.spatial_grid import (
-    _col_to_letters,
-    _letters_to_col,
     OUT_OF_BOUNDS_CELL,
     SpatialGrid,
+    _col_to_letters,
+    _letters_to_col,
 )
 
 
@@ -71,7 +69,7 @@ def test_constructor_invalid_corners_type(tmp_path):
 
 
 def test_constructor_missing_corner_keys(tmp_path):
-    cfg = {"corners": {"top_left": [0,0]}, "configuration": {}}
+    cfg = {"corners": {"top_left": [0, 0]}, "configuration": {}}
     path = tmp_path / "grid_config.json"
     path.write_text(json.dumps(cfg))
     with pytest.raises(KeyError):
@@ -104,11 +102,17 @@ def test_get_cell_from_pixels_out_of_bounds():
     # Use a valid grid
     # We need to create a grid without calling constructor? Better use a temp config.
     import tempfile
+
     cfg = {
-        "corners": {"top_left":[0,0], "top_right":[100,0], "bottom_left":[0,100], "bottom_right":[100,100]},
-        "configuration": {"cell_size":20, "naming_style":"G_{col}_{row}"}
+        "corners": {
+            "top_left": [0, 0],
+            "top_right": [100, 0],
+            "bottom_left": [0, 100],
+            "bottom_right": [100, 100],
+        },
+        "configuration": {"cell_size": 20, "naming_style": "G_{col}_{row}"},
     }
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(cfg, f)
         f.flush()
         grid = SpatialGrid(f.name)
@@ -120,11 +124,17 @@ def test_get_cell_from_pixels_out_of_bounds():
 
 def test_get_cell_from_pixels_valid():
     cfg = {
-        "corners": {"top_left":[0,0], "top_right":[100,0], "bottom_left":[0,100], "bottom_right":[100,100]},
-        "configuration": {"cell_size":20, "naming_style":"G_{col}_{row}"}
+        "corners": {
+            "top_left": [0, 0],
+            "top_right": [100, 0],
+            "bottom_left": [0, 100],
+            "bottom_right": [100, 100],
+        },
+        "configuration": {"cell_size": 20, "naming_style": "G_{col}_{row}"},
     }
     import tempfile
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(cfg, f)
         f.flush()
         grid = SpatialGrid(f.name)
@@ -138,11 +148,17 @@ def test_get_cell_from_pixels_valid():
 
 def test_get_cell_center_cache_and_valid():
     cfg = {
-        "corners": {"top_left":[0,0], "top_right":[100,0], "bottom_left":[0,100], "bottom_right":[100,100]},
-        "configuration": {"cell_size":20, "naming_style":"G_{col}_{row}"}
+        "corners": {
+            "top_left": [0, 0],
+            "top_right": [100, 0],
+            "bottom_left": [0, 100],
+            "bottom_right": [100, 100],
+        },
+        "configuration": {"cell_size": 20, "naming_style": "G_{col}_{row}"},
     }
     import tempfile
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(cfg, f)
         f.flush()
         grid = SpatialGrid(f.name)
@@ -162,11 +178,17 @@ def test_get_cell_center_cache_and_valid():
 
 def test_get_cell_bounds():
     cfg = {
-        "corners": {"top_left":[0,0], "top_right":[100,0], "bottom_left":[0,100], "bottom_right":[100,100]},
-        "configuration": {"cell_size":20, "naming_style":"G_{col}_{row}"}
+        "corners": {
+            "top_left": [0, 0],
+            "top_right": [100, 0],
+            "bottom_left": [0, 100],
+            "bottom_right": [100, 100],
+        },
+        "configuration": {"cell_size": 20, "naming_style": "G_{col}_{row}"},
     }
     import tempfile
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(cfg, f)
         f.flush()
         grid = SpatialGrid(f.name)
@@ -176,11 +198,17 @@ def test_get_cell_bounds():
 
 def test_get_stats():
     cfg = {
-        "corners": {"top_left":[0,0], "top_right":[100,0], "bottom_left":[0,100], "bottom_right":[100,100]},
-        "configuration": {"cell_size":20, "naming_style":"G_{col}_{row}"}
+        "corners": {
+            "top_left": [0, 0],
+            "top_right": [100, 0],
+            "bottom_left": [0, 100],
+            "bottom_right": [100, 100],
+        },
+        "configuration": {"cell_size": 20, "naming_style": "G_{col}_{row}"},
     }
     import tempfile
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(cfg, f)
         f.flush()
         grid = SpatialGrid(f.name)
@@ -195,11 +223,17 @@ def test_get_stats():
 
 def test_draw_overlay_no_highlight():
     cfg = {
-        "corners": {"top_left":[0,0], "top_right":[100,0], "bottom_left":[0,100], "bottom_right":[100,100]},
-        "configuration": {"cell_size":20, "naming_style":"G_{col}_{row}"}
+        "corners": {
+            "top_left": [0, 0],
+            "top_right": [100, 0],
+            "bottom_left": [0, 100],
+            "bottom_right": [100, 100],
+        },
+        "configuration": {"cell_size": 20, "naming_style": "G_{col}_{row}"},
     }
     import tempfile
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(cfg, f)
         f.flush()
         grid = SpatialGrid(f.name)
@@ -211,11 +245,17 @@ def test_draw_overlay_no_highlight():
 
 def test_draw_overlay_with_highlight():
     cfg = {
-        "corners": {"top_left":[0,0], "top_right":[100,0], "bottom_left":[0,100], "bottom_right":[100,100]},
-        "configuration": {"cell_size":20, "naming_style":"G_{col}_{row}"}
+        "corners": {
+            "top_left": [0, 0],
+            "top_right": [100, 0],
+            "bottom_left": [0, 100],
+            "bottom_right": [100, 100],
+        },
+        "configuration": {"cell_size": 20, "naming_style": "G_{col}_{row}"},
     }
     import tempfile
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(cfg, f)
         f.flush()
         grid = SpatialGrid(f.name)
@@ -226,11 +266,17 @@ def test_draw_overlay_with_highlight():
 
 def test_repr():
     cfg = {
-        "corners": {"top_left":[0,0], "top_right":[100,0], "bottom_left":[0,100], "bottom_right":[100,100]},
-        "configuration": {"cell_size":20, "naming_style":"G_{col}_{row}"}
+        "corners": {
+            "top_left": [0, 0],
+            "top_right": [100, 0],
+            "bottom_left": [0, 100],
+            "bottom_right": [100, 100],
+        },
+        "configuration": {"cell_size": 20, "naming_style": "G_{col}_{row}"},
     }
     import tempfile
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(cfg, f)
         f.flush()
         grid = SpatialGrid(f.name)
@@ -242,11 +288,17 @@ def test_repr():
 def test_get_cell_center_exception():
     """Cover ValueError/IndexError exception (lines 183-184)."""
     import tempfile
+
     cfg = {
-        "corners": {"top_left":[0,0], "top_right":[100,0], "bottom_left":[0,100], "bottom_right":[100,100]},
-        "configuration": {"cell_size":20, "naming_style":"G_{col}_{row}"}
+        "corners": {
+            "top_left": [0, 0],
+            "top_right": [100, 0],
+            "bottom_left": [0, 100],
+            "bottom_right": [100, 100],
+        },
+        "configuration": {"cell_size": 20, "naming_style": "G_{col}_{row}"},
     }
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(cfg, f)
         f.flush()
         grid = SpatialGrid(f.name)
@@ -257,11 +309,17 @@ def test_get_cell_center_exception():
 def test_get_cell_bounds_none():
     """Cover get_cell_bounds returning None when center is None (line 197)."""
     import tempfile
+
     cfg = {
-        "corners": {"top_left":[0,0], "top_right":[100,0], "bottom_left":[0,100], "bottom_right":[100,100]},
-        "configuration": {"cell_size":20, "naming_style":"G_{col}_{row}"}
+        "corners": {
+            "top_left": [0, 0],
+            "top_right": [100, 0],
+            "bottom_left": [0, 100],
+            "bottom_right": [100, 100],
+        },
+        "configuration": {"cell_size": 20, "naming_style": "G_{col}_{row}"},
     }
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(cfg, f)
         f.flush()
         grid = SpatialGrid(f.name)
@@ -271,11 +329,17 @@ def test_get_cell_bounds_none():
 def test_draw_overlay_highlight_none():
     """Cover draw_overlay continue when bounds is None (line 277)."""
     import tempfile
+
     cfg = {
-        "corners": {"top_left":[0,0], "top_right":[100,0], "bottom_left":[0,100], "bottom_right":[100,100]},
-        "configuration": {"cell_size":20, "naming_style":"G_{col}_{row}"}
+        "corners": {
+            "top_left": [0, 0],
+            "top_right": [100, 0],
+            "bottom_left": [0, 100],
+            "bottom_right": [100, 100],
+        },
+        "configuration": {"cell_size": 20, "naming_style": "G_{col}_{row}"},
     }
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(cfg, f)
         f.flush()
         grid = SpatialGrid(f.name)

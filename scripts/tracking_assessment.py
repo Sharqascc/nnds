@@ -16,6 +16,7 @@ Outputs:
 Usage:
   python scripts/tracking_assessment.py --detections outputs/tracking_e2e_300_detections.csv
 """
+
 import argparse
 from pathlib import Path
 
@@ -43,21 +44,23 @@ def main():
         return
 
     log_lines = []
-    log_lines.append("Tracking full assessment log generated at " + str(pd.Timestamp.now().isoformat()))
+    log_lines.append(
+        "Tracking full assessment log generated at " + str(pd.Timestamp.now().isoformat())
+    )
     log_lines.append("Input: " + str(det_path))
     log_lines.append("Total detections: " + str(len(det)))
-    log_lines.append("Unique tracks: " + str(det['track_id'].nunique()))
+    log_lines.append("Unique tracks: " + str(det["track_id"].nunique()))
     log_lines.append("=" * 80)
 
     summary_rows = []
 
-    for track_id, group in det.groupby('track_id'):
-        group = group.sort_values('frame')
-        frames = group['frame'].values
-        xs = group['cx'].values
-        ys = group['cy'].values
-        confs = group['conf'].values
-        classes = group['class_name'].values
+    for track_id, group in det.groupby("track_id"):
+        group = group.sort_values("frame")
+        frames = group["frame"].values
+        xs = group["cx"].values
+        ys = group["cy"].values
+        confs = group["conf"].values
+        classes = group["class_name"].values
 
         n_det = len(group)
         first_frame = int(frames[0])
@@ -70,7 +73,7 @@ def main():
         dominant_ratio = float(class_counts.iloc[0] / n_det)
         class_switches = 0
         for i in range(1, n_det):
-            if classes[i] != classes[i-1]:
+            if classes[i] != classes[i - 1]:
                 class_switches += 1
 
         # Gaps and jumps
@@ -89,7 +92,7 @@ def main():
         jumps_over = int((jumps > args.max_jump).sum()) if len(jumps) else 0
 
         # Displacement rate = jump / gap (pixels per frame)
-        with np.errstate(divide='ignore', invalid='ignore'):
+        with np.errstate(divide="ignore", invalid="ignore"):
             rates = jumps / np.maximum(gaps, 1)
         max_rate = float(np.nanmax(rates)) if len(rates) else 0.0
         median_rate = float(np.nanmedian(rates)) if len(rates) else 0.0
@@ -113,33 +116,52 @@ def main():
         log_lines.append("  Frame range: " + str(first_frame) + " -> " + str(last_frame))
         log_lines.append("  Mean confidence: " + f"{mean_conf:.3f}")
         log_lines.append("  Dominant class: " + dominant_class)
-        log_lines.append("  Class consistency: " + f"{dominant_ratio*100:.1f}%")
+        log_lines.append("  Class consistency: " + f"{dominant_ratio * 100:.1f}%")
         log_lines.append("  Class switches: " + str(class_switches))
-        log_lines.append("  Max frame gap: " + str(max_gap) + " | gaps > " + str(args.max_gap) + ": " + str(gaps_over))
-        log_lines.append("  Max spatial jump: " + f"{max_jump:.1f} px | jumps > " + str(args.max_jump) + ": " + str(jumps_over))
-        log_lines.append("  Displacement rate (px/frame): median=" + f"{median_rate:.2f}, max=" + f"{max_rate:.2f}")
+        log_lines.append(
+            "  Max frame gap: "
+            + str(max_gap)
+            + " | gaps > "
+            + str(args.max_gap)
+            + ": "
+            + str(gaps_over)
+        )
+        log_lines.append(
+            "  Max spatial jump: "
+            + f"{max_jump:.1f} px | jumps > "
+            + str(args.max_jump)
+            + ": "
+            + str(jumps_over)
+        )
+        log_lines.append(
+            "  Displacement rate (px/frame): median="
+            + f"{median_rate:.2f}, max="
+            + f"{max_rate:.2f}"
+        )
         log_lines.append("  Quality: " + quality)
 
-        summary_rows.append({
-            "track_id": track_id,
-            "detections": n_det,
-            "first_frame": first_frame,
-            "last_frame": last_frame,
-            "mean_conf": round(mean_conf,3),
-            "dominant_class": dominant_class,
-            "class_consistency_pct": round(dominant_ratio*100,1),
-            "class_switches": class_switches,
-            "max_gap": max_gap,
-            "median_gap": median_gap,
-            "gaps_over_threshold": gaps_over,
-            "max_jump_px": round(max_jump,1),
-            "median_jump_px": round(median_jump,1),
-            "p95_jump_px": round(p95_jump,1),
-            "jumps_over_threshold": jumps_over,
-            "median_disp_rate_px_per_frame": round(median_rate,2),
-            "max_disp_rate_px_per_frame": round(max_rate,2),
-            "quality": quality,
-        })
+        summary_rows.append(
+            {
+                "track_id": track_id,
+                "detections": n_det,
+                "first_frame": first_frame,
+                "last_frame": last_frame,
+                "mean_conf": round(mean_conf, 3),
+                "dominant_class": dominant_class,
+                "class_consistency_pct": round(dominant_ratio * 100, 1),
+                "class_switches": class_switches,
+                "max_gap": max_gap,
+                "median_gap": median_gap,
+                "gaps_over_threshold": gaps_over,
+                "max_jump_px": round(max_jump, 1),
+                "median_jump_px": round(median_jump, 1),
+                "p95_jump_px": round(p95_jump, 1),
+                "jumps_over_threshold": jumps_over,
+                "median_disp_rate_px_per_frame": round(median_rate, 2),
+                "max_disp_rate_px_per_frame": round(max_rate, 2),
+                "quality": quality,
+            }
+        )
 
     # Write log
     log_path = Path(args.log_output)
@@ -158,10 +180,10 @@ def main():
     print("\n=== SUMMARY ===")
     print("Total tracks:", len(summary_df))
     print("Quality distribution:")
-    print(summary_df['quality'].value_counts())
-    print("\nTracks with class switches:", (summary_df['class_switches']>0).sum())
-    print("Tracks with gaps > threshold:", (summary_df['gaps_over_threshold']>0).sum())
-    print("Tracks with jumps > threshold:", (summary_df['jumps_over_threshold']>0).sum())
+    print(summary_df["quality"].value_counts())
+    print("\nTracks with class switches:", (summary_df["class_switches"] > 0).sum())
+    print("Tracks with gaps > threshold:", (summary_df["gaps_over_threshold"] > 0).sum())
+    print("Tracks with jumps > threshold:", (summary_df["jumps_over_threshold"] > 0).sum())
 
 
 if __name__ == "__main__":

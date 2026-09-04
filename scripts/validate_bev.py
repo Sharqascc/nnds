@@ -39,9 +39,7 @@ def hartley_normalize(pts):
     centered = pts - centroid
     mean_dist = np.mean(np.linalg.norm(centered, axis=1))
     scale = np.sqrt(2) / mean_dist if mean_dist > 0 else 1.0
-    T = np.array([[scale, 0, -scale * centroid[0]],
-                  [0, scale, -scale * centroid[1]],
-                  [0, 0, 1]])
+    T = np.array([[scale, 0, -scale * centroid[0]], [0, scale, -scale * centroid[1]], [0, 0, 1]])
     pts_h = np.hstack([pts, np.ones((len(pts), 1))])
     normalized = (T @ pts_h.T).T[:, :2]
     return normalized, T
@@ -95,7 +93,7 @@ def main():
         cap.release()
         if ret:
             for pt in pixel_pts:
-                cv2.circle(frame, (int(pt[0]), int(pt[1])), 5, (0,255,0), -1)
+                cv2.circle(frame, (int(pt[0]), int(pt[1])), 5, (0, 255, 0), -1)
             out_path = repo / args.output_image
             out_path.parent.mkdir(parents=True, exist_ok=True)
             cv2.imwrite(str(out_path), frame)

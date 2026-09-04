@@ -18,7 +18,9 @@ def _col_to_letters(col_idx: int) -> str:
         letters = chr(65 + remainder) + letters
     return letters
 
+
 OUT_OF_BOUNDS_CELL = "OUT_OF_BOUNDS"
+
 
 def _letters_to_col(letters: str) -> int:
     """Convert Excel-style column letters to zero-based column index."""
@@ -26,6 +28,7 @@ def _letters_to_col(letters: str) -> int:
     for ch in letters.upper():
         col_idx = col_idx * 26 + (ord(ch) - 64)
     return col_idx - 1
+
 
 @dataclass
 class GridConfig:
@@ -169,16 +172,8 @@ class SpatialGrid:
                     if col_idx < 0 or row_idx < 0:
                         result = None
                     else:
-                        x = (
-                            self.x_min
-                            + (col_idx * self.cell_size)
-                            + (self.cell_size // 2)
-                        )
-                        y = (
-                            self.y_min
-                            + (row_idx * self.cell_size)
-                            + (self.cell_size // 2)
-                        )
+                        x = self.x_min + (col_idx * self.cell_size) + (self.cell_size // 2)
+                        y = self.y_min + (row_idx * self.cell_size) + (self.cell_size // 2)
                         result = (int(x), int(y))
         except (ValueError, IndexError):
             result = None
@@ -247,12 +242,8 @@ class SpatialGrid:
             if x < self.x_max:
                 label = chr(65 + (i % 26))
                 pos = (x + 10, max(30, self.y_min - 15))
-                cv2.putText(
-                    overlay, label, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.8, shadow, 4
-                )
-                cv2.putText(
-                    overlay, label, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.8, text_color, 2
-                )
+                cv2.putText(overlay, label, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.8, shadow, 4)
+                cv2.putText(overlay, label, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.8, text_color, 2)
 
         # 2. Draw horizontal lines & row headers (1, 2, 3...)
         for i, y in enumerate(range(self.y_min, self.y_max + 1, self.cell_size)):
@@ -262,12 +253,8 @@ class SpatialGrid:
             if y < self.y_max:
                 label = str(i + 1)
                 pos = (max(5, self.x_min - 45), y + 35)
-                cv2.putText(
-                    overlay, label, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.8, shadow, 4
-                )
-                cv2.putText(
-                    overlay, label, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.8, text_color, 2
-                )
+                cv2.putText(overlay, label, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.8, shadow, 4)
+                cv2.putText(overlay, label, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.8, text_color, 2)
 
         # 3. Optionally highlight specific cells
         if highlight_cells:

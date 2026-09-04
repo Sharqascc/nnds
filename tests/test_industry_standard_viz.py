@@ -1,23 +1,19 @@
-
-import sys
 from contextlib import contextmanager
-import warnings
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
 
 from src.analysis.visualization.industry_standard_viz import (
     SSMPlotter,
-    plot_pet_distribution,
-    plot_ttc_time_series,
-    plot_severity_scatter,
-    plot_conflict_density_map,
     plot_comparative_boxplot,
-    plot_cumulative_distribution,
+    plot_conflict_density_map,
     plot_correlation_heatmap,
+    plot_cumulative_distribution,
+    plot_pet_distribution,
+    plot_severity_scatter,
     plot_temporal_heatmap,
+    plot_ttc_time_series,
 )
 
 
@@ -29,24 +25,29 @@ def plotter():
 def make_axes():
     ax = MagicMock()
     # Common return values
-    ax.hist.return_value = (np.array([1,2]), np.array([0,0.5,1]), [MagicMock(), MagicMock()])
+    ax.hist.return_value = (np.array([1, 2]), np.array([0, 0.5, 1]), [MagicMock(), MagicMock()])
     return ax
 
 
 def patch_plotting():
     """Create a context manager with common matplotlib patches."""
+
     @contextmanager
     def _patch_ctx():
-        with patch('matplotlib.pyplot.subplots', return_value=(MagicMock(), make_axes())), \
-             patch('matplotlib.pyplot.tight_layout', MagicMock()), \
-             patch('matplotlib.pyplot.show', MagicMock()), \
-             patch('matplotlib.pyplot.colorbar', MagicMock(return_value=MagicMock())), \
-             patch('matplotlib.pyplot.savefig', MagicMock()):
+        with (
+            patch("matplotlib.pyplot.subplots", return_value=(MagicMock(), make_axes())),
+            patch("matplotlib.pyplot.tight_layout", MagicMock()),
+            patch("matplotlib.pyplot.show", MagicMock()),
+            patch("matplotlib.pyplot.colorbar", MagicMock(return_value=MagicMock())),
+            patch("matplotlib.pyplot.savefig", MagicMock()),
+        ):
             yield
+
     return _patch_ctx()
 
 
 # ---------------- validate_ssm_data ----------------
+
 
 def test_validate_ssm_data_none(plotter):
     res = plotter.validate_ssm_data(None, "PET")
@@ -55,7 +56,7 @@ def test_validate_ssm_data_none(plotter):
 
 
 def test_validate_ssm_data_2d(plotter):
-    res = plotter.validate_ssm_data(np.array([[1,2],[3,4]]), "PET")
+    res = plotter.validate_ssm_data(np.array([[1, 2], [3, 4]]), "PET")
     assert res["valid"] is False
     assert any("1D" in e for e in res["errors"])
 
@@ -97,6 +98,7 @@ def test_validate_ssm_data_positive(plotter):
 
 # ---------------- _format_p_value ----------------
 
+
 def test_format_p_value_ranges():
     p = SSMPlotter()
     assert p._format_p_value(0.0001) == "p < 0.001***"
@@ -107,6 +109,7 @@ def test_format_p_value_ranges():
 
 # ---------------- _save_figure ----------------
 
+
 def test_save_figure(plotter):
     fig = MagicMock()
     path = "/tmp/fig.png"
@@ -116,6 +119,7 @@ def test_save_figure(plotter):
 
 
 # ---------------- plot_pet_distribution ----------------
+
 
 def test_plot_pet_distribution_invalid(plotter):
     with pytest.raises(ValueError):
@@ -139,9 +143,10 @@ def test_plot_pet_distribution_save_path(plotter, tmp_path):
 
 # ---------------- plot_ttc_time_series ----------------
 
+
 def test_plot_ttc_time_series_invalid(plotter):
     with pytest.raises(ValueError):
-        plotter.plot_ttc_time_series(np.array([0,1]), np.array([np.nan]))
+        plotter.plot_ttc_time_series(np.array([0, 1]), np.array([np.nan]))
 
 
 def test_plot_ttc_time_series_valid(plotter):
@@ -162,6 +167,7 @@ def test_plot_ttc_time_series_mismatched_timestamps(plotter):
 
 # ---------------- plot_severity_scatter ----------------
 
+
 def test_plot_severity_scatter(plotter):
     pet = np.array([0.5, 1.5, 2.5, 3.5])
     ttc = np.array([1.0, 2.0, 3.0, 4.0])
@@ -172,19 +178,21 @@ def test_plot_severity_scatter(plotter):
 
 # ---------------- plot_comparative_boxplot ----------------
 
+
 def test_plot_comparative_boxplot_less_than_2_groups(plotter):
     with pytest.raises(ValueError):
-        plotter.plot_comparative_boxplot({"A": np.array([1,2,3])})
+        plotter.plot_comparative_boxplot({"A": np.array([1, 2, 3])})
 
 
 def test_plot_comparative_boxplot(plotter):
-    groups = {"A": np.array([1,2,3]), "B": np.array([2,3,4])}
-    with patch_plotting(), patch('scipy.stats.ttest_ind', return_value=(1.0, 0.01)):
+    groups = {"A": np.array([1, 2, 3]), "B": np.array([2, 3, 4])}
+    with patch_plotting(), patch("scipy.stats.ttest_ind", return_value=(1.0, 0.01)):
         fig = plotter.plot_comparative_boxplot(groups, show_stats=True, save_path=None)
     assert fig is not None
 
 
 # ---------------- plot_conflict_density_map ----------------
+
 
 def test_plot_conflict_density_map_default(plotter):
     pet = np.array([0.1, 0.6, 1.2, 2.0, 6.0])
@@ -203,15 +211,16 @@ def test_plot_conflict_density_map_custom_bands(plotter):
 
 # ---------------- plot_cumulative_distribution ----------------
 
+
 def test_plot_cumulative_distribution_pet(plotter):
-    groups = {"A": np.array([1,2,3]), "B": np.array([2,3,4])}
+    groups = {"A": np.array([1, 2, 3]), "B": np.array([2, 3, 4])}
     with patch_plotting():
         fig = plotter.plot_cumulative_distribution(groups, metric_name="PET")
     assert fig is not None
 
 
 def test_plot_cumulative_distribution_ttc(plotter):
-    groups = {"A": np.array([1,2,3])}
+    groups = {"A": np.array([1, 2, 3])}
     with patch_plotting():
         fig = plotter.plot_cumulative_distribution(groups, metric_name="TTC")
     assert fig is not None
@@ -219,59 +228,67 @@ def test_plot_cumulative_distribution_ttc(plotter):
 
 # ---------------- Standalone convenience functions ----------------
 
+
 def test_standalone_pet_distribution():
     with patch_plotting():
-        fig = plot_pet_distribution(np.array([1,2,3]))
+        fig = plot_pet_distribution(np.array([1, 2, 3]))
     assert fig is not None
+
 
 def test_standalone_ttc_time_series():
     with patch_plotting():
-        fig = plot_ttc_time_series(np.arange(3), np.array([1,2,3]))
+        fig = plot_ttc_time_series(np.arange(3), np.array([1, 2, 3]))
     assert fig is not None
+
 
 def test_standalone_severity_scatter():
     with patch_plotting():
-        fig = plot_severity_scatter(np.array([1,2,3]), np.array([1,2,3]))
+        fig = plot_severity_scatter(np.array([1, 2, 3]), np.array([1, 2, 3]))
     assert fig is not None
+
 
 def test_standalone_conflict_density():
     with patch_plotting():
-        fig = plot_conflict_density_map(np.array([1,2,3]))
+        fig = plot_conflict_density_map(np.array([1, 2, 3]))
     assert fig is not None
 
+
 def test_standalone_comparative_boxplot():
-    with patch_plotting(), patch('scipy.stats.ttest_ind', return_value=(1.0, 0.01)):
-        fig = plot_comparative_boxplot({"A": np.array([1,2,3]), "B": np.array([2,3,4])})
+    with patch_plotting(), patch("scipy.stats.ttest_ind", return_value=(1.0, 0.01)):
+        fig = plot_comparative_boxplot({"A": np.array([1, 2, 3]), "B": np.array([2, 3, 4])})
     assert fig is not None
+
 
 def test_standalone_cumulative_distribution():
     with patch_plotting():
-        fig = plot_cumulative_distribution({"A": np.array([1,2,3])})
+        fig = plot_cumulative_distribution({"A": np.array([1, 2, 3])})
     assert fig is not None
 
 
 # ---------------- plot_correlation_heatmap ----------------
 
+
 def test_plot_correlation_heatmap_with_pandas(monkeypatch):
     # Ensure HAS_PANDAS is True
     monkeypatch.setattr("src.analysis.visualization.industry_standard_viz.HAS_PANDAS", True)
-    data = {"A": np.array([1,2,3]), "B": np.array([2,3,4])}
-    with patch_plotting(), patch('matplotlib.pyplot.colorbar', return_value=MagicMock()):
+    data = {"A": np.array([1, 2, 3]), "B": np.array([2, 3, 4])}
+    with patch_plotting(), patch("matplotlib.pyplot.colorbar", return_value=MagicMock()):
         fig = plot_correlation_heatmap(data)
     assert fig is not None
 
 
 def test_plot_correlation_heatmap_no_pandas(monkeypatch):
     monkeypatch.setattr("src.analysis.visualization.industry_standard_viz.HAS_PANDAS", False)
-    data = {"A": np.array([1,2,3]), "B": np.array([2,3,4])}
+    data = {"A": np.array([1, 2, 3]), "B": np.array([2, 3, 4])}
     with pytest.raises(ImportError):
         plot_correlation_heatmap(data)
 
 
 # ---------------- plot_temporal_heatmap ----------------
 
+
 def test_plot_temporal_heatmap():
-    timestamps = np.array([0,1,2,3,4])
+    timestamps = np.array([0, 1, 2, 3, 4])
     pet = np.array([0.5, 1.0, 1.5, 2.0, 2.5])
     with patch_plotting():
         fig = plot_temporal_heatmap(timestamps, pet)

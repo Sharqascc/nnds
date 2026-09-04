@@ -4,6 +4,7 @@ VLM analyzer supporting small BLIP VQA and larger BLIP2-2.7B.
 By default, uses small BLIP VQA for low memory. If model_name contains "blip2",
 uses Blip2ForConditionalGeneration with proper loading (no .to after device_map).
 """
+
 import torch
 from PIL import Image
 from transformers import (
@@ -24,7 +25,7 @@ class VLLMAnalyzer:
             self.model = Blip2ForConditionalGeneration.from_pretrained(
                 model_name,
                 torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
-                device_map="auto"
+                device_map="auto",
             )
             # Do not call .to(self.device) after device_map
         else:

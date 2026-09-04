@@ -14,6 +14,7 @@ Usage:
         --ground-truth path/to/gt.csv \
         --iou-threshold 0.5
 """
+
 import argparse
 
 import pandas as pd
@@ -43,18 +44,20 @@ def main():
     gt = pd.read_csv(args.ground_truth)
 
     # Filter detections to frames present in GT
-    det_frames = set(det['frame'].unique())
-    gt_frames = set(gt['frame'].unique())
+    det_frames = set(det["frame"].unique())
+    gt_frames = set(gt["frame"].unique())
     common_frames = det_frames & gt_frames
-    print(f"Frames with GT: {len(gt_frames)}, frames with detections: {len(det_frames)}, common: {len(common_frames)}")
+    print(
+        f"Frames with GT: {len(gt_frames)}, frames with detections: {len(det_frames)}, common: {len(common_frames)}"
+    )
 
     matched = 0
     total_gt = 0
     total_det = 0
 
     for frame in sorted(common_frames):
-        gt_frame = gt[gt['frame'] == frame]
-        det_frame = det[det['frame'] == frame]
+        gt_frame = gt[gt["frame"] == frame]
+        det_frame = det[det["frame"] == frame]
         total_gt += len(gt_frame)
         total_det += len(det_frame)
 
@@ -66,8 +69,8 @@ def main():
             for di, d in det_frame.iterrows():
                 if di in matched_det:
                     continue
-                box1 = [g['x1'], g['y1'], g['x2'], g['y2']]
-                box2 = [d['x1'], d['y1'], d['x2'], d['y2']]
+                box1 = [g["x1"], g["y1"], g["x2"], g["y2"]]
+                box2 = [d["x1"], d["y1"], d["x2"], d["y2"]]
                 iou = compute_iou(box1, box2)
                 if iou > best_iou:
                     best_iou = iou
@@ -84,6 +87,7 @@ def main():
     print(f"Precision: {precision:.4f}")
     print(f"Recall:    {recall:.4f}")
     print(f"F1 score:  {f1:.4f}")
+
 
 if __name__ == "__main__":
     main()

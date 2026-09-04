@@ -67,9 +67,7 @@ def test_gate_config_yaml_parses_and_has_basic_keys():
     except Exception as exc:
         raise AssertionError(f"Failed to parse YAML config: {gate_path}") from exc
 
-    assert isinstance(data, dict), (
-        f"gate_config.yaml must be a mapping, got {type(data).__name__}"
-    )
+    assert isinstance(data, dict), f"gate_config.yaml must be a mapping, got {type(data).__name__}"
 
     # Minimal schema: expect a top-level gates list or mapping
     assert "gates" in data, "gate_config.yaml must define a top-level 'gates' key"
@@ -110,16 +108,12 @@ def test_bev_config_has_required_fields_and_bounds():
     if isinstance(resolution, (int, float)):
         assert resolution > 0, f"BEV resolution must be positive, got {resolution}"
     elif isinstance(resolution, (list, tuple)):
-        assert len(resolution) == 2, (
-            f"BEV resolution list must be length 2, got {len(resolution)}"
-        )
+        assert len(resolution) == 2, f"BEV resolution list must be length 2, got {len(resolution)}"
         assert all(isinstance(v, (int, float)) and v > 0 for v in resolution), (
             f"BEV resolution entries must be positive numbers, got {resolution}"
         )
     else:
-        raise AssertionError(
-            f"Unexpected type for BEV resolution: {type(resolution).__name__}"
-        )
+        raise AssertionError(f"Unexpected type for BEV resolution: {type(resolution).__name__}")
 
     # CRITICAL: Check that BEV bounds span a reasonable intersection area
     x_span = xmax - xmin

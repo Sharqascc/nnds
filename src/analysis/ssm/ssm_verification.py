@@ -126,9 +126,7 @@ class SSMVerifier:
 
         # Sample size check
         if data.size < self.min_sample_size:
-            results["warnings"].append(
-                f"Small sample size: {data.size} < {self.min_sample_size}"
-            )
+            results["warnings"].append(f"Small sample size: {data.size} < {self.min_sample_size}")
 
         # Range validation
         if expected_range is not None:
@@ -182,9 +180,7 @@ class SSMVerifier:
 
         # Distribution shape check
         if data.size >= 8:  # Need sufficient samples for normality test
-            _, p_value = stats.shapiro(
-                data[:5000]
-            )  # Shapiro-Wilk test (max 5000 samples)
+            _, p_value = stats.shapiro(data[:5000])  # Shapiro-Wilk test (max 5000 samples)
             results["statistics"]["normality_p_value"] = float(p_value)
 
             if p_value < 0.05:
@@ -299,9 +295,7 @@ class SSMVerifier:
             if "mean" in reference_values:
                 mean_diff = abs(np.mean(data) - reference_values["mean"])
                 rel_error = (
-                    mean_diff / reference_values["mean"]
-                    if reference_values["mean"] > 0
-                    else 0
+                    mean_diff / reference_values["mean"] if reference_values["mean"] > 0 else 0
                 )
 
                 results["reference_comparison"]["mean"] = {
@@ -522,18 +516,14 @@ class SSMVerifier:
 
         if pet_values is not None:
             pet_ref = reference_values.get("PET") if reference_values else None
-            pet_result = self.verify_pet_calculation(
-                pet_values, reference_values=pet_ref
-            )
+            pet_result = self.verify_pet_calculation(pet_values, reference_values=pet_ref)
             suite["tests"].append(pet_result)
             if not pet_result["passed"]:
                 suite["overall_pass"] = False
 
         if ttc_values is not None:
             ttc_ref = reference_values.get("TTC") if reference_values else None
-            ttc_result = self.verify_ttc_calculation(
-                ttc_values, reference_values=ttc_ref
-            )
+            ttc_result = self.verify_ttc_calculation(ttc_values, reference_values=ttc_ref)
             suite["tests"].append(ttc_result)
             if not ttc_result["passed"]:
                 suite["overall_pass"] = False
@@ -570,9 +560,7 @@ def verify_pet_calculation(
 ) -> dict:
     """Standalone PET verification."""
     verifier = SSMVerifier(tolerance=tolerance)
-    return verifier.verify_pet_calculation(
-        pet_values, reference_values=reference_values
-    )
+    return verifier.verify_pet_calculation(pet_values, reference_values=reference_values)
 
 
 def verify_ttc_calculation(
@@ -582,9 +570,7 @@ def verify_ttc_calculation(
 ) -> dict:
     """Standalone TTC verification."""
     verifier = SSMVerifier(tolerance=tolerance)
-    return verifier.verify_ttc_calculation(
-        ttc_values, reference_values=reference_values
-    )
+    return verifier.verify_ttc_calculation(ttc_values, reference_values=reference_values)
 
 
 def verify_drac_calculation(drac_values: np.ndarray, tolerance: float = 1e-6) -> dict:
@@ -602,9 +588,7 @@ def run_verification_suite(
 ) -> dict:
     """Run complete verification suite."""
     verifier = SSMVerifier(tolerance=tolerance)
-    return verifier.run_verification_suite(
-        pet_values, ttc_values, drac_values, reference_values
-    )
+    return verifier.run_verification_suite(pet_values, ttc_values, drac_values, reference_values)
 
 
 def compare_with_reference(
@@ -638,9 +622,7 @@ def compare_with_reference(
 
     # Effect size (Cohen's d)
     pooled_std = np.sqrt((np.var(observed) + np.var(reference)) / 2)
-    cohens_d = (
-        (np.mean(observed) - np.mean(reference)) / pooled_std if pooled_std > 0 else 0
-    )
+    cohens_d = (np.mean(observed) - np.mean(reference)) / pooled_std if pooled_std > 0 else 0
     results["effect_size"] = {
         "cohens_d": float(cohens_d),
         "interpretation": "small"

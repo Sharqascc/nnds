@@ -122,9 +122,7 @@ class StatisticalTester:
                 "p_value": float(p_value),
                 "normal": bool(p_value > self.alpha),
                 "interpretation": "Normal" if p_value > self.alpha else "Non-normal",
-                "recommendation": ""
-                if p_value > self.alpha
-                else "Consider non-parametric tests",
+                "recommendation": "" if p_value > self.alpha else "Consider non-parametric tests",
             }
 
         elif method == "anderson":
@@ -139,9 +137,7 @@ class StatisticalTester:
                 "statistic": float(result.statistic),
                 "critical_value_5pct": float(critical_5pct),
                 "normal": bool(result.statistic < critical_5pct),
-                "interpretation": "Normal"
-                if result.statistic < critical_5pct
-                else "Non-normal",
+                "interpretation": "Normal" if result.statistic < critical_5pct else "Non-normal",
             }
 
         else:
@@ -173,9 +169,7 @@ class StatisticalTester:
             "statistic": float(statistic),
             "p_value": float(p_value),
             "equal_variances": bool(p_value > self.alpha),
-            "interpretation": "Equal variances"
-            if p_value > self.alpha
-            else "Unequal variances",
+            "interpretation": "Equal variances" if p_value > self.alpha else "Unequal variances",
             "recommendation": ""
             if p_value > self.alpha
             else "Use Welch's t-test or non-parametric test",
@@ -218,13 +212,9 @@ class StatisticalTester:
             if not homoscedasticity.get("equal_variances", False):
                 results["all_passed"] = False
                 if test_type == "t-test":
-                    results["recommendations"].append(
-                        "Use Welch's t-test (unequal variances)"
-                    )
+                    results["recommendations"].append("Use Welch's t-test (unequal variances)")
                 elif test_type == "anova":
-                    results["recommendations"].append(
-                        "Consider Welch's ANOVA or Kruskal-Wallis"
-                    )
+                    results["recommendations"].append("Consider Welch's ANOVA or Kruskal-Wallis")
 
         return results
 
@@ -277,9 +267,7 @@ class StatisticalTester:
             cohens_d = np.mean(g1) / np.std(g1, ddof=1) if np.std(g1, ddof=1) > 0 else 0
 
             # CI for mean
-            stats.t.interval(
-                1 - self.alpha, df=len(g1) - 1, loc=np.mean(g1), scale=stats.sem(g1)
-            )
+            stats.t.interval(1 - self.alpha, df=len(g1) - 1, loc=np.mean(g1), scale=stats.sem(g1))
 
             result["statistics"] = {
                 "n": len(g1),
@@ -319,23 +307,17 @@ class StatisticalTester:
                 t_stat, p_value = stats.ttest_ind(
                     g1, g2, equal_var=equal_var, alternative=alternative
                 )
-                result["type"] = (
-                    "two-sample (Welch)" if not equal_var else "two-sample (Student)"
-                )
+                result["type"] = "two-sample (Welch)" if not equal_var else "two-sample (Student)"
 
                 # Cohen's d (pooled or unpooled)
                 if equal_var:
                     # Pooled standard deviation
                     n1, n2 = len(g1), len(g2)
-                    pooled_var = (
-                        (n1 - 1) * np.var(g1, ddof=1) + (n2 - 1) * np.var(g2, ddof=1)
-                    ) / (n1 + n2 - 2)
-                    pooled_std = np.sqrt(pooled_var)
-                    cohens_d = (
-                        (np.mean(g1) - np.mean(g2)) / pooled_std
-                        if pooled_std > 0
-                        else 0
+                    pooled_var = ((n1 - 1) * np.var(g1, ddof=1) + (n2 - 1) * np.var(g2, ddof=1)) / (
+                        n1 + n2 - 2
                     )
+                    pooled_std = np.sqrt(pooled_var)
+                    cohens_d = (np.mean(g1) - np.mean(g2)) / pooled_std if pooled_std > 0 else 0
                 else:
                     # Glass's delta (uses control group SD)
                     cohens_d = (
@@ -529,9 +511,7 @@ class StatisticalTester:
         assumptions = {}
         if self.auto_check_assumptions:
             homoscedasticity = self.check_homoscedasticity(*groups)
-            assumptions["equal_variances"] = homoscedasticity.get(
-                "equal_variances", False
-            )
+            assumptions["equal_variances"] = homoscedasticity.get("equal_variances", False)
 
         return {
             "test": "One-way ANOVA",
@@ -579,9 +559,7 @@ class StatisticalTester:
         # Epsilon-squared (effect size for Kruskal-Wallis)
         n_total = sum(len(g) for g in groups)
         epsilon_squared = (
-            (h_stat - len(groups) + 1) / (n_total - len(groups))
-            if n_total > len(groups)
-            else 0
+            (h_stat - len(groups) + 1) / (n_total - len(groups)) if n_total > len(groups) else 0
         )
 
         return {
@@ -598,9 +576,7 @@ class StatisticalTester:
     # CHI-SQUARE AND PROPORTION TESTS
     # ===================================================================
 
-    def chi_square_test(
-        self, observed: np.ndarray, expected: np.ndarray | None = None
-    ) -> dict:
+    def chi_square_test(self, observed: np.ndarray, expected: np.ndarray | None = None) -> dict:
         """
         Chi-square goodness-of-fit test.
 
@@ -639,9 +615,7 @@ class StatisticalTester:
     # MULTIPLE TESTING CORRECTION
     # ===================================================================
 
-    def adjust_p_values(
-        self, p_values: list[float], method: str = "holm"
-    ) -> np.ndarray:
+    def adjust_p_values(self, p_values: list[float], method: str = "holm") -> np.ndarray:
         """
         Adjust p-values for multiple comparisons [web:37][web:40].
 
@@ -670,9 +644,7 @@ class StatisticalTester:
 
             # Ensure monotonicity
             for i in range(1, n):
-                adjusted[sorted_idx[i]] = max(
-                    adjusted[sorted_idx[i]], adjusted[sorted_idx[i - 1]]
-                )
+                adjusted[sorted_idx[i]] = max(adjusted[sorted_idx[i]], adjusted[sorted_idx[i - 1]])
 
             return adjusted
 
@@ -810,12 +782,8 @@ def multiple_comparisons(
             else:
                 result = tester.mann_whitney(groups[i], groups[j])
 
-            pairwise.append(
-                {"comparison": f"Group {i + 1} vs Group {j + 1}", "result": result}
-            )
-            p_values.append(
-                result.get("test_statistics", {}).get("p_value", result.get("p_value"))
-            )
+            pairwise.append({"comparison": f"Group {i + 1} vs Group {j + 1}", "result": result})
+            p_values.append(result.get("test_statistics", {}).get("p_value", result.get("p_value")))
 
     # Adjust p-values
     adjusted_p = tester.adjust_p_values(p_values, method=correction)
@@ -831,9 +799,7 @@ def multiple_comparisons(
     }
 
 
-def check_assumptions(
-    *groups: np.ndarray, test_type: str = "t-test", alpha: float = 0.05
-) -> dict:
+def check_assumptions(*groups: np.ndarray, test_type: str = "t-test", alpha: float = 0.05) -> dict:
     """Check statistical assumptions for tests."""
     tester = StatisticalTester(alpha=alpha)
     return tester.check_assumptions(*groups, test_type=test_type)

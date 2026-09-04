@@ -54,17 +54,11 @@ def _segment_intersection(p1, p2, q1, q2):
 
 
 def _point_in_square(px, py, cx, cy, half_size):
-    return (cx - half_size) <= px <= (cx + half_size) and (cy - half_size) <= py <= (
-        cy + half_size
-    )
+    return (cx - half_size) <= px <= (cx + half_size) and (cy - half_size) <= py <= (cy + half_size)
 
 
-def _entry_exit_frames(
-    points: list[TrackPoint], cx: float, cy: float, half_size: float
-):
-    inside_frames = [
-        pt.frame for pt in points if _point_in_square(pt.x, pt.y, cx, cy, half_size)
-    ]
+def _entry_exit_frames(points: list[TrackPoint], cx: float, cy: float, half_size: float):
+    inside_frames = [pt.frame for pt in points if _point_in_square(pt.x, pt.y, cx, cy, half_size)]
     if not inside_frames:
         return None
     return min(inside_frames), max(inside_frames)
@@ -136,9 +130,7 @@ def run_yolo_cpu_grid_pet(
                 else np.array([], dtype=int)
             )
             confs = (
-                boxes.conf.cpu().numpy()
-                if boxes.conf is not None
-                else np.array([], dtype=float)
+                boxes.conf.cpu().numpy() if boxes.conf is not None else np.array([], dtype=float)
             )
 
             if hasattr(boxes, "id") and boxes.id is not None:

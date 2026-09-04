@@ -82,9 +82,7 @@ class UncertaintyQuantifier:
     # COMPREHENSIVE ANALYSIS
     # ===================================================================
 
-    def analyze(
-        self, data: np.ndarray, name: str = "metric", method: str = "bootstrap"
-    ) -> dict:
+    def analyze(self, data: np.ndarray, name: str = "metric", method: str = "bootstrap") -> dict:
         """
         Complete uncertainty analysis with multiple methods.
 
@@ -183,9 +181,7 @@ class UncertaintyQuantifier:
             results["warnings"].append(f"High variability (CV={cv:.1f}%)")
 
         if ci_width_pct > 50:
-            results["warnings"].append(
-                f"Wide confidence interval ({ci_width_pct:.1f}% of mean)"
-            )
+            results["warnings"].append(f"Wide confidence interval ({ci_width_pct:.1f}% of mean)")
 
         # Summary
         status = "PASS" if results["passed"] else "FAIL"
@@ -241,9 +237,7 @@ class UncertaintyQuantifier:
             # Simple percentile method
             alpha_lower = (1 - self.confidence_level) / 2
             alpha_upper = 1 - alpha_lower
-            return np.percentile(
-                bootstrap_stats, [alpha_lower * 100, alpha_upper * 100]
-            )
+            return np.percentile(bootstrap_stats, [alpha_lower * 100, alpha_upper * 100])
 
         elif method == "bca":
             # Bias-corrected and accelerated (BCa)
@@ -379,9 +373,7 @@ class UncertaintyQuantifier:
         if group2 is None:
             # One-sample effect size
             d = np.mean(g1) / np.std(g1, ddof=1) if np.std(g1, ddof=1) > 0 else 0
-            ci = self.bootstrap_ci(
-                g1, statistic=lambda x: np.mean(x) / np.std(x, ddof=1)
-            )
+            ci = self.bootstrap_ci(g1, statistic=lambda x: np.mean(x) / np.std(x, ddof=1))
 
         else:
             # Two-sample effect size
@@ -390,21 +382,19 @@ class UncertaintyQuantifier:
 
             if estimator == "cohens_d":
                 # Pooled standard deviation
-                pooled_var = (
-                    (n1 - 1) * np.var(g1, ddof=1) + (n2 - 1) * np.var(g2, ddof=1)
-                ) / (n1 + n2 - 2)
+                pooled_var = ((n1 - 1) * np.var(g1, ddof=1) + (n2 - 1) * np.var(g2, ddof=1)) / (
+                    n1 + n2 - 2
+                )
                 pooled_std = np.sqrt(pooled_var)
                 d = (np.mean(g1) - np.mean(g2)) / pooled_std if pooled_std > 0 else 0
 
             elif estimator == "hedges_g":
                 # Hedges' g (bias-corrected)
-                pooled_var = (
-                    (n1 - 1) * np.var(g1, ddof=1) + (n2 - 1) * np.var(g2, ddof=1)
-                ) / (n1 + n2 - 2)
-                pooled_std = np.sqrt(pooled_var)
-                cohens_d = (
-                    (np.mean(g1) - np.mean(g2)) / pooled_std if pooled_std > 0 else 0
+                pooled_var = ((n1 - 1) * np.var(g1, ddof=1) + (n2 - 1) * np.var(g2, ddof=1)) / (
+                    n1 + n2 - 2
                 )
+                pooled_std = np.sqrt(pooled_var)
+                cohens_d = (np.mean(g1) - np.mean(g2)) / pooled_std if pooled_std > 0 else 0
 
                 # Correction factor
                 correction = 1 - (3 / (4 * (n1 + n2) - 9))
@@ -559,9 +549,7 @@ def compute_effect_size(
     return result["estimate"]
 
 
-def compute_sample_size(
-    effect_size: float, power: float = 0.80, alpha: float = 0.05
-) -> int:
+def compute_sample_size(effect_size: float, power: float = 0.80, alpha: float = 0.05) -> int:
     """Compute required sample size for power analysis."""
     uq = UncertaintyQuantifier()
     return uq.compute_required_sample_size(effect_size, power, alpha)
@@ -599,9 +587,7 @@ def sensitivity_analysis(
         results[param] = {
             "param_values": param_values,
             "outputs": outputs,
-            "sensitivity": np.std(outputs) / np.mean(outputs)
-            if np.mean(outputs) > 0
-            else 0,
+            "sensitivity": np.std(outputs) / np.mean(outputs) if np.mean(outputs) > 0 else 0,
         }
 
     return results

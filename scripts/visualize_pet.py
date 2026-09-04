@@ -119,9 +119,7 @@ def main():
         traj_b_so_far = [p for p in traj_b if p["frame"] <= frame_idx]
 
         draw_tracks(frame, traj_a_so_far, (0, 0, 255), f"Track {row['track_a']}")  # Red
-        draw_tracks(
-            frame, traj_b_so_far, (255, 0, 0), f"Track {row['track_b']}"
-        )  # Blue
+        draw_tracks(frame, traj_b_so_far, (255, 0, 0), f"Track {row['track_b']}")  # Blue
 
         # Add legend
         cv2.putText(

@@ -25,18 +25,12 @@ def main():
 
     # Precompute per-track summary once
     track_info = {}
-    for tid, grp in tqdm(
-        df.groupby("track_id"), desc="Summarising tracks", unit="track"
-    ):
+    for tid, grp in tqdm(df.groupby("track_id"), desc="Summarising tracks", unit="track"):
         grp = grp.sort_values("frame")
         frames = grp["frame"].values
         cx = grp["cx"].values
         cy = grp["cy"].values
-        jumps = (
-            np.sqrt(np.diff(cx) ** 2 + np.diff(cy) ** 2)
-            if len(grp) > 1
-            else np.array([])
-        )
+        jumps = np.sqrt(np.diff(cx) ** 2 + np.diff(cy) ** 2) if len(grp) > 1 else np.array([])
         max_gap = int(np.diff(frames).max()) if len(grp) > 1 else 0
         cls_counts = grp["class_name"].value_counts()
         main_cls = cls_counts.index[0] if len(cls_counts) else "unknown"
@@ -110,9 +104,7 @@ def main():
     lines.append(f"Total tracks: {len(track_info)}")
     lines.append(f"ID switch candidates: {len(switches)}")
     suspicious = sum(
-        1
-        for s in track_info.values()
-        if s["max_gap"] > args.max_gap or s["max_jump"] > 80
+        1 for s in track_info.values() if s["max_gap"] > args.max_gap or s["max_jump"] > 80
     )
     lines.append(f"Suspicious tracks: {suspicious}")
     lines.append("=" * 80)

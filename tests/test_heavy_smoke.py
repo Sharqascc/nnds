@@ -1,7 +1,7 @@
+from unittest.mock import MagicMock, patch
 
 import pytest
-from unittest.mock import patch, MagicMock
-from pathlib import Path
+
 
 @pytest.mark.smoke
 @pytest.mark.integration
@@ -14,7 +14,7 @@ def test_sam3_grid_pet_smoke(tmp_path):
     (tmp_path / "grid.json").write_text("{}")
     (tmp_path / "bev.json").write_text("{}")
 
-    with patch('cv2.VideoCapture') as cap_mock:
+    with patch("cv2.VideoCapture") as cap_mock:
         cap_mock.return_value.get.return_value = 25.0
         cap_mock.return_value.read.return_value = (False, None)
         with pytest.raises(RuntimeError):
@@ -24,8 +24,9 @@ def test_sam3_grid_pet_smoke(tmp_path):
                 sam3_rel_path="sam3.pt",
                 grid_rel_path="grid.json",
                 bev_rel_path="bev.json",
-                output_name='test'
+                output_name="test",
             )
+
 
 @pytest.mark.smoke
 @pytest.mark.integration
@@ -37,12 +38,14 @@ def test_yolo_cpu_grid_pet_smoke(tmp_path):
     (tmp_path / "yolo.pt").write_bytes(b"dummy")
 
     # Patch YOLO to avoid model load; patch cv2.VideoCapture to force RuntimeError
-    with patch('src.analysis.grid_trajectory.yolo_cpu_grid_pet.YOLO', MagicMock()) as yolo_mock, \
-         patch('cv2.VideoCapture') as cap_mock:
+    with (
+        patch("src.analysis.grid_trajectory.yolo_cpu_grid_pet.YOLO", MagicMock()) as yolo_mock,
+        patch("cv2.VideoCapture") as cap_mock,
+    ):
         cap_mock.return_value.isOpened.return_value = False
         with pytest.raises(RuntimeError):
             run_yolo_cpu_grid_pet(
                 video_path=str(tmp_path / "video.mp4"),
                 weights_path=str(tmp_path / "yolo.pt"),
-                output_csv_path=str(tmp_path / "out.csv")
+                output_csv_path=str(tmp_path / "out.csv"),
             )

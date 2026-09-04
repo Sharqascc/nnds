@@ -1,20 +1,18 @@
+from unittest.mock import patch
 
 import numpy as np
-import pytest
-from unittest.mock import patch
-from scipy import stats
 
 from src.analysis.ssm.ssm_verification import (
     SSMVerifier,
+    compare_with_reference,
+    run_verification_suite,
+    verify_drac_calculation,
     verify_pet_calculation,
     verify_ttc_calculation,
-    verify_drac_calculation,
-    run_verification_suite,
-    compare_with_reference,
 )
 
-
 # ---------- check_data_quality ----------
+
 
 def test_check_data_quality_type_conversion_success():
     verifier = SSMVerifier(min_sample_size=1)
@@ -27,6 +25,7 @@ class BadArray:
     def __array__(self, *args, **kwargs):
         raise ValueError("cannot convert")
 
+
 def test_check_data_quality_type_conversion_failure():
     verifier = SSMVerifier(min_sample_size=1)
     result = verifier.check_data_quality(BadArray(), name="test")
@@ -36,23 +35,27 @@ def test_check_data_quality_type_conversion_failure():
 
 def test_check_data_quality_out_of_range_gt5():
     verifier = SSMVerifier(min_sample_size=1)
-    data = np.array([0,1,2,3,4,5,6,7,8,9,100])  # 1/11 >9%? Actually 1/11=9.09% <5? need >5: 1/11=9.09% >5 yes
-    result = verifier.check_data_quality(data, expected_range=(0,10))
+    data = np.array(
+        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 100]
+    )  # 1/11 >9%? Actually 1/11=9.09% <5? need >5: 1/11=9.09% >5 yes
+    result = verifier.check_data_quality(data, expected_range=(0, 10))
     assert result["passed"] == False
     assert any("outside expected range" in e for e in result["errors"])
 
 
 def test_check_data_quality_out_of_range_le5():
     verifier = SSMVerifier(min_sample_size=1)
-    data = np.array([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,100])  # 1/21=4.76%
-    result = verifier.check_data_quality(data, expected_range=(0,20))
+    data = np.array(
+        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 100]
+    )  # 1/21=4.76%
+    result = verifier.check_data_quality(data, expected_range=(0, 20))
     assert result["passed"] == True  # less than 5% out-of-range is warning, not error
     assert any("outside expected range" in w for w in result["warnings"])
 
 
 def test_check_data_quality_outliers_gt10():
     verifier = SSMVerifier(min_sample_size=1)
-    data = np.array([1]*17 + [100,100,100])  # 3/20=15% outliers
+    data = np.array([1] * 17 + [100, 100, 100])  # 3/20=15% outliers
     result = verifier.check_data_quality(data)
     assert any("potential outliers" in w for w in result["warnings"])
 
@@ -60,13 +63,14 @@ def test_check_data_quality_outliers_gt10():
 def test_check_data_quality_normality_nonnormal():
     verifier = SSMVerifier(min_sample_size=1)
     data = np.arange(20, dtype=float)
-    with patch('scipy.stats.shapiro', return_value=(1.0, 0.01)):
+    with patch("scipy.stats.shapiro", return_value=(1.0, 0.01)):
         result = verifier.check_data_quality(data)
     assert "normality_p_value" in result["statistics"]
     assert any(c.get("check") == "Normality" for c in result["checks"])
 
 
 # ---------- verify_pet_calculation ----------
+
 
 def test_verify_pet_high_critical_rate_warning():
     verifier = SSMVerifier(min_sample_size=1)
@@ -95,6 +99,7 @@ def test_verify_pet_reference_mean_low_error():
 
 # ---------- verify_ttc_calculation ----------
 
+
 def test_verify_ttc_no_valid_data():
     verifier = SSMVerifier(min_sample_size=1)
     data = np.array([np.nan, np.nan])
@@ -113,15 +118,41 @@ def test_verify_ttc_near_collision_strict_mode():
 
 def test_verify_ttc_near_collision_warning():
     verifier = SSMVerifier(min_sample_size=1, strict_mode=False)
-    data = np.array([0.1, 0.2, 1.0, 2.0, 3.0])  # 2/5=40% but rate >5 triggers error? Actually condition strict_mode or rate>5 -> error
+    data = np.array(
+        [0.1, 0.2, 1.0, 2.0, 3.0]
+    )  # 2/5=40% but rate >5 triggers error? Actually condition strict_mode or rate>5 -> error
     # We need rate <=5 and not strict_mode for warning
     verifier = SSMVerifier(min_sample_size=1, strict_mode=False)
-    data = np.array([0.1, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0])  # 1/20=5% -> warning not error
+    data = np.array(
+        [
+            0.1,
+            1.0,
+            2.0,
+            3.0,
+            4.0,
+            5.0,
+            6.0,
+            7.0,
+            8.0,
+            9.0,
+            10.0,
+            11.0,
+            12.0,
+            13.0,
+            14.0,
+            15.0,
+            16.0,
+            17.0,
+            18.0,
+            19.0,
+        ]
+    )  # 1/20=5% -> warning not error
     result = verifier.verify_ttc_calculation(data)
     assert any("near-collision" in w for w in result["warnings"])
 
 
 # ---------- verify_drac_calculation ----------
+
 
 def test_verify_drac_no_valid_data():
     verifier = SSMVerifier(min_sample_size=1)
@@ -139,6 +170,7 @@ def test_verify_drac_extreme_events():
 
 
 # ---------- run_verification_suite ----------
+
 
 def test_run_verification_suite_all_metrics():
     verifier = SSMVerifier(min_sample_size=1)
@@ -167,6 +199,7 @@ def test_run_verification_suite_no_data():
 
 # ---------- compare_with_reference ----------
 
+
 def test_compare_with_reference():
     observed = np.array([1.0, 2.0, 3.0])
     reference = np.array([1.1, 2.1, 3.1])
@@ -177,6 +210,7 @@ def test_compare_with_reference():
 
 
 # ---------- Additional coverage for missing lines ----------
+
 
 def test_check_data_quality_low_completeness_and_small_sample():
     verifier = SSMVerifier(min_sample_size=1000)

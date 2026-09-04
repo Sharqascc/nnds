@@ -19,7 +19,8 @@ try:
     from src.core.types import (  # pragma: no cover
         WorldSample as CoreWorldSample,  # pragma: no cover
     )  # pragma: no cover
-  # pragma: no cover
+
+    # pragma: no cover
     CORE_TYPES_AVAILABLE = True  # pragma: no cover
 except ImportError:
     CORE_TYPES_AVAILABLE = False
@@ -132,9 +133,9 @@ class TrajectoryLogger:
         self.fps: float = float(fps)
         self.downsample_every: int = int(downsample_every)
         # track_id -> list[(frame_idx, cell_id, world_x, world_y)]
-        self.tracks: defaultdict[
-            int, list[tuple[int, Any, float | None, float | None]]
-        ] = defaultdict(list)
+        self.tracks: defaultdict[int, list[tuple[int, Any, float | None, float | None]]] = (
+            defaultdict(list)
+        )
 
     def log(
         self,
@@ -181,9 +182,7 @@ class TrajectoryLogger:
                     if wx is not None and wy is not None:
                         if sample_counter % self.downsample_every == 0:  # pragma: no cover
                             world_samples.append(
-                                WorldSampleType(
-                                    t=fi / self.fps, x=float(wx), y=float(wy)
-                                )
+                                WorldSampleType(t=fi / self.fps, x=float(wx), y=float(wy))
                             )
                         sample_counter += 1
                     continue
@@ -192,9 +191,7 @@ class TrajectoryLogger:
                     if wx is not None and wy is not None:
                         if sample_counter % self.downsample_every == 0:
                             world_samples.append(
-                                WorldSampleType(
-                                    t=fi / self.fps, x=float(wx), y=float(wy)
-                                )
+                                WorldSampleType(t=fi / self.fps, x=float(wx), y=float(wy))
                             )
                         sample_counter += 1
                 else:
@@ -302,9 +299,7 @@ def summarize_pet(
     p95 = percentile(0.95)
 
     n_critical = sum(1 for ev in events if ev.pet < critical_threshold)
-    n_moderate = sum(
-        1 for ev in events if critical_threshold <= ev.pet < moderate_threshold
-    )
+    n_moderate = sum(1 for ev in events if critical_threshold <= ev.pet < moderate_threshold)
     n_safe = count - n_critical - n_moderate
 
     return PETSummaryType(

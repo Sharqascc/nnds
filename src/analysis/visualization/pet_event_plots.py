@@ -515,7 +515,7 @@ class EventPlotter:
 
                 if i % 10 == 0:
                     print(f"  Progress: {i}/{len(event_ids)} events plotted")  # pragma: no cover
-  # pragma: no cover
+            # pragma: no cover
             except Exception as e:  # pragma: no cover
                 warnings.warn(f"Failed to plot event {event_id}: {e}")  # pragma: no cover
 

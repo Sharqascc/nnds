@@ -15,13 +15,9 @@ def split_pet_dataset(csv_path, train_ratio=0.6, val_ratio=0.2, seed=42):
 
     # Use interaction/track pair IDs to avoid temporal/spatial data leakage
     if "track_id_i" in df.columns and "track_id_j" in df.columns:
-        df["interaction_id"] = (
-            df["track_id_i"].astype(str) + "_" + df["track_id_j"].astype(str)
-        )
+        df["interaction_id"] = df["track_id_i"].astype(str) + "_" + df["track_id_j"].astype(str)
     elif "track_a" in df.columns and "track_b" in df.columns:
-        df["interaction_id"] = (
-            df["track_a"].astype(str) + "_" + df["track_b"].astype(str)
-        )
+        df["interaction_id"] = df["track_a"].astype(str) + "_" + df["track_b"].astype(str)
     else:
         df["interaction_id"] = df.index
 

@@ -92,15 +92,11 @@ class PETEventAnalyzer:
             warnings.warn("Negative PET values found; check data quality.")
 
         if (df["pet"] > 10).any():
-            warnings.warn(
-                "Very large PET values (>10 s) found; ensure they are expected."
-            )
+            warnings.warn("Very large PET values (>10 s) found; ensure they are expected.")
 
         self.df = df
         self.pet_series = df["pet"]
-        print(
-            f"✅ Loaded {len(self.pet_series)} valid PET events from {self.csv_path.name}"
-        )
+        print(f"✅ Loaded {len(self.pet_series)} valid PET events from {self.csv_path.name}")
 
     # ------------------------------------------------------------------ #
     # Core statistics
@@ -126,9 +122,7 @@ class PETEventAnalyzer:
             "q75": float(pet.quantile(0.75)),
             "max": float(pet.max()),
             "iqr": float(pet.quantile(0.75) - pet.quantile(0.25)),
-            "cv": float(pet.std(ddof=1) / pet.mean())
-            if pet.mean() > 0 and n > 1
-            else float("nan"),
+            "cv": float(pet.std(ddof=1) / pet.mean()) if pet.mean() > 0 and n > 1 else float("nan"),
             "skew": float(pet.skew()) if n > 2 else float("nan"),
             "kurtosis": float(pet.kurtosis()) if n > 3 else float("nan"),
         }
@@ -192,9 +186,7 @@ class PETEventAnalyzer:
         summary["conflict_rate"] = {
             "count": conflict_count,
             "percentage": float(100.0 * conflict_count / total) if total > 0 else 0.0,
-            "per_1000_events": float(1000.0 * conflict_count / total)
-            if total > 0
-            else 0.0,
+            "per_1000_events": float(1000.0 * conflict_count / total) if total > 0 else 0.0,
         }
 
         return summary
@@ -220,15 +212,12 @@ class PETEventAnalyzer:
                     "conflict_type": str(conflict_type),
                     "count": len(group),
                     "pet_mean": float(pet.mean()),
-                    "pet_std": float(pet.std(ddof=1))
-                    if len(group) > 1
-                    else float("nan"),
+                    "pet_std": float(pet.std(ddof=1)) if len(group) > 1 else float("nan"),
                     "pet_median": float(pet.median()),
                     "critical_rate": float((risk_local == "Critical").mean() * 100.0),
                     "serious_rate": float((risk_local == "Serious").mean() * 100.0),
                     "conflict_rate": float(
-                        ((risk_local == "Critical") | (risk_local == "Serious")).mean()
-                        * 100.0
+                        ((risk_local == "Critical") | (risk_local == "Serious")).mean() * 100.0
                     ),
                 }
             )
@@ -429,9 +418,7 @@ class PETEventAnalyzer:
             )
         print(f"   Median PET:          {stats_dict['median']:.3f} s")
         print(f"   IQR:                 {stats_dict['iqr']:.3f} s")
-        print(
-            f"   Range:               [{stats_dict['min']:.3f}, {stats_dict['max']:.3f}]"
-        )
+        print(f"   Range:               [{stats_dict['min']:.3f}, {stats_dict['max']:.3f}]")
         print(f"   CV (dispersion):     {stats_dict['cv']:.3f}")
 
         print(
@@ -454,8 +441,7 @@ class PETEventAnalyzer:
                 f"({risk['moderate']['percentage']:5.1f}%)"
             )
             print(
-                f"   🟢 Safe:      {risk['safe']['count']:6d} "
-                f"({risk['safe']['percentage']:5.1f}%)"
+                f"   🟢 Safe:      {risk['safe']['count']:6d} ({risk['safe']['percentage']:5.1f}%)"
             )
             print("\n   Total conflicts (Critical + Serious):")
             print(

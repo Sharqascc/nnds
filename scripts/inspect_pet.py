@@ -16,9 +16,7 @@ import pandas as pd
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Inspect detailed PET events")
-    parser.add_argument(
-        "--csv", default="outputs/petevents_bev.csv", help="Path to PET CSV"
-    )
+    parser.add_argument("--csv", default="outputs/petevents_bev.csv", help="Path to PET CSV")
     parser.add_argument("--top", type=int, default=10, help="Number of events to show")
     return parser.parse_args()
 

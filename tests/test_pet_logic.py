@@ -1,4 +1,3 @@
-
 import sys
 from pathlib import Path
 
@@ -39,6 +38,7 @@ class TestPETLogic:
         assert res is not None
         pet, *_ = res
         assert pet == 0.0
+
 
 class TestGridColumnNaming:
     def test_excel_style_helpers(self):

@@ -39,7 +39,6 @@ def _compute_histogram(frame, x1, y1, x2, y2):
         return None
 
 
-
 UVH_DISPLAY_MAP = {
     "Three-wheeler": "auto",
     "Two-wheeler": "bike",
@@ -122,9 +121,14 @@ def _entry_exit_frames(points: list[TrackPoint], cx: float, cy: float, half_size
 def _segment_bbox(p1, p2):
     return (min(p1[0], p2[0]), min(p1[1], p2[1]), max(p1[0], p2[0]), max(p1[1], p2[1]))
 
+
 def _bbox_overlap(box1, box2, pad=0.0):
-    return not (box1[2] < box2[0] - pad or box2[2] < box1[0] - pad or
-                box1[3] < box2[1] - pad or box2[3] < box1[1] - pad)
+    return not (
+        box1[2] < box2[0] - pad
+        or box2[2] < box1[0] - pad
+        or box1[3] < box2[1] - pad
+        or box2[3] < box1[1] - pad
+    )
 
 
 def _compute_pet_from_windows(a_entry, a_exit, b_entry, b_exit, fps):
@@ -165,7 +169,9 @@ def _pair_conflict_point(track_a: list[TrackPoint], track_b: list[TrackPoint]):
     return None
 
 
-def _box_intersection(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> float:
+def _box_intersection(
+    a: tuple[float, float, float, float], b: tuple[float, float, float, float]
+) -> float:
     ax1, ay1, ax2, ay2 = a
     bx1, by1, bx2, by2 = b
     x1 = max(ax1, bx1)
@@ -182,27 +188,30 @@ def _box_area(box: tuple[float, float, float, float]) -> float:
     return max(0.0, x2 - x1) * max(0.0, y2 - y1)
 
 
-def _overlap_over_person(person_box: tuple[float, float, float, float], other_box: tuple[float, float, float, float]) -> float:
+def _overlap_over_person(
+    person_box: tuple[float, float, float, float], other_box: tuple[float, float, float, float]
+) -> float:
     inter = _box_intersection(person_box, other_box)
     area = _box_area(person_box)
     return 0.0 if area <= 0 else inter / area
 
 
-
-
 def _load_gates(gate_config_path):
     """Load virtual gates from YAML config."""
     import yaml
+
     with open(gate_config_path) as f:
         cfg = yaml.safe_load(f)
     gates = []
-    for g in cfg['gates']:
-        gates.append({
-            'name': g['name'],
-            'p1': tuple(g['start']),
-            'p2': tuple(g['end']),
-            'entry_side': g.get('entry_side', 'left')
-        })
+    for g in cfg["gates"]:
+        gates.append(
+            {
+                "name": g["name"],
+                "p1": tuple(g["start"]),
+                "p2": tuple(g["end"]),
+                "entry_side": g.get("entry_side", "left"),
+            }
+        )
     return gates
 
 
@@ -217,21 +226,27 @@ def _line_side(p, p1, p2):
 def _get_entry_gate(points, gates):
     """Determine the first gate a track enters, or "unknown" if none."""
     if len(points) < 2:
-        return 'unknown'
+        return "unknown"
     # Sort by frame
     sorted_pts = sorted(points, key=lambda p: p.frame)
     prev = sorted_pts[0]
     for curr in sorted_pts[1:]:
         for gate in gates:
-            side_prev = _line_side((prev.x, prev.y), gate['p1'], gate['p2'])
-            side_curr = _line_side((curr.x, curr.y), gate['p1'], gate['p2'])
+            side_prev = _line_side((prev.x, prev.y), gate["p1"], gate["p2"])
+            side_curr = _line_side((curr.x, curr.y), gate["p1"], gate["p2"])
             if side_prev * side_curr < 0:
                 # crossing detected, check entry side
-                entry_side = gate['entry_side']
-                if entry_side == 'both' or entry_side == 'left' and side_prev < 0 and side_curr > 0 or entry_side == 'right' and side_prev > 0 and side_curr < 0:
-                    return gate['name']
+                entry_side = gate["entry_side"]
+                if (
+                    entry_side == "both"
+                    or (entry_side == "left" and side_prev < 0 and side_curr > 0)
+                    or (entry_side == "right" and side_prev > 0 and side_curr < 0)
+                ):
+                    return gate["name"]
         prev = curr
-    return 'unknown'
+    return "unknown"
+
+
 def run_uvh_coco_fused_grid_pet(
     video_path: str,
     bev_config_path: str,
@@ -245,7 +260,8 @@ def run_uvh_coco_fused_grid_pet(
     uvh_conf: float = 0.20,
     coco_person_conf: float = 0.20,
     person_suppress_overlap: float = 0.35,
-    show_progress: bool = True, interactive: bool = False,
+    show_progress: bool = True,
+    interactive: bool = False,
     device: str = "auto",
     backend: str = "auto",
     max_frame_gap: int = 5,
@@ -278,6 +294,7 @@ def run_uvh_coco_fused_grid_pet(
         spatial_grid = None
     try:
         import json as _json
+
         with open(bev_config_path) as f:
             bev_cfg = _json.load(f)
         H = np.array(bev_cfg["H_pixel_to_world"], dtype=np.float32)
@@ -356,13 +373,18 @@ def run_uvh_coco_fused_grid_pet(
 
     reid_encoder = ReIDEncoder(device=device) if device != "cpu" else ReIDEncoder(device="cpu")
     custom_tracker = CustomTracker(
-        max_age=60, min_hits=1, iou_threshold=0.2,
-        log_overlaps=True, overlap_log_path="outputs/tracking_overlap_debug.log",
-        reid_encoder=reid_encoder
+        max_age=60,
+        min_hits=1,
+        iou_threshold=0.2,
+        log_overlaps=True,
+        overlap_log_path="outputs/tracking_overlap_debug.log",
+        reid_encoder=reid_encoder,
     )
 
     total_iters = total_frames if max_frames is None else min(total_frames, max_frames)
-    pbar = tqdm(total=total_iters, desc="Processing frames", unit="frame", disable=not show_progress)
+    pbar = tqdm(
+        total=total_iters, desc="Processing frames", unit="frame", disable=not show_progress
+    )
     for uvh_r, coco_r in zip(uvh_results, coco_results):
         if max_frames is not None and frame_idx >= max_frames:
             break
@@ -375,8 +397,16 @@ def run_uvh_coco_fused_grid_pet(
         uvh_boxes = uvh_r.boxes
         if uvh_boxes is not None and uvh_boxes.xyxy is not None and len(uvh_boxes) > 0:
             xyxy = uvh_boxes.xyxy.cpu().numpy()
-            clss = uvh_boxes.cls.cpu().numpy().astype(int) if uvh_boxes.cls is not None else np.array([], dtype=int)
-            confs = uvh_boxes.conf.cpu().numpy() if uvh_boxes.conf is not None else np.array([], dtype=float)
+            clss = (
+                uvh_boxes.cls.cpu().numpy().astype(int)
+                if uvh_boxes.cls is not None
+                else np.array([], dtype=int)
+            )
+            confs = (
+                uvh_boxes.conf.cpu().numpy()
+                if uvh_boxes.conf is not None
+                else np.array([], dtype=float)
+            )
 
             for i, box in enumerate(xyxy):
                 raw_name = uvh_r.names[int(clss[i])]
@@ -414,7 +444,11 @@ def run_uvh_coco_fused_grid_pet(
         coco_boxes = coco_r.boxes
         if coco_boxes is not None and coco_boxes.xyxy is not None and len(coco_boxes) > 0:
             xyxy = coco_boxes.xyxy.cpu().numpy()
-            confs = coco_boxes.conf.cpu().numpy() if coco_boxes.conf is not None else np.array([], dtype=float)
+            confs = (
+                coco_boxes.conf.cpu().numpy()
+                if coco_boxes.conf is not None
+                else np.array([], dtype=float)
+            )
 
             for i, box in enumerate(xyxy):
                 x1, y1, x2, y2 = map(float, box.tolist())
@@ -454,20 +488,22 @@ def run_uvh_coco_fused_grid_pet(
         # Append detections to rows and tracks
         for det_idx, track_id in matched.items():
             det = raw_dets[det_idx]
-            detection_rows.append({
-                "frame": det.frame,
-                "track_id": track_id,
-                "class_id": det.cls_id,
-                "class_name": det.cls_name,
-                "conf": det.conf,
-                "x1": det.x1,
-                "y1": det.y1,
-                "x2": det.x2,
-                "y2": det.y2,
-                "cx": det.cx,
-                "cy": det.cy,
-                "source": det.source,
-            })
+            detection_rows.append(
+                {
+                    "frame": det.frame,
+                    "track_id": track_id,
+                    "class_id": det.cls_id,
+                    "class_name": det.cls_name,
+                    "conf": det.conf,
+                    "x1": det.x1,
+                    "y1": det.y1,
+                    "x2": det.x2,
+                    "y2": det.y2,
+                    "cx": det.cx,
+                    "cy": det.cy,
+                    "source": det.source,
+                }
+            )
 
             tracks.setdefault(track_id, []).append(
                 TrackPoint(
@@ -487,7 +523,7 @@ def run_uvh_coco_fused_grid_pet(
 
         # === INTERACTIVE PAUSE ===
         if interactive and frame_idx % 20 == 0:
-            print("\n" + "="*50)
+            print("\n" + "=" * 50)
             print(f"🔄 Processed {frame_idx} frames.")
             try:
                 cap = cv2.VideoCapture(video_path)
@@ -496,10 +532,11 @@ def run_uvh_coco_fused_grid_pet(
                 cap.release()
                 if ret:
                     from IPython.display import display
+
                     fig = plt.figure()
                     plt.imshow(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
                     plt.title(f"Frame {frame_idx}")
-                    plt.axis('off')
+                    plt.axis("off")
                     display(fig)
                     plt.close(fig)
             except Exception as e:
@@ -508,14 +545,17 @@ def run_uvh_coco_fused_grid_pet(
             print("Press Enter to continue, or type 'stop' and press Enter to abort.")
             sys.stdout.flush()
             user_input = input().strip().lower()
-            if user_input == 'stop':
+            if user_input == "stop":
                 print("⏹️ Stopped by user.")
                 stop_processing = True
                 break
 
     pbar.close()
     print(f"[UVH-COCO] backend={'openvino' if use_openvino else 'pytorch'} device={device}")
-    print(f"[UVH-COCO] ✅ Frame processing finished ({frame_idx} frames). Initializing track indexing...", flush=True)
+    print(
+        f"[UVH-COCO] ✅ Frame processing finished ({frame_idx} frames). Initializing track indexing...",
+        flush=True,
+    )
 
     det_df = pd.DataFrame(detection_rows)
     out_path = Path(output_csv_path)
@@ -529,12 +569,21 @@ def run_uvh_coco_fused_grid_pet(
     conflict_half_size = 20.0
 
     # Split tracks with gaps or jumps to avoid mixing different objects
-    tracks = _split_tracks_by_gaps(tracks, max_frame_gap=max_frame_gap, max_spatial_jump=max_spatial_jump, prediction_tolerance=prediction_tolerance)
-    print(f"[DEBUG_SPLIT_PARAMS] max_gap={max_frame_gap}, max_jump={max_spatial_jump}, tracks_after={len(tracks)}")
+    tracks = _split_tracks_by_gaps(
+        tracks,
+        max_frame_gap=max_frame_gap,
+        max_spatial_jump=max_spatial_jump,
+        prediction_tolerance=prediction_tolerance,
+    )
+    print(
+        f"[DEBUG_SPLIT_PARAMS] max_gap={max_frame_gap}, max_jump={max_spatial_jump}, tracks_after={len(tracks)}"
+    )
 
     valid_tracks = {tid: pts for tid, pts in tracks.items() if len(pts) >= 3}
 
-    print(f"[UVH-COCO] Tracking splitter: original={len(set(tid // 1000 for tid in tracks if tid >= 1000) | {tid for tid in tracks if tid < 1000})}, split={len(tracks)} tracks")
+    print(
+        f"[UVH-COCO] Tracking splitter: original={len(set(tid // 1000 for tid in tracks if tid >= 1000) | {tid for tid in tracks if tid < 1000})}, split={len(tracks)} tracks"
+    )
     track_items = list(valid_tracks.items())
 
     # Precompute track metadata for fast temporal/spatial pruning
@@ -588,15 +637,19 @@ def run_uvh_coco_fused_grid_pet(
                     continue
 
             # Temporal pruning: skip if track lifetimes are too far apart
-            if (meta_a["min_frame"] > meta_b["max_frame"] + max_frames_diff or
-                meta_b["min_frame"] > meta_a["max_frame"] + max_frames_diff):
+            if (
+                meta_a["min_frame"] > meta_b["max_frame"] + max_frames_diff
+                or meta_b["min_frame"] > meta_a["max_frame"] + max_frames_diff
+            ):
                 continue
 
             # Spatial pruning: skip if bounding boxes do not overlap (with padding)
-            if (meta_a["max_x"] < meta_b["min_x"] - spatial_pad or
-                meta_a["min_x"] > meta_b["max_x"] + spatial_pad or
-                meta_a["max_y"] < meta_b["min_y"] - spatial_pad or
-                meta_a["min_y"] > meta_b["max_y"] + spatial_pad):
+            if (
+                meta_a["max_x"] < meta_b["min_x"] - spatial_pad
+                or meta_a["min_x"] > meta_b["max_x"] + spatial_pad
+                or meta_a["max_y"] < meta_b["min_y"] - spatial_pad
+                or meta_a["min_y"] > meta_b["max_y"] + spatial_pad
+            ):
                 continue
 
             inter = _pair_conflict_point(pts_a, pts_b)
@@ -644,46 +697,60 @@ def run_uvh_coco_fused_grid_pet(
                 elif b_exit <= a_entry:
                     pet_time_based = float((a_entry / fps) - (b_exit / fps))
                 else:
-                    pet_time_based = float('nan')
+                    pet_time_based = float("nan")
 
                 # Exclude events where both tracks originate from the same original track (segments of same vehicle)
                 if orig_a == orig_b:
                     continue
 
-                pet_events.append({
-                    "event_id": event_id,
-                    "site": video_source if video_source is not None else Path(video_path).stem,
-                    "pet": float(pet),               # frame-based PET
-                    "pet_time_based": pet_time_based, # time-based PET
-                    "frame": int(frame_ref),
-                    "track_a": int(first_id),
-                    "track_b": int(second_id),
-                    "orig_track_a": int(orig_a),
-                    "seg_a": int(seg_a),
-                    "orig_track_b": int(orig_b),
-                    "seg_b": int(seg_b),
-                    "conflict_type": classify_conflict_geometry(
-                        _track_to_json(pts_a if first_id == track_a_id else pts_b, bev_mapper),
-                        _track_to_json(pts_b if first_id == track_a_id else pts_a, bev_mapper),
-                        int(frame_ref),
-                        fps
-                    ),
-                    "gate_a_entry": _get_entry_gate(pts_a if first_id == track_a_id else pts_b, gates),
-                    "gate_b_entry": _get_entry_gate(pts_b if first_id == track_a_id else pts_a, gates),
-                    "grid_cell": grid_cell,
-                    "track_a_entry_frame": int(a_entry),
-                    "track_a_exit_frame": int(a_exit),
-                    "track_a_exit_time_sec": float(a_exit / fps),
-                    "track_b_entry_frame": int(b_entry),
-                    "track_b_entry_time_sec": float(b_entry / fps),
-                    "track_b_exit_frame": int(b_exit),
-                    "world_traj_i": f"track_{first_id}",
-                    "world_traj_j": f"track_{second_id}",
-                    "traj_a_json": _track_to_json(pts_a if first_id == track_a_id else pts_b, bev_mapper),
-                    "traj_b_json": _track_to_json(pts_b if first_id == track_a_id else pts_a, bev_mapper),
-                    "video_source": video_source if video_source is not None else Path(video_path).stem,
-                    "time_of_day_label": time_of_day_label if time_of_day_label is not None else "unknown",
-                })
+                pet_events.append(
+                    {
+                        "event_id": event_id,
+                        "site": video_source if video_source is not None else Path(video_path).stem,
+                        "pet": float(pet),  # frame-based PET
+                        "pet_time_based": pet_time_based,  # time-based PET
+                        "frame": int(frame_ref),
+                        "track_a": int(first_id),
+                        "track_b": int(second_id),
+                        "orig_track_a": int(orig_a),
+                        "seg_a": int(seg_a),
+                        "orig_track_b": int(orig_b),
+                        "seg_b": int(seg_b),
+                        "conflict_type": classify_conflict_geometry(
+                            _track_to_json(pts_a if first_id == track_a_id else pts_b, bev_mapper),
+                            _track_to_json(pts_b if first_id == track_a_id else pts_a, bev_mapper),
+                            int(frame_ref),
+                            fps,
+                        ),
+                        "gate_a_entry": _get_entry_gate(
+                            pts_a if first_id == track_a_id else pts_b, gates
+                        ),
+                        "gate_b_entry": _get_entry_gate(
+                            pts_b if first_id == track_a_id else pts_a, gates
+                        ),
+                        "grid_cell": grid_cell,
+                        "track_a_entry_frame": int(a_entry),
+                        "track_a_exit_frame": int(a_exit),
+                        "track_a_exit_time_sec": float(a_exit / fps),
+                        "track_b_entry_frame": int(b_entry),
+                        "track_b_entry_time_sec": float(b_entry / fps),
+                        "track_b_exit_frame": int(b_exit),
+                        "world_traj_i": f"track_{first_id}",
+                        "world_traj_j": f"track_{second_id}",
+                        "traj_a_json": _track_to_json(
+                            pts_a if first_id == track_a_id else pts_b, bev_mapper
+                        ),
+                        "traj_b_json": _track_to_json(
+                            pts_b if first_id == track_a_id else pts_a, bev_mapper
+                        ),
+                        "video_source": video_source
+                        if video_source is not None
+                        else Path(video_path).stem,
+                        "time_of_day_label": time_of_day_label
+                        if time_of_day_label is not None
+                        else "unknown",
+                    }
+                )
                 event_id += 1
 
     track_pbar.close()
@@ -734,7 +801,6 @@ def run_uvh_coco_fused_grid_pet(
     }
 
 
-
 def _track_to_json(points: list[TrackPoint], bev_mapper=None) -> str:
     """Convert a list of TrackPoint to a JSON string with pixel and world coords."""
     rows = []
@@ -755,10 +821,12 @@ def _track_to_json(points: list[TrackPoint], bev_mapper=None) -> str:
     return json.dumps(rows)
 
 
-def _split_tracks_by_gaps(tracks: dict[int, list[TrackPoint]],
-                          max_frame_gap: int = 10,
-                          max_spatial_jump: float = 50.0,
-                          prediction_tolerance: float = 80.0) -> dict[int, list[TrackPoint]]:
+def _split_tracks_by_gaps(
+    tracks: dict[int, list[TrackPoint]],
+    max_frame_gap: int = 10,
+    max_spatial_jump: float = 50.0,
+    prediction_tolerance: float = 80.0,
+) -> dict[int, list[TrackPoint]]:
     """
     Split track IDs when there is a long frame gap or huge spatial jump,
     but skip splitting if the next point matches a linear prediction from
@@ -789,12 +857,14 @@ def _split_tracks_by_gaps(tracks: dict[int, list[TrackPoint]],
                     pred_y = prev.y + vy * gap
                     pred_dist = ((pts[i].x - pred_x) ** 2 + (pts[i].y - pred_y) ** 2) ** 0.5
                 else:
-                    pred_dist = float('inf')
+                    pred_dist = float("inf")
             else:
-                pred_dist = float('inf')
+                pred_dist = float("inf")
 
             # Split only if gap/jump is large AND prediction is poor
-            if (gap > max_frame_gap or dist > max_spatial_jump) and pred_dist > prediction_tolerance:
+            if (
+                gap > max_frame_gap or dist > max_spatial_jump
+            ) and pred_dist > prediction_tolerance:
                 new_id = tid * 1000 + current_sub
                 split_tracks[new_id] = pts[start_idx:i]
                 current_sub += 1
@@ -804,12 +874,13 @@ def _split_tracks_by_gaps(tracks: dict[int, list[TrackPoint]],
         split_tracks[new_id] = pts[start_idx:]
     return split_tracks
 
+
 def _can_intersect_temporal(track_a, track_b, fps=25.0, max_pet=2.0):
     """O(1) temporal check: Skip tracks whose lifetime windows do not overlap within max_pet seconds."""
     max_frames_diff = int(max_pet * fps) + 5
     min_a, max_a = track_a["frames"][0], track_a["frames"][-1]
     min_b, max_b = track_b["frames"][0], track_b["frames"][-1]
-    
+
     if min_b > (max_a + max_frames_diff) or min_a > (max_b + max_frames_diff):
         return False
     return True

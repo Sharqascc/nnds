@@ -156,11 +156,9 @@ def run_safety_eval_pipeline(
     N = 1
     F = 4
 
-    logger.info(
-        "Building dataloaders (batch_size=%d, T=%d, N=%d, F=%d)", batch_size, T, N, F
-    )
-    train_loader, eval_loader, _train_dataset, eval_dataset, _stats = (
-        build_clean_dataloaders(raw_dataset, batch_size=batch_size, T=T, N=N, F=F)
+    logger.info("Building dataloaders (batch_size=%d, T=%d, N=%d, F=%d)", batch_size, T, N, F)
+    train_loader, eval_loader, _train_dataset, eval_dataset, _stats = build_clean_dataloaders(
+        raw_dataset, batch_size=batch_size, T=T, N=N, F=F
     )
 
     logger.info("Creating diffusion model on device=%s", device)
@@ -182,9 +180,7 @@ def run_safety_eval_pipeline(
     logger.info("Loading best checkpoint for evaluation: %s", best_ckpt)
     eval_model = load_eval_model(best_ckpt, device, T=T, N=N, F=F, cond_dim=4)
 
-    logger.info(
-        "Sampling futures: num_samples=%d, num_steps=%d", num_samples, num_steps
-    )
+    logger.info("Sampling futures: num_samples=%d, num_steps=%d", num_samples, num_steps)
     samples = sample_future(
         eval_model,
         eval_loader,
@@ -209,9 +205,7 @@ def run_safety_eval_pipeline(
 
     # Map back to meta rows corresponding to eval set
     eval_indices = (
-        eval_dataset.indices
-        if hasattr(eval_dataset, "indices")
-        else eval_dataset.dataset.indices
+        eval_dataset.indices if hasattr(eval_dataset, "indices") else eval_dataset.dataset.indices
     )
     meta_eval = meta_df.iloc[eval_indices].reset_index(drop=True)
 

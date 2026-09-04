@@ -14,11 +14,7 @@ def create_test_analyzer():
     """Create a CompleteTrafficAnalyzer with a simple scaling homography."""
     analyzer = CompleteTrafficAnalyzer(bev_width=100, bev_height=100)
     # Homography: pixel (x,y) -> world (x*0.1, y*0.1) meters
-    H = np.array([
-        [0.1, 0, 0],
-        [0, 0.1, 0],
-        [0, 0, 1]
-    ])
+    H = np.array([[0.1, 0, 0], [0, 0.1, 0], [0, 0, 1]])
     analyzer.homography = H
     analyzer.inv_homography = np.linalg.inv(H)
     return analyzer
@@ -37,25 +33,24 @@ def test_speed_constant():
         y = 100.0
         pixel_positions.append([x, y])
         frame_times.append(i * dt)
-    
+
     pixel_positions = np.array(pixel_positions, dtype=np.float32)
     frame_times = np.array(frame_times, dtype=np.float32)
-    
+
     result = analyzer.estimate_speed(pixel_positions, frame_times, fps=fps)
-    
+
     # Expected ~36 km/h (10 m/s * 3.6)
-    assert 35.0 < result['final_speed'] < 37.0, \
-        f"Expected ~36 km/h, got {result['final_speed']}"
+    assert 35.0 < result["final_speed"] < 37.0, f"Expected ~36 km/h, got {result['final_speed']}"
 
 
 def test_speed_insufficient_points():
     """Test fallback when fewer than 5 valid points."""
     analyzer = create_test_analyzer()
     pixel_positions = np.array([[0, 0], [1, 1], [2, 2]], dtype=np.float32)
-    frame_times = np.array([0, 1/30, 2/30], dtype=np.float32)
+    frame_times = np.array([0, 1 / 30, 2 / 30], dtype=np.float32)
     result = analyzer.estimate_speed(pixel_positions, frame_times)
-    assert result['final_speed'] == 15.0
-    assert result['speed_std'] == 2.0
+    assert result["final_speed"] == 15.0
+    assert result["speed_std"] == 2.0
 
 
 def test_speed_invalid_length():
@@ -70,7 +65,7 @@ def test_speed_invalid_length():
 def test_speed_no_homography():
     """Test error when homography not set."""
     analyzer = CompleteTrafficAnalyzer()
-    pixel_positions = np.array([[0,0], [1,1], [2,2], [3,3], [4,4]], dtype=np.float32)
+    pixel_positions = np.array([[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]], dtype=np.float32)
     frame_times = np.array([0, 0.1, 0.2, 0.3, 0.4], dtype=np.float32)
     with pytest.raises(RuntimeError):
         analyzer.estimate_speed(pixel_positions, frame_times)
@@ -89,12 +84,12 @@ def test_speed_non_finite_filter():
         else:
             pixel_positions.append([i * 10.0, 100.0])
         frame_times.append(i * dt)
-    
+
     pixel_positions = np.array(pixel_positions, dtype=np.float32)
     frame_times = np.array(frame_times, dtype=np.float32)
-    
+
     result = analyzer.estimate_speed(pixel_positions, frame_times, fps=fps)
-    assert result['final_speed'] > 0
+    assert result["final_speed"] > 0
 
 
 def test_speed_acceleration():
@@ -111,12 +106,13 @@ def test_speed_acceleration():
         y = 100.0
         pixel_positions.append([x, y])
         frame_times.append(i * dt)
-    
+
     pixel_positions = np.array(pixel_positions, dtype=np.float32)
     frame_times = np.array(frame_times, dtype=np.float32)
-    
+
     result = analyzer.estimate_speed(pixel_positions, frame_times, fps=fps)
-    
+
     # Median speed should be between 5 and 15 m/s -> 18-54 km/h
-    assert 15 < result['final_speed'] < 60, \
+    assert 15 < result["final_speed"] < 60, (
         f"Expected speed between 18-54 km/h, got {result['final_speed']}"
+    )

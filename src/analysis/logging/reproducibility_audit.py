@@ -240,8 +240,7 @@ class ReproducibilityAuditor:
                             "index": i,
                             "name": torch.cuda.get_device_name(i),
                             "memory_gb": round(
-                                torch.cuda.get_device_properties(i).total_memory
-                                / (1024**3),
+                                torch.cuda.get_device_properties(i).total_memory / (1024**3),
                                 2,
                             ),
                             "compute_capability": f"{torch.cuda.get_device_capability(i)[0]}.{torch.cuda.get_device_capability(i)[1]}",
@@ -446,21 +445,11 @@ class ReproducibilityAuditor:
             )
 
             return {
-                "commit": commit.stdout.strip()
-                if commit.returncode == 0
-                else "unknown",
-                "commit_short": commit.stdout.strip()[:8]
-                if commit.returncode == 0
-                else "unknown",
-                "branch": branch.stdout.strip()
-                if branch.returncode == 0
-                else "unknown",
-                "dirty": len(status.stdout.strip()) > 0
-                if status.returncode == 0
-                else False,
-                "remote": remote.stdout.strip()
-                if remote.returncode == 0
-                else "unknown",
+                "commit": commit.stdout.strip() if commit.returncode == 0 else "unknown",
+                "commit_short": commit.stdout.strip()[:8] if commit.returncode == 0 else "unknown",
+                "branch": branch.stdout.strip() if branch.returncode == 0 else "unknown",
+                "dirty": len(status.stdout.strip()) > 0 if status.returncode == 0 else False,
+                "remote": remote.stdout.strip() if remote.returncode == 0 else "unknown",
                 "last_commit_message": message.stdout.strip()
                 if message.returncode == 0
                 else "unknown",
@@ -523,9 +512,7 @@ class ReproducibilityAuditor:
             "size_human": self._format_bytes(path_obj.stat().st_size)
             if path_obj.exists()
             else "0 B",
-            "modified_time": datetime.fromtimestamp(
-                path_obj.stat().st_mtime
-            ).isoformat()
+            "modified_time": datetime.fromtimestamp(path_obj.stat().st_mtime).isoformat()
             if path_obj.exists()
             else None,
             "metadata": metadata or {},
@@ -592,8 +579,7 @@ class ReproducibilityAuditor:
         if task_name in self._execution_times:
             self._execution_times[task_name]["end"] = datetime.now()
             delta = (
-                self._execution_times[task_name]["end"]
-                - self._execution_times[task_name]["start"]
+                self._execution_times[task_name]["end"] - self._execution_times[task_name]["start"]
             )
             self._execution_times[task_name]["duration_seconds"] = delta.total_seconds()
 
@@ -703,9 +689,7 @@ class ReproducibilityAuditor:
         # Check random seed
         saved_seed = saved_session.get("random_seed")
         if saved_seed is not None:
-            warnings_list.append(
-                f"Remember to set random_seed={saved_seed} for reproduction"
-            )
+            warnings_list.append(f"Remember to set random_seed={saved_seed} for reproduction")
 
         return {
             "reproducible": len(mismatches) == 0,

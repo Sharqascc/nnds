@@ -1,21 +1,14 @@
-
 import json
-import os
 import sys
-import platform
-import subprocess
-import tempfile
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pytest
-from unittest.mock import patch, MagicMock
-from pathlib import Path
 
 from src.analysis.logging.reproducibility_audit import (
     ReproducibilityAuditor,
-    audit_environment,
     generate_audit_report,
-    hash_file,
-    verify_reproducibility,
 )
 
 
@@ -59,7 +52,10 @@ def test_get_cpu_model_linux(monkeypatch, tmp_path):
     fake_cpuinfo = tmp_path / "cpuinfo"
     fake_cpuinfo.write_text("model name : Fake CPU Model\n")
     monkeypatch.setattr(sys, "platform", "linux")
-    monkeypatch.setattr("builtins.open", lambda *a, **k: fake_cpuinfo.open() if a and a[0] == "/proc/cpuinfo" else open(*a, **k))
+    monkeypatch.setattr(
+        "builtins.open",
+        lambda *a, **k: fake_cpuinfo.open() if a and a[0] == "/proc/cpuinfo" else open(*a, **k),
+    )
     assert "Fake" in auditor._get_cpu_model()
 
 
@@ -74,7 +70,10 @@ def test_get_total_memory_linux(monkeypatch, tmp_path):
     fake_meminfo = tmp_path / "meminfo"
     fake_meminfo.write_text("MemTotal: 16384000 kB\n")
     monkeypatch.setattr(sys, "platform", "linux")
-    monkeypatch.setattr("builtins.open", lambda *a, **k: fake_meminfo.open() if a and a[0] == "/proc/meminfo" else open(*a, **k))
+    monkeypatch.setattr(
+        "builtins.open",
+        lambda *a, **k: fake_meminfo.open() if a and a[0] == "/proc/meminfo" else open(*a, **k),
+    )
     mem = auditor._get_total_memory()
     assert mem == pytest.approx(16384000 / (1024**2), rel=0.01)
 
@@ -90,6 +89,7 @@ def test_get_gpu_info_cpu_only():
     auditor = ReproducibilityAuditor()
     # Simulate torch not available or cuda false
     import sys
+
     with patch.dict(sys.modules, {"torch": None}):
         gpus = auditor._get_gpu_info()
     assert gpus == [{"type": "none", "name": "CPU only"}]
@@ -119,11 +119,20 @@ def test_container_info_colab(monkeypatch):
 def test_container_info_docker(tmp_path, monkeypatch):
     auditor = ReproducibilityAuditor(project_root=tmp_path)
     # Clear Colab/Kaggle/Singularity env vars
-    for var in ["COLAB_GPU", "COLAB_RELEASE_TAG", "COLAB_TPU_ADDR", "KAGGLE_KERNEL_RUN_TYPE", "SINGULARITY_NAME"]:
+    for var in [
+        "COLAB_GPU",
+        "COLAB_RELEASE_TAG",
+        "COLAB_TPU_ADDR",
+        "KAGGLE_KERNEL_RUN_TYPE",
+        "SINGULARITY_NAME",
+    ]:
         monkeypatch.delenv(var, raising=False)
     # Patch Path.exists: /.dockerenv True, /content False
     monkeypatch.setattr(Path, "exists", lambda self: self == Path("/.dockerenv"))
-    with patch("subprocess.run", return_value=MagicMock(returncode=0, stdout="Docker version 20.10.0\n", stderr="")):
+    with patch(
+        "subprocess.run",
+        return_value=MagicMock(returncode=0, stdout="Docker version 20.10.0\n", stderr=""),
+    ):
         info = auditor._get_container_info()
     assert info["type"] == "Docker"
 
@@ -198,7 +207,7 @@ def test_format_bytes():
     auditor = ReproducibilityAuditor()
     assert auditor._format_bytes(0) == "0.00 B"
     assert auditor._format_bytes(1024) == "1.00 KB"
-    assert auditor._format_bytes(1024*1024) == "1.00 MB"
+    assert auditor._format_bytes(1024 * 1024) == "1.00 MB"
 
 
 # ---------------- timers ----------------
@@ -248,13 +257,17 @@ def test_verify_reproducibility_with_mismatches(tmp_path):
         }
     }
     report_path.write_text(json.dumps(saved))
-    with patch.object(auditor, '_get_package_versions', return_value={}),          patch.object(auditor, '_get_git_info', return_value={"commit": "cafebabe", "dirty": True}):
+    with (
+        patch.object(auditor, "_get_package_versions", return_value={}),
+        patch.object(auditor, "_get_git_info", return_value={"commit": "cafebabe", "dirty": True}),
+    ):
         result = auditor.verify_reproducibility(str(report_path))
     assert result["reproducible"] == False
     assert len(result["mismatches"]) > 0
 
 
 # ---------------- additional uncovered branches ----------------
+
 
 def test_set_random_seeds_cuda_path():
     auditor = ReproducibilityAuditor()
@@ -316,7 +329,13 @@ def test_get_gpu_info_with_cuda():
 
 def test_container_info_docker_exception(monkeypatch):
     auditor = ReproducibilityAuditor()
-    for var in ["COLAB_GPU", "COLAB_RELEASE_TAG", "COLAB_TPU_ADDR", "KAGGLE_KERNEL_RUN_TYPE", "SINGULARITY_NAME"]:
+    for var in [
+        "COLAB_GPU",
+        "COLAB_RELEASE_TAG",
+        "COLAB_TPU_ADDR",
+        "KAGGLE_KERNEL_RUN_TYPE",
+        "SINGULARITY_NAME",
+    ]:
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setattr(Path, "exists", lambda self: self == Path("/.dockerenv"))
     with patch("subprocess.run", side_effect=Exception("docker not found")):
@@ -366,7 +385,14 @@ def test_verify_reproducibility_pkg_mismatch(tmp_path):
     }
     report_path.write_text(json.dumps(saved))
     # Patch current package versions to empty, so fake_pkg missing -> warning
-    with patch.object(auditor, '_get_package_versions', return_value={}),          patch.object(auditor, '_get_git_info', return_value={"commit": auditor._get_git_info()["commit"], "dirty": False}):
+    with (
+        patch.object(auditor, "_get_package_versions", return_value={}),
+        patch.object(
+            auditor,
+            "_get_git_info",
+            return_value={"commit": auditor._get_git_info()["commit"], "dirty": False},
+        ),
+    ):
         result = auditor.verify_reproducibility(str(report_path))
     assert result["reproducible"] == True
     assert any("not installed" in w for w in result["warnings"])
@@ -383,14 +409,12 @@ def test_verify_reproducibility_input_checksum_mismatch(tmp_path):
             "system": {"python_version": sys.version},
             "environment": {},
             "git_info": auditor._get_git_info(),
-            "inputs": {
-                "in": {"path": str(in_file), "checksum": "deadbeef"}
-            },
+            "inputs": {"in": {"path": str(in_file), "checksum": "deadbeef"}},
             "random_seed": 42,
         }
     }
     report_path.write_text(json.dumps(saved))
-    with patch.object(auditor, '_get_git_info', return_value=auditor._get_git_info()):
+    with patch.object(auditor, "_get_git_info", return_value=auditor._get_git_info()):
         result = auditor.verify_reproducibility(str(report_path))
     assert result["reproducible"] == False
     assert any("checksum mismatch" in m for m in result["mismatches"])
@@ -405,19 +429,18 @@ def test_verify_reproducibility_input_missing(tmp_path):
             "system": {"python_version": sys.version},
             "environment": {},
             "git_info": auditor._get_git_info(),
-            "inputs": {
-                "in": {"path": str(tmp_path / "nonexistent.txt"), "checksum": "abc"}
-            },
+            "inputs": {"in": {"path": str(tmp_path / "nonexistent.txt"), "checksum": "abc"}},
             "random_seed": 7,
         }
     }
     report_path.write_text(json.dumps(saved))
-    with patch.object(auditor, '_get_git_info', return_value=auditor._get_git_info()):
+    with patch.object(auditor, "_get_git_info", return_value=auditor._get_git_info()):
         result = auditor.verify_reproducibility(str(report_path))
     assert any("not found" in w for w in result["warnings"])
 
 
 # ---------------- remaining uncovered branches ----------------
+
 
 def test_set_random_seeds_numpy_import_error(monkeypatch):
     auditor = ReproducibilityAuditor()
@@ -430,8 +453,10 @@ def test_set_random_seeds_numpy_import_error(monkeypatch):
 
 def test_get_random_state_python_exception(monkeypatch):
     auditor = ReproducibilityAuditor()
+
     def bad_getstate():
         raise RuntimeError("random state unavailable")
+
     monkeypatch.setattr("random.getstate", bad_getstate)
     state = auditor._get_random_state()
     assert state["python"] is None
@@ -448,10 +473,12 @@ def test_get_random_state_torch_import_error(monkeypatch):
 def test_get_cpu_model_linux_open_failure(monkeypatch):
     auditor = ReproducibilityAuditor()
     monkeypatch.setattr(sys, "platform", "linux")
+
     def bad_open(path, *args, **kwargs):
         if path == "/proc/cpuinfo":
             raise OSError("cannot open")
         return open(path, *args, **kwargs)
+
     monkeypatch.setattr("builtins.open", bad_open)
     assert auditor._get_cpu_model() == "unknown"
 
@@ -459,10 +486,12 @@ def test_get_cpu_model_linux_open_failure(monkeypatch):
 def test_get_total_memory_linux_open_failure(monkeypatch):
     auditor = ReproducibilityAuditor()
     monkeypatch.setattr(sys, "platform", "linux")
+
     def bad_open(path, *args, **kwargs):
         if path == "/proc/meminfo":
             raise OSError("cannot open")
         return open(path, *args, **kwargs)
+
     monkeypatch.setattr("builtins.open", bad_open)
     assert auditor._get_total_memory() == 0.0
 
@@ -488,7 +517,7 @@ def test_verify_reproducibility_pip_freeze_skipped(tmp_path):
         }
     }
     report_path.write_text(json.dumps(saved))
-    with patch.object(auditor, '_get_git_info', return_value=auditor._get_git_info()):
+    with patch.object(auditor, "_get_git_info", return_value=auditor._get_git_info()):
         result = auditor.verify_reproducibility(str(report_path))
     assert result["reproducible"] == True
 
@@ -508,7 +537,10 @@ def test_verify_reproducibility_pkg_version_mismatch(tmp_path):
     }
     report_path.write_text(json.dumps(saved))
     # Current packages has numpy version 1.0.0
-    with patch.object(auditor, '_get_package_versions', return_value={"numpy": "1.0.0"}),          patch.object(auditor, '_get_git_info', return_value=auditor._get_git_info()):
+    with (
+        patch.object(auditor, "_get_package_versions", return_value={"numpy": "1.0.0"}),
+        patch.object(auditor, "_get_git_info", return_value=auditor._get_git_info()),
+    ):
         result = auditor.verify_reproducibility(str(report_path))
     assert any("Package numpy" in m for m in result["mismatches"])
 
@@ -521,7 +553,6 @@ def test_get_random_state_torch_cuda_available(monkeypatch):
     fake_torch.cuda.initial_seed.return_value = 67890
     monkeypatch.setitem(sys.modules, "torch", fake_torch)
     # Ensure numpy exists to avoid import error
-    import numpy as np
     monkeypatch.setitem(sys.modules, "numpy", np)
     state = auditor._get_random_state()
     assert "torch" in state

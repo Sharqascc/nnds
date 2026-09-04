@@ -1,24 +1,45 @@
+from unittest.mock import MagicMock
 
 import numpy as np
-import cv2
 import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 
-from src.pipeline.custom_tracker import Detection, KalmanTrack, CustomTracker
+from src.pipeline.custom_tracker import CustomTracker, Detection, KalmanTrack
 
 
-def make_detection(frame=0, x1=0, y1=0, x2=10, y2=10, cls_id=0, cls_name="car", conf=0.9, source="uvh26", hist=None, embedding=None):
+def make_detection(
+    frame=0,
+    x1=0,
+    y1=0,
+    x2=10,
+    y2=10,
+    cls_id=0,
+    cls_name="car",
+    conf=0.9,
+    source="uvh26",
+    hist=None,
+    embedding=None,
+):
     cx = (x1 + x2) / 2.0
     cy = (y1 + y2) / 2.0
     return Detection(
-        frame=frame, x1=float(x1), y1=float(y1), x2=float(x2), y2=float(y2),
-        cx=cx, cy=cy, cls_id=cls_id, cls_name=cls_name, conf=conf, source=source,
-        hist=hist, embedding=embedding,
+        frame=frame,
+        x1=float(x1),
+        y1=float(y1),
+        x2=float(x2),
+        y2=float(y2),
+        cx=cx,
+        cy=cy,
+        cls_id=cls_id,
+        cls_name=cls_name,
+        conf=conf,
+        source=source,
+        hist=hist,
+        embedding=embedding,
     )
 
 
 # ---------------- KalmanTrack tests ----------------
+
 
 def test_kalman_track_init():
     det = make_detection(x1=5, y1=5, x2=15, y2=20)
@@ -106,6 +127,7 @@ def test_kalman_track_box_property():
 
 
 # ---------------- CustomTracker tests ----------------
+
 
 def test_custom_tracker_init_no_log():
     tracker = CustomTracker()

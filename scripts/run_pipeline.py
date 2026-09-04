@@ -41,6 +41,7 @@ if __name__ == "__main__":
     root_dir = Path(__file__).parent.parent
     sys.path.insert(0, str(root_dir))
     from src.utils.seed import set_seed
+
     set_seed()
     set_seed()
 
@@ -58,7 +59,8 @@ if __name__ == "__main__":
             print("\n[run_pipeline] Estimating time-of-day via VLM...")
             result = subprocess.run(
                 [sys.executable, "scripts/estimate_time_of_day.py", "--video", video_path],
-                capture_output=True, text=True
+                capture_output=True,
+                text=True,
             )
             label = result.stdout.strip() or "unknown"
             print(f"[run_pipeline] Estimated time-of-day: {label}")

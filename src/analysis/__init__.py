@@ -25,10 +25,12 @@ logger = logging.getLogger(__name__)
 # -------------------------------------------------------------------------
 try:
     from . import visualization
+
     _viz_available = True
 except ImportError as e:  # pragma: no cover
     _viz_available = False  # pragma: no cover
     import warnings  # pragma: no cover
+
     warnings.warn(f"Visualization module not available: {e}")  # pragma: no cover
     visualization = None  # pragma: no cover
 
@@ -37,10 +39,12 @@ except ImportError as e:  # pragma: no cover
 # -------------------------------------------------------------------------
 try:
     from .pet_summary import PETEventAnalyzer
+
     _pet_summary_available = True
 except ImportError as e:  # pragma: no cover
     _pet_summary_available = False  # pragma: no cover
     import warnings  # pragma: no cover
+
     warnings.warn(f"PET summary module not available: {e}")  # pragma: no cover
     PETEventAnalyzer = None  # pragma: no cover
 

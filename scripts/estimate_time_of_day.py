@@ -9,6 +9,7 @@ and returns the majority label.
 Usage:
     python scripts/estimate_time_of_day.py --video data/sample_data/traffic_video.mp4 [--max-frames 5]
 """
+
 import argparse
 import os
 import sys
@@ -18,6 +19,7 @@ from pathlib import Path
 import cv2
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -33,6 +35,7 @@ def main():
     # Try importing VLM; if missing, fallback unknown
     try:
         from src.vlm.analyzer import VLLMAnalyzer
+
         vlm = VLLMAnalyzer()
     except Exception:
         print("unknown")
@@ -71,10 +74,12 @@ def main():
     # Majority vote
     if labels:
         from collections import Counter
+
         label, _ = Counter(labels).most_common(1)[0]
         print(label)
     else:
         print("unknown")
+
 
 if __name__ == "__main__":
     main()

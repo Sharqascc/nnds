@@ -1,93 +1,106 @@
 """
 Comprehensive tests for all internal functions in uvh_coco_fused_grid_pet.
 """
-import numpy as np
-import pytest
+
 import json
-import yaml
+import sys
 import tempfile
 from pathlib import Path
-import sys
+
+import numpy as np
+import pytest
+import yaml
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
+    TrackPoint,
+    _bbox_overlap,
     _box_area,
     _box_intersection,
     _can_intersect_temporal,
     _compute_histogram,
-    _get_entry_gate,
-    _load_gates,
-    _overlap_over_person,
-    _split_tracks_by_gaps,
-    _track_to_json,
     _compute_pet_from_windows,
     _entry_exit_frames,
-    _pair_conflict_point,
+    _get_entry_gate,
     _line_side,
+    _load_gates,
+    _overlap_over_person,
+    _pair_conflict_point,
     _point_in_square,
     _segment_bbox,
     _segment_intersection,
-    _bbox_overlap,
-    _compute_pet_from_windows,
-    TrackPoint,
-    classify_conflict_geometry
+    _split_tracks_by_gaps,
+    _track_to_json,
+    classify_conflict_geometry,
 )
 
 # ============================================
 # 1. Box Geometry Tests
 # ============================================
 
+
 def test_box_area_basic():
     """Test basic box area calculation."""
     assert _box_area((0, 0, 10, 20)) == 200.0
+
 
 def test_box_area_zero():
     """Test zero area."""
     assert _box_area((0, 0, 0, 0)) == 0.0
 
+
 def test_box_area_negative():
     """Test negative dimensions are clamped."""
     assert _box_area((5, 5, 2, 2)) == 0.0
+
 
 def test_box_intersection_overlapping():
     """Test intersection of overlapping boxes."""
     inter = _box_intersection((0, 0, 10, 10), (5, 5, 15, 15))
     assert inter == 25.0  # 5*5
 
+
 def test_box_intersection_no_overlap():
     """Test intersection of non-overlapping boxes."""
     inter = _box_intersection((0, 0, 10, 10), (20, 20, 30, 30))
     assert inter == 0.0
+
 
 def test_box_intersection_partial():
     """Test partial intersection."""
     inter = _box_intersection((0, 0, 10, 10), (8, 8, 12, 12))
     assert inter == 4.0  # 2*2
 
+
 def test_overlap_over_person():
     """Test overlap ratio over person box."""
     ratio = _overlap_over_person((0, 0, 10, 10), (5, 5, 15, 15))
     assert ratio == 25.0 / 100.0  # 0.25
+
 
 def test_overlap_over_person_zero_area():
     """Test overlap with zero area person box."""
     ratio = _overlap_over_person((0, 0, 0, 0), (5, 5, 15, 15))
     assert ratio == 0.0
 
+
 # ============================================
 # 2. Segment Geometry Tests
 # ============================================
+
 
 def test_segment_bbox():
     """Test segment bounding box."""
     bbox = _segment_bbox((0, 0), (10, 20))
     assert bbox == (0, 0, 10, 20)
 
+
 def test_segment_bbox_reversed():
     """Test segment bounding box with reversed points."""
     bbox = _segment_bbox((10, 20), (0, 0))
     assert bbox == (0, 0, 10, 20)
+
 
 def test_segment_intersection_crossing():
     """Test crossing segments."""
@@ -96,48 +109,58 @@ def test_segment_intersection_crossing():
     assert abs(inter[0] - 5.0) < 1e-6
     assert abs(inter[1] - 5.0) < 1e-6
 
+
 def test_segment_intersection_parallel():
     """Test parallel segments (no intersection)."""
     inter = _segment_intersection((0, 0), (10, 0), (0, 5), (10, 5))
     assert inter is None
+
 
 def test_segment_intersection_collinear():
     """Test collinear segments (treated as no intersection)."""
     inter = _segment_intersection((0, 0), (10, 0), (5, 0), (15, 0))
     assert inter is None
 
+
 def test_segment_intersection_no_overlap():
     """Test segments that don't overlap."""
     inter = _segment_intersection((0, 0), (1, 1), (5, 5), (6, 6))
     assert inter is None
+
 
 def test_line_side_positive():
     """Test point above line."""
     side = _line_side((5, 5), (0, 0), (10, 0))
     assert side > 0
 
+
 def test_line_side_negative():
     """Test point below line."""
     side = _line_side((5, -5), (0, 0), (10, 0))
     assert side < 0
+
 
 def test_line_side_on_line():
     """Test point on the line."""
     side = _line_side((5, 0), (0, 0), (10, 0))
     assert abs(side) < 1e-9
 
+
 def test_point_in_square():
     """Test point inside square."""
     assert _point_in_square(100, 100, cx=100, cy=100, half_size=20)
+
 
 def test_point_in_square_boundary():
     """Test point on boundary."""
     assert _point_in_square(80, 100, cx=100, cy=100, half_size=20)
     assert _point_in_square(120, 100, cx=100, cy=100, half_size=20)
 
+
 def test_point_in_square_outside():
     """Test point outside square."""
     assert not _point_in_square(130, 100, cx=100, cy=100, half_size=20)
+
 
 def test_bbox_overlap():
     """Test bounding box overlap."""
@@ -146,113 +169,124 @@ def test_bbox_overlap():
     assert not _bbox_overlap(box1, (20, 20, 30, 30))
     assert _bbox_overlap(box1, (10, 10, 20, 20))  # boundary counts as overlap
 
+
 # ============================================
 # 3. TrackPoint and Track Utilities Tests
 # ============================================
 
+
 def test_trackpoint_dataclass():
     """Test TrackPoint dataclass."""
-    pt = TrackPoint(frame=10, x=100, y=200, cls_id=2, cls_name='auto', conf=0.85)
+    pt = TrackPoint(frame=10, x=100, y=200, cls_id=2, cls_name="auto", conf=0.85)
     assert pt.frame == 10
     assert pt.x == 100
     assert pt.y == 200
     assert pt.cls_id == 2
-    assert pt.cls_name == 'auto'
+    assert pt.cls_name == "auto"
     assert pt.conf == 0.85
+
 
 def test_track_to_json_basic():
     """Test trajectory to JSON conversion without BEV mapper."""
     points = [
-        TrackPoint(frame=0, x=100, y=200, cls_id=2, cls_name='auto', conf=0.9),
-        TrackPoint(frame=1, x=110, y=205, cls_id=2, cls_name='auto', conf=0.9)
+        TrackPoint(frame=0, x=100, y=200, cls_id=2, cls_name="auto", conf=0.9),
+        TrackPoint(frame=1, x=110, y=205, cls_id=2, cls_name="auto", conf=0.9),
     ]
     json_str = _track_to_json(points)
     data = json.loads(json_str)
     assert len(data) == 2
-    assert data[0]['frame'] == 0
-    assert data[0]['x_pixel'] == 100.0
-    assert data[0]['world_x'] is None  # No BEV mapper
+    assert data[0]["frame"] == 0
+    assert data[0]["x_pixel"] == 100.0
+    assert data[0]["world_x"] is None  # No BEV mapper
+
 
 def test_track_to_json_with_bev():
     """Test trajectory to JSON conversion with BEV mapper."""
     # Create a simple BEV mapper
     from src.bev.bev_mapper import BEVMapper
-    H = np.array([
-        [0.1, 0, 0],
-        [0, 0.1, 0],
-        [0, 0, 1.0]
-    ])
-    bev_mapper = BEVMapper(H, {'x_min': -2, 'x_max': 22, 'y_min': -2, 'y_max': 18}, [240, 200])
-    
+
+    H = np.array([[0.1, 0, 0], [0, 0.1, 0], [0, 0, 1.0]])
+    bev_mapper = BEVMapper(H, {"x_min": -2, "x_max": 22, "y_min": -2, "y_max": 18}, [240, 200])
+
     points = [
-        TrackPoint(frame=0, x=100, y=200, cls_id=2, cls_name='auto', conf=0.9),
-        TrackPoint(frame=1, x=110, y=205, cls_id=2, cls_name='auto', conf=0.9)
+        TrackPoint(frame=0, x=100, y=200, cls_id=2, cls_name="auto", conf=0.9),
+        TrackPoint(frame=1, x=110, y=205, cls_id=2, cls_name="auto", conf=0.9),
     ]
     json_str = _track_to_json(points, bev_mapper)
     data = json.loads(json_str)
-    assert data[0]['world_x'] is not None
-    assert data[0]['world_y'] is not None
+    assert data[0]["world_x"] is not None
+    assert data[0]["world_y"] is not None
+
 
 def test_split_tracks_by_gaps_basic():
     """Test track splitting with no gaps."""
     tracks = {
         1: [
-            TrackPoint(frame=0, x=0, y=0, cls_id=1, cls_name='car', conf=0.9),
-            TrackPoint(frame=1, x=10, y=10, cls_id=1, cls_name='car', conf=0.9),
-            TrackPoint(frame=2, x=20, y=20, cls_id=1, cls_name='car', conf=0.9)
+            TrackPoint(frame=0, x=0, y=0, cls_id=1, cls_name="car", conf=0.9),
+            TrackPoint(frame=1, x=10, y=10, cls_id=1, cls_name="car", conf=0.9),
+            TrackPoint(frame=2, x=20, y=20, cls_id=1, cls_name="car", conf=0.9),
         ]
     }
     result = _split_tracks_by_gaps(tracks)
     assert len(result) == 1
     assert len(result[1000]) == 3  # Original track 1, sub 0
 
+
 def test_split_tracks_by_large_gap():
     """Test track splitting with large gap."""
     tracks = {
         1: [
-            TrackPoint(frame=0, x=0, y=0, cls_id=1, cls_name='car', conf=0.9),
-            TrackPoint(frame=100, x=10, y=10, cls_id=1, cls_name='car', conf=0.9)
+            TrackPoint(frame=0, x=0, y=0, cls_id=1, cls_name="car", conf=0.9),
+            TrackPoint(frame=100, x=10, y=10, cls_id=1, cls_name="car", conf=0.9),
         ]
     }
     result = _split_tracks_by_gaps(tracks, max_frame_gap=10)
     assert len(result) == 2  # Split into 2 tracks
 
+
 def test_split_tracks_predicts_occlusion():
     """Test that predicted position avoids splitting."""
     tracks = {
         1: [
-            TrackPoint(frame=0, x=0, y=0, cls_id=1, cls_name='car', conf=0.9),
-            TrackPoint(frame=1, x=1, y=1, cls_id=1, cls_name='car', conf=0.9),
+            TrackPoint(frame=0, x=0, y=0, cls_id=1, cls_name="car", conf=0.9),
+            TrackPoint(frame=1, x=1, y=1, cls_id=1, cls_name="car", conf=0.9),
             # Gap of 5 frames, but predictable
-            TrackPoint(frame=6, x=6, y=6, cls_id=1, cls_name='car', conf=0.9)
+            TrackPoint(frame=6, x=6, y=6, cls_id=1, cls_name="car", conf=0.9),
         ]
     }
-    result = _split_tracks_by_gaps(tracks, max_frame_gap=3, max_spatial_jump=100, prediction_tolerance=80)
+    result = _split_tracks_by_gaps(
+        tracks, max_frame_gap=3, max_spatial_jump=100, prediction_tolerance=80
+    )
     # Should NOT split because prediction is good
     assert len(result) == 1
+
 
 def test_split_tracks_does_not_split_good_prediction():
     """Test that large gap with good prediction doesn't split."""
     tracks = {
         1: [
-            TrackPoint(frame=0, x=0, y=0, cls_id=1, cls_name='car', conf=0.9),
-            TrackPoint(frame=1, x=2, y=2, cls_id=1, cls_name='car', conf=0.9),
-            TrackPoint(frame=2, x=4, y=4, cls_id=1, cls_name='car', conf=0.9),
-            TrackPoint(frame=10, x=20, y=20, cls_id=1, cls_name='car', conf=0.9)
+            TrackPoint(frame=0, x=0, y=0, cls_id=1, cls_name="car", conf=0.9),
+            TrackPoint(frame=1, x=2, y=2, cls_id=1, cls_name="car", conf=0.9),
+            TrackPoint(frame=2, x=4, y=4, cls_id=1, cls_name="car", conf=0.9),
+            TrackPoint(frame=10, x=20, y=20, cls_id=1, cls_name="car", conf=0.9),
         ]
     }
-    result = _split_tracks_by_gaps(tracks, max_frame_gap=3, max_spatial_jump=100, prediction_tolerance=80)
+    result = _split_tracks_by_gaps(
+        tracks, max_frame_gap=3, max_spatial_jump=100, prediction_tolerance=80
+    )
     # This should split because prediction would fail (moving faster)
     assert len(result) >= 1
+
 
 # ============================================
 # 4. Gate Logic Tests
 # ============================================
 
+
 def test_load_gates_basic():
     """Test gate loading from YAML."""
     tmp_dir = Path(tempfile.mkdtemp())
-    gate_config = tmp_dir / 'gates.yaml'
+    gate_config = tmp_dir / "gates.yaml"
     gate_config.write_text("""
 meta:
   coordinate_system: image_pixels
@@ -264,140 +298,159 @@ gates:
 """)
     gates = _load_gates(str(gate_config))
     assert len(gates) == 1
-    assert gates[0]['name'] == 'North_Gate'
-    assert gates[0]['p1'] == (100, 50)
+    assert gates[0]["name"] == "North_Gate"
+    assert gates[0]["p1"] == (100, 50)
+
 
 def test_load_gates_invalid():
     """Test loading invalid gate config."""
     with pytest.raises(Exception):
-        _load_gates('/path/to/nonexistent.yaml')
+        _load_gates("/path/to/nonexistent.yaml")
+
 
 def test_get_entry_gate_basic():
     """Test gate entry detection."""
-    gates = [{'name': 'North', 'p1': (0, 50), 'p2': (100, 50), 'entry_side': 'both'}]
+    gates = [{"name": "North", "p1": (0, 50), "p2": (100, 50), "entry_side": "both"}]
     points = [
-        TrackPoint(frame=0, x=50, y=40, cls_id=1, cls_name='car', conf=0.9),  # above gate
-        TrackPoint(frame=1, x=50, y=60, cls_id=1, cls_name='car', conf=0.9)   # below gate (crossing)
+        TrackPoint(frame=0, x=50, y=40, cls_id=1, cls_name="car", conf=0.9),  # above gate
+        TrackPoint(
+            frame=1, x=50, y=60, cls_id=1, cls_name="car", conf=0.9
+        ),  # below gate (crossing)
     ]
     gate = _get_entry_gate(points, gates)
-    assert gate == 'North'
+    assert gate == "North"
+
 
 def test_get_entry_gate_no_crossing():
     """Test gate entry when no crossing."""
-    gates = [{'name': 'North', 'p1': (0, 50), 'p2': (100, 50), 'entry_side': 'both'}]
+    gates = [{"name": "North", "p1": (0, 50), "p2": (100, 50), "entry_side": "both"}]
     points = [
-        TrackPoint(frame=0, x=50, y=40, cls_id=1, cls_name='car', conf=0.9),
-        TrackPoint(frame=1, x=50, y=45, cls_id=1, cls_name='car', conf=0.9)  # no crossing
+        TrackPoint(frame=0, x=50, y=40, cls_id=1, cls_name="car", conf=0.9),
+        TrackPoint(frame=1, x=50, y=45, cls_id=1, cls_name="car", conf=0.9),  # no crossing
     ]
     gate = _get_entry_gate(points, gates)
-    assert gate == 'unknown'
+    assert gate == "unknown"
+
 
 def test_get_entry_gate_less_than_two_points():
     """Test gate entry with insufficient points."""
-    gates = [{'name': 'North', 'p1': (0, 50), 'p2': (100, 50), 'entry_side': 'both'}]
-    points = [TrackPoint(frame=0, x=50, y=40, cls_id=1, cls_name='car', conf=0.9)]
+    gates = [{"name": "North", "p1": (0, 50), "p2": (100, 50), "entry_side": "both"}]
+    points = [TrackPoint(frame=0, x=50, y=40, cls_id=1, cls_name="car", conf=0.9)]
     gate = _get_entry_gate(points, gates)
-    assert gate == 'unknown'
+    assert gate == "unknown"
+
 
 # ============================================
 # 5. Temporal and PET Tests
 # ============================================
 
+
 def test_can_intersect_temporal_overlap():
     """Test temporal overlap check returns True."""
-    track_a = {'frames': [0, 10, 20]}
-    track_b = {'frames': [15, 25, 30]}
+    track_a = {"frames": [0, 10, 20]}
+    track_b = {"frames": [15, 25, 30]}
     result = _can_intersect_temporal(track_a, track_b, fps=30, max_pet=2.0)
     assert result is True
 
+
 def test_can_intersect_temporal_no_overlap():
     """Test temporal overlap check returns False."""
-    track_a = {'frames': [0, 5, 10]}
-    track_b = {'frames': [100, 110, 120]}
+    track_a = {"frames": [0, 5, 10]}
+    track_b = {"frames": [100, 110, 120]}
     result = _can_intersect_temporal(track_a, track_b, fps=30, max_pet=2.0)
     assert result is False
+
 
 def test_compute_pet_from_windows_sequential():
     """Test PET computation for sequential windows."""
     pet, first, second, frame_ref = _compute_pet_from_windows(80, 90, 105, 115, 30)
     assert pet == pytest.approx(0.5, abs=0.001)
-    assert first == 'a'
-    assert second == 'b'
+    assert first == "a"
+    assert second == "b"
+
 
 def test_compute_pet_from_windows_overlap():
     """Test PET computation for overlapping windows."""
     result = _compute_pet_from_windows(80, 95, 90, 105, 30)
     assert result is None
 
+
 def test_compute_pet_from_windows_reverse():
     """Test PET computation for reversed order."""
     pet, first, second, frame_ref = _compute_pet_from_windows(80, 95, 60, 70, 30)
-    assert pet == pytest.approx((80-70)/30, abs=0.001)
-    assert first == 'b'
+    assert pet == pytest.approx((80 - 70) / 30, abs=0.001)
+    assert first == "b"
+
 
 def test_entry_exit_frames_basic():
     """Test entry/exit frame detection."""
     points = [
-        TrackPoint(frame=50, x=50, y=50, cls_id=1, cls_name='car', conf=0.9),
-        TrackPoint(frame=60, x=100, y=100, cls_id=1, cls_name='car', conf=0.9),
-        TrackPoint(frame=65, x=110, y=95, cls_id=1, cls_name='car', conf=0.9),
-        TrackPoint(frame=70, x=150, y=100, cls_id=1, cls_name='car', conf=0.9)
+        TrackPoint(frame=50, x=50, y=50, cls_id=1, cls_name="car", conf=0.9),
+        TrackPoint(frame=60, x=100, y=100, cls_id=1, cls_name="car", conf=0.9),
+        TrackPoint(frame=65, x=110, y=95, cls_id=1, cls_name="car", conf=0.9),
+        TrackPoint(frame=70, x=150, y=100, cls_id=1, cls_name="car", conf=0.9),
     ]
     window = _entry_exit_frames(points, cx=100, cy=100, half_size=20)
     assert window == (60, 65)
 
+
 def test_entry_exit_frames_no_inside():
     """Test entry/exit when no points inside."""
     points = [
-        TrackPoint(frame=50, x=0, y=0, cls_id=1, cls_name='car', conf=0.9),
-        TrackPoint(frame=60, x=200, y=200, cls_id=1, cls_name='car', conf=0.9)
+        TrackPoint(frame=50, x=0, y=0, cls_id=1, cls_name="car", conf=0.9),
+        TrackPoint(frame=60, x=200, y=200, cls_id=1, cls_name="car", conf=0.9),
     ]
     window = _entry_exit_frames(points, cx=100, cy=100, half_size=20)
     assert window is None
 
+
 def test_pair_conflict_point_crossing():
     """Test conflict point for crossing trajectories."""
     track_a = [
-        TrackPoint(frame=0, x=0, y=100, cls_id=1, cls_name='car', conf=0.9),
-        TrackPoint(frame=10, x=200, y=100, cls_id=1, cls_name='car', conf=0.9)
+        TrackPoint(frame=0, x=0, y=100, cls_id=1, cls_name="car", conf=0.9),
+        TrackPoint(frame=10, x=200, y=100, cls_id=1, cls_name="car", conf=0.9),
     ]
     track_b = [
-        TrackPoint(frame=0, x=100, y=0, cls_id=1, cls_name='car', conf=0.9),
-        TrackPoint(frame=10, x=100, y=200, cls_id=1, cls_name='car', conf=0.9)
+        TrackPoint(frame=0, x=100, y=0, cls_id=1, cls_name="car", conf=0.9),
+        TrackPoint(frame=10, x=100, y=200, cls_id=1, cls_name="car", conf=0.9),
     ]
     conflict = _pair_conflict_point(track_a, track_b)
     assert conflict is not None
     assert abs(conflict[0] - 100) < 1.0
     assert abs(conflict[1] - 100) < 1.0
 
+
 def test_pair_conflict_point_no_crossing():
     """Test no conflict point for non-crossing trajectories."""
     track_a = [
-        TrackPoint(frame=0, x=0, y=0, cls_id=1, cls_name='car', conf=0.9),
-        TrackPoint(frame=10, x=200, y=0, cls_id=1, cls_name='car', conf=0.9)
+        TrackPoint(frame=0, x=0, y=0, cls_id=1, cls_name="car", conf=0.9),
+        TrackPoint(frame=10, x=200, y=0, cls_id=1, cls_name="car", conf=0.9),
     ]
     track_b = [
-        TrackPoint(frame=0, x=100, y=100, cls_id=1, cls_name='car', conf=0.9),
-        TrackPoint(frame=10, x=100, y=200, cls_id=1, cls_name='car', conf=0.9)
+        TrackPoint(frame=0, x=100, y=100, cls_id=1, cls_name="car", conf=0.9),
+        TrackPoint(frame=10, x=100, y=200, cls_id=1, cls_name="car", conf=0.9),
     ]
     conflict = _pair_conflict_point(track_a, track_b)
     assert conflict is None
 
+
 # ============================================
 # 6. Histogram and Classification Tests
 # ============================================
+
 
 def test_compute_histogram_basic():
     """Test histogram computation from frame crop."""
     # Create a simple test frame (BGR)
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
     frame[:, :, 0] = 255  # Blue channel
-    frame[:, :, 1] = 0    # Green
-    frame[:, :, 2] = 0    # Red
-    
+    frame[:, :, 1] = 0  # Green
+    frame[:, :, 2] = 0  # Red
+
     hist = _compute_histogram(frame, 10, 10, 50, 50)
     assert hist is not None
     assert len(hist) == 30 * 32  # 2D histogram flattened
+
 
 def test_compute_histogram_invalid():
     """Test histogram with invalid coordinates (clips to valid bounds)."""
@@ -408,74 +461,92 @@ def test_compute_histogram_invalid():
     if hist is not None:
         assert len(hist) == 30 * 32  # 2D histogram flattened
 
+
 def test_compute_histogram_out_of_bounds():
     """Test histogram with out-of-bounds coordinates."""
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
     hist = _compute_histogram(frame, 90, 90, 200, 200)
     assert hist is not None  # Should clip to frame bounds
 
+
 def test_classify_conflict_geometry_head_on():
     """Test head-on classification."""
-    traj_a = json.dumps([
-        {'frame': 0, 'x': 0, 'y': 100, 'world_x': 0, 'world_y': 10},
-        {'frame': 1, 'x': 5, 'y': 100, 'world_x': 0.5, 'world_y': 10},
-        {'frame': 2, 'x': 10, 'y': 100, 'world_x': 1, 'world_y': 10},
-        {'frame': 3, 'x': 15, 'y': 100, 'world_x': 1.5, 'world_y': 10},
-        {'frame': 4, 'x': 20, 'y': 100, 'world_x': 2, 'world_y': 10}
-    ])
-    traj_b = json.dumps([
-        {'frame': 0, 'x': 20, 'y': 100, 'world_x': 2, 'world_y': 10},
-        {'frame': 1, 'x': 15, 'y': 100, 'world_x': 1.5, 'world_y': 10},
-        {'frame': 2, 'x': 10, 'y': 100, 'world_x': 1, 'world_y': 10},
-        {'frame': 3, 'x': 5, 'y': 100, 'world_x': 0.5, 'world_y': 10},
-        {'frame': 4, 'x': 0, 'y': 100, 'world_x': 0, 'world_y': 10}
-    ])
+    traj_a = json.dumps(
+        [
+            {"frame": 0, "x": 0, "y": 100, "world_x": 0, "world_y": 10},
+            {"frame": 1, "x": 5, "y": 100, "world_x": 0.5, "world_y": 10},
+            {"frame": 2, "x": 10, "y": 100, "world_x": 1, "world_y": 10},
+            {"frame": 3, "x": 15, "y": 100, "world_x": 1.5, "world_y": 10},
+            {"frame": 4, "x": 20, "y": 100, "world_x": 2, "world_y": 10},
+        ]
+    )
+    traj_b = json.dumps(
+        [
+            {"frame": 0, "x": 20, "y": 100, "world_x": 2, "world_y": 10},
+            {"frame": 1, "x": 15, "y": 100, "world_x": 1.5, "world_y": 10},
+            {"frame": 2, "x": 10, "y": 100, "world_x": 1, "world_y": 10},
+            {"frame": 3, "x": 5, "y": 100, "world_x": 0.5, "world_y": 10},
+            {"frame": 4, "x": 0, "y": 100, "world_x": 0, "world_y": 10},
+        ]
+    )
     result = classify_conflict_geometry(traj_a, traj_b, conflict_frame=2, fps=30.0)
-    assert result == 'head_on'
+    assert result == "head_on"
+
 
 def test_classify_conflict_geometry_crossing():
     """Test crossing classification."""
-    traj_a = json.dumps([
-        {'frame': 0, 'x': 0, 'y': 100, 'world_x': 0, 'world_y': 10},
-        {'frame': 1, 'x': 5, 'y': 100, 'world_x': 0.5, 'world_y': 10},
-        {'frame': 2, 'x': 10, 'y': 100, 'world_x': 1, 'world_y': 10},
-        {'frame': 3, 'x': 15, 'y': 100, 'world_x': 1.5, 'world_y': 10},
-        {'frame': 4, 'x': 20, 'y': 100, 'world_x': 2, 'world_y': 10}
-    ])
-    traj_b = json.dumps([
-        {'frame': 0, 'x': 10, 'y': 0, 'world_x': 1, 'world_y': 0},
-        {'frame': 1, 'x': 10, 'y': 5, 'world_x': 1, 'world_y': 0.5},
-        {'frame': 2, 'x': 10, 'y': 10, 'world_x': 1, 'world_y': 1},
-        {'frame': 3, 'x': 10, 'y': 15, 'world_x': 1, 'world_y': 1.5},
-        {'frame': 4, 'x': 10, 'y': 20, 'world_x': 1, 'world_y': 2}
-    ])
+    traj_a = json.dumps(
+        [
+            {"frame": 0, "x": 0, "y": 100, "world_x": 0, "world_y": 10},
+            {"frame": 1, "x": 5, "y": 100, "world_x": 0.5, "world_y": 10},
+            {"frame": 2, "x": 10, "y": 100, "world_x": 1, "world_y": 10},
+            {"frame": 3, "x": 15, "y": 100, "world_x": 1.5, "world_y": 10},
+            {"frame": 4, "x": 20, "y": 100, "world_x": 2, "world_y": 10},
+        ]
+    )
+    traj_b = json.dumps(
+        [
+            {"frame": 0, "x": 10, "y": 0, "world_x": 1, "world_y": 0},
+            {"frame": 1, "x": 10, "y": 5, "world_x": 1, "world_y": 0.5},
+            {"frame": 2, "x": 10, "y": 10, "world_x": 1, "world_y": 1},
+            {"frame": 3, "x": 10, "y": 15, "world_x": 1, "world_y": 1.5},
+            {"frame": 4, "x": 10, "y": 20, "world_x": 1, "world_y": 2},
+        ]
+    )
     result = classify_conflict_geometry(traj_a, traj_b, conflict_frame=2, fps=30.0)
-    assert result == 'crossing'
+    assert result == "crossing"
+
 
 def test_classify_conflict_geometry_empty():
     """Test classification with empty trajectories."""
-    result = classify_conflict_geometry('', '{}', 0, 30.0)
-    assert result == 'other'
+    result = classify_conflict_geometry("", "{}", 0, 30.0)
+    assert result == "other"
+
 
 def test_classify_conflict_geometry_other():
     """Test classification returns 'other' for ambiguous."""
-    traj_a = json.dumps([
-        {'frame': 0, 'x': 0, 'y': 100, 'world_x': 0, 'world_y': 10},
-        {'frame': 1, 'x': 5, 'y': 100, 'world_x': 0.5, 'world_y': 10}
-    ])
-    traj_b = json.dumps([
-        {'frame': 0, 'x': 10, 'y': 100, 'world_x': 1, 'world_y': 10},
-        {'frame': 1, 'x': 12, 'y': 100, 'world_x': 1.2, 'world_y': 10}
-    ])
+    traj_a = json.dumps(
+        [
+            {"frame": 0, "x": 0, "y": 100, "world_x": 0, "world_y": 10},
+            {"frame": 1, "x": 5, "y": 100, "world_x": 0.5, "world_y": 10},
+        ]
+    )
+    traj_b = json.dumps(
+        [
+            {"frame": 0, "x": 10, "y": 100, "world_x": 1, "world_y": 10},
+            {"frame": 1, "x": 12, "y": 100, "world_x": 1.2, "world_y": 10},
+        ]
+    )
     result = classify_conflict_geometry(traj_a, traj_b, conflict_frame=1, fps=30.0)
-    assert result in ['head_on', 'crossing', 'rear_end', 'side_swipe', 'other']
+    assert result in ["head_on", "crossing", "rear_end", "side_swipe", "other"]
 
 
 def test_compute_histogram_empty_crop():
     """Test histogram with empty crop (line 31)."""
     import numpy as np
+
     from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import _compute_histogram
-    
+
     # Create a frame and test empty crop (invalid coordinates)
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
     # Crop with zero size
@@ -485,9 +556,8 @@ def test_compute_histogram_empty_crop():
 
 def test_compute_histogram_exception():
     """Test histogram exception handling (lines 38-39)."""
-    import numpy as np
     from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import _compute_histogram
-    
+
     # Pass invalid arguments that will cause an exception
     frame = None  # None frame will cause exception
     hist = _compute_histogram(frame, 10, 10, 50, 50)
@@ -496,9 +566,8 @@ def test_compute_histogram_exception():
 
 def test_segment_intersection_out_of_range():
     """Test segment intersection when intersection is not in range (line 108)."""
-    import numpy as np
     from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import _segment_intersection
-    
+
     # Segments whose mathematical intersection is outside both segments
     # Segment 1: from (0,0) to (1,1)
     # Segment 2: from (2,0) to (3,-1) - intersection point is outside
@@ -508,8 +577,10 @@ def test_segment_intersection_out_of_range():
 
 def test_split_tracks_empty_list():
     """Test split tracks with empty point list (line 771)."""
-    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import _split_tracks_by_gaps, TrackPoint
-    
+    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
+        _split_tracks_by_gaps,
+    )
+
     tracks = {
         1: []  # Empty points list
     }
@@ -519,51 +590,58 @@ def test_split_tracks_empty_list():
 
 def test_split_tracks_zero_dt1():
     """Test split tracks when dt1 is zero (line 792)."""
-    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import _split_tracks_by_gaps, TrackPoint
-    
+    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
+        TrackPoint,
+        _split_tracks_by_gaps,
+    )
+
     # Create tracks where dt1 == 0 (same frame for prev_prev and prev)
     tracks = {
         1: [
-            TrackPoint(frame=0, x=0, y=0, cls_id=1, cls_name='car', conf=0.9),
-            TrackPoint(frame=0, x=10, y=10, cls_id=1, cls_name='car', conf=0.9),  # same frame as prev
-            TrackPoint(frame=5, x=20, y=20, cls_id=1, cls_name='car', conf=0.9)
+            TrackPoint(frame=0, x=0, y=0, cls_id=1, cls_name="car", conf=0.9),
+            TrackPoint(
+                frame=0, x=10, y=10, cls_id=1, cls_name="car", conf=0.9
+            ),  # same frame as prev
+            TrackPoint(frame=5, x=20, y=20, cls_id=1, cls_name="car", conf=0.9),
         ]
     }
-    result = _split_tracks_by_gaps(tracks, max_frame_gap=3, max_spatial_jump=100, prediction_tolerance=80)
+    result = _split_tracks_by_gaps(
+        tracks, max_frame_gap=3, max_spatial_jump=100, prediction_tolerance=80
+    )
     # Should not crash; result should have tracks
     assert len(result) >= 1
 
 
-
-
-
 def test_run_uvh_coco_fused_grid_pet_mocked(tmp_path):
     """Test the full pipeline with all heavy dependencies mocked."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
+    import json
+    from unittest.mock import patch
+
+    import cv2
+    import numpy as np
+
     from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
-        run_uvh_coco_fused_grid_pet, TrackPoint
+        run_uvh_coco_fused_grid_pet,
     )
 
     # --- Create minimal config files ---
     bev_cfg = {
         "H_pixel_to_world": np.eye(3).tolist(),
-        "x_min": 0, "x_max": 10, "y_min": 0, "y_max": 10,
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
         "resolution": 0.1,
-        "bev_resolution": [100, 100]
+        "bev_resolution": [100, 100],
     }
     bev_path = tmp_path / "bev.json"
     bev_path.write_text(json.dumps(bev_cfg))
 
-    grid_cfg = {
-        "cells": [{"id": 1, "polygon": [[0,0],[10,0],[10,10],[0,10]]}]
-    }
+    grid_cfg = {"cells": [{"id": 1, "polygon": [[0, 0], [10, 0], [10, 10], [0, 10]]}]}
     grid_path = tmp_path / "grid.yaml"
     grid_path.write_text(yaml.dump(grid_cfg))
 
-    gate_cfg = {
-        "gates": [{"id": "G1", "line": [[0,0],[0,10]]}]
-    }
+    gate_cfg = {"gates": [{"id": "G1", "line": [[0, 0], [0, 10]]}]}
     gate_path = tmp_path / "gates.yaml"
     gate_path.write_text(yaml.dump(gate_cfg))
 
@@ -571,29 +649,34 @@ def test_run_uvh_coco_fused_grid_pet_mocked(tmp_path):
     class FakeVideoCapture:
         def __init__(self, *args, **kwargs):
             pass
+
         def isOpened(self):
             return True
+
         def get(self, prop):
             if prop == cv2.CAP_PROP_FPS:
                 return 30.0
             if prop == cv2.CAP_PROP_FRAME_COUNT:
                 return 5
             return 0
+
         def release(self):
             pass
 
     # --- Fake YOLO result object with empty detections ---
     class FakeResult:
         def __init__(self):
-            self.boxes = None          # no detections
+            self.boxes = None  # no detections
             self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
-            self.names = {}            # not used because boxes is None
+            self.names = {}  # not used because boxes is None
 
     # --- Fake YOLO model that yields results ---
     class FakeYOLO:
         instances = 0
+
         def __init__(self, *args, **kwargs):
             FakeYOLO.instances += 1
+
         def predict(self, *args, **kwargs):
             # Return a list of 5 fake results (one per frame)
             return [FakeResult() for _ in range(5)]
@@ -602,6 +685,7 @@ def test_run_uvh_coco_fused_grid_pet_mocked(tmp_path):
     class DummySpatialGrid:
         def __init__(self, *args, **kwargs):
             pass
+
         def get_cell_from_pixels(self, x, y):
             return "UNKNOWN"
 
@@ -613,6 +697,7 @@ def test_run_uvh_coco_fused_grid_pet_mocked(tmp_path):
     class DummyCustomTracker:
         def __init__(self, *args, **kwargs):
             pass
+
         def update(self, raw_dets, frame_img=None, frame=0):
             # No matches; return empty dict
             return {}
@@ -622,10 +707,25 @@ def test_run_uvh_coco_fused_grid_pet_mocked(tmp_path):
             pass
 
     # --- Patch all heavy dependencies ---
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[{"id": "G1"}]):
-
+    with (
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates",
+            return_value=[{"id": "G1"}],
+        ),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path / "fake.mp4"),   # file doesn't exist; mocked capture ignores it
+            video_path=str(tmp_path / "fake.mp4"),  # file doesn't exist; mocked capture ignores it
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
             uvh_model_path=str(tmp_path / "uvh.pt"),
@@ -647,27 +747,35 @@ def test_run_uvh_coco_fused_grid_pet_mocked(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_with_conflict_mocked(tmp_path):
     """Cover the PET event creation and output writing by forcing a conflict."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
+    import json
+    from unittest.mock import patch
+
+    import cv2
+    import numpy as np
+
     from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
-        run_uvh_coco_fused_grid_pet, TrackPoint, Detection
+        TrackPoint,
+        run_uvh_coco_fused_grid_pet,
     )
 
     # --- Config files ---
     bev_cfg = {
         "H_pixel_to_world": np.eye(3).tolist(),
-        "x_min": 0, "x_max": 10, "y_min": 0, "y_max": 10,
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
         "resolution": 0.1,
-        "bev_resolution": [100, 100]
+        "bev_resolution": [100, 100],
     }
     bev_path = tmp_path / "bev.json"
     bev_path.write_text(json.dumps(bev_cfg))
 
-    grid_cfg = {"cells": [{"id": 1, "polygon": [[0,0],[10,0],[10,10],[0,10]]}]}
+    grid_cfg = {"cells": [{"id": 1, "polygon": [[0, 0], [10, 0], [10, 10], [0, 10]]}]}
     grid_path = tmp_path / "grid.yaml"
     grid_path.write_text(yaml.dump(grid_cfg))
 
-    gate_cfg = {"gates": [{"id": "G1", "line": [[0,0],[0,10]]}]}
+    gate_cfg = {"gates": [{"id": "G1", "line": [[0, 0], [0, 10]]}]}
     gate_path = tmp_path / "gates.yaml"
     gate_path.write_text(yaml.dump(gate_cfg))
 
@@ -675,14 +783,17 @@ def test_run_uvh_coco_fused_grid_pet_with_conflict_mocked(tmp_path):
     class FakeVideoCapture:
         def __init__(self, *args, **kwargs):
             pass
+
         def isOpened(self):
             return True
+
         def get(self, prop):
             if prop == cv2.CAP_PROP_FPS:
                 return 30.0
             if prop == cv2.CAP_PROP_FRAME_COUNT:
                 return 1
             return 0
+
         def release(self):
             pass
 
@@ -695,8 +806,10 @@ def test_run_uvh_coco_fused_grid_pet_with_conflict_mocked(tmp_path):
 
     class FakeYOLO:
         instances = 0
+
         def __init__(self, *args, **kwargs):
             FakeYOLO.instances += 1
+
         def predict(self, *args, **kwargs):
             # Return a generator of one empty result
             return [FakeResult()]
@@ -705,8 +818,9 @@ def test_run_uvh_coco_fused_grid_pet_with_conflict_mocked(tmp_path):
     class DummySpatialGrid:
         def __init__(self, *args, **kwargs):
             pass
+
         def get_cell_from_pixels(self, x, y):
-            return "cell1"   # not out of bounds
+            return "cell1"  # not out of bounds
 
     class DummyBEVMapper:
         def __init__(self, *args, **kwargs):
@@ -715,6 +829,7 @@ def test_run_uvh_coco_fused_grid_pet_with_conflict_mocked(tmp_path):
     class DummyCustomTracker:
         def __init__(self, *args, **kwargs):
             pass
+
         def update(self, raw_dets, frame_img=None, frame=0):
             return {}
 
@@ -727,19 +842,61 @@ def test_run_uvh_coco_fused_grid_pet_with_conflict_mocked(tmp_path):
         # Return two tracks with composite IDs 1001 and 2002
         return {
             1001: [
-                TrackPoint(frame=0, x=0, y=0, cls_id=2, cls_name='car', conf=0.9),
-                TrackPoint(frame=1, x=5, y=5, cls_id=2, cls_name='car', conf=0.9),
-                TrackPoint(frame=2, x=10, y=10, cls_id=2, cls_name='car', conf=0.9),
+                TrackPoint(frame=0, x=0, y=0, cls_id=2, cls_name="car", conf=0.9),
+                TrackPoint(frame=1, x=5, y=5, cls_id=2, cls_name="car", conf=0.9),
+                TrackPoint(frame=2, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
             ],
             2002: [
-                TrackPoint(frame=0, x=10, y=0, cls_id=0, cls_name='pedestrian', conf=0.9),
-                TrackPoint(frame=1, x=5, y=5, cls_id=0, cls_name='pedestrian', conf=0.9),
-                TrackPoint(frame=2, x=0, y=10, cls_id=0, cls_name='pedestrian', conf=0.9),
+                TrackPoint(frame=0, x=10, y=0, cls_id=0, cls_name="pedestrian", conf=0.9),
+                TrackPoint(frame=1, x=5, y=5, cls_id=0, cls_name="pedestrian", conf=0.9),
+                TrackPoint(frame=2, x=0, y=10, cls_id=0, cls_name="pedestrian", conf=0.9),
             ],
         }
 
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[{"id": "G1"}]),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._split_tracks_by_gaps", fake_split_tracks),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._pair_conflict_point", return_value=(5.0, 5.0)),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._entry_exit_frames", side_effect=lambda pts, cx, cy, half: (0, 2)),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._compute_pet_from_windows", return_value=(1.5, 'a', 'b', 1)),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._track_to_json", return_value="{}"),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.classify_conflict_geometry", return_value="crossing"),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._get_entry_gate", return_value="G1"):
-
+    with (
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates",
+            return_value=[{"id": "G1"}],
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._split_tracks_by_gaps",
+            fake_split_tracks,
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._pair_conflict_point",
+            return_value=(5.0, 5.0),
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._entry_exit_frames",
+            side_effect=lambda pts, cx, cy, half: (0, 2),
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._compute_pet_from_windows",
+            return_value=(1.5, "a", "b", 1),
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._track_to_json", return_value="{}"
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.classify_conflict_geometry",
+            return_value="crossing",
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._get_entry_gate",
+            return_value="G1",
+        ),
+    ):
         result = run_uvh_coco_fused_grid_pet(
             video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
@@ -765,87 +922,164 @@ def test_run_uvh_coco_fused_grid_pet_with_conflict_mocked(tmp_path):
     assert ev["orig_track_b"] == 2
 
 
-
 def test_run_uvh_coco_fused_grid_pet_time_based_branch_mocked(tmp_path):
     """Cover the a_exit <= b_entry branch of PET time calculation."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
+    import json
+    from unittest.mock import patch
+
+    import cv2
+    import numpy as np
+
     from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
-        run_uvh_coco_fused_grid_pet, TrackPoint, Detection
+        TrackPoint,
+        run_uvh_coco_fused_grid_pet,
     )
 
     # Config files
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
     bev_path = tmp_path / "bev.json"
     bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[{"id":1,"polygon":[[0,0],[10,0],[10,10],[0,10]]}]}
+    grid_cfg = {"cells": [{"id": 1, "polygon": [[0, 0], [10, 0], [10, 10], [0, 10]]}]}
     grid_path = tmp_path / "grid.yaml"
     grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[{"id":"G1","line":[[0,0],[0,10]]}]}
+    gate_cfg = {"gates": [{"id": "G1", "line": [[0, 0], [0, 10]]}]}
     gate_path = tmp_path / "gates.yaml"
     gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 1
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 1
             return 0
-        def release(self): pass
+
+        def release(self):
+            pass
 
     class FakeResult:
         def __init__(self):
             self.boxes = None
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
             self.names = {}
+
     class FakeYOLO:
-        def __init__(self,*a,**k): pass
-        def predict(self,*a,**k):
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, *a, **k):
             return [FakeResult()]
 
     class DummySpatialGrid:
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
     class DummyBEVMapper:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
+
     class DummyCustomTracker:
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
     class DummyReIDEncoder:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
 
     def fake_split_tracks(tracks, **kwargs):
         return {
             1001: [
-                TrackPoint(frame=0, x=0, y=0, cls_id=2, cls_name='car', conf=0.9),
-                TrackPoint(frame=1, x=5, y=5, cls_id=2, cls_name='car', conf=0.9),
-                TrackPoint(frame=2, x=10, y=10, cls_id=2, cls_name='car', conf=0.9),
+                TrackPoint(frame=0, x=0, y=0, cls_id=2, cls_name="car", conf=0.9),
+                TrackPoint(frame=1, x=5, y=5, cls_id=2, cls_name="car", conf=0.9),
+                TrackPoint(frame=2, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
             ],
             2002: [
-                TrackPoint(frame=0, x=10, y=0, cls_id=0, cls_name='pedestrian', conf=0.9),
-                TrackPoint(frame=1, x=5, y=5, cls_id=0, cls_name='pedestrian', conf=0.9),
-                TrackPoint(frame=2, x=0, y=10, cls_id=0, cls_name='pedestrian', conf=0.9),
+                TrackPoint(frame=0, x=10, y=0, cls_id=0, cls_name="pedestrian", conf=0.9),
+                TrackPoint(frame=1, x=5, y=5, cls_id=0, cls_name="pedestrian", conf=0.9),
+                TrackPoint(frame=2, x=0, y=10, cls_id=0, cls_name="pedestrian", conf=0.9),
             ],
         }
 
     # Custom _entry_exit_frames: for track with first x=0 return (0,1); for x=10 return (2,3)
     def entry_exit_side_effect(points, cx, cy, half_size):
         if points[0].x == 0:
-            return (0, 1)   # a_entry=0, a_exit=1
+            return (0, 1)  # a_entry=0, a_exit=1
         else:
-            return (2, 3)   # b_entry=2, b_exit=3
+            return (2, 3)  # b_entry=2, b_exit=3
+
     # a_exit <= b_entry -> 1 <= 2 True
 
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[{"id":"G1"}]),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._split_tracks_by_gaps", fake_split_tracks),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._pair_conflict_point", return_value=(5.0,5.0)),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._entry_exit_frames", side_effect=entry_exit_side_effect),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._compute_pet_from_windows", return_value=(1.5, 'a', 'b', 1)),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._track_to_json", return_value="{}"),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.classify_conflict_geometry", return_value="crossing"),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._get_entry_gate", return_value="G1"):
-
+    with (
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates",
+            return_value=[{"id": "G1"}],
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._split_tracks_by_gaps",
+            fake_split_tracks,
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._pair_conflict_point",
+            return_value=(5.0, 5.0),
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._entry_exit_frames",
+            side_effect=entry_exit_side_effect,
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._compute_pet_from_windows",
+            return_value=(1.5, "a", "b", 1),
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._track_to_json", return_value="{}"
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.classify_conflict_geometry",
+            return_value="crossing",
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._get_entry_gate",
+            return_value="G1",
+        ),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=1,
             device="cpu",
@@ -862,56 +1096,91 @@ def test_run_uvh_coco_fused_grid_pet_time_based_branch_mocked(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_interactive_mocked(tmp_path):
     """Cover interactive pause block, display, and show_progress pass."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
+    import json
     from types import SimpleNamespace
-    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
-        run_uvh_coco_fused_grid_pet, TrackPoint, Detection
-    )
+    from unittest.mock import MagicMock, patch
 
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
+    import cv2
+    import numpy as np
+
+    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
+
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
     bev_path = tmp_path / "bev.json"
     bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[{"id":1,"polygon":[[0,0],[10,0],[10,10],[0,10]]}]}
+    grid_cfg = {"cells": [{"id": 1, "polygon": [[0, 0], [10, 0], [10, 10], [0, 10]]}]}
     grid_path = tmp_path / "grid.yaml"
     grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[{"id":"G1","line":[[0,0],[0,10]]}]}
+    gate_cfg = {"gates": [{"id": "G1", "line": [[0, 0], [0, 10]]}]}
     gate_path = tmp_path / "gates.yaml"
     gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 25
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 25
             return 0
-        def release(self): pass
-        def set(self,*a,**k): return True
+
+        def release(self):
+            pass
+
+        def set(self, *a, **k):
+            return True
+
         def read(self):
             # Return a valid frame for display
-            return True, np.zeros((480,640,3), dtype=np.uint8)
+            return True, np.zeros((480, 640, 3), dtype=np.uint8)
 
     class FakeResult:
         def __init__(self):
             self.boxes = None
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
             self.names = {}
+
     class FakeYOLO:
-        def __init__(self,*a,**k): pass
-        def predict(self,*a,**k):
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, *a, **k):
             return [FakeResult() for _ in range(25)]
 
     class DummySpatialGrid:
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
     class DummyBEVMapper:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
+
     class DummyCustomTracker:
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
     class DummyReIDEncoder:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
 
     dummy_plt = SimpleNamespace(
         figure=lambda *a, **k: MagicMock(),
@@ -921,15 +1190,33 @@ def test_run_uvh_coco_fused_grid_pet_interactive_mocked(tmp_path):
         close=lambda *a, **k: None,
     )
 
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[{"id":"G1"}]),          patch("builtins.input", return_value=""),          patch("matplotlib.pyplot", dummy_plt),          patch("IPython.display.display", lambda *a, **k: None):
-
+    with (
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates",
+            return_value=[{"id": "G1"}],
+        ),
+        patch("builtins.input", return_value=""),
+        patch("matplotlib.pyplot", dummy_plt),
+        patch("IPython.display.display", lambda *a, **k: None),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=25,
             device="cpu",
@@ -942,54 +1229,109 @@ def test_run_uvh_coco_fused_grid_pet_interactive_mocked(tmp_path):
     assert "pet_events" in result
 
 
-
 def test_run_uvh_coco_fused_grid_pet_cuda_mocked(tmp_path):
     """Cover CUDA branch when torch.cuda.is_available() is True."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
+    import json
+    from unittest.mock import patch
+
+    import cv2
+    import numpy as np
+
     from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
 
     # Minimal configs
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[]}; grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[]}; gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": []}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": []}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 1
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 1
             return 0
-        def release(self): pass
+
+        def release(self):
+            pass
+
     class FakeResult:
         def __init__(self):
             self.boxes = None
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
             self.names = {}
-    class FakeYOLO:
-        def __init__(self,*a,**k): pass
-        def predict(self,*a,**k): return [FakeResult()]
-    class DummySpatialGrid: 
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
-    class DummyBEVMapper: 
-        def __init__(self,*a,**k): pass
-    class DummyCustomTracker: 
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
-    class DummyReIDEncoder: 
-        def __init__(self,*a,**k): pass
 
-    with patch("torch.cuda.is_available", return_value=True),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]):
+    class FakeYOLO:
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, *a, **k):
+            return [FakeResult()]
+
+    class DummySpatialGrid:
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
+    class DummyBEVMapper:
+        def __init__(self, *a, **k):
+            pass
+
+    class DummyCustomTracker:
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
+    class DummyReIDEncoder:
+        def __init__(self, *a, **k):
+            pass
+
+    with (
+        patch("torch.cuda.is_available", return_value=True),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=1,
             device="auto",
@@ -1001,50 +1343,105 @@ def test_run_uvh_coco_fused_grid_pet_cuda_mocked(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_openvino_mocked(tmp_path):
     """Cover OpenVINO backend branch."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
+    import json
+    from unittest.mock import patch
+
+    import cv2
+    import numpy as np
+
     from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
 
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[]}; grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[]}; gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": []}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": []}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 1
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 1
             return 0
-        def release(self): pass
+
+        def release(self):
+            pass
+
     class FakeResult:
         def __init__(self):
             self.boxes = None
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
             self.names = {}
-    class FakeYOLO:
-        def __init__(self,*a,**k): pass
-        def predict(self,*a,**k): return [FakeResult()]
-    class DummySpatialGrid: 
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
-    class DummyBEVMapper: 
-        def __init__(self,*a,**k): pass
-    class DummyCustomTracker: 
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
-    class DummyReIDEncoder: 
-        def __init__(self,*a,**k): pass
 
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]):
+    class FakeYOLO:
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, *a, **k):
+            return [FakeResult()]
+
+    class DummySpatialGrid:
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
+    class DummyBEVMapper:
+        def __init__(self, *a, **k):
+            pass
+
+    class DummyCustomTracker:
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
+    class DummyReIDEncoder:
+        def __init__(self, *a, **k):
+            pass
+
+    with (
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=1,
             device="cpu",
@@ -1056,40 +1453,80 @@ def test_run_uvh_coco_fused_grid_pet_openvino_mocked(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_video_open_fail(tmp_path):
     """Cover video open failure raising RuntimeError."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
-    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
+    import json
+    from unittest.mock import patch
+
+    import numpy as np
     import pytest
 
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[]}; grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[]}; gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
+
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": []}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": []}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return False
-        def release(self): pass
-    class FakeYOLO:
-        def __init__(self,*a,**k): pass
-    class DummySpatialGrid: 
-        def __init__(self,*a,**k): pass
-    class DummyBEVMapper: 
-        def __init__(self,*a,**k): pass
-    class DummyCustomTracker: 
-        def __init__(self,*a,**k): pass
-    class DummyReIDEncoder: 
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
 
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]):
+        def isOpened(self):
+            return False
+
+        def release(self):
+            pass
+
+    class FakeYOLO:
+        def __init__(self, *a, **k):
+            pass
+
+    class DummySpatialGrid:
+        def __init__(self, *a, **k):
+            pass
+
+    class DummyBEVMapper:
+        def __init__(self, *a, **k):
+            pass
+
+    class DummyCustomTracker:
+        def __init__(self, *a, **k):
+            pass
+
+    class DummyReIDEncoder:
+        def __init__(self, *a, **k):
+            pass
+
+    with (
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),
+    ):
         with pytest.raises(RuntimeError):
             run_uvh_coco_fused_grid_pet(
-                video_path=str(tmp_path/"fake.mp4"),
+                video_path=str(tmp_path / "fake.mp4"),
                 bev_config_path=str(bev_path),
                 grid_config_path=str(grid_path),
-                uvh_model_path=str(tmp_path/"uvh.pt"),
-                coco_person_model_path=str(tmp_path/"coco.pt"),
-                output_csv_path=str(tmp_path/"out.csv"),
+                uvh_model_path=str(tmp_path / "uvh.pt"),
+                coco_person_model_path=str(tmp_path / "coco.pt"),
+                output_csv_path=str(tmp_path / "out.csv"),
                 gate_config_path=str(gate_path),
                 max_frames=1,
                 device="cpu",
@@ -1100,51 +1537,105 @@ def test_run_uvh_coco_fused_grid_pet_video_open_fail(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_bev_fallback(tmp_path):
     """Cover BEV loading fallback when bev_resolution is None."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
+    import json
+    from unittest.mock import patch
+
+    import cv2
+    import numpy as np
+
     from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
 
     # BEV config without bev_resolution but with resolution
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[]}; grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[]}; gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": []}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": []}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 1
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 1
             return 0
-        def release(self): pass
+
+        def release(self):
+            pass
+
     class FakeResult:
         def __init__(self):
             self.boxes = None
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
             self.names = {}
-    class FakeYOLO:
-        def __init__(self,*a,**k): pass
-        def predict(self,*a,**k): return [FakeResult()]
-    class DummySpatialGrid: 
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
-    class DummyBEVMapper:
-        def __init__(self,*a,**k): pass
-    class DummyCustomTracker: 
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
-    class DummyReIDEncoder: 
-        def __init__(self,*a,**k): pass
 
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]):
+    class FakeYOLO:
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, *a, **k):
+            return [FakeResult()]
+
+    class DummySpatialGrid:
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
+    class DummyBEVMapper:
+        def __init__(self, *a, **k):
+            pass
+
+    class DummyCustomTracker:
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
+    class DummyReIDEncoder:
+        def __init__(self, *a, **k):
+            pass
+
+    with (
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=1,
             device="cpu",
@@ -1156,51 +1647,109 @@ def test_run_uvh_coco_fused_grid_pet_bev_fallback(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_gate_exception(tmp_path):
     """Cover gate loading exception (gates becomes [])."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
+    import json
+    from unittest.mock import patch
+
+    import cv2
+    import numpy as np
+
     from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
 
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[]}; grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[]}; gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": []}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": []}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 1
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 1
             return 0
-        def release(self): pass
+
+        def release(self):
+            pass
+
     class FakeResult:
         def __init__(self):
             self.boxes = None
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
             self.names = {}
+
     class FakeYOLO:
-        def __init__(self,*a,**k): pass
-        def predict(self,*a,**k): return [FakeResult()]
-    class DummySpatialGrid: 
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
-    class DummyBEVMapper: 
-        def __init__(self,*a,**k): pass
-    class DummyCustomTracker: 
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
-    class DummyReIDEncoder: 
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, *a, **k):
+            return [FakeResult()]
+
+    class DummySpatialGrid:
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
+    class DummyBEVMapper:
+        def __init__(self, *a, **k):
+            pass
+
+    class DummyCustomTracker:
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
+    class DummyReIDEncoder:
+        def __init__(self, *a, **k):
+            pass
 
     # Force _load_gates to raise an exception
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", side_effect=Exception("fail")),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder):
+    with (
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates",
+            side_effect=Exception("fail"),
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=1,
             device="cpu",
@@ -1212,48 +1761,102 @@ def test_run_uvh_coco_fused_grid_pet_gate_exception(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_spatial_exception(tmp_path):
     """Cover SpatialGrid exception (spatial_grid becomes None)."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
+    import json
+    from unittest.mock import patch
+
+    import cv2
+    import numpy as np
+
     from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
 
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[]}; grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[]}; gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": []}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": []}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 1
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 1
             return 0
-        def release(self): pass
+
+        def release(self):
+            pass
+
     class FakeResult:
         def __init__(self):
             self.boxes = None
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
             self.names = {}
+
     class FakeYOLO:
-        def __init__(self,*a,**k): pass
-        def predict(self,*a,**k): return [FakeResult()]
-    class DummyBEVMapper: 
-        def __init__(self,*a,**k): pass
-    class DummyCustomTracker: 
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
-    class DummyReIDEncoder: 
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, *a, **k):
+            return [FakeResult()]
+
+    class DummyBEVMapper:
+        def __init__(self, *a, **k):
+            pass
+
+    class DummyCustomTracker:
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
+    class DummyReIDEncoder:
+        def __init__(self, *a, **k):
+            pass
 
     # Force SpatialGrid to raise an exception
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", side_effect=Exception("fail")),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]):
+    with (
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid",
+            side_effect=Exception("fail"),
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=1,
             device="cpu",
@@ -1265,46 +1868,63 @@ def test_run_uvh_coco_fused_grid_pet_spatial_exception(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_with_detections_mocked(tmp_path):
     """Cover detection processing paths by providing fake detections."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
+    import json
+    from unittest.mock import patch
+
+    import cv2
+    import numpy as np
+
     from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
-        run_uvh_coco_fused_grid_pet, TrackPoint, Detection, UVH_DISPLAY_MAP, CLASS_NAME_TO_ID
+        run_uvh_coco_fused_grid_pet,
     )
 
     # --- Config files ---
     bev_cfg = {
         "H_pixel_to_world": np.eye(3).tolist(),
-        "x_min": 0, "x_max": 10, "y_min": 0, "y_max": 10,
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
         "resolution": 0.1,
-        "bev_resolution": [100, 100]
+        "bev_resolution": [100, 100],
     }
     bev_path = tmp_path / "bev.json"
     bev_path.write_text(json.dumps(bev_cfg))
 
-    grid_cfg = {"cells": [{"id": 1, "polygon": [[0,0],[10,0],[10,10],[0,10]]}]}
+    grid_cfg = {"cells": [{"id": 1, "polygon": [[0, 0], [10, 0], [10, 10], [0, 10]]}]}
     grid_path = tmp_path / "grid.yaml"
     grid_path.write_text(yaml.dump(grid_cfg))
 
-    gate_cfg = {"gates": [{"id": "G1", "line": [[0,0],[0,10]]}]}
+    gate_cfg = {"gates": [{"id": "G1", "line": [[0, 0], [0, 10]]}]}
     gate_path = tmp_path / "gates.yaml"
     gate_path.write_text(yaml.dump(gate_cfg))
 
     # --- Fake video capture (not used for frame reading) ---
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 5
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 5
             return 0
-        def release(self): pass
+
+        def release(self):
+            pass
 
     # --- Fake tensor with .cpu().numpy() ---
     class FakeTensor:
         def __init__(self, data):
             self.data = data
+
         def cpu(self):
             return self
+
         def numpy(self):
             return self.data
 
@@ -1314,34 +1934,36 @@ def test_run_uvh_coco_fused_grid_pet_with_detections_mocked(tmp_path):
             self.xyxy = FakeTensor(xyxy)
             self.cls = FakeTensor(cls)
             self.conf = FakeTensor(conf)
+
         def __len__(self):
             return len(self.xyxy.data)
 
     # --- Fake YOLO result with one UVH detection ---
     class FakeResultUVH:
         def __init__(self):
-            uvh_xyxy = np.array([[10,10,50,50]], dtype=np.float32)
+            uvh_xyxy = np.array([[10, 10, 50, 50]], dtype=np.float32)
             uvh_cls = np.array([0])
             uvh_conf = np.array([0.9], dtype=np.float32)
             self.boxes = FakeBoxes(uvh_xyxy, uvh_cls, uvh_conf)
-            self.names = {0: 'Sedan'}   # will map to 'car'
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.names = {0: "Sedan"}  # will map to 'car'
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
 
     # --- Fake YOLO result with one COCO pedestrian detection ---
     class FakeResultCOCO:
         def __init__(self):
-            coco_xyxy = np.array([[100,100,150,150]], dtype=np.float32)
+            coco_xyxy = np.array([[100, 100, 150, 150]], dtype=np.float32)
             coco_cls = np.array([0])
             coco_conf = np.array([0.8], dtype=np.float32)
             self.boxes = FakeBoxes(coco_xyxy, coco_cls, coco_conf)
-            self.names = {0: 'person'}
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.names = {0: "person"}
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
 
     # --- Fake YOLO that returns UVH or COCO results based on model path ---
     class FakeYOLO:
         def __init__(self, model_path, *args, **kwargs):
             # model_path is the first argument
-            self.is_uvh = 'uvh' in str(model_path)
+            self.is_uvh = "uvh" in str(model_path)
+
         def predict(self, *args, **kwargs):
             # Return 5 results of the appropriate type
             if self.is_uvh:
@@ -1351,33 +1973,58 @@ def test_run_uvh_coco_fused_grid_pet_with_detections_mocked(tmp_path):
 
     # --- Dummies ---
     class DummySpatialGrid:
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
     class DummyBEVMapper:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
+
     class DummyReIDEncoder:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
 
     # --- Custom tracker that assigns IDs to all detections ---
     class DummyCustomTracker:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
+
         def update(self, raw_dets, frame_img=None, frame=0):
             matched = {}
             for i, det in enumerate(raw_dets):
-                if det.source == 'uvh26':
+                if det.source == "uvh26":
                     matched[i] = 1000 + i
                 else:
                     matched[i] = 2000 + i
             return matched
 
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[{"id":"G1"}]):
+    with (
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates",
+            return_value=[{"id": "G1"}],
+        ),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=5,
             device="cpu",
@@ -1392,61 +2039,92 @@ def test_run_uvh_coco_fused_grid_pet_with_detections_mocked(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_coco_detection_mocked(tmp_path):
     """Cover COCO detection processing (lines 430-449) by providing only COCO boxes."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
+    import json
+    from unittest.mock import patch
+
+    import cv2
+    import numpy as np
+
     from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
-        run_uvh_coco_fused_grid_pet, TrackPoint, Detection
+        run_uvh_coco_fused_grid_pet,
     )
 
     # Config files
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[{"id":1,"polygon":[[0,0],[10,0],[10,10],[0,10]]}]}
-    grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[{"id":"G1","line":[[0,0],[0,10]]}]}
-    gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": [{"id": 1, "polygon": [[0, 0], [10, 0], [10, 10], [0, 10]]}]}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": [{"id": "G1", "line": [[0, 0], [0, 10]]}]}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 1
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 1
             return 0
-        def release(self): pass
+
+        def release(self):
+            pass
 
     class FakeTensor:
-        def __init__(self, data): self.data = data
-        def cpu(self): return self
-        def numpy(self): return self.data
+        def __init__(self, data):
+            self.data = data
+
+        def cpu(self):
+            return self
+
+        def numpy(self):
+            return self.data
 
     class FakeBoxes:
         def __init__(self, xyxy, cls, conf):
             self.xyxy = FakeTensor(xyxy)
             self.cls = FakeTensor(cls)
             self.conf = FakeTensor(conf)
-        def __len__(self): return len(self.xyxy.data)
+
+        def __len__(self):
+            return len(self.xyxy.data)
 
     # UVH result: empty boxes
     class FakeResultUVH:
         def __init__(self):
             self.boxes = None
             self.names = {}
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
 
     # COCO result: one pedestrian box
     class FakeResultCOCO:
         def __init__(self):
-            coco_xyxy = np.array([[100,100,150,150]], dtype=np.float32)
+            coco_xyxy = np.array([[100, 100, 150, 150]], dtype=np.float32)
             coco_cls = np.array([0])
             coco_conf = np.array([0.8], dtype=np.float32)
             self.boxes = FakeBoxes(coco_xyxy, coco_cls, coco_conf)
-            self.names = {0: 'person'}
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.names = {0: "person"}
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
 
     class FakeYOLO:
         def __init__(self, model_path, *args, **kwargs):
-            self.is_uvh = 'uvh' in str(model_path)
+            self.is_uvh = "uvh" in str(model_path)
+
         def predict(self, *args, **kwargs):
             if self.is_uvh:
                 return [FakeResultUVH() for _ in range(3)]
@@ -1454,30 +2132,56 @@ def test_run_uvh_coco_fused_grid_pet_coco_detection_mocked(tmp_path):
                 return [FakeResultCOCO() for _ in range(3)]
 
     class DummySpatialGrid:
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
     class DummyBEVMapper:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
+
     class DummyCustomTracker:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
+
         def update(self, raw_dets, frame_img=None, frame=0):
-            print(f'DEBUG update: raw_dets_len={len(raw_dets)}')
+            print(f"DEBUG update: raw_dets_len={len(raw_dets)}")
             matched = {}
             for i, det in enumerate(raw_dets):
                 matched[i] = 2000 + i
-            print(f'DEBUG matched={matched}')
+            print(f"DEBUG matched={matched}")
             return matched
-    class DummyReIDEncoder:
-        def __init__(self,*a,**k): pass
 
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[{"id":"G1"}]):
+    class DummyReIDEncoder:
+        def __init__(self, *a, **k):
+            pass
+
+    with (
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates",
+            return_value=[{"id": "G1"}],
+        ),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=3,
             device="cpu",
@@ -1491,76 +2195,133 @@ def test_run_uvh_coco_fused_grid_pet_coco_detection_mocked(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_unmapped_class_mocked(tmp_path):
     """Cover 'continue' when UVH class name is not in mapping (line 385)."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
+    import json
+    from unittest.mock import patch
+
+    import cv2
+    import numpy as np
+
     from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
 
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[]}; grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[]}; gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": []}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": []}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 1
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 1
             return 0
-        def release(self): pass
+
+        def release(self):
+            pass
 
     class FakeTensor:
-        def __init__(self, data): self.data = data
-        def cpu(self): return self
-        def numpy(self): return self.data
+        def __init__(self, data):
+            self.data = data
+
+        def cpu(self):
+            return self
+
+        def numpy(self):
+            return self.data
 
     class FakeBoxes:
         def __init__(self, xyxy, cls, conf):
             self.xyxy = FakeTensor(xyxy)
             self.cls = FakeTensor(cls)
             self.conf = FakeTensor(conf)
-        def __len__(self): return len(self.xyxy.data)
+
+        def __len__(self):
+            return len(self.xyxy.data)
 
     class FakeResultUVH:
         def __init__(self):
-            xyxy = np.array([[10,10,50,50]], dtype=np.float32)
+            xyxy = np.array([[10, 10, 50, 50]], dtype=np.float32)
             cls = np.array([0])  # index not in names
             conf = np.array([0.9], dtype=np.float32)
             self.boxes = FakeBoxes(xyxy, cls, conf)
-            self.names = {0: 'UnknownClass'}  # raw name not in UVH_DISPLAY_MAP
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.names = {0: "UnknownClass"}  # raw name not in UVH_DISPLAY_MAP
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
 
     class FakeResultCOCO:
         def __init__(self):
             self.boxes = None
             self.names = {}
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
 
     class FakeYOLO:
         def __init__(self, model_path, *args, **kwargs):
-            self.is_uvh = 'uvh' in str(model_path)
+            self.is_uvh = "uvh" in str(model_path)
+
         def predict(self, *args, **kwargs):
             return [FakeResultUVH()] if self.is_uvh else [FakeResultCOCO()]
 
     class DummySpatialGrid:
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
-    class DummyBEVMapper:
-        def __init__(self,*a,**k): pass
-    class DummyCustomTracker:
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
-    class DummyReIDEncoder:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
 
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]):
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
+    class DummyBEVMapper:
+        def __init__(self, *a, **k):
+            pass
+
+    class DummyCustomTracker:
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
+    class DummyReIDEncoder:
+        def __init__(self, *a, **k):
+            pass
+
+    with (
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=1,
             device="cpu",
@@ -1573,50 +2334,105 @@ def test_run_uvh_coco_fused_grid_pet_unmapped_class_mocked(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_fps_fallback_mocked(tmp_path):
     """Cover fps fallback when fps is zero (line 329)."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
+    import json
+    from unittest.mock import patch
+
+    import cv2
+    import numpy as np
+
     from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
 
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[]}; grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[]}; gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": []}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": []}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 0.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 1
+            if prop == cv2.CAP_PROP_FPS:
+                return 0.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 1
             return 0
-        def release(self): pass
+
+        def release(self):
+            pass
+
     class FakeResult:
         def __init__(self):
             self.boxes = None
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
             self.names = {}
-    class FakeYOLO:
-        def __init__(self,*a,**k): pass
-        def predict(self,*a,**k): return [FakeResult()]
-    class DummySpatialGrid: 
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
-    class DummyBEVMapper: 
-        def __init__(self,*a,**k): pass
-    class DummyCustomTracker: 
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
-    class DummyReIDEncoder: 
-        def __init__(self,*a,**k): pass
 
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]):
+    class FakeYOLO:
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, *a, **k):
+            return [FakeResult()]
+
+    class DummySpatialGrid:
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
+    class DummyBEVMapper:
+        def __init__(self, *a, **k):
+            pass
+
+    class DummyCustomTracker:
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
+    class DummyReIDEncoder:
+        def __init__(self, *a, **k):
+            pass
+
+    with (
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=1,
             device="cpu",
@@ -1628,52 +2444,106 @@ def test_run_uvh_coco_fused_grid_pet_fps_fallback_mocked(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_max_frames_break_mocked(tmp_path):
     """Cover break when max_frames reached before generator ends (line 368)."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
+    import json
+    from unittest.mock import patch
+
+    import cv2
+    import numpy as np
+
     from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
 
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[]}; grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[]}; gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": []}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": []}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 10
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 10
             return 0
-        def release(self): pass
+
+        def release(self):
+            pass
+
     class FakeResult:
         def __init__(self):
             self.boxes = None
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
             self.names = {}
+
     class FakeYOLO:
-        def __init__(self,*a,**k): pass
-        def predict(self,*a,**k):
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, *a, **k):
             # Return more results than max_frames to trigger break
             return [FakeResult() for _ in range(10)]
-    class DummySpatialGrid: 
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
-    class DummyBEVMapper: 
-        def __init__(self,*a,**k): pass
-    class DummyCustomTracker: 
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
-    class DummyReIDEncoder: 
-        def __init__(self,*a,**k): pass
 
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]):
+    class DummySpatialGrid:
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
+    class DummyBEVMapper:
+        def __init__(self, *a, **k):
+            pass
+
+    class DummyCustomTracker:
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
+    class DummyReIDEncoder:
+        def __init__(self, *a, **k):
+            pass
+
+    with (
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=3,  # less than 10, triggers break
             device="cpu",
@@ -1685,49 +2555,105 @@ def test_run_uvh_coco_fused_grid_pet_max_frames_break_mocked(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_bev_exception_mocked(tmp_path):
     """Cover BEV loading exception (lines 293-294)."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
+    import json
+    from unittest.mock import patch
+
+    import cv2
+    import numpy as np
+
     from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
 
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[]}; grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[]}; gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": []}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": []}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 1
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 1
             return 0
-        def release(self): pass
+
+        def release(self):
+            pass
+
     class FakeResult:
         def __init__(self):
             self.boxes = None
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
             self.names = {}
+
     class FakeYOLO:
-        def __init__(self,*a,**k): pass
-        def predict(self,*a,**k): return [FakeResult()]
-    class DummySpatialGrid: 
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
-    class DummyCustomTracker: 
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
-    class DummyReIDEncoder: 
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, *a, **k):
+            return [FakeResult()]
+
+    class DummySpatialGrid:
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
+    class DummyCustomTracker:
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
+    class DummyReIDEncoder:
+        def __init__(self, *a, **k):
+            pass
 
     # Force BEVMapper to raise exception
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", side_effect=Exception("BEV fail")),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]):
+    with (
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper",
+            side_effect=Exception("BEV fail"),
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=1,
             device="cpu",
@@ -1739,53 +2665,110 @@ def test_run_uvh_coco_fused_grid_pet_bev_exception_mocked(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_openvino_auto_mocked(tmp_path):
     """Cover auto backend selecting OpenVINO when models exist (lines 310-312)."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
+    import json
     from pathlib import Path as P
+    from unittest.mock import patch
+
+    import cv2
+    import numpy as np
+
     from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
 
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[]}; grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[]}; gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": []}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": []}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 1
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 1
             return 0
-        def release(self): pass
+
+        def release(self):
+            pass
+
     class FakeResult:
         def __init__(self):
             self.boxes = None
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
             self.names = {}
+
     class FakeYOLO:
-        def __init__(self,*a,**k): pass
-        def predict(self,*a,**k): return [FakeResult()]
-    class DummySpatialGrid: 
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
-    class DummyBEVMapper: 
-        def __init__(self,*a,**k): pass
-    class DummyCustomTracker: 
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
-    class DummyReIDEncoder: 
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, *a, **k):
+            return [FakeResult()]
+
+    class DummySpatialGrid:
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
+    class DummyBEVMapper:
+        def __init__(self, *a, **k):
+            pass
+
+    class DummyCustomTracker:
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
+    class DummyReIDEncoder:
+        def __init__(self, *a, **k):
+            pass
 
     # Patch torch.cuda.is_available to False
     # Patch _openvino_dir to return a dummy path and Path.exists to True
-    with patch("torch.cuda.is_available", return_value=False),          patch.object(P, 'exists', return_value=True),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]):
+    with (
+        patch("torch.cuda.is_available", return_value=False),
+        patch.object(P, "exists", return_value=True),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=1,
             device="cpu",
@@ -1797,56 +2780,123 @@ def test_run_uvh_coco_fused_grid_pet_openvino_auto_mocked(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_stop_input_mocked(tmp_path):
     """Cover stop input in interactive mode (lines 512-514)."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
+    import json
     from types import SimpleNamespace
+    from unittest.mock import MagicMock, patch
+
+    import cv2
+    import numpy as np
+
     from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
 
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[]}; grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[]}; gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": []}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": []}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 25
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 25
             return 0
-        def release(self): pass
-        def set(self,*a,**k): return True
-        def read(self): return True, np.zeros((480,640,3), dtype=np.uint8)
+
+        def release(self):
+            pass
+
+        def set(self, *a, **k):
+            return True
+
+        def read(self):
+            return True, np.zeros((480, 640, 3), dtype=np.uint8)
 
     class FakeResult:
         def __init__(self):
             self.boxes = None
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
             self.names = {}
+
     class FakeYOLO:
-        def __init__(self,*a,**k): pass
-        def predict(self,*a,**k): return [FakeResult() for _ in range(25)]
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, *a, **k):
+            return [FakeResult() for _ in range(25)]
+
     class DummySpatialGrid:
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
     class DummyBEVMapper:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
+
     class DummyCustomTracker:
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
     class DummyReIDEncoder:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
 
-    dummy_plt = SimpleNamespace(figure=lambda *a,**k: MagicMock(), imshow=lambda *a,**k: None, title=lambda *a,**k: None, axis=lambda *a,**k: None, close=lambda *a,**k: None)
+    dummy_plt = SimpleNamespace(
+        figure=lambda *a, **k: MagicMock(),
+        imshow=lambda *a, **k: None,
+        title=lambda *a, **k: None,
+        axis=lambda *a, **k: None,
+        close=lambda *a, **k: None,
+    )
 
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),          patch("builtins.input", return_value="stop"),          patch("matplotlib.pyplot", dummy_plt),          patch("IPython.display.display", lambda *a, **k: None):
+    with (
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),
+        patch("builtins.input", return_value="stop"),
+        patch("matplotlib.pyplot", dummy_plt),
+        patch("IPython.display.display", lambda *a, **k: None),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=25,
             device="cpu",
@@ -1857,63 +2907,128 @@ def test_run_uvh_coco_fused_grid_pet_stop_input_mocked(tmp_path):
     assert isinstance(result, dict)
 
 
-
 def test_run_uvh_coco_fused_grid_pet_prune_cell_mocked(tmp_path):
     """Cover cell overlap pruning (line 588)."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
-    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet, TrackPoint
+    import json
+    from unittest.mock import patch
 
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[]}; grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[]}; gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    import cv2
+    import numpy as np
+
+    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
+        TrackPoint,
+        run_uvh_coco_fused_grid_pet,
+    )
+
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": []}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": []}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 1
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 1
             return 0
-        def release(self): pass
+
+        def release(self):
+            pass
+
     class FakeResult:
         def __init__(self):
             self.boxes = None
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
             self.names = {}
+
     class FakeYOLO:
-        def __init__(self,*a,**k): pass
-        def predict(self,*a,**k): return [FakeResult()]
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, *a, **k):
+            return [FakeResult()]
+
     class DummyBEVMapper:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
+
     class DummyCustomTracker:
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
     class DummyReIDEncoder:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
+
     class DummySpatialGrid:
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "A" if x < 50 else "B"
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "A" if x < 50 else "B"
 
     def fake_split_tracks(tracks, **kwargs):
         return {
-            1001: [TrackPoint(frame=0, x=10, y=10, cls_id=2, cls_name='car', conf=0.9),
-                   TrackPoint(frame=1, x=10, y=10, cls_id=2, cls_name='car', conf=0.9),
-                   TrackPoint(frame=2, x=10, y=10, cls_id=2, cls_name='car', conf=0.9)],
-            2002: [TrackPoint(frame=0, x=100, y=100, cls_id=0, cls_name='pedestrian', conf=0.9),
-                   TrackPoint(frame=1, x=100, y=100, cls_id=0, cls_name='pedestrian', conf=0.9),
-                   TrackPoint(frame=2, x=100, y=100, cls_id=0, cls_name='pedestrian', conf=0.9)],
+            1001: [
+                TrackPoint(frame=0, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+                TrackPoint(frame=1, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+                TrackPoint(frame=2, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+            ],
+            2002: [
+                TrackPoint(frame=0, x=100, y=100, cls_id=0, cls_name="pedestrian", conf=0.9),
+                TrackPoint(frame=1, x=100, y=100, cls_id=0, cls_name="pedestrian", conf=0.9),
+                TrackPoint(frame=2, x=100, y=100, cls_id=0, cls_name="pedestrian", conf=0.9),
+            ],
         }
 
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._split_tracks_by_gaps", fake_split_tracks):
+    with (
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._split_tracks_by_gaps",
+            fake_split_tracks,
+        ),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=1,
             device="cpu",
@@ -1925,60 +3040,126 @@ def test_run_uvh_coco_fused_grid_pet_prune_cell_mocked(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_prune_temporal_mocked(tmp_path):
     """Cover temporal pruning (line 593)."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
-    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet, TrackPoint
+    import json
+    from unittest.mock import patch
 
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[]}; grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[]}; gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    import cv2
+    import numpy as np
+
+    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
+        TrackPoint,
+        run_uvh_coco_fused_grid_pet,
+    )
+
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": []}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": []}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 1
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 1
             return 0
-        def release(self): pass
+
+        def release(self):
+            pass
+
     class FakeResult:
         def __init__(self):
             self.boxes = None
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
             self.names = {}
+
     class FakeYOLO:
-        def __init__(self,*a,**k): pass
-        def predict(self,*a,**k): return [FakeResult()]
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, *a, **k):
+            return [FakeResult()]
+
     class DummySpatialGrid:
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
     class DummyBEVMapper:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
+
     class DummyCustomTracker:
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
     class DummyReIDEncoder:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
 
     def fake_split_tracks(tracks, **kwargs):
         return {
-            1001: [TrackPoint(frame=100, x=10, y=10, cls_id=2, cls_name='car', conf=0.9),
-                   TrackPoint(frame=101, x=10, y=10, cls_id=2, cls_name='car', conf=0.9),
-                   TrackPoint(frame=102, x=10, y=10, cls_id=2, cls_name='car', conf=0.9)],
-            2002: [TrackPoint(frame=0, x=40, y=40, cls_id=0, cls_name='pedestrian', conf=0.9),
-                   TrackPoint(frame=1, x=40, y=40, cls_id=0, cls_name='pedestrian', conf=0.9),
-                   TrackPoint(frame=2, x=40, y=40, cls_id=0, cls_name='pedestrian', conf=0.9)],
+            1001: [
+                TrackPoint(frame=100, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+                TrackPoint(frame=101, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+                TrackPoint(frame=102, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+            ],
+            2002: [
+                TrackPoint(frame=0, x=40, y=40, cls_id=0, cls_name="pedestrian", conf=0.9),
+                TrackPoint(frame=1, x=40, y=40, cls_id=0, cls_name="pedestrian", conf=0.9),
+                TrackPoint(frame=2, x=40, y=40, cls_id=0, cls_name="pedestrian", conf=0.9),
+            ],
         }
 
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._split_tracks_by_gaps", fake_split_tracks):
+    with (
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._split_tracks_by_gaps",
+            fake_split_tracks,
+        ),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=1,
             device="cpu",
@@ -1990,60 +3171,126 @@ def test_run_uvh_coco_fused_grid_pet_prune_temporal_mocked(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_prune_spatial_mocked(tmp_path):
     """Cover spatial pruning (line 600)."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
-    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet, TrackPoint
+    import json
+    from unittest.mock import patch
 
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[]}; grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[]}; gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    import cv2
+    import numpy as np
+
+    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
+        TrackPoint,
+        run_uvh_coco_fused_grid_pet,
+    )
+
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": []}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": []}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 1
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 1
             return 0
-        def release(self): pass
+
+        def release(self):
+            pass
+
     class FakeResult:
         def __init__(self):
             self.boxes = None
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
             self.names = {}
+
     class FakeYOLO:
-        def __init__(self,*a,**k): pass
-        def predict(self,*a,**k): return [FakeResult()]
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, *a, **k):
+            return [FakeResult()]
+
     class DummySpatialGrid:
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
     class DummyBEVMapper:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
+
     class DummyCustomTracker:
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
     class DummyReIDEncoder:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
 
     def fake_split_tracks(tracks, **kwargs):
         return {
-            1001: [TrackPoint(frame=0, x=0, y=10, cls_id=2, cls_name='car', conf=0.9),
-                   TrackPoint(frame=1, x=0, y=10, cls_id=2, cls_name='car', conf=0.9),
-                   TrackPoint(frame=2, x=0, y=10, cls_id=2, cls_name='car', conf=0.9)],
-            2002: [TrackPoint(frame=0, x=2000, y=100, cls_id=0, cls_name='pedestrian', conf=0.9),
-                   TrackPoint(frame=1, x=2000, y=100, cls_id=0, cls_name='pedestrian', conf=0.9),
-                   TrackPoint(frame=2, x=2000, y=100, cls_id=0, cls_name='pedestrian', conf=0.9)],
+            1001: [
+                TrackPoint(frame=0, x=0, y=10, cls_id=2, cls_name="car", conf=0.9),
+                TrackPoint(frame=1, x=0, y=10, cls_id=2, cls_name="car", conf=0.9),
+                TrackPoint(frame=2, x=0, y=10, cls_id=2, cls_name="car", conf=0.9),
+            ],
+            2002: [
+                TrackPoint(frame=0, x=2000, y=100, cls_id=0, cls_name="pedestrian", conf=0.9),
+                TrackPoint(frame=1, x=2000, y=100, cls_id=0, cls_name="pedestrian", conf=0.9),
+                TrackPoint(frame=2, x=2000, y=100, cls_id=0, cls_name="pedestrian", conf=0.9),
+            ],
         }
 
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._split_tracks_by_gaps", fake_split_tracks):
+    with (
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._split_tracks_by_gaps",
+            fake_split_tracks,
+        ),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=1,
             device="cpu",
@@ -2055,60 +3302,130 @@ def test_run_uvh_coco_fused_grid_pet_prune_spatial_mocked(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_prune_pair_conflict_none_mocked(tmp_path):
     """Cover pair_conflict_point None (line 604)."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
-    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet, TrackPoint
+    import json
+    from unittest.mock import patch
 
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[]}; grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[]}; gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    import cv2
+    import numpy as np
+
+    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
+        TrackPoint,
+        run_uvh_coco_fused_grid_pet,
+    )
+
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": []}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": []}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 1
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 1
             return 0
-        def release(self): pass
+
+        def release(self):
+            pass
+
     class FakeResult:
         def __init__(self):
             self.boxes = None
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
             self.names = {}
+
     class FakeYOLO:
-        def __init__(self,*a,**k): pass
-        def predict(self,*a,**k): return [FakeResult()]
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, *a, **k):
+            return [FakeResult()]
+
     class DummySpatialGrid:
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
     class DummyBEVMapper:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
+
     class DummyCustomTracker:
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
     class DummyReIDEncoder:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
 
     def fake_split_tracks(tracks, **kwargs):
         return {
-            1001: [TrackPoint(frame=0, x=10, y=10, cls_id=2, cls_name='car', conf=0.9),
-                   TrackPoint(frame=1, x=10, y=10, cls_id=2, cls_name='car', conf=0.9),
-                   TrackPoint(frame=2, x=10, y=10, cls_id=2, cls_name='car', conf=0.9)],
-            2002: [TrackPoint(frame=0, x=40, y=40, cls_id=0, cls_name='pedestrian', conf=0.9),
-                   TrackPoint(frame=1, x=40, y=40, cls_id=0, cls_name='pedestrian', conf=0.9),
-                   TrackPoint(frame=2, x=40, y=40, cls_id=0, cls_name='pedestrian', conf=0.9)],
+            1001: [
+                TrackPoint(frame=0, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+                TrackPoint(frame=1, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+                TrackPoint(frame=2, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+            ],
+            2002: [
+                TrackPoint(frame=0, x=40, y=40, cls_id=0, cls_name="pedestrian", conf=0.9),
+                TrackPoint(frame=1, x=40, y=40, cls_id=0, cls_name="pedestrian", conf=0.9),
+                TrackPoint(frame=2, x=40, y=40, cls_id=0, cls_name="pedestrian", conf=0.9),
+            ],
         }
 
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._split_tracks_by_gaps", fake_split_tracks),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._pair_conflict_point", return_value=None):
+    with (
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._split_tracks_by_gaps",
+            fake_split_tracks,
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._pair_conflict_point",
+            return_value=None,
+        ),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=1,
             device="cpu",
@@ -2120,60 +3437,134 @@ def test_run_uvh_coco_fused_grid_pet_prune_pair_conflict_none_mocked(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_prune_entry_exit_none_mocked(tmp_path):
     """Cover entry_exit_frames None (line 610)."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
-    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet, TrackPoint
+    import json
+    from unittest.mock import patch
 
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[]}; grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[]}; gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    import cv2
+    import numpy as np
+
+    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
+        TrackPoint,
+        run_uvh_coco_fused_grid_pet,
+    )
+
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": []}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": []}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 1
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 1
             return 0
-        def release(self): pass
+
+        def release(self):
+            pass
+
     class FakeResult:
         def __init__(self):
             self.boxes = None
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
             self.names = {}
+
     class FakeYOLO:
-        def __init__(self,*a,**k): pass
-        def predict(self,*a,**k): return [FakeResult()]
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, *a, **k):
+            return [FakeResult()]
+
     class DummySpatialGrid:
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
     class DummyBEVMapper:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
+
     class DummyCustomTracker:
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
     class DummyReIDEncoder:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
 
     def fake_split_tracks(tracks, **kwargs):
         return {
-            1001: [TrackPoint(frame=0, x=10, y=10, cls_id=2, cls_name='car', conf=0.9),
-                   TrackPoint(frame=1, x=10, y=10, cls_id=2, cls_name='car', conf=0.9),
-                   TrackPoint(frame=2, x=10, y=10, cls_id=2, cls_name='car', conf=0.9)],
-            2002: [TrackPoint(frame=0, x=40, y=40, cls_id=0, cls_name='pedestrian', conf=0.9),
-                   TrackPoint(frame=1, x=40, y=40, cls_id=0, cls_name='pedestrian', conf=0.9),
-                   TrackPoint(frame=2, x=40, y=40, cls_id=0, cls_name='pedestrian', conf=0.9)],
+            1001: [
+                TrackPoint(frame=0, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+                TrackPoint(frame=1, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+                TrackPoint(frame=2, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+            ],
+            2002: [
+                TrackPoint(frame=0, x=40, y=40, cls_id=0, cls_name="pedestrian", conf=0.9),
+                TrackPoint(frame=1, x=40, y=40, cls_id=0, cls_name="pedestrian", conf=0.9),
+                TrackPoint(frame=2, x=40, y=40, cls_id=0, cls_name="pedestrian", conf=0.9),
+            ],
         }
 
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._split_tracks_by_gaps", fake_split_tracks),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._pair_conflict_point", return_value=(50,50)),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._entry_exit_frames", return_value=None):
+    with (
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._split_tracks_by_gaps",
+            fake_split_tracks,
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._pair_conflict_point",
+            return_value=(50, 50),
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._entry_exit_frames",
+            return_value=None,
+        ),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=1,
             device="cpu",
@@ -2185,60 +3576,138 @@ def test_run_uvh_coco_fused_grid_pet_prune_entry_exit_none_mocked(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_prune_pet_none_mocked(tmp_path):
     """Cover compute_pet None (line 617)."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
-    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet, TrackPoint
+    import json
+    from unittest.mock import patch
 
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[]}; grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[]}; gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    import cv2
+    import numpy as np
+
+    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
+        TrackPoint,
+        run_uvh_coco_fused_grid_pet,
+    )
+
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": []}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": []}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 1
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 1
             return 0
-        def release(self): pass
+
+        def release(self):
+            pass
+
     class FakeResult:
         def __init__(self):
             self.boxes = None
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
             self.names = {}
+
     class FakeYOLO:
-        def __init__(self,*a,**k): pass
-        def predict(self,*a,**k): return [FakeResult()]
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, *a, **k):
+            return [FakeResult()]
+
     class DummySpatialGrid:
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
     class DummyBEVMapper:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
+
     class DummyCustomTracker:
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
     class DummyReIDEncoder:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
 
     def fake_split_tracks(tracks, **kwargs):
         return {
-            1001: [TrackPoint(frame=0, x=10, y=10, cls_id=2, cls_name='car', conf=0.9),
-                   TrackPoint(frame=1, x=10, y=10, cls_id=2, cls_name='car', conf=0.9),
-                   TrackPoint(frame=2, x=10, y=10, cls_id=2, cls_name='car', conf=0.9)],
-            2002: [TrackPoint(frame=0, x=40, y=40, cls_id=0, cls_name='pedestrian', conf=0.9),
-                   TrackPoint(frame=1, x=40, y=40, cls_id=0, cls_name='pedestrian', conf=0.9),
-                   TrackPoint(frame=2, x=40, y=40, cls_id=0, cls_name='pedestrian', conf=0.9)],
+            1001: [
+                TrackPoint(frame=0, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+                TrackPoint(frame=1, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+                TrackPoint(frame=2, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+            ],
+            2002: [
+                TrackPoint(frame=0, x=40, y=40, cls_id=0, cls_name="pedestrian", conf=0.9),
+                TrackPoint(frame=1, x=40, y=40, cls_id=0, cls_name="pedestrian", conf=0.9),
+                TrackPoint(frame=2, x=40, y=40, cls_id=0, cls_name="pedestrian", conf=0.9),
+            ],
         }
 
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._split_tracks_by_gaps", fake_split_tracks),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._pair_conflict_point", return_value=(50,50)),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._entry_exit_frames", side_effect=[(0,1),(2,3)]),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._compute_pet_from_windows", return_value=None):
+    with (
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._split_tracks_by_gaps",
+            fake_split_tracks,
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._pair_conflict_point",
+            return_value=(50, 50),
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._entry_exit_frames",
+            side_effect=[(0, 1), (2, 3)],
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._compute_pet_from_windows",
+            return_value=None,
+        ),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=1,
             device="cpu",
@@ -2250,60 +3719,149 @@ def test_run_uvh_coco_fused_grid_pet_prune_pet_none_mocked(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_reversed_placeholder_mocked(tmp_path):
     """Cover reversed placeholder mapping (lines 625-626)."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
-    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet, TrackPoint
+    import json
+    from unittest.mock import patch
 
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[]}; grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[]}; gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    import cv2
+    import numpy as np
+
+    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
+        TrackPoint,
+        run_uvh_coco_fused_grid_pet,
+    )
+
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": []}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": []}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 1
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 1
             return 0
-        def release(self): pass
+
+        def release(self):
+            pass
+
     class FakeResult:
         def __init__(self):
             self.boxes = None
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
             self.names = {}
+
     class FakeYOLO:
-        def __init__(self,*a,**k): pass
-        def predict(self,*a,**k): return [FakeResult()]
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, *a, **k):
+            return [FakeResult()]
+
     class DummySpatialGrid:
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
     class DummyBEVMapper:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
+
     class DummyCustomTracker:
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
     class DummyReIDEncoder:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
 
     def fake_split_tracks(tracks, **kwargs):
         return {
-            1001: [TrackPoint(frame=0, x=10, y=10, cls_id=2, cls_name='car', conf=0.9),
-                   TrackPoint(frame=1, x=10, y=10, cls_id=2, cls_name='car', conf=0.9),
-                   TrackPoint(frame=2, x=10, y=10, cls_id=2, cls_name='car', conf=0.9)],
-            2002: [TrackPoint(frame=0, x=40, y=40, cls_id=0, cls_name='pedestrian', conf=0.9),
-                   TrackPoint(frame=1, x=40, y=40, cls_id=0, cls_name='pedestrian', conf=0.9),
-                   TrackPoint(frame=2, x=40, y=40, cls_id=0, cls_name='pedestrian', conf=0.9)],
+            1001: [
+                TrackPoint(frame=0, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+                TrackPoint(frame=1, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+                TrackPoint(frame=2, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+            ],
+            2002: [
+                TrackPoint(frame=0, x=40, y=40, cls_id=0, cls_name="pedestrian", conf=0.9),
+                TrackPoint(frame=1, x=40, y=40, cls_id=0, cls_name="pedestrian", conf=0.9),
+                TrackPoint(frame=2, x=40, y=40, cls_id=0, cls_name="pedestrian", conf=0.9),
+            ],
         }
 
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._split_tracks_by_gaps", fake_split_tracks),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._pair_conflict_point", return_value=(50,50)),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._entry_exit_frames", side_effect=[(0,1),(2,3)]),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._compute_pet_from_windows", return_value=(1.5, 'b', 'a', 1)),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._track_to_json", return_value="{}"),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.classify_conflict_geometry", return_value="crossing"),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._get_entry_gate", return_value="G1"):
+    with (
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._split_tracks_by_gaps",
+            fake_split_tracks,
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._pair_conflict_point",
+            return_value=(50, 50),
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._entry_exit_frames",
+            side_effect=[(0, 1), (2, 3)],
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._compute_pet_from_windows",
+            return_value=(1.5, "b", "a", 1),
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._track_to_json", return_value="{}"
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.classify_conflict_geometry",
+            return_value="crossing",
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._get_entry_gate",
+            return_value="G1",
+        ),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=1,
             device="cpu",
@@ -2315,65 +3873,156 @@ def test_run_uvh_coco_fused_grid_pet_reversed_placeholder_mocked(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_time_based_second_branch_mocked(tmp_path):
     """Cover time-based PET branch b_exit <= a_entry (line 645)."""
-    import json, yaml, numpy as np, cv2
-    import pytest
-    from unittest.mock import patch, MagicMock
-    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet, TrackPoint
+    import json
+    from unittest.mock import patch
 
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[]}; grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[]}; gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    import cv2
+    import numpy as np
+    import pytest
+
+    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
+        TrackPoint,
+        run_uvh_coco_fused_grid_pet,
+    )
+
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": []}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": []}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 1
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 1
             return 0
-        def release(self): pass
+
+        def release(self):
+            pass
+
     class FakeResult:
         def __init__(self):
             self.boxes = None
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
             self.names = {}
+
     class FakeYOLO:
-        def __init__(self,*a,**k): pass
-        def predict(self,*a,**k): return [FakeResult()]
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, *a, **k):
+            return [FakeResult()]
+
     class DummySpatialGrid:
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
     class DummyBEVMapper:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
+
     class DummyCustomTracker:
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
     class DummyReIDEncoder:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
 
     def fake_split_tracks(tracks, **kwargs):
         return {
-            1001: [TrackPoint(frame=0, x=10, y=10, cls_id=2, cls_name='car', conf=0.9),
-                   TrackPoint(frame=1, x=10, y=10, cls_id=2, cls_name='car', conf=0.9),
-                   TrackPoint(frame=2, x=10, y=10, cls_id=2, cls_name='car', conf=0.9)],
-            2002: [TrackPoint(frame=0, x=40, y=40, cls_id=0, cls_name='pedestrian', conf=0.9),
-                   TrackPoint(frame=1, x=40, y=40, cls_id=0, cls_name='pedestrian', conf=0.9),
-                   TrackPoint(frame=2, x=40, y=40, cls_id=0, cls_name='pedestrian', conf=0.9)],
+            1001: [
+                TrackPoint(frame=0, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+                TrackPoint(frame=1, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+                TrackPoint(frame=2, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+            ],
+            2002: [
+                TrackPoint(frame=0, x=40, y=40, cls_id=0, cls_name="pedestrian", conf=0.9),
+                TrackPoint(frame=1, x=40, y=40, cls_id=0, cls_name="pedestrian", conf=0.9),
+                TrackPoint(frame=2, x=40, y=40, cls_id=0, cls_name="pedestrian", conf=0.9),
+            ],
         }
 
     def entry_exit_side_effect(points, cx, cy, half_size):
-        if points[0].x == 10: return (3,4)
-        else: return (1,2)
+        if points[0].x == 10:
+            return (3, 4)
+        else:
+            return (1, 2)
 
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._split_tracks_by_gaps", fake_split_tracks),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._pair_conflict_point", return_value=(50,50)),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._entry_exit_frames", side_effect=entry_exit_side_effect),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._compute_pet_from_windows", return_value=(1.5, 'a', 'b', 1)),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._track_to_json", return_value="{}"),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.classify_conflict_geometry", return_value="crossing"),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._get_entry_gate", return_value="G1"):
+    with (
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._split_tracks_by_gaps",
+            fake_split_tracks,
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._pair_conflict_point",
+            return_value=(50, 50),
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._entry_exit_frames",
+            side_effect=entry_exit_side_effect,
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._compute_pet_from_windows",
+            return_value=(1.5, "a", "b", 1),
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._track_to_json", return_value="{}"
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.classify_conflict_geometry",
+            return_value="crossing",
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._get_entry_gate",
+            return_value="G1",
+        ),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=1,
             device="cpu",
@@ -2381,65 +4030,154 @@ def test_run_uvh_coco_fused_grid_pet_time_based_second_branch_mocked(tmp_path):
             show_progress=False,
         )
     assert len(result["pet_events"]) == 1
-    assert result["pet_events"][0]["pet_time_based"] == pytest.approx((3-2)/30.0)
+    assert result["pet_events"][0]["pet_time_based"] == pytest.approx((3 - 2) / 30.0)
 
 
 def test_run_uvh_coco_fused_grid_pet_orig_same_mocked(tmp_path):
     """Cover orig_a == orig_b continue (line 651)."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
-    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet, TrackPoint
+    import json
+    from unittest.mock import patch
 
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[]}; grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[]}; gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    import cv2
+    import numpy as np
+
+    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
+        TrackPoint,
+        run_uvh_coco_fused_grid_pet,
+    )
+
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": []}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": []}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 1
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 1
             return 0
-        def release(self): pass
+
+        def release(self):
+            pass
+
     class FakeResult:
         def __init__(self):
             self.boxes = None
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
             self.names = {}
+
     class FakeYOLO:
-        def __init__(self,*a,**k): pass
-        def predict(self,*a,**k): return [FakeResult()]
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, *a, **k):
+            return [FakeResult()]
+
     class DummySpatialGrid:
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
     class DummyBEVMapper:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
+
     class DummyCustomTracker:
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
     class DummyReIDEncoder:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
 
     def fake_split_tracks(tracks, **kwargs):
         return {
-            1001: [TrackPoint(frame=0, x=10, y=10, cls_id=2, cls_name='car', conf=0.9),
-                   TrackPoint(frame=1, x=10, y=10, cls_id=2, cls_name='car', conf=0.9),
-                   TrackPoint(frame=2, x=10, y=10, cls_id=2, cls_name='car', conf=0.9)],
-            1002: [TrackPoint(frame=0, x=40, y=40, cls_id=0, cls_name='pedestrian', conf=0.9),
-                   TrackPoint(frame=1, x=40, y=40, cls_id=0, cls_name='pedestrian', conf=0.9),
-                   TrackPoint(frame=2, x=40, y=40, cls_id=0, cls_name='pedestrian', conf=0.9)],
+            1001: [
+                TrackPoint(frame=0, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+                TrackPoint(frame=1, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+                TrackPoint(frame=2, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
+            ],
+            1002: [
+                TrackPoint(frame=0, x=40, y=40, cls_id=0, cls_name="pedestrian", conf=0.9),
+                TrackPoint(frame=1, x=40, y=40, cls_id=0, cls_name="pedestrian", conf=0.9),
+                TrackPoint(frame=2, x=40, y=40, cls_id=0, cls_name="pedestrian", conf=0.9),
+            ],
         }
 
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._split_tracks_by_gaps", fake_split_tracks),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._pair_conflict_point", return_value=(50,50)),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._entry_exit_frames", side_effect=[(0,1),(2,3)]),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._compute_pet_from_windows", return_value=(1.5, 'a', 'b', 1)),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._track_to_json", return_value="{}"),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.classify_conflict_geometry", return_value="crossing"),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._get_entry_gate", return_value="G1"):
+    with (
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._split_tracks_by_gaps",
+            fake_split_tracks,
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._pair_conflict_point",
+            return_value=(50, 50),
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._entry_exit_frames",
+            side_effect=[(0, 1), (2, 3)],
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._compute_pet_from_windows",
+            return_value=(1.5, "a", "b", 1),
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._track_to_json", return_value="{}"
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.classify_conflict_geometry",
+            return_value="crossing",
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._get_entry_gate",
+            return_value="G1",
+        ),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=1,
             device="cpu",
@@ -2451,60 +4189,109 @@ def test_run_uvh_coco_fused_grid_pet_orig_same_mocked(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_openvino_exception_mocked(tmp_path):
     """Cover OpenVINO auto except branch (lines 311-312)."""
-    import json, yaml, numpy as np, cv2
+    import json
     from pathlib import Path as P
-    from unittest.mock import patch, MagicMock
+    from unittest.mock import patch
+
+    import cv2
+    import numpy as np
+
     from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
 
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[]}; grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[]}; gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": []}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": []}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 1
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 1
             return 0
-        def release(self): pass
+
+        def release(self):
+            pass
+
     class FakeResult:
         def __init__(self):
             self.boxes = None
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
             self.names = {}
+
     class FakeYOLO:
-        def __init__(self,*a,**k): pass
-        def predict(self,*a,**k): return [FakeResult()]
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, *a, **k):
+            return [FakeResult()]
+
     class DummySpatialGrid:
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
     class DummyBEVMapper:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
+
     class DummyCustomTracker:
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
     class DummyReIDEncoder:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
 
     # Force exception in OpenVINO availability check by patching Path.exists to raise
-    with patch("torch.cuda.is_available", return_value=False), \
-         patch.object(P, "exists", side_effect=Exception("fail")), \
-         patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO), \
-         patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture), \
-         patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid), \
-         patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper), \
-         patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker), \
-         patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder), \
-         patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]):
+    with (
+        patch("torch.cuda.is_available", return_value=False),
+        patch.object(P, "exists", side_effect=Exception("fail")),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=1,
             device="cpu",
@@ -2516,63 +4303,123 @@ def test_run_uvh_coco_fused_grid_pet_openvino_exception_mocked(tmp_path):
 
 def test_run_uvh_coco_fused_grid_pet_display_exception_mocked(tmp_path):
     """Cover display exception block (lines 505-506)."""
-    import json, yaml, numpy as np, cv2
-    from unittest.mock import patch, MagicMock
+    import json
     from types import SimpleNamespace
+    from unittest.mock import MagicMock, patch
+
+    import cv2
+    import numpy as np
+
     from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import run_uvh_coco_fused_grid_pet
 
-    bev_cfg = {"H_pixel_to_world": np.eye(3).tolist(), "x_min":0,"x_max":10,"y_min":0,"y_max":10,"resolution":0.1,"bev_resolution":[100,100]}
-    bev_path = tmp_path / "bev.json"; bev_path.write_text(json.dumps(bev_cfg))
-    grid_cfg = {"cells":[]}; grid_path = tmp_path / "grid.yaml"; grid_path.write_text(yaml.dump(grid_cfg))
-    gate_cfg = {"gates":[]}; gate_path = tmp_path / "gates.yaml"; gate_path.write_text(yaml.dump(gate_cfg))
+    bev_cfg = {
+        "H_pixel_to_world": np.eye(3).tolist(),
+        "x_min": 0,
+        "x_max": 10,
+        "y_min": 0,
+        "y_max": 10,
+        "resolution": 0.1,
+        "bev_resolution": [100, 100],
+    }
+    bev_path = tmp_path / "bev.json"
+    bev_path.write_text(json.dumps(bev_cfg))
+    grid_cfg = {"cells": []}
+    grid_path = tmp_path / "grid.yaml"
+    grid_path.write_text(yaml.dump(grid_cfg))
+    gate_cfg = {"gates": []}
+    gate_path = tmp_path / "gates.yaml"
+    gate_path.write_text(yaml.dump(gate_cfg))
 
     class FakeVideoCapture:
-        def __init__(self,*a,**k): pass
-        def isOpened(self): return True
+        def __init__(self, *a, **k):
+            pass
+
+        def isOpened(self):
+            return True
+
         def get(self, prop):
-            if prop == cv2.CAP_PROP_FPS: return 30.0
-            if prop == cv2.CAP_PROP_FRAME_COUNT: return 25
+            if prop == cv2.CAP_PROP_FPS:
+                return 30.0
+            if prop == cv2.CAP_PROP_FRAME_COUNT:
+                return 25
             return 0
-        def release(self): pass
-        def set(self,*a,**k): return True
+
+        def release(self):
+            pass
+
+        def set(self, *a, **k):
+            return True
+
         def read(self):
-            return True, np.zeros((480,640,3), dtype=np.uint8)
+            return True, np.zeros((480, 640, 3), dtype=np.uint8)
 
     class FakeResult:
         def __init__(self):
             self.boxes = None
-            self.orig_img = np.zeros((480,640,3), dtype=np.uint8)
+            self.orig_img = np.zeros((480, 640, 3), dtype=np.uint8)
             self.names = {}
+
     class FakeYOLO:
-        def __init__(self,*a,**k): pass
-        def predict(self,*a,**k): return [FakeResult() for _ in range(25)]
+        def __init__(self, *a, **k):
+            pass
+
+        def predict(self, *a, **k):
+            return [FakeResult() for _ in range(25)]
+
     class DummySpatialGrid:
-        def __init__(self,*a,**k): pass
-        def get_cell_from_pixels(self,x,y): return "cell1"
+        def __init__(self, *a, **k):
+            pass
+
+        def get_cell_from_pixels(self, x, y):
+            return "cell1"
+
     class DummyBEVMapper:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
+
     class DummyCustomTracker:
-        def __init__(self,*a,**k): pass
-        def update(self, raw_dets, frame_img=None, frame=0): return {}
+        def __init__(self, *a, **k):
+            pass
+
+        def update(self, raw_dets, frame_img=None, frame=0):
+            return {}
+
     class DummyReIDEncoder:
-        def __init__(self,*a,**k): pass
+        def __init__(self, *a, **k):
+            pass
 
     dummy_plt = SimpleNamespace(
-        figure=lambda *a,**k: MagicMock(),
-        imshow=lambda *a,**k: None,
-        title=lambda *a,**k: None,
-        axis=lambda *a,**k: None,
-        close=lambda *a,**k: None,
+        figure=lambda *a, **k: MagicMock(),
+        imshow=lambda *a, **k: None,
+        title=lambda *a, **k: None,
+        axis=lambda *a, **k: None,
+        close=lambda *a, **k: None,
     )
 
-    with patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture", FakeVideoCapture),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),          patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),          patch("builtins.input", return_value=""),          patch("matplotlib.pyplot", dummy_plt),          patch("IPython.display.display", side_effect=Exception("display fail")):
+    with (
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.cv2.VideoCapture",
+            FakeVideoCapture,
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.SpatialGrid", DummySpatialGrid),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.BEVMapper", DummyBEVMapper),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.CustomTracker", DummyCustomTracker
+        ),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.ReIDEncoder", DummyReIDEncoder),
+        patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._load_gates", return_value=[]),
+        patch("builtins.input", return_value=""),
+        patch("matplotlib.pyplot", dummy_plt),
+        patch("IPython.display.display", side_effect=Exception("display fail")),
+    ):
         result = run_uvh_coco_fused_grid_pet(
-            video_path=str(tmp_path/"fake.mp4"),
+            video_path=str(tmp_path / "fake.mp4"),
             bev_config_path=str(bev_path),
             grid_config_path=str(grid_path),
-            uvh_model_path=str(tmp_path/"uvh.pt"),
-            coco_person_model_path=str(tmp_path/"coco.pt"),
-            output_csv_path=str(tmp_path/"out.csv"),
+            uvh_model_path=str(tmp_path / "uvh.pt"),
+            coco_person_model_path=str(tmp_path / "coco.pt"),
+            output_csv_path=str(tmp_path / "out.csv"),
             gate_config_path=str(gate_path),
             max_frames=25,
             device="cpu",

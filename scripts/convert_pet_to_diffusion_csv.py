@@ -62,9 +62,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--csv", required=True, help="Detailed PET CSV")
     parser.add_argument("--output", default="outputs/petevents_diffusion_train.csv")
-    parser.add_argument(
-        "--min-frames", type=int, default=5, help="Minimum common frames per event"
-    )
+    parser.add_argument("--min-frames", type=int, default=5, help="Minimum common frames per event")
     parser.add_argument(
         "--max-gap",
         type=int,
@@ -105,9 +103,7 @@ def main():
 
     out_df = pd.DataFrame(all_rows)
     out_df.to_csv(args.output, index=False)
-    print(
-        f"✅ Wrote {len(out_df)} rows for {out_df['event_id'].nunique()} events to {args.output}"
-    )
+    print(f"✅ Wrote {len(out_df)} rows for {out_df['event_id'].nunique()} events to {args.output}")
 
 
 if __name__ == "__main__":

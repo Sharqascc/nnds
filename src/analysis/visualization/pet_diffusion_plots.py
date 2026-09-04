@@ -282,9 +282,11 @@ def plot_true_vs_pet_like(
             alpha=0.7,  # pragma: no cover
             label=f"Real: R²={r_r**2:.3f}, p={p_r:.4f}",  # pragma: no cover
         )  # pragma: no cover
-  # pragma: no cover
+        # pragma: no cover
         # Sample regression  # pragma: no cover
-        slope_s, intercept_s, r_s, p_s, _ = stats.linregress(true_pet, pet_sample)  # pragma: no cover
+        slope_s, intercept_s, r_s, p_s, _ = stats.linregress(
+            true_pet, pet_sample
+        )  # pragma: no cover
         y_line_s = slope_s * x_line + intercept_s  # pragma: no cover
         ax.plot(  # pragma: no cover
             x_line,
@@ -385,7 +387,8 @@ def plot_true_vs_sample_delta(
     if add_trend and len(true_pet) > 10:
         try:  # pragma: no cover
             from statsmodels.nonparametric.smoothers_lowess import lowess  # pragma: no cover
-  # pragma: no cover
+
+            # pragma: no cover
             smoothed = lowess(delta_steps, true_pet, frac=0.3)  # pragma: no cover
             ax.plot(  # pragma: no cover
                 smoothed[:, 0],  # pragma: no cover
@@ -415,10 +418,7 @@ def plot_true_vs_sample_delta(
     rmse = np.sqrt(np.mean(delta_steps**2))
 
     stats_text = (
-        f"N = {len(delta_steps)}\n"
-        f"Mean Error = {mean_error:.2f}\n"
-        f"MAE = {mae:.2f}\n"
-        f"RMSE = {rmse:.2f}"
+        f"N = {len(delta_steps)}\nMean Error = {mean_error:.2f}\nMAE = {mae:.2f}\nRMSE = {rmse:.2f}"
     )
 
     ax.text(
@@ -470,29 +470,31 @@ def plot_residual_analysis(
     """
     true_pet = []  # pragma: no cover
     residuals = []  # pragma: no cover
-  # pragma: no cover
+    # pragma: no cover
     for row_idx, t_pet, pr, ps in records:  # pragma: no cover
         if pr is None or ps is None:  # pragma: no cover
             continue  # pragma: no cover
         true_pet.append(float(t_pet))  # pragma: no cover
         residuals.append(float(ps - pr))  # pragma: no cover
-  # pragma: no cover
+    # pragma: no cover
     if not true_pet:  # pragma: no cover
         warnings.warn("No valid records for residual analysis.")  # pragma: no cover
         return  # pragma: no cover
-  # pragma: no cover
+    # pragma: no cover
     true_pet = np.array(true_pet)  # pragma: no cover
     residuals = np.array(residuals)  # pragma: no cover
-  # pragma: no cover
+    # pragma: no cover
     # Normality test  # pragma: no cover
     if len(residuals) >= 3:  # pragma: no cover
-        _shapiro_stat, shapiro_p = stats.shapiro(residuals[:5000])  # Shapiro max 5000  # pragma: no cover
+        _shapiro_stat, shapiro_p = stats.shapiro(
+            residuals[:5000]
+        )  # Shapiro max 5000  # pragma: no cover
     else:  # pragma: no cover
         shapiro_p = np.nan  # pragma: no cover
-  # pragma: no cover
+    # pragma: no cover
     # Create 2x2 subplot  # pragma: no cover
     _fig, axes = plt.subplots(2, 2, figsize=(10, 8))  # pragma: no cover
-  # pragma: no cover
+    # pragma: no cover
     # 1. Residual vs Fitted (colorblind-safe)  # pragma: no cover
     axes[0, 0].scatter(  # pragma: no cover
         true_pet,  # pragma: no cover
@@ -508,15 +510,19 @@ def plot_residual_analysis(
     axes[0, 0].set_ylabel("Residuals (steps)")  # pragma: no cover
     axes[0, 0].set_title("Residuals vs Fitted")  # pragma: no cover
     axes[0, 0].grid(alpha=0.3)  # pragma: no cover
-  # pragma: no cover
+    # pragma: no cover
     # 2. Histogram of residuals with normality test  # pragma: no cover
     axes[0, 1].hist(  # pragma: no cover
-        residuals, bins=25, edgecolor="black", alpha=0.7, color=COLORS["blue"]  # pragma: no cover
+        residuals,
+        bins=25,
+        edgecolor="black",
+        alpha=0.7,
+        color=COLORS["blue"],  # pragma: no cover
     )  # pragma: no cover
     axes[0, 1].axvline(0, color=COLORS["red"], linestyle="--", linewidth=2)  # pragma: no cover
     axes[0, 1].set_xlabel("Residuals (steps)")  # pragma: no cover
     axes[0, 1].set_ylabel("Frequency")  # pragma: no cover
-  # pragma: no cover
+    # pragma: no cover
     # Add normality test result to title  # pragma: no cover
     if not np.isnan(shapiro_p):  # pragma: no cover
         normality_text = "Normal" if shapiro_p > 0.05 else "Non-normal"  # pragma: no cover
@@ -525,9 +531,9 @@ def plot_residual_analysis(
         )  # pragma: no cover
     else:  # pragma: no cover
         axes[0, 1].set_title("Residual Distribution")  # pragma: no cover
-  # pragma: no cover
+    # pragma: no cover
     axes[0, 1].grid(alpha=0.3)  # pragma: no cover
-  # pragma: no cover
+    # pragma: no cover
     # 3. Q-Q plot (FIXED: consistent styling)  # pragma: no cover
     stats.probplot(residuals, dist="norm", plot=axes[1, 0])  # pragma: no cover
     # Manually style the points for consistency  # pragma: no cover
@@ -538,7 +544,7 @@ def plot_residual_analysis(
     axes[1, 0].get_lines()[0].set_alpha(0.6)  # pragma: no cover
     axes[1, 0].set_title("Normal Q-Q Plot")  # pragma: no cover
     axes[1, 0].grid(alpha=0.3)  # pragma: no cover
-  # pragma: no cover
+    # pragma: no cover
     # 4. Scale-Location plot  # pragma: no cover
     sqrt_abs_resid = np.sqrt(np.abs(residuals))  # pragma: no cover
     axes[1, 1].scatter(  # pragma: no cover
@@ -554,8 +560,10 @@ def plot_residual_analysis(
     axes[1, 1].set_ylabel("√|Residuals|")  # pragma: no cover
     axes[1, 1].set_title("Scale-Location Plot")  # pragma: no cover
     axes[1, 1].grid(alpha=0.3)  # pragma: no cover
-  # pragma: no cover
-    plt.suptitle("Residual Diagnostic Plots", fontsize=14, fontweight="bold", y=0.995)  # pragma: no cover
+    # pragma: no cover
+    plt.suptitle(
+        "Residual Diagnostic Plots", fontsize=14, fontweight="bold", y=0.995
+    )  # pragma: no cover
     plt.tight_layout()  # pragma: no cover
     _maybe_save(out_path, save_pdf=save_pdf)  # pragma: no cover
     plt.show()
@@ -698,21 +706,15 @@ class DiffusionPETPlotter:
             pet_pairs, out_path=f"{out_dir}/histogram.png", save_pdf=self.save_pdf
         )
 
-        plot_true_vs_pet_like(
-            records, out_path=f"{out_dir}/scatter.png", save_pdf=self.save_pdf
-        )
+        plot_true_vs_pet_like(records, out_path=f"{out_dir}/scatter.png", save_pdf=self.save_pdf)
 
         plot_true_vs_sample_delta(
             records, out_path=f"{out_dir}/error_vs_truth.png", save_pdf=self.save_pdf
         )
 
-        plot_residual_analysis(
-            records, out_path=f"{out_dir}/residuals.png", save_pdf=self.save_pdf
-        )
+        plot_residual_analysis(records, out_path=f"{out_dir}/residuals.png", save_pdf=self.save_pdf)
 
-        plot_bland_altman(
-            records, out_path=f"{out_dir}/bland_altman.png", save_pdf=self.save_pdf
-        )
+        plot_bland_altman(records, out_path=f"{out_dir}/bland_altman.png", save_pdf=self.save_pdf)
 
         print(f"✅ All plots saved to: {out_dir}/")
         if self.save_pdf:

@@ -8,6 +8,7 @@ Detection CSV must have columns: frame, x1, y1, x2, y2, class_name, conf
 Usage:
     python scripts/evaluate_detection_metrics.py --detections outputs/det.csv --ground-truth tests/fixtures/ground_truth_sample.csv
 """
+
 import argparse
 
 import numpy as np
@@ -25,13 +26,15 @@ def iou(box1, box2):
     union = area1 + area2 - inter
     return inter / union if union > 0 else 0.0
 
+
 def ap(recalls, precisions):
-    recalls = np.concatenate(([0.], recalls, [1.]))
-    precisions = np.concatenate(([0.], precisions, [0.]))
+    recalls = np.concatenate(([0.0], recalls, [1.0]))
+    precisions = np.concatenate(([0.0], precisions, [0.0]))
     for i in range(len(precisions) - 1, 0, -1):
-        precisions[i-1] = max(precisions[i-1], precisions[i])
+        precisions[i - 1] = max(precisions[i - 1], precisions[i])
     indices = np.where(recalls[1:] != recalls[:-1])[0]
-    return np.sum((recalls[indices+1] - recalls[indices]) * precisions[indices+1])
+    return np.sum((recalls[indices + 1] - recalls[indices]) * precisions[indices + 1])
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -43,16 +46,20 @@ def main():
     det = pd.read_csv(args.detections)
     gt = pd.read_csv(args.ground_truth)
 
-    det_classes = det['class_name'].unique()
-    gt_classes = gt['class_name'].unique()
+    det_classes = det["class_name"].unique()
+    gt_classes = gt["class_name"].unique()
     all_classes = list(set(det_classes) | set(gt_classes))
 
     results = {}
     for cls in all_classes:
-        gt_cls = gt[gt['class_name'] == cls]
-        det_cls = det[det['class_name'] == cls].sort_values('conf', ascending=False).reset_index(drop=True)
+        gt_cls = gt[gt["class_name"] == cls]
+        det_cls = (
+            det[det["class_name"] == cls]
+            .sort_values("conf", ascending=False)
+            .reset_index(drop=True)
+        )
         if gt_cls.empty:
-            results[cls] = {'precision': 0.0, 'recall': 0.0, 'ap50': 0.0}
+            results[cls] = {"precision": 0.0, "recall": 0.0, "ap50": 0.0}
             continue
 
         tp = []
@@ -64,8 +71,8 @@ def main():
             for gi, g in gt_cls.iterrows():
                 if gi in matched_gt:
                     continue
-                box1 = [d['x1'], d['y1'], d['x2'], d['y2']]
-                box2 = [g['x1'], g['y1'], g['x2'], g['y2']]
+                box1 = [d["x1"], d["y1"], d["x2"], d["y2"]]
+                box2 = [g["x1"], g["y1"], g["x2"], g["y2"]]
                 val = iou(box1, box2)
                 if val > best_iou:
                     best_iou = val
@@ -86,17 +93,18 @@ def main():
         final_precision = tp[-1] / (tp[-1] + fp[-1] + 1e-6)
         final_recall = tp[-1] / len(gt_cls)
         results[cls] = {
-            'precision': float(final_precision),
-            'recall': float(final_recall),
-            'ap50': float(ap_score)
+            "precision": float(final_precision),
+            "recall": float(final_recall),
+            "ap50": float(ap_score),
         }
 
     # mAP
-    mAP = np.mean([r['ap50'] for r in results.values()]) if results else 0.0
+    mAP = np.mean([r["ap50"] for r in results.values()]) if results else 0.0
     print("Detection Metrics:")
     print(f"mAP@50: {mAP:.4f}")
     for cls, r in results.items():
         print(f"  {cls}: P={r['precision']:.3f}, R={r['recall']:.3f}, AP@50={r['ap50']:.3f}")
+
 
 if __name__ == "__main__":
     main()

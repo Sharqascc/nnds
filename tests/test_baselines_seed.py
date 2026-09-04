@@ -19,11 +19,13 @@ def test_constant_velocity_predict():
     assert future[1] == (3, 3, 6)
     assert future[2] == (4, 4, 8)
 
+
 def test_kalman_filter_runs():
     kf = SimpleKalmanFilter(dt=1.0)
     kf.update([1, 1])
     pred = kf.predict()
     assert pred.shape == (2,)
+
 
 def test_set_seed_reproducible():
     set_seed(42)

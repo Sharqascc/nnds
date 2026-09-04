@@ -27,9 +27,7 @@ def rts_smooth(tracks, dt=0.1, Q=0.1, R=0.5):
     smoothed = np.zeros_like(tracks)
     for n in range(N):
         # State: [x, y, vx, vy]
-        F = np.array(
-            [[1, 0, dt, 0], [0, 1, 0, dt], [0, 0, 1, 0], [0, 0, 0, 1]], dtype=np.float64
-        )
+        F = np.array([[1, 0, dt, 0], [0, 1, 0, dt], [0, 0, 1, 0], [0, 0, 0, 1]], dtype=np.float64)
         H = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], dtype=np.float64)
         Qmat = np.eye(4) * Q
         Rmat = np.eye(2) * R
@@ -86,9 +84,7 @@ def compute_metrics(gen_trajs, gt_trajs, cond_trajs, real_pets, dt=0.1):
 
     gen_pets = []
     for b in range(len(gen_trajs)):
-        dist_matrix = np.linalg.norm(
-            gen_trajs[b][:, None, :] - cond_trajs[b][None, :, :], axis=-1
-        )
+        dist_matrix = np.linalg.norm(gen_trajs[b][:, None, :] - cond_trajs[b][None, :, :], axis=-1)
         min_idx = np.unravel_index(np.argmin(dist_matrix), dist_matrix.shape)
         gen_pets.append(abs(min_idx[0] - min_idx[1]) * dt)
     gen_pets = np.array(gen_pets)
@@ -128,9 +124,7 @@ def run_evaluation(
     cond_mean = stats["cond_mean"]
     cond_std = stats["cond_std"]
 
-    model = TrajectoryDiffusionModel(
-        traj_shape=(Th, 1, 2), cond_dim=4, hidden_dim=128
-    ).to(device)
+    model = TrajectoryDiffusionModel(traj_shape=(Th, 1, 2), cond_dim=4, hidden_dim=128).to(device)
     model.load_state_dict(checkpoint["state_dict"])
     model.eval()
 
@@ -187,9 +181,7 @@ def run_evaluation(
 
     gt_arr = np.array(gt_trajs_list, dtype=np.float32)
     cond_trajs_full = np.array(cond_trajs_list, dtype=np.float32)
-    cond_tensor = torch.tensor(
-        np.array(cond_list, dtype=np.float32).squeeze(1), device=device
-    )
+    cond_tensor = torch.tensor(np.array(cond_list, dtype=np.float32).squeeze(1), device=device)
     real_pets_arr = np.array(real_pets, dtype=np.float32)
 
     K = 10
@@ -208,9 +200,7 @@ def run_evaluation(
 
             # Apply Savitzky-Golay smoothing to velocity trajectories
             try:
-                v_sampled = savgol_filter(
-                    v_sampled, window_length=7, polyorder=3, axis=1
-                )
+                v_sampled = savgol_filter(v_sampled, window_length=7, polyorder=3, axis=1)
             except Exception:
                 pass
 
@@ -249,17 +239,13 @@ def run_evaluation(
     print(f"   • minADE: {results['ade']:.4f} m (Target: < 0.50 m)")
     print(f"   • minFDE: {results['fde']:.4f} m (Target: < 1.00 m)")
     print("\n2. KINEMATIC ADMISSIBILITY:")
-    print(
-        f"   • Acceleration Violations: {results['acc_violations']:.2f}% (Target: < 2.0%)"
-    )
+    print(f"   • Acceleration Violations: {results['acc_violations']:.2f}% (Target: < 2.0%)")
     print(f"   • Jerk Violations: {results['jerk_violations']:.2f}% (Target: < 2.0%)")
     print("\n3. SURROGATE SAFETY ALIGNMENT:")
     print(
         f"   • Ground-Truth PET: {results['real_pet_mean']:.3f}s ± {results['real_pet_std']:.3f}s"
     )
-    print(
-        f"   • Generated PET:    {results['gen_pet_mean']:.3f}s ± {results['gen_pet_std']:.3f}s"
-    )
+    print(f"   • Generated PET:    {results['gen_pet_mean']:.3f}s ± {results['gen_pet_std']:.3f}s")
     print(f"   • Wasserstein Distance (W1): {results['pet_w1']:.4f} (Target: < 0.150)")
     print("=" * 65)
 

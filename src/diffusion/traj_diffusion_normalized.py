@@ -140,17 +140,13 @@ def main():
             beta_t = betas[t_step]
             alpha_bar_t = alphas_cumprod[t_step]
             alpha_bar_prev = (
-                alphas_cumprod[t_step - 1]
-                if t_step > 0
-                else torch.tensor(1.0, device=device)
+                alphas_cumprod[t_step - 1] if t_step > 0 else torch.tensor(1.0, device=device)
             )
 
             posterior_variance = beta_t * (1.0 - alpha_bar_prev) / (1.0 - alpha_bar_t)
             posterior_variance = torch.clamp(posterior_variance, min=1e-20)
 
-            x0_pred = (x_t - torch.sqrt(1.0 - alpha_bar_t) * eps_theta) / torch.sqrt(
-                alpha_bar_t
-            )
+            x0_pred = (x_t - torch.sqrt(1.0 - alpha_bar_t) * eps_theta) / torch.sqrt(alpha_bar_t)
             x0_pred = torch.clamp(x0_pred, -1e6, 1e6)
 
             coef1 = torch.sqrt(alpha_bar_prev) * beta_t / (1.0 - alpha_bar_t)

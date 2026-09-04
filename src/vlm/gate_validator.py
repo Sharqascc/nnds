@@ -98,9 +98,7 @@ Be precise. Count only vehicles that are on or have crossed the gate line."""
                         {"type": "text", "text": prompt},
                         {
                             "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{image_data}"
-                            },
+                            "image_url": {"url": f"data:image/jpeg;base64,{image_data}"},
                         },
                     ],
                 }
@@ -204,9 +202,7 @@ Be precise. Count only vehicles that are on or have crossed the gate line."""
 
         return results
 
-    def generate_report(
-        self, results: list[GateValidationResult], output_path: str
-    ) -> None:
+    def generate_report(self, results: list[GateValidationResult], output_path: str) -> None:
         """Generate validation report."""
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)

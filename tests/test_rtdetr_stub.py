@@ -14,9 +14,7 @@ def test_rtdetr_detector_raises_not_implemented(tmp_path):
     bev.write_text("{}")
     grid.write_text("{}")
 
-    with pytest.raises(
-        NotImplementedError, match="RT-DETR video pipeline is not implemented"
-    ):
+    with pytest.raises(NotImplementedError, match="RT-DETR video pipeline is not implemented"):
         run_video_to_pet(
             video_path=str(video),
             bev_config_path=str(bev),

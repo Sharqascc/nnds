@@ -69,9 +69,7 @@ def train_position_ddpm(
     print(f"Training on {N} samples")
 
     input_dim = Th * 2  # model input_dim = T*2
-    model = TrajectoryUNet1D(
-        input_dim=input_dim, cond_dim=input_dim, hidden_dim=128, num_layers=3
-    )
+    model = TrajectoryUNet1D(input_dim=input_dim, cond_dim=input_dim, hidden_dim=128, num_layers=3)
     scheduler = LinearNoiseScheduler(num_timesteps=num_timesteps)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     best_loss = float("inf")

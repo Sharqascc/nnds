@@ -1,7 +1,6 @@
-
 import json
-from pathlib import Path
-from src.vlm.config import VLMConfig, DEFAULT_CONFIG
+
+from src.vlm.config import DEFAULT_CONFIG, VLMConfig
 
 
 def test_default_config():

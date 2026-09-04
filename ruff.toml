@@ -1,0 +1,10 @@
+line-length = 100
+target-version = "py311"
+
+[lint]
+select = ["E", "F", "I", "SIM", "UP", "B", "RUF", "BLE"]
+ignore = ["E501"]  # ignore line-length to focus on real issues
+
+[format]
+quote-style = "double"
+indent-style = "space"

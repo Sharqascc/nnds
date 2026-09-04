@@ -17,11 +17,7 @@ def build_velocity_tensors(csv_path, Th=16, scaler_stats=None):
 
     df = pd.read_csv(csv_path)
     id_col = next(
-        (
-            c
-            for c in ["conflict_id", "event_id", "pair_id", "track_id", "id"]
-            if c in df.columns
-        ),
+        (c for c in ["conflict_id", "event_id", "pair_id", "track_id", "id"] if c in df.columns),
         None,
     )
 
@@ -71,9 +67,7 @@ def build_velocity_tensors(csv_path, Th=16, scaler_stats=None):
     vel_norm = (vel_arr - mean) / std
     cond_norm = (cond_arr - cond_mean) / cond_std
 
-    vel_tensor = torch.tensor(vel_norm, dtype=torch.float32).unsqueeze(
-        2
-    )  # (N, 16, 1, 2)
+    vel_tensor = torch.tensor(vel_norm, dtype=torch.float32).unsqueeze(2)  # (N, 16, 1, 2)
     cond_tensor = torch.tensor(cond_norm, dtype=torch.float32)
 
     stats = {"mean": mean, "std": std, "cond_mean": cond_mean, "cond_std": cond_std}
@@ -98,18 +92,14 @@ def train(
     dataset = TensorDataset(vel_tensor, cond_tensor)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-    model = TrajectoryDiffusionModel(
-        traj_shape=(Th, 1, 2), cond_dim=4, hidden_dim=128
-    ).to(device)
+    model = TrajectoryDiffusionModel(traj_shape=(Th, 1, 2), cond_dim=4, hidden_dim=128).to(device)
     optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
 
     best_loss = float("inf")
     ckpt_path = os.path.join(checkpoint_dir, "traj_diffusion_best.pt")
 
-    print(
-        f"🔥 Training Flow Matching Velocity Model for {epochs} epochs on {device}..."
-    )
+    print(f"🔥 Training Flow Matching Velocity Model for {epochs} epochs on {device}...")
 
     for epoch in range(1, epochs + 1):
         model.train()
@@ -144,9 +134,7 @@ def train(
                 ckpt_path,
             )
 
-    print(
-        f"✅ Training complete. Checkpoint saved to {ckpt_path} (Best Loss: {best_loss:.6f})"
-    )
+    print(f"✅ Training complete. Checkpoint saved to {ckpt_path} (Best Loss: {best_loss:.6f})")
 
 
 if __name__ == "__main__":

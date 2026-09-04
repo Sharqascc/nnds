@@ -46,9 +46,7 @@ def evaluate_transformer_diffusion(
     dt=0.1,
 ):
     ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
-    targets, conds, real_pets = load_position_data_subset(
-        csv_path, Th=Th, max_events=max_events
-    )
+    targets, conds, real_pets = load_position_data_subset(csv_path, Th=Th, max_events=max_events)
     N = len(targets)
     if N == 0:
         print("No data")
@@ -111,17 +109,11 @@ def evaluate_transformer_diffusion(
     # PET: use condition trajectories
     gen_pets = []
     for b in range(N):
-        dist_matrix = np.linalg.norm(
-            best[b][:, None, :] - conds[b][None, :, :], axis=-1
-        )
+        dist_matrix = np.linalg.norm(best[b][:, None, :] - conds[b][None, :, :], axis=-1)
         min_idx = np.unravel_index(np.argmin(dist_matrix), dist_matrix.shape)
         gen_pets.append(abs(min_idx[0] - min_idx[1]) * dt)
 
-    w1 = (
-        wasserstein_distance(real_pets, np.array(gen_pets))
-        if len(real_pets) > 0
-        else 0.0
-    )
+    w1 = wasserstein_distance(real_pets, np.array(gen_pets)) if len(real_pets) > 0 else 0.0
 
     print("=" * 60)
     print("TRANSFORMER DIFFUSION EVALUATION")

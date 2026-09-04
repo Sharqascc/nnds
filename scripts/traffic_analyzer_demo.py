@@ -77,9 +77,7 @@ class CompleteTrafficAnalyzer:
             errors = np.linalg.norm(projected - self.world_points_approx[:, :2], axis=1)
             mae = float(np.mean(errors[self.inlier_mask]))
             self.calibration_metrics["final_mae"] = mae
-            self.calibration_metrics["inlier_ratio"] = inlier_count / len(
-                self.pixel_points
-            )
+            self.calibration_metrics["inlier_ratio"] = inlier_count / len(self.pixel_points)
             self._calculate_bev_scale()
 
         return self.homography, self.inlier_mask
@@ -109,12 +107,8 @@ class CompleteTrafficAnalyzer:
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="NNDS traffic analyzer demo")
-    p.add_argument(
-        "--self-test", action="store_true", help="Run a tiny calibration self-test"
-    )
-    p.add_argument(
-        "--save-json", type=str, default="", help="Write self-test output to JSON"
-    )
+    p.add_argument("--self-test", action="store_true", help="Run a tiny calibration self-test")
+    p.add_argument("--save-json", type=str, default="", help="Write self-test output to JSON")
     return p
 
 

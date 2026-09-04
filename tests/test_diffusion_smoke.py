@@ -10,7 +10,7 @@ def test_diffusion_key_files_exist():
         base / "training_utils.py",
         base / "model_and_sampler.py",
         base / "trajectory_diffusion.py",
-            ]
+    ]
     for p in expected:
         assert p.exists(), f"Missing diffusion file: {p.relative_to(ROOT)}"
 

@@ -10,20 +10,14 @@ from src.vlm.analyzer import VLLMAnalyzer
 
 
 class VLMEnhancedPipeline:
-    def __init__(
-        self, yolo_model_path=None, vlm_model_name="Salesforce/blip2-opt-2.7b"
-    ):
+    def __init__(self, yolo_model_path=None, vlm_model_name="Salesforce/blip2-opt-2.7b"):
         self.yolo = (
-            YOLO(yolo_model_path)
-            if yolo_model_path and os.path.exists(yolo_model_path)
-            else None
+            YOLO(yolo_model_path) if yolo_model_path and os.path.exists(yolo_model_path) else None
         )
         self.vlm = VLLMAnalyzer(model_name=vlm_model_name)
         self.results = []
 
-    def process_video(
-        self, video_path, output_dir="outputs/vlm_advanced_analysis", max_frames=30
-    ):
+    def process_video(self, video_path, output_dir="outputs/vlm_advanced_analysis", max_frames=30):
         os.makedirs(output_dir, exist_ok=True)
         cap = cv2.VideoCapture(video_path)
         frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -159,11 +153,9 @@ if __name__ == "__main__":
         print("Video not found. Processing sample images from uvh26_data if available.")
         img_dir = "uvh26_data/UVH-26-Train/data/000/"
         if os.path.exists(img_dir):
-            images = [
-                os.path.join(img_dir, f)
-                for f in os.listdir(img_dir)
-                if f.endswith(".png")
-            ][:5]
+            images = [os.path.join(img_dir, f) for f in os.listdir(img_dir) if f.endswith(".png")][
+                :5
+            ]
             for img in images:
                 res = pipeline.vlm.analyze_with_trajectory(img, pd.DataFrame())
                 print(f"Image: {img}\n{json.dumps(res, indent=2)}\n")

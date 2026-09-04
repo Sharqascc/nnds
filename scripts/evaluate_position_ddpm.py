@@ -50,9 +50,7 @@ def evaluate_position_ddpm(
     cond_tensor = torch.from_numpy(conds_norm[:, :, None, :]).float()
 
     input_dim = Th * 2
-    model = TrajectoryUNet1D(
-        input_dim=input_dim, cond_dim=input_dim, hidden_dim=128, num_layers=3
-    )
+    model = TrajectoryUNet1D(input_dim=input_dim, cond_dim=input_dim, hidden_dim=128, num_layers=3)
     model.load_state_dict(ckpt["model_state_dict"])
     model.eval()
     scheduler = LinearNoiseScheduler(num_timesteps=ckpt["num_timesteps"])
@@ -90,9 +88,7 @@ def evaluate_position_ddpm(
     # PET: use condition trajectories (unnormalized)
     gen_pets = []
     for b in range(N):
-        dist_matrix = np.linalg.norm(
-            best[b][:, None, :] - conds[b][None, :, :], axis=-1
-        )
+        dist_matrix = np.linalg.norm(best[b][:, None, :] - conds[b][None, :, :], axis=-1)
         min_idx = np.unravel_index(np.argmin(dist_matrix), dist_matrix.shape)
         gen_pets.append(abs(min_idx[0] - min_idx[1]) * dt)
 
@@ -108,11 +104,7 @@ def evaluate_position_ddpm(
             real_pets.append(0.5)
     real_pets = np.array(real_pets[:N])
 
-    w1 = (
-        wasserstein_distance(real_pets, np.array(gen_pets))
-        if len(real_pets) > 0
-        else 0.0
-    )
+    w1 = wasserstein_distance(real_pets, np.array(gen_pets)) if len(real_pets) > 0 else 0.0
 
     print("=" * 60)
     print("POSITION DDPM EVALUATION")

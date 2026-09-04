@@ -54,14 +54,8 @@ def main():
     df = pd.read_csv(input_path)
     if "track_id" not in df.columns:
         raise ValueError("CSV must contain 'track_id'")
-    split_groups = [
-        split_track(g, args.max_gap, args.max_jump) for _, g in df.groupby("track_id")
-    ]
-    result = (
-        pd.concat(split_groups)
-        .sort_values(["frame", "track_id"])
-        .reset_index(drop=True)
-    )
+    split_groups = [split_track(g, args.max_gap, args.max_jump) for _, g in df.groupby("track_id")]
+    result = pd.concat(split_groups).sort_values(["frame", "track_id"]).reset_index(drop=True)
     result.to_csv(args.output, index=False)
     print(f"Original tracks: {df['track_id'].nunique()}")
     print(f"Split tracks:    {result['track_id'].nunique()}")

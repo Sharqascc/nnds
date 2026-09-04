@@ -108,11 +108,7 @@ def debug_print_tensor_info(name: str, tensor: Any) -> None:
         debug_print_section(f"{name}: not a tensor")
         return
 
-    arr = (
-        tensor.detach().cpu().numpy()
-        if hasattr(tensor, "detach")
-        else np.asarray(tensor)
-    )
+    arr = tensor.detach().cpu().numpy() if hasattr(tensor, "detach") else np.asarray(tensor)
 
     debug_print_section(
         f"{name} info",

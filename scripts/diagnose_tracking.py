@@ -63,9 +63,7 @@ def analyze_track(group):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--csv", default="outputs/petevents_bev_300_split_detections.csv"
-    )
+    parser.add_argument("--csv", default="outputs/petevents_bev_300_split_detections.csv")
     parser.add_argument("--report", default="outputs/tracking_diagnosis.csv")
     args = parser.parse_args()
 

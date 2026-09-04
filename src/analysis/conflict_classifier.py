@@ -17,30 +17,32 @@ Trajectory JSON format: list of dicts with keys 'frame', 'x_pixel', 'y_pixel',
 import math
 
 
-def _get_velocity_vector(points: list[dict], before_frame: int, window: int = 5) -> tuple[float, float]:
+def _get_velocity_vector(
+    points: list[dict], before_frame: int, window: int = 5
+) -> tuple[float, float]:
     """Compute average velocity vector from the last `window` points before `before_frame`."""
     # Filter points before before_frame, sorted by frame
-    pts = [p for p in points if p.get('frame', 0) < before_frame]
+    pts = [p for p in points if p.get("frame", 0) < before_frame]
     if len(pts) < 2:
         return (0.0, 0.0)
-    pts = sorted(pts, key=lambda p: p['frame'])[-window:]
+    pts = sorted(pts, key=lambda p: p["frame"])[-window:]
     if len(pts) < 2:
         return (0.0, 0.0)
 
     # Use last two points to estimate velocity (simplest robust approach)
     p1 = pts[0]
     p2 = pts[-1]
-    dt = p2['frame'] - p1['frame']
+    dt = p2["frame"] - p1["frame"]
     if dt <= 0:
         return (0.0, 0.0)
 
     # Prefer world coordinates if available, else pixel
-    if all(p1.get(k) is not None and p2.get(k) is not None for k in ['world_x', 'world_y']):
-        vx = (p2['world_x'] - p1['world_x']) / dt
-        vy = (p2['world_y'] - p1['world_y']) / dt
+    if all(p1.get(k) is not None and p2.get(k) is not None for k in ["world_x", "world_y"]):
+        vx = (p2["world_x"] - p1["world_x"]) / dt
+        vy = (p2["world_y"] - p1["world_y"]) / dt
     else:
-        vx = (p2['x_pixel'] - p1['x_pixel']) / dt
-        vy = (p2['y_pixel'] - p1['y_pixel']) / dt
+        vx = (p2["x_pixel"] - p1["x_pixel"]) / dt
+        vy = (p2["y_pixel"] - p1["y_pixel"]) / dt
 
     return (vx, vy)
 
@@ -56,8 +58,9 @@ def _angle_between(v1: tuple[float, float], v2: tuple[float, float]) -> float:
     return math.degrees(math.acos(cos_theta))
 
 
-def classify_conflict_geometry(traj_a_json: str, traj_b_json: str,
-                               conflict_frame: int, fps: float = 30.0) -> str:
+def classify_conflict_geometry(
+    traj_a_json: str, traj_b_json: str, conflict_frame: int, fps: float = 30.0
+) -> str:
     """
     Classify conflict type from trajectory JSONs and conflict frame.
 
@@ -66,19 +69,19 @@ def classify_conflict_geometry(traj_a_json: str, traj_b_json: str,
     import json
 
     if not traj_a_json or not traj_b_json:
-        return 'other'
+        return "other"
 
     try:
         pts_a = json.loads(traj_a_json)
         pts_b = json.loads(traj_b_json)
     except Exception:
-        return 'other'
+        return "other"
 
     v_a = _get_velocity_vector(pts_a, conflict_frame, window=5)
     v_b = _get_velocity_vector(pts_b, conflict_frame, window=5)
 
     if v_a == (0, 0) or v_b == (0, 0):
-        return 'other'
+        return "other"
 
     angle = _angle_between(v_a, v_b)
 
@@ -93,12 +96,12 @@ def classify_conflict_geometry(traj_a_json: str, traj_b_json: str,
         # For simplicity, we'll classify as rear_end if speed difference is significant
         # and side_swipe if speeds similar (parallel)
         if speed_diff > 0.5 * max(speed_a, speed_b):
-            return 'rear_end'
+            return "rear_end"
         else:
-            return 'side_swipe'
+            return "side_swipe"
     elif angle > 150.0:
-        return 'head_on'
+        return "head_on"
     elif 60.0 <= angle <= 120.0:
-        return 'crossing'
+        return "crossing"
     else:
-        return 'other'
+        return "other"

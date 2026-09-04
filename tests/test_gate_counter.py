@@ -1,11 +1,9 @@
-
 """
 Tests for gate counter logic.
 """
-import numpy as np
-import pytest
-from pathlib import Path
+
 import sys
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -36,7 +34,5 @@ def test_counter_gate_config_validation(tmp_path):
 def test_counter_classes_of_interest(tmp_path):
     """Test that classes_of_interest is set correctly."""
     video = _make_dummy_video(tmp_path)
-    counter = TrafficVolumeCounter(
-        str(video), classes_of_interest=["car", "motorcycle"]
-    )
+    counter = TrafficVolumeCounter(str(video), classes_of_interest=["car", "motorcycle"])
     assert counter.classes_of_interest == ["car", "motorcycle"]

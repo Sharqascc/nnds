@@ -121,9 +121,7 @@ def load_giti_homography(
         ransacReprojThreshold=ransac_thresh,
     )
     if H is None:
-        raise RuntimeError(
-            f"cv2.findHomography failed for calibration file {json_path}"
-        )
+        raise RuntimeError(f"cv2.findHomography failed for calibration file {json_path}")
 
     logger.info(
         "Homography computed for %s (inliers: %d / %d)",

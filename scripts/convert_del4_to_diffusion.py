@@ -23,9 +23,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--csv", required=True, help="Path to DEL_4.csv")
     parser.add_argument("--output", default="outputs/diffusion_del4.csv")
-    parser.add_argument(
-        "--min-points", type=int, default=20, help="Minimum points per track"
-    )
+    parser.add_argument("--min-points", type=int, default=20, help="Minimum points per track")
     parser.add_argument(
         "--max-distance",
         type=float,
@@ -35,9 +33,7 @@ def parse_args():
     parser.add_argument(
         "--min-frames", type=int, default=16, help="Minimum common frames per event"
     )
-    parser.add_argument(
-        "--max-events", type=int, default=5000, help="Maximum events to output"
-    )
+    parser.add_argument("--max-events", type=int, default=5000, help="Maximum events to output")
     parser.add_argument(
         "--cell-size",
         type=float,
@@ -195,9 +191,7 @@ def main():
 
     out = pd.DataFrame(events)
     out.to_csv(args.output, index=False)
-    print(
-        f"✅ Wrote {len(out)} rows for {out['event_id'].nunique()} events to {args.output}"
-    )
+    print(f"✅ Wrote {len(out)} rows for {out['event_id'].nunique()} events to {args.output}")
 
 
 if __name__ == "__main__":

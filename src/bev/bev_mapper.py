@@ -8,9 +8,7 @@ from pathlib import Path
 import numpy as np
 
 
-def compute_homography_dlt(
-    src_points: np.ndarray, dst_points: np.ndarray
-) -> np.ndarray:
+def compute_homography_dlt(src_points: np.ndarray, dst_points: np.ndarray) -> np.ndarray:
     """
     Compute homography matrix using Direct Linear Transform (DLT).
 
@@ -24,11 +22,7 @@ def compute_homography_dlt(
     src_points = np.asarray(src_points, dtype=np.float64)
     dst_points = np.asarray(dst_points, dtype=np.float64)
 
-    if (
-        src_points.shape != dst_points.shape
-        or src_points.ndim != 2
-        or src_points.shape[1] != 2
-    ):
+    if src_points.shape != dst_points.shape or src_points.ndim != 2 or src_points.shape[1] != 2:
         raise ValueError("src_points and dst_points must both be Nx2 arrays")
 
     n = len(src_points)
@@ -99,10 +93,10 @@ def test_with_real_calibration(
         print(f"❌ BEV config not found: {bev_config_path}")
         return None
 
-    with open(calib_path, "r") as f:
+    with open(calib_path) as f:
         calib = json.load(f)
 
-    with open(bev_config_path, "r") as f:
+    with open(bev_config_path) as f:
         bev_config = json.load(f)
 
     pixel_points = np.array(calib.get("pixel_points", []), dtype=np.float64)
@@ -233,9 +227,7 @@ def test_with_real_calibration(
 
             if unc is not None and np.isfinite(unc):
                 uncertainties.append(float(unc))
-                print(
-                    f"  Point {i}: ±{float(unc):.4f} m  (from ±{pixel_error_std:.1f} px)"
-                )
+                print(f"  Point {i}: ±{float(unc):.4f} m  (from ±{pixel_error_std:.1f} px)")
     else:
         print("  ⚠ Mapper has no estimate_transformation_error() method")
 
@@ -336,9 +328,7 @@ def test_with_real_calibration(
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Validate BEV calibration for NNDS pipeline"
-    )
+    parser = argparse.ArgumentParser(description="Validate BEV calibration for NNDS pipeline")
     parser.add_argument(
         "--calib",
         default="configs/giti_calibration_points.json",
@@ -388,9 +378,7 @@ def main():
 
     if not results["passes_validation"]:
         if args.raise_on_failure:
-            raise RuntimeError(
-                f"Calibration validation failed: RMSE={results['rmse_m']:.4f} m"
-            )
+            raise RuntimeError(f"Calibration validation failed: RMSE={results['rmse_m']:.4f} m")
         sys.exit(1)
 
     sys.exit(0)

@@ -72,30 +72,55 @@ def run_e2e(frames=10):
             Path(f).unlink()
 
     # Run pipeline
-    run_cmd([
-        sys.executable, "scripts/run_pipeline.py",
-        "--video", "data/sample_data/traffic_video.mp4",
-        "--max-frames", str(frames),
-        "--imgsz", "640",
-        "--out-csv", out_csv,
-    ], f"Running pipeline on {frames} frames")
+    run_cmd(
+        [
+            sys.executable,
+            "scripts/run_pipeline.py",
+            "--video",
+            "data/sample_data/traffic_video.mp4",
+            "--max-frames",
+            str(frames),
+            "--imgsz",
+            "640",
+            "--out-csv",
+            out_csv,
+        ],
+        f"Running pipeline on {frames} frames",
+    )
 
     # Split detections
-    run_cmd([
-        sys.executable, "scripts/split_detections.py",
-        "--input", det_csv,
-        "--output", split_csv,
-        "--max-gap", "5", "--max-jump", "30",
-    ], "Splitting detections")
+    run_cmd(
+        [
+            sys.executable,
+            "scripts/split_detections.py",
+            "--input",
+            det_csv,
+            "--output",
+            split_csv,
+            "--max-gap",
+            "5",
+            "--max-jump",
+            "30",
+        ],
+        "Splitting detections",
+    )
 
     # Validate outputs
-    run_cmd([
-        sys.executable, "scripts/validate_outputs.py",
-        "--detections", det_csv,
-        "--detections-split", split_csv,
-        "--pet", out_csv,
-        "--video-frames", str(frames),
-    ], "Validating generated outputs")
+    run_cmd(
+        [
+            sys.executable,
+            "scripts/validate_outputs.py",
+            "--detections",
+            det_csv,
+            "--detections-split",
+            split_csv,
+            "--pet",
+            out_csv,
+            "--video-frames",
+            str(frames),
+        ],
+        "Validating generated outputs",
+    )
 
     return out_csv
 
@@ -127,13 +152,21 @@ def run_full_validation(args):
         det = args.detections
         det_split = args.detections_split
         pet = args.pet
-        run_cmd([
-            sys.executable, "scripts/validate_outputs.py",
-            "--detections", det,
-            "--detections-split", det_split,
-            "--pet", pet,
-            "--video-frames", str(args.video_frames),
-        ], "Detection/tracking/PET output validation")
+        run_cmd(
+            [
+                sys.executable,
+                "scripts/validate_outputs.py",
+                "--detections",
+                det,
+                "--detections-split",
+                det_split,
+                "--pet",
+                pet,
+                "--video-frames",
+                str(args.video_frames),
+            ],
+            "Detection/tracking/PET output validation",
+        )
 
     # Generate scientific validation report (if detections/pet files exist)
     det_for_report = args.detections
@@ -143,14 +176,23 @@ def run_full_validation(args):
         det_for_report = "outputs/e2e_validation_pet_detections.csv"
         pet_for_report = "outputs/e2e_validation_pet.csv"
     if Path(det_for_report).exists() and Path(pet_for_report).exists():
-        run_cmd([
-            sys.executable, "scripts/validation_report.py",
-            "--detections", det_for_report,
-            "--pet", pet_for_report,
-            "--bev-config", "configs/bev_config.json",
-            "--calib", "configs/giti_calibration_points.json",
-            "--output", "outputs/validation_report.md",
-        ], "Generating quantitative validation report")
+        run_cmd(
+            [
+                sys.executable,
+                "scripts/validation_report.py",
+                "--detections",
+                det_for_report,
+                "--pet",
+                pet_for_report,
+                "--bev-config",
+                "configs/bev_config.json",
+                "--calib",
+                "configs/giti_calibration_points.json",
+                "--output",
+                "outputs/validation_report.md",
+            ],
+            "Generating quantitative validation report",
+        )
     else:
         print("\nℹ️ Skipping validation report due to missing detections/pet files")
 
@@ -160,8 +202,12 @@ def run_full_validation(args):
 def main():
     parser = argparse.ArgumentParser(description="Full end-to-end NNDS validation")
     parser.add_argument("--skip-pytest", action="store_true", help="Skip unit tests")
-    parser.add_argument("--check-models", action="store_true", help="Check model and sample data presence")
-    parser.add_argument("--run-e2e", action="store_true", help="Run mini-pipeline (requires models)")
+    parser.add_argument(
+        "--check-models", action="store_true", help="Check model and sample data presence"
+    )
+    parser.add_argument(
+        "--run-e2e", action="store_true", help="Run mini-pipeline (requires models)"
+    )
     parser.add_argument("--frames", type=int, default=10, help="Number of frames for e2e")
     parser.add_argument("--detections", default="tests/fixtures/sample_detections.csv")
     parser.add_argument("--detections-split", default="tests/fixtures/sample_split_detections.csv")

@@ -165,39 +165,44 @@ class VideoOverlayPlotter:
                 COLORS_BGR["purple"],
                 COLORS_BGR["cyan"],
             ]
-            colors = [
-                color_cycle[i % len(color_cycle)] for i in range(len(trajectories))
-            ]
+            colors = [color_cycle[i % len(color_cycle)] for i in range(len(trajectories))]
 
         for idx, traj in enumerate(trajectories):
             if len(traj) < 2:
                 continue
 
             color = colors[idx]  # pragma: no cover
-  # pragma: no cover
+            # pragma: no cover
             # Extract points  # pragma: no cover
             points = [(int(x), int(y)) for (t, x, y) in traj]  # pragma: no cover
-  # pragma: no cover
+            # pragma: no cover
             # Draw trajectory line  # pragma: no cover
             for i in range(len(points) - 1):  # pragma: no cover
-                cv2.line(output, points[i], points[i + 1], color, self.line_thickness)  # pragma: no cover
-  # pragma: no cover
+                cv2.line(
+                    output, points[i], points[i + 1], color, self.line_thickness
+                )  # pragma: no cover
+            # pragma: no cover
             # Draw circles at each point  # pragma: no cover
             for pt in points:  # pragma: no cover
                 cv2.circle(output, pt, 3, color, -1)  # pragma: no cover
-  # pragma: no cover
+            # pragma: no cover
             # Start marker (larger)  # pragma: no cover
             cv2.circle(output, points[0], 6, color, -1)  # pragma: no cover
             cv2.circle(output, points[0], 8, COLORS_BGR["black"], 2)  # pragma: no cover
-  # pragma: no cover
+            # pragma: no cover
             # End marker (arrow if enabled)  # pragma: no cover
             if show_arrows and len(points) >= 2:  # pragma: no cover
                 p1 = points[-2]  # pragma: no cover
                 p2 = points[-1]  # pragma: no cover
                 cv2.arrowedLine(  # pragma: no cover
-                    output, p1, p2, color, self.line_thickness + 1, tipLength=0.3  # pragma: no cover
+                    output,
+                    p1,
+                    p2,
+                    color,
+                    self.line_thickness + 1,
+                    tipLength=0.3,  # pragma: no cover
                 )  # pragma: no cover
-  # pragma: no cover
+            # pragma: no cover
             # Track ID label  # pragma: no cover
             if track_ids and idx < len(track_ids):  # pragma: no cover
                 label_pos = (points[0][0] + 10, points[0][1] - 10)  # pragma: no cover
@@ -337,15 +342,11 @@ class VideoOverlayPlotter:
 
         # Draw semi-transparent background
         overlay = output.copy()
-        cv2.rectangle(
-            overlay, (x, y), (x + box_width, y + box_height), severity_color, -1
-        )
+        cv2.rectangle(overlay, (x, y), (x + box_width, y + box_height), severity_color, -1)
         output = cv2.addWeighted(overlay, 0.7, output, 0.3, 0)
 
         # Draw border
-        cv2.rectangle(
-            output, (x, y), (x + box_width, y + box_height), severity_color, 3
-        )
+        cv2.rectangle(output, (x, y), (x + box_width, y + box_height), severity_color, 3)
 
         # Draw text
         for i, line in enumerate(info_lines):
@@ -464,9 +465,7 @@ class VideoOverlayPlotter:
 
         # Statistics
         if pet_value is not None:
-            output = self.overlay_conflict_info(
-                output, pet_value, frame_number=frame_idx
-            )
+            output = self.overlay_conflict_info(output, pet_value, frame_number=frame_idx)
 
         return output
 
@@ -556,9 +555,7 @@ def overlay_conflict_frame(
 ) -> np.ndarray:
     """Quick function to overlay trajectories on a single frame."""
     plotter = VideoOverlayPlotter()
-    frame = plotter.overlay_conflict_frame(
-        video_path, frame_idx, trajectories, pet_value=pet_value
-    )
+    frame = plotter.overlay_conflict_frame(video_path, frame_idx, trajectories, pet_value=pet_value)
 
     if save_path:
         plotter.save_frame(frame, save_path)  # pragma: no cover
@@ -574,9 +571,7 @@ def generate_conflict_video(
 ):
     """Quick function to generate conflict video."""
     plotter = VideoOverlayPlotter()
-    plotter.generate_conflict_video(
-        video_path, frame_range, trajectories, output_path=output_path
-    )
+    plotter.generate_conflict_video(video_path, frame_range, trajectories, output_path=output_path)
 
 
 def create_before_during_after(
@@ -685,9 +680,7 @@ def overlay_full_visualization(
 
             # Draw ID label
             label = f"ID:{track_id}"
-            cv2.putText(
-                frame, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2
-            )
+            cv2.putText(frame, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
     # 3. Highlight CONFLICT CELL
     if conflict_cell and grid is not None:
@@ -716,19 +709,13 @@ def overlay_full_visualization(
         info_lines = [
             f"PET = {pet_value:.3f}s",
             f"Conflict Cell: {conflict_cell}",
-            f"Vehicles: {vehicle_ids[0]} & {vehicle_ids[1]}"
-            if vehicle_ids
-            else "Vehicles: ? & ?",
+            f"Vehicles: {vehicle_ids[0]} & {vehicle_ids[1]}" if vehicle_ids else "Vehicles: ? & ?",
             f"Frame: {frame_num}",
         ]
 
         for i, line in enumerate(info_lines):
             y_pos = 40 + i * 25
-            color = (
-                (0, 0, 255) if "PET" in line and pet_value < 1.5 else (255, 255, 255)
-            )
-            cv2.putText(
-                frame, line, (20, y_pos), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2
-            )
+            color = (0, 0, 255) if "PET" in line and pet_value < 1.5 else (255, 255, 255)
+            cv2.putText(frame, line, (20, y_pos), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
     return frame

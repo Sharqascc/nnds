@@ -116,9 +116,7 @@ def reprojection_errors(
     world_points_target: np.ndarray,
     H: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
-    projected = cv2.perspectiveTransform(pixel_points.reshape(-1, 1, 2), H).reshape(
-        -1, 2
-    )
+    projected = cv2.perspectiveTransform(pixel_points.reshape(-1, 1, 2), H).reshape(-1, 2)
     errs = np.linalg.norm(projected - world_points_target[:, :2], axis=1)
     return errs, projected
 
@@ -142,20 +140,10 @@ def generate_synthetic_grid(
     x_range_px = x_max_px - x_min_px
     y_range_px = y_max_px - y_min_px
 
-    for row_idx in tqdm(
-        range(grid_rows), desc="Generating synthetic grid", leave=False
-    ):
+    for row_idx in tqdm(range(grid_rows), desc="Generating synthetic grid", leave=False):
         for col_idx in range(grid_cols):
-            px = (
-                x_min_px + (col_idx / (grid_cols - 1)) * x_range_px
-                if grid_cols > 1
-                else x_min_px
-            )
-            py = (
-                y_min_px + (row_idx / (grid_rows - 1)) * y_range_px
-                if grid_rows > 1
-                else y_min_px
-            )
+            px = x_min_px + (col_idx / (grid_cols - 1)) * x_range_px if grid_cols > 1 else x_min_px
+            py = y_min_px + (row_idx / (grid_rows - 1)) * y_range_px if grid_rows > 1 else y_min_px
 
             world_offset_x = (px - x_min_px) / pixels_per_meter_x
             world_offset_y = (py - y_min_px) / pixels_per_meter_y
@@ -266,9 +254,7 @@ def main() -> None:
     if args.real_data:
         # Placeholder for future real-data integration
         # Example: pixel_pts, world_pts_noisy, world_pts_true = load_real_calibration_points(...)
-        raise NotImplementedError(
-            "--real-data is a stub; integrate real GCP loading here."
-        )
+        raise NotImplementedError("--real-data is a stub; integrate real GCP loading here.")
     else:
         pixel_pts, world_pts_noisy, world_pts_true = generate_synthetic_grid(
             GRID_ROWS,
@@ -311,9 +297,7 @@ def main() -> None:
     # ------------------------------------------------------------------
     # ESTIMATE HOMOGRAPHY ON TRAIN SET (RANSAC)
     # ------------------------------------------------------------------
-    logger.info(
-        "Estimating homography on train set (RANSAC, thresh=%.2f px)...", RANSAC_THRESH
-    )
+    logger.info("Estimating homography on train set (RANSAC, thresh=%.2f px)...", RANSAC_THRESH)
     H_grid, mask_train = cv2.findHomography(
         pixel_train,
         world_train_noisy[:, :2],
@@ -474,9 +458,7 @@ def main() -> None:
         "orig_area_m2": orig_area,
         "grid_area_m2": grid_area,
     }
-    export_results(
-        results, project_root / "calibration" / "grid_validation_summary.json"
-    )
+    export_results(results, project_root / "calibration" / "grid_validation_summary.json")
 
     # ------------------------------------------------------------------
     # TEXTUAL COMPARISON TABLE
@@ -496,12 +478,8 @@ def main() -> None:
     print(f"CV MAE mean (TRUE)    | {'N/A':<20}       | {cv_mae_mean:<20.4f}")
     print()
     print("NOTE:")
-    print(
-        "  - 'Self-residual' = error on the same points used for fitting (optimistic)."
-    )
-    print(
-        "  - 'Val MAE / CV MAE' = error on held-out points w.r.t TRUE world coordinates."
-    )
+    print("  - 'Self-residual' = error on the same points used for fitting (optimistic).")
+    print("  - 'Val MAE / CV MAE' = error on held-out points w.r.t TRUE world coordinates.")
 
     # ------------------------------------------------------------------
     # VISUALIZATION
@@ -530,9 +508,7 @@ def main() -> None:
     # 2) Grid true world layout (color = val error if it was in val set)
     ax = axes[0, 1]
     colors = np.zeros(N_POINTS)
-    colors[val_idx] = np.interp(
-        val_errors, (val_errors.min(), val_errors.max()), (0.2, 1.0)
-    )
+    colors[val_idx] = np.interp(val_errors, (val_errors.min(), val_errors.max()), (0.2, 1.0))
     scatter = ax.scatter(
         world_pts_true[:, 0],
         world_pts_true[:, 1],
@@ -561,9 +537,7 @@ def main() -> None:
         alpha=0.7,
         edgecolor="black",
     )
-    ax.axvline(
-        val_mae, color="red", linestyle="--", linewidth=2, label=f"MAE={val_mae:.3f} m"
-    )
+    ax.axvline(val_mae, color="red", linestyle="--", linewidth=2, label=f"MAE={val_mae:.3f} m")
     ax.set_xlabel("Validation reprojection error (m)")
     ax.set_ylabel("Frequency")
     ax.set_title("Validation error distribution (TRUE world)", fontweight="bold")
@@ -615,9 +589,7 @@ def main() -> None:
         "measurement model.\nFor real deployment, replace synthetic world_pts_noisy "
         "with real surveyed GCPs and keep the same train/val + CV evaluation logic."
     )
-    logger.info(
-        "✅ PIPELINE-READY (SIMULATION LEVEL) – NEXT STEP: REAL GCP INTEGRATION"
-    )
+    logger.info("✅ PIPELINE-READY (SIMULATION LEVEL) – NEXT STEP: REAL GCP INTEGRATION")
 
 
 if __name__ == "__main__":

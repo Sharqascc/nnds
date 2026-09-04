@@ -234,9 +234,7 @@ class TrafficVolumeCounter:
             ]
 
         # normalized class whitelist for fast membership checks
-        self._class_whitelist = {
-            self._normalize_class_name(c) for c in self.classes_of_interest
-        }
+        self._class_whitelist = {self._normalize_class_name(c) for c in self.classes_of_interest}
 
         self.gates: dict[str, VirtualGate] = {}
         if self.gate_config is not None:
@@ -391,9 +389,7 @@ class TrafficVolumeCounter:
                 cv2.LINE_AA,
             )
 
-    def _draw_stats_panel(
-        self, frame: np.ndarray, frame_idx: int, fps: float
-    ) -> np.ndarray:
+    def _draw_stats_panel(self, frame: np.ndarray, frame_idx: int, fps: float) -> np.ndarray:
         h, w = frame.shape[:2]
 
         total_in, total_out = self._compute_totals()
@@ -499,9 +495,7 @@ class TrafficVolumeCounter:
 
             fps = cap.get(cv2.CAP_PROP_FPS)
             if not fps or fps <= 1e-3:
-                logger.warning(
-                    "FPS not found or invalid in video metadata, defaulting to 25.0"
-                )
+                logger.warning("FPS not found or invalid in video metadata, defaulting to 25.0")
                 fps = 25.0
 
             w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))

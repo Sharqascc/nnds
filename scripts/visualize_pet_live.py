@@ -50,9 +50,7 @@ def main():
     dict_a = to_frame_dict(traj_a)
     dict_b = to_frame_dict(traj_b)
 
-    all_frames = sorted(
-        set([p["frame"] for p in traj_a] + [p["frame"] for p in traj_b])
-    )
+    all_frames = sorted(set([p["frame"] for p in traj_a] + [p["frame"] for p in traj_b]))
     start_frame = min(all_frames)
     end_frame = max(all_frames)
 
@@ -69,9 +67,7 @@ def main():
     trail_a = []
     trail_b = []
 
-    print(
-        f"Live visualization: Event {args.event_id}, frames {start_frame}-{end_frame}"
-    )
+    print(f"Live visualization: Event {args.event_id}, frames {start_frame}-{end_frame}")
 
     for frame_idx in range(start_frame, end_frame + 1):
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)

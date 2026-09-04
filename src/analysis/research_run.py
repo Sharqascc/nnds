@@ -63,9 +63,7 @@ def main(argv=None):
         default=DEFAULT_COCO_PERSON_MODEL,
         help="Fallback COCO person-only detector weights",
     )
-    parser.add_argument(
-        "--uvh-conf", type=float, default=0.20, help="UVH-26 confidence threshold"
-    )
+    parser.add_argument("--uvh-conf", type=float, default=0.20, help="UVH-26 confidence threshold")
     parser.add_argument(
         "--coco-person-conf",
         type=float,

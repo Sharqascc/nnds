@@ -6,6 +6,7 @@ This is a simple privacy protection measure for demonstration videos.
 Usage:
     python scripts/anonymize_video.py --input data/sample_data/traffic_video.mp4 --output data/sample_data/anonymized_traffic_video.mp4
 """
+
 import argparse
 
 import cv2
@@ -13,6 +14,7 @@ import cv2
 
 def anonymize_frame(frame, kernel_size=51):
     return cv2.GaussianBlur(frame, (kernel_size | 1, kernel_size | 1), 0)
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -43,6 +45,7 @@ def main():
     cap.release()
     out.release()
     print(f"✅ Anonymized video saved to {args.output} ({frame_count} frames)")
+
 
 if __name__ == "__main__":
     main()

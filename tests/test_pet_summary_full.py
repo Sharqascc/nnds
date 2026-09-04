@@ -1,13 +1,10 @@
+from unittest.mock import patch
 
-import json
-import warnings
 import numpy as np
 import pandas as pd
 import pytest
-from unittest.mock import patch, MagicMock
-from pathlib import Path
 
-from src.analysis.pet_summary import PETEventAnalyzer, parse_args, main
+from src.analysis.pet_summary import PETEventAnalyzer, main, parse_args
 
 
 def make_pet_csv(tmp_path, data=None, conflict_col="conflict_type"):
@@ -15,7 +12,7 @@ def make_pet_csv(tmp_path, data=None, conflict_col="conflict_type"):
     if data is None:
         data = {
             "pet": [0.5, 1.2, 2.5, 4.0, 2.0],
-            "conflict_type": ["crossing", "head_on", "rear_end", "crossing", "side_swipe"]
+            "conflict_type": ["crossing", "head_on", "rear_end", "crossing", "side_swipe"],
         }
     df = pd.DataFrame(data)
     path = tmp_path / "pet_events.csv"
@@ -96,7 +93,7 @@ def test_risk_assessment_and_summary(tmp_path):
 
 
 def test_by_conflict_type_missing_column(tmp_path):
-    path = make_pet_csv(tmp_path, data={"pet": [1,2]})
+    path = make_pet_csv(tmp_path, data={"pet": [1, 2]})
     analyzer = PETEventAnalyzer(path, conflict_col="non_existent")
     assert analyzer.by_conflict_type().empty
 
@@ -118,21 +115,23 @@ def test_compare_with_baseline_no_overlap(tmp_path):
     # So create non-empty and then monkeypatch to empty series? Better use two non-empty with n>0.
     # Actually n=min(len) so both non-empty but maybe zero after truncate? No.
     # We'll create non-empty but then force pet_series to empty list via monkeypatch.
-    analyzer = PETEventAnalyzer(make_pet_csv(tmp_path, data={"pet": [1,2]}))
-    baseline = PETEventAnalyzer(make_pet_csv(tmp_path, data={"pet": [1,2]}))
+    analyzer = PETEventAnalyzer(make_pet_csv(tmp_path, data={"pet": [1, 2]}))
+    baseline = PETEventAnalyzer(make_pet_csv(tmp_path, data={"pet": [1, 2]}))
     analyzer.pet_series = pd.Series(dtype=float)
     baseline.pet_series = pd.Series(dtype=float)
     with pytest.raises(ValueError):
-        analyzer.compare_with_baseline(make_pet_csv(tmp_path, data={"pet": [1,2]}))
+        analyzer.compare_with_baseline(make_pet_csv(tmp_path, data={"pet": [1, 2]}))
 
 
 def test_compare_with_baseline_parametric(tmp_path):
     path1 = make_pet_csv(tmp_path, data={"pet": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]})
     path2 = make_pet_csv(tmp_path, data={"pet": [1.1, 2.1, 3.1, 4.1, 5.1, 6.1, 7.1, 8.1]})
     analyzer = PETEventAnalyzer(path1)
-    with patch('scipy.stats.normaltest', return_value=(1.0, 0.1)), \
-         patch('scipy.stats.ttest_rel', return_value=(0.5, 0.04)), \
-         patch('scipy.stats.ks_2samp', return_value=(0.2, 0.3)):
+    with (
+        patch("scipy.stats.normaltest", return_value=(1.0, 0.1)),
+        patch("scipy.stats.ttest_rel", return_value=(0.5, 0.04)),
+        patch("scipy.stats.ks_2samp", return_value=(0.2, 0.3)),
+    ):
         result = analyzer.compare_with_baseline(path2)
     assert result["test_used"] == "paired t-test"
     assert result["is_significant"] == True
@@ -143,27 +142,29 @@ def test_compare_with_baseline_nonparametric(tmp_path):
     path1 = make_pet_csv(tmp_path, data={"pet": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]})
     path2 = make_pet_csv(tmp_path, data={"pet": [1.1, 2.1, 3.1, 4.1, 5.1, 6.1, 7.1, 8.1]})
     analyzer = PETEventAnalyzer(path1)
-    with patch('scipy.stats.normaltest', return_value=(None, 0.01)), \
-         patch('scipy.stats.wilcoxon', return_value=(2.0, 0.03)), \
-         patch('scipy.stats.ks_2samp', return_value=(0.25, 0.4)):
+    with (
+        patch("scipy.stats.normaltest", return_value=(None, 0.01)),
+        patch("scipy.stats.wilcoxon", return_value=(2.0, 0.03)),
+        patch("scipy.stats.ks_2samp", return_value=(0.25, 0.4)),
+    ):
         result = analyzer.compare_with_baseline(path2)
     assert result["test_used"] == "Wilcoxon signed-rank test"
     assert result["effect_size_type"] == "Cliff's delta"
 
 
 def test_cohens_d():
-    a = np.array([1,2,3])
-    b = np.array([1,2,3])
+    a = np.array([1, 2, 3])
+    b = np.array([1, 2, 3])
     assert PETEventAnalyzer._cohens_d(a, b) == 0.0
-    a = np.array([1,2,3])
-    b = np.array([4,6,8])
+    a = np.array([1, 2, 3])
+    b = np.array([4, 6, 8])
     d = PETEventAnalyzer._cohens_d(a, b)
     assert d > 0
 
 
 def test_cliffs_delta():
-    a = np.array([1,2,3])
-    b = np.array([4,5,6])
+    a = np.array([1, 2, 3])
+    b = np.array([4, 5, 6])
     d = PETEventAnalyzer._cliffs_delta(a, b)
     assert d == -1.0  # all a < b
 
@@ -193,7 +194,9 @@ def test_export_results_csv_and_baseline(tmp_path):
     baseline_path = make_pet_csv(tmp_path, data={"pet": [1.0, 2.0, 3.0, 4.0, 5.0]})
     analyzer = PETEventAnalyzer(path)
     out_dir = tmp_path / "export2"
-    with patch('src.analysis.pet_summary.PETEventAnalyzer.compare_with_baseline', return_value={"dummy": 1}):
+    with patch(
+        "src.analysis.pet_summary.PETEventAnalyzer.compare_with_baseline", return_value={"dummy": 1}
+    ):
         exported = analyzer.export_results(out_dir, baseline_csv=baseline_path, fmt="csv")
     assert (out_dir / f"pet_statistics_{path.stem}.csv").exists()
     assert "comparison" in exported
@@ -214,27 +217,27 @@ def test_parse_args_required():
 
 
 def test_parse_args_defaults():
-    args = parse_args(['--csv-path', 'dummy.csv'])
-    assert args.conflict_col == 'conflict_type'
+    args = parse_args(["--csv-path", "dummy.csv"])
+    assert args.conflict_col == "conflict_type"
     assert args.critical == 1.0
     assert args.moderate == 3.0
-    assert args.format == 'json'
+    assert args.format == "json"
 
 
 def test_main_export_and_print(tmp_path, capsys):
     path = make_pet_csv(tmp_path)
     out_dir = tmp_path / "main_export"
-    main(['--csv-path', str(path), '--export', '--output-dir', str(out_dir)])
+    main(["--csv-path", str(path), "--export", "--output-dir", str(out_dir)])
     assert (out_dir / f"pet_statistics_{path.stem}.json").exists()
 
 
 def test_main_no_export(tmp_path, capsys):
     path = make_pet_csv(tmp_path)
-    main(['--csv-path', str(path)])
+    main(["--csv-path", str(path)])
     captured = capsys.readouterr()
     assert "PET EVENT ANALYSIS" in captured.out
 
 
 def test_cliffs_delta_empty():
-    assert PETEventAnalyzer._cliffs_delta(np.array([]), np.array([1,2])) == 0.0
-    assert PETEventAnalyzer._cliffs_delta(np.array([1,2]), np.array([])) == 0.0
+    assert PETEventAnalyzer._cliffs_delta(np.array([]), np.array([1, 2])) == 0.0
+    assert PETEventAnalyzer._cliffs_delta(np.array([1, 2]), np.array([])) == 0.0

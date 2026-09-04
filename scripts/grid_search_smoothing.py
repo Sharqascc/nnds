@@ -26,9 +26,7 @@ def compute_metrics(gen_trajs, gt_trajs, cond_trajs, real_pets, dt=0.1):
     jerk_viol = np.mean(np.linalg.norm(jerk, axis=-1) > 2.5) * 100.0
     gen_pets = []
     for b in range(len(gen_trajs)):
-        dist_matrix = np.linalg.norm(
-            gen_trajs[b][:, None, :] - cond_trajs[b][None, :, :], axis=-1
-        )
+        dist_matrix = np.linalg.norm(gen_trajs[b][:, None, :] - cond_trajs[b][None, :, :], axis=-1)
         min_idx = np.unravel_index(np.argmin(dist_matrix), dist_matrix.shape)
         gen_pets.append(abs(min_idx[0] - min_idx[1]) * dt)
     gen_pets = np.array(gen_pets)
@@ -52,9 +50,7 @@ def build_data():
     _mean, _std = stats["mean"], stats["std"]
     cond_mean, cond_std = stats["cond_mean"], stats["cond_std"]
 
-    model = TrajectoryDiffusionModel(
-        traj_shape=(TH, 1, 2), cond_dim=4, hidden_dim=128
-    ).to(DEVICE)
+    model = TrajectoryDiffusionModel(traj_shape=(TH, 1, 2), cond_dim=4, hidden_dim=128).to(DEVICE)
     model.load_state_dict(ckpt["state_dict"])
     model.eval()
 
@@ -83,9 +79,7 @@ def build_data():
 
     gt_arr = np.array(gt_trajs_list, dtype=np.float32)
     cond_trajs_full = np.array(cond_trajs_list, dtype=np.float32)
-    cond_tensor = torch.tensor(
-        np.array(cond_list, dtype=np.float32).squeeze(1), device=DEVICE
-    )
+    cond_tensor = torch.tensor(np.array(cond_list, dtype=np.float32).squeeze(1), device=DEVICE)
     real_pets_arr = np.array(real_pets, dtype=np.float32)
     return model, gt_arr, cond_trajs_full, cond_tensor, real_pets_arr
 
@@ -107,9 +101,7 @@ def sample_with_smoothing(
         gen = x.cpu().numpy().squeeze(2)  # (B, TH, 2)
         # Smooth along time axis
         try:
-            gen = savgol_filter(
-                gen, window_length=savgol_window, polyorder=savgol_poly, axis=1
-            )
+            gen = savgol_filter(gen, window_length=savgol_window, polyorder=savgol_poly, axis=1)
         except Exception:
             pass
         try:

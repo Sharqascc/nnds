@@ -34,11 +34,7 @@ class LinearNoiseScheduler:
         pred_x0 = (x - math.sqrt(1 - alpha_bar) * noise_pred) / math.sqrt(alpha_bar)
         pred_x0 = pred_x0.clamp(-1, 1)
 
-        sigma = (
-            math.sqrt(1 - alpha_bar_prev)
-            * math.sqrt(1 - alpha)
-            / math.sqrt(1 - alpha_bar)
-        )
+        sigma = math.sqrt(1 - alpha_bar_prev) * math.sqrt(1 - alpha) / math.sqrt(1 - alpha_bar)
         direction = math.sqrt(1 - alpha_bar_prev) * noise_pred if t[0] > 0 else 0
 
         x_prev = math.sqrt(alpha_bar_prev) * pred_x0 + direction
@@ -142,11 +138,7 @@ def load_data_from_csv(csv_path, Th=16):
 
     # Old format
     id_col = next(
-        (
-            c
-            for c in ["conflict_id", "event_id", "pair_id", "track_id", "id"]
-            if c in df.columns
-        ),
+        (c for c in ["conflict_id", "event_id", "pair_id", "track_id", "id"] if c in df.columns),
         None,
     )
 
@@ -213,9 +205,7 @@ def train_model(
     N = vel_tensor_norm.shape[0]
     print(f"Training with {N} samples")
 
-    model = TrajectoryUNet1D(
-        input_dim=input_dim, cond_dim=input_dim, hidden_dim=hidden_dim
-    )
+    model = TrajectoryUNet1D(input_dim=input_dim, cond_dim=input_dim, hidden_dim=hidden_dim)
     scheduler = LinearNoiseScheduler(num_timesteps=num_timesteps)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     best_loss = float("inf")
@@ -333,9 +323,7 @@ def evaluate_model(test_csv, checkpoint_path, K=10, Th=16, dt=0.1):
     # PET
     gen_pets = []
     for b in range(N):
-        dist = np.linalg.norm(
-            all_gen_pos[b, 0, :, None] - cond_trajs[b, None, :], axis=-1
-        )
+        dist = np.linalg.norm(all_gen_pos[b, 0, :, None] - cond_trajs[b, None, :], axis=-1)
         min_idx = np.unravel_index(np.argmin(dist), dist.shape)
         gen_pets.append(abs(min_idx[0] - min_idx[1]) * dt)
 
