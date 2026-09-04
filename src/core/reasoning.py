@@ -10,10 +10,16 @@ Provides:
 from __future__ import annotations
 
 from enum import Enum, StrEnum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 import numpy as np
-from pydantic import BaseModel, Field, model_validator, validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+
+def pure(func):
+    """Mark a function as pure (no side effects, deterministic)."""
+    func._pure = True
+    return func
 
 
 class WorldPoint(BaseModel):
@@ -28,12 +34,12 @@ class Trajectory(BaseModel):
     actor_type: str | None = None
     source: str | None = None
 
-    @validator("points")
-    def points_must_be_ordered(cls, v):
-        times = [p.t for p in v]
+    @model_validator(mode="after")
+    def points_must_be_ordered(self):
+        times = [p.t for p in self.points]
         if any(times[i] > times[i + 1] for i in range(len(times) - 1)):
             raise ValueError("Trajectory points must be ordered by time")
-        return v
+        return self
 
 
 class Detection(BaseModel):
@@ -62,7 +68,7 @@ class PETEvent(BaseModel):
     frame: int = Field(..., ge=0)
     track_a: int
     track_b: int
-    conflict_type: str
+    conflict_type: Literal["crossing", "head_on", "rear_end", "side_swipe", "other"]
     grid_cell: str
     track_a_exit_frame: int
     track_b_entry_frame: int
