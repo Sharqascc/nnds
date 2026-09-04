@@ -3,6 +3,7 @@ import pandas as pd
 import json
 import numpy as np
 import cv2
+from scipy.signal import savgol_filter
 from pathlib import Path
 
 class PETVerificationVisualizer:
@@ -41,29 +42,28 @@ class PETVerificationVisualizer:
                 return []
         return []
 
-    def _smooth_points(self, traj, sigma=2.0):
-        """Return smoothed trajectory points (x,y) using Gaussian kernel."""
+    def _smooth_points(self, traj, window=9, polyorder=3):
+        """Return smoothed trajectory points using Savitzky-Golay filter."""
         if len(traj) < 3:
             return [(int(p.get('x_pixel', p.get('world_x', 0))),
                      int(p.get('y_pixel', p.get('world_y', 0)))) for p in traj]
         xs = [p.get('x_pixel', p.get('world_x', 0)) for p in traj]
         ys = [p.get('y_pixel', p.get('world_y', 0)) for p in traj]
-        # Choose kernel size <= len(traj) and odd
         n = len(traj)
-        kernel_size = max(3, int(6 * sigma))
-        if kernel_size % 2 == 0:
-            kernel_size += 1
-        kernel_size = min(kernel_size, n if n % 2 == 1 else n - 1)
-        if kernel_size < 3:
-            kernel_size = 3
-        kernel = np.exp(-0.5 * (np.arange(kernel_size) - kernel_size//2)**2 / sigma**2)
-        kernel /= kernel.sum()
-        xs_smooth = np.convolve(xs, kernel, mode='same')
-        ys_smooth = np.convolve(ys, kernel, mode='same')
-        # Keep endpoints original to avoid edge artifacts
-        xs_smooth[0] = xs[0]; xs_smooth[-1] = xs[-1]
-        ys_smooth[0] = ys[0]; ys_smooth[-1] = ys[-1]
-        return [(int(x), int(y)) for x,y in zip(xs_smooth, ys_smooth)]
+        # Ensure window_length is odd and <= n
+        w = min(window, n if n % 2 == 1 else n - 1)
+        if w < polyorder + 2:
+            # Fallback to moving average
+            kernel = np.ones(w) / w
+            xs_s = np.convolve(xs, kernel, mode='same')
+            ys_s = np.convolve(ys, kernel, mode='same')
+        else:
+            xs_s = savgol_filter(xs, window_length=w, polyorder=polyorder, mode='interp')
+            ys_s = savgol_filter(ys, window_length=w, polyorder=polyorder, mode='interp')
+        # Keep endpoints original
+        xs_s[0], xs_s[-1] = xs[0], xs[-1]
+        ys_s[0], ys_s[-1] = ys[0], ys[-1]
+        return [(int(x), int(y)) for x, y in zip(xs_s, ys_s)]
 
     def draw_trajectory(self, frame, traj, color, current_frame=None):
         pts = self._smooth_points(traj)
@@ -95,6 +95,22 @@ class PETVerificationVisualizer:
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, self.colors['grid'], 2)
         return frame
 
+
+    def _draw_text_background(self, frame, top_left, bottom_right, alpha=0.5):
+        """Draw a semi-transparent black rectangle on a copy of the ROI."""
+        x1, y1 = top_left
+        x2, y2 = bottom_right
+        x1 = max(0, x1); y1 = max(0, y1)
+        x2 = min(frame.shape[1], x2); y2 = min(frame.shape[0], y2)
+        if x2 <= x1 or y2 <= y1:
+            return frame
+        roi = frame[y1:y2, x1:x2]
+        overlay = np.zeros_like(roi)
+        overlay[:] = (0, 0, 0)  # black
+        blended = cv2.addWeighted(overlay, alpha, roi, 1 - alpha, 0)
+        frame[y1:y2, x1:x2] = blended
+        return frame
+
     def draw_timing_info(self, frame, event):
         info = [
             f"Event {event['event_id']}  PET={event['pet']:.3f}s",
@@ -104,10 +120,20 @@ class PETVerificationVisualizer:
             f"Time B entry: {event['second_entry_time_sec']:.2f}s",
             f"Site: {event['site']}  Cell: {event['grid_cell']}",
         ]
-        y = 20
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.5
+        thickness = 1
+        line_height = 20
+        # Calculate text block size
+        (max_text_w, _), _ = cv2.getTextSize(max(info, key=len), font, font_scale, thickness)
+        box_h = line_height * len(info) + 10
+        box_w = max_text_w + 20
+        box_x, box_y = 10, 10
+        frame = self._draw_text_background(frame, (box_x, box_y), (box_x + box_w, box_y + box_h), alpha=0.6)
+        y = box_y + line_height
         for line in info:
-            cv2.putText(frame, line, (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.colors['text'], 1)
-            y += 20
+            cv2.putText(frame, line, (box_x + 10, y), font, font_scale, self.colors['text'], thickness, cv2.LINE_AA)
+            y += line_height
         return frame
 
     def process_frame(self, frame, event, current_frame):
@@ -177,7 +203,21 @@ class PETVerificationVisualizer:
             # Conflict zone between current positions
             if pos_a is not None and pos_b is not None:
                 center = ((pos_a[0] + pos_b[0]) // 2, (pos_a[1] + pos_b[1]) // 2)
-                cv2.circle(frame, center, self.conflict_zone_radius, self.colors['conflict'], 2)
+                # Pulse effect near conflict frame
+                if abs(mapped_frame - event.get('frame', 0)) < 5:
+                    thickness = 5
+                    alpha = 0.5
+                else:
+                    thickness = 3
+                    alpha = 0.8
+                # Outer glow
+                cv2.circle(frame, center, self.conflict_zone_radius + 8, (0, 0, 255), 2, cv2.LINE_AA)
+                # Main circle
+                cv2.circle(frame, center, self.conflict_zone_radius, self.colors['conflict'], thickness, cv2.LINE_AA)
+                # Filled translucent inner circle
+                overlay = frame.copy()
+                cv2.circle(overlay, center, self.conflict_zone_radius, self.colors['conflict'], -1)
+                frame = cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0)
 
             # Timing and event info
             frame = self.draw_timing_info(frame, event)

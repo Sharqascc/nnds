@@ -153,10 +153,10 @@ def test_parse_traj_invalid_string():
     viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
     assert viz.parse_traj("not-json") == []
 
-def test_smooth_points_small_sigma():
+def test_smooth_points_small_window():
     viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
     traj = [{'x_pixel': i*10, 'y_pixel': i*10} for i in range(10)]
-    pts = viz._smooth_points(traj, sigma=0.1)
+    pts = viz._smooth_points(traj, window=5, polyorder=2)
     assert len(pts) == 10
 
 def test_generate_video_no_trajectory(tmp_path):
@@ -218,10 +218,10 @@ def test_parse_traj_invalid_string():
     viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
     assert viz.parse_traj("not a json") == []
 
-def test_smooth_points_small_sigma():
+def test_smooth_points_small_window():
     viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
     traj = [{'x_pixel': i*10, 'y_pixel': i*10} for i in range(10)]
-    pts = viz._smooth_points(traj, sigma=0.1)
+    pts = viz._smooth_points(traj, window=5, polyorder=2)
     assert len(pts) == 10
 
 def test_generate_video_no_trajectory(sample_event_df, tmp_path):
@@ -303,3 +303,40 @@ def test_generate_video_single_frame(sample_event_df, tmp_path):
     writer.isOpened.return_value = True
     with patch('cv2.VideoCapture', return_value=cap), patch('cv2.VideoWriter', return_value=writer):
         viz.generate_video(1, str(tmp_path/"out.mp4"), fps=10)
+
+
+def test_smooth_points_savgol():
+    viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
+    traj = [{'x_pixel': i*10, 'y_pixel': i*10} for i in range(20)]
+    pts = viz._smooth_points(traj, window=11, polyorder=3)
+    assert len(pts) == 20
+    # Middle point should be close to original straight line
+    assert abs(pts[10][0] - 100) < 5
+
+def test_draw_text_background():
+    viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
+    frame = np.full((100, 200, 3), 255, dtype=np.uint8)
+    out = viz._draw_text_background(frame, (10,10), (150,60), alpha=0.5)
+    assert out.shape == frame.shape
+    # Background should not be pure white after overlay
+    assert np.any(out < 250)
+
+
+def test_parse_traj_non_str_non_list():
+    viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
+    assert viz.parse_traj(123) == []
+
+def test_smooth_points_fallback_moving_average():
+    viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
+    # n=3, window=3, polyorder=2 -> w=3 < polyorder+2=4, triggers fallback
+    traj = [{'x_pixel': 0, 'y_pixel': 0},
+            {'x_pixel': 10, 'y_pixel': 10},
+            {'x_pixel': 20, 'y_pixel': 20}]
+    pts = viz._smooth_points(traj, window=3, polyorder=2)
+    assert len(pts) == 3
+
+def test_draw_text_background_invalid_roi():
+    viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
+    frame = np.full((100, 200, 3), 255, dtype=np.uint8)
+    out = viz._draw_text_background(frame, (150, 150), (140, 140), alpha=0.5)
+    assert np.array_equal(out, frame)
