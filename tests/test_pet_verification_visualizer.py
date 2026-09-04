@@ -3,6 +3,7 @@ import pytest
 import numpy as np
 import pandas as pd
 import json
+from unittest.mock import MagicMock, patch
 from pathlib import Path
 import cv2
 
@@ -116,3 +117,189 @@ def test_generate_video(sample_event_df, sample_video_path, tmp_path):
     viz.generate_video(1, str(output), fps=10)
     assert output.exists()
     assert output.stat().st_size > 0
+
+
+def test_smooth_points_short_trajectory():
+    viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
+    traj = [{'x_pixel': 1, 'y_pixel': 1}, {'x_pixel': 2, 'y_pixel': 2}]
+    pts = viz._smooth_points(traj)
+    assert len(pts) == 2
+    assert pts[0] == (1,1)
+
+def test_smooth_points_smooths():
+    viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
+    traj = [{'x_pixel': i*10, 'y_pixel': i*10} for i in range(10)]
+    pts = viz._smooth_points(traj)
+    assert len(pts) == 10
+    # Smoothed middle point should be near original (not too far)
+    assert abs(pts[5][0] - 50) < 5
+
+def test_get_position_at_valid_and_none():
+    viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
+    traj = [{'frame': 0, 'x_pixel': 10, 'y_pixel': 20}, {'frame': 5, 'x_pixel': 15, 'y_pixel': 25}]
+    pos = viz._get_position_at(traj, 3)
+    assert pos == (10,20)
+    pos2 = viz._get_position_at(traj, 5)
+    assert pos2 == (15,25)
+    assert viz._get_position_at(traj, -1) is None
+
+
+def test_parse_traj_list_input():
+    viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
+    traj = [{'frame': 1, 'x_pixel': 2, 'y_pixel': 3}]
+    assert viz.parse_traj(traj) is traj
+
+def test_parse_traj_invalid_string():
+    viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
+    assert viz.parse_traj("not-json") == []
+
+def test_smooth_points_small_sigma():
+    viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
+    traj = [{'x_pixel': i*10, 'y_pixel': i*10} for i in range(10)]
+    pts = viz._smooth_points(traj, sigma=0.1)
+    assert len(pts) == 10
+
+def test_generate_video_no_trajectory(tmp_path):
+    csv_path = tmp_path / "events.csv"
+    pd.DataFrame({
+        'event_id': [1],
+        'pet': [2.0],
+        'frame': [50],
+        'track_a': [1],
+        'track_b': [2],
+        'grid_cell': ['G_A_1'],
+        'first_track_id': [1],
+        'second_track_id': [2],
+        'first_exit_frame': [40],
+        'first_exit_time_sec': [1.5],
+        'second_entry_frame': [60],
+        'second_entry_time_sec': [2.0],
+        'site': ['GITI'],
+        'traj_a_json': ['[]'],
+        'traj_b_json': ['[]'],
+    }).to_csv(csv_path, index=False)
+    viz = PETVerificationVisualizer(str(csv_path), str(tmp_path/'dummy.mp4'))
+    with pytest.raises(ValueError):
+        viz.generate_video(1, str(tmp_path/'out.mp4'))
+
+def test_generate_video_cannot_open_source(tmp_path, monkeypatch):
+    csv_path = tmp_path / "events.csv"
+    pd.DataFrame({
+        'event_id': [1],
+        'pet': [2.0],
+        'frame': [50],
+        'track_a': [1],
+        'track_b': [2],
+        'grid_cell': ['G_A_1'],
+        'first_track_id': [1],
+        'second_track_id': [2],
+        'first_exit_frame': [40],
+        'first_exit_time_sec': [1.5],
+        'second_entry_frame': [60],
+        'second_entry_time_sec': [2.0],
+        'site': ['GITI'],
+        'traj_a_json': ['[{"frame":0,"x_pixel":10,"y_pixel":10},{"frame":1,"x_pixel":20,"y_pixel":20}]'],
+        'traj_b_json': ['[{"frame":0,"x_pixel":30,"y_pixel":30},{"frame":1,"x_pixel":40,"y_pixel":40}]'],
+    }).to_csv(csv_path, index=False)
+    viz = PETVerificationVisualizer(str(csv_path), str(tmp_path/'dummy.mp4'))
+    monkeypatch.setattr('cv2.VideoCapture', lambda *a, **k: MagicMock(isOpened=lambda: False))
+    with pytest.raises(RuntimeError):
+        viz.generate_video(1, str(tmp_path/'out.mp4'))
+
+# We'll need MagicMock import; already imported? Add if missing.
+
+
+def test_parse_traj_list_input():
+    viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
+    traj = [{'frame':1,'x_pixel':2,'y_pixel':3}]
+    assert viz.parse_traj(traj) == traj
+
+def test_parse_traj_invalid_string():
+    viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
+    assert viz.parse_traj("not a json") == []
+
+def test_smooth_points_small_sigma():
+    viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
+    traj = [{'x_pixel': i*10, 'y_pixel': i*10} for i in range(10)]
+    pts = viz._smooth_points(traj, sigma=0.1)
+    assert len(pts) == 10
+
+def test_generate_video_no_trajectory(sample_event_df, tmp_path):
+    csv_path = tmp_path / "events.csv"
+    sample_event_df.to_csv(csv_path, index=False)
+    viz = PETVerificationVisualizer(str(csv_path), str(tmp_path/"dummy.mp4"))
+    # make trajectory empty
+    viz.df.loc[0, 'traj_a_json'] = '[]'
+    viz.df.loc[0, 'traj_b_json'] = '[]'
+    with pytest.raises(ValueError):
+        viz.generate_video(1, str(tmp_path/"out.mp4"))
+
+def test_generate_video_cannot_open_source(sample_event_df, tmp_path):
+    csv_path = tmp_path / "events.csv"
+    sample_event_df.to_csv(csv_path, index=False)
+    viz = PETVerificationVisualizer(str(csv_path), str(tmp_path/"dummy.mp4"))
+    with patch('cv2.VideoCapture', return_value=MagicMock(isOpened=lambda: False)):
+        with pytest.raises(RuntimeError):
+            viz.generate_video(1, str(tmp_path/"out.mp4"))
+
+def test_generate_video_zero_frames(sample_event_df, tmp_path):
+    csv_path = tmp_path / "events.csv"
+    sample_event_df.to_csv(csv_path, index=False)
+    viz = PETVerificationVisualizer(str(csv_path), str(tmp_path/"dummy.mp4"))
+    cap = MagicMock()
+    cap.isOpened.return_value = True
+    cap.get.return_value = 0  # frame count zero
+    with patch('cv2.VideoCapture', return_value=cap):
+        with pytest.raises(RuntimeError):
+            viz.generate_video(1, str(tmp_path/"out.mp4"))
+
+def test_generate_video_writer_fail(sample_event_df, tmp_path, monkeypatch):
+    csv_path = tmp_path / "events.csv"
+    sample_event_df.to_csv(csv_path, index=False)
+    viz = PETVerificationVisualizer(str(csv_path), str(tmp_path/"dummy.mp4"))
+    cap = MagicMock()
+    cap.isOpened.return_value = True
+    cap.get.side_effect = lambda prop: {
+        cv2.CAP_PROP_FRAME_COUNT: 2,
+        cv2.CAP_PROP_FRAME_WIDTH: 320,
+        cv2.CAP_PROP_FRAME_HEIGHT: 240
+    }.get(prop, 0)
+    writer = MagicMock()
+    writer.isOpened.return_value = False
+    with patch('cv2.VideoCapture', return_value=cap), patch('cv2.VideoWriter', return_value=writer):
+        with pytest.raises(RuntimeError):
+            viz.generate_video(1, str(tmp_path/"out.mp4"))
+
+def test_generate_video_read_fails_break(sample_event_df, tmp_path):
+    csv_path = tmp_path / "events.csv"
+    sample_event_df.to_csv(csv_path, index=False)
+    viz = PETVerificationVisualizer(str(csv_path), str(tmp_path/"dummy.mp4"))
+    cap = MagicMock()
+    cap.isOpened.return_value = True
+    cap.get.side_effect = lambda prop: {
+        cv2.CAP_PROP_FRAME_COUNT: 2,
+        cv2.CAP_PROP_FRAME_WIDTH: 320,
+        cv2.CAP_PROP_FRAME_HEIGHT: 240
+    }.get(prop, 0)
+    cap.read.side_effect = [(True, np.zeros((240,320,3), dtype=np.uint8)), (False, None)]
+    writer = MagicMock()
+    writer.isOpened.return_value = True
+    with patch('cv2.VideoCapture', return_value=cap), patch('cv2.VideoWriter', return_value=writer):
+        viz.generate_video(1, str(tmp_path/"out.mp4"), fps=10)
+
+def test_generate_video_single_frame(sample_event_df, tmp_path):
+    csv_path = tmp_path / "events.csv"
+    sample_event_df.to_csv(csv_path, index=False)
+    viz = PETVerificationVisualizer(str(csv_path), str(tmp_path/"dummy.mp4"))
+    cap = MagicMock()
+    cap.isOpened.return_value = True
+    cap.get.side_effect = lambda prop: {
+        cv2.CAP_PROP_FRAME_COUNT: 1,
+        cv2.CAP_PROP_FRAME_WIDTH: 320,
+        cv2.CAP_PROP_FRAME_HEIGHT: 240
+    }.get(prop, 0)
+    cap.read.return_value = (True, np.zeros((240,320,3), dtype=np.uint8))
+    writer = MagicMock()
+    writer.isOpened.return_value = True
+    with patch('cv2.VideoCapture', return_value=cap), patch('cv2.VideoWriter', return_value=writer):
+        viz.generate_video(1, str(tmp_path/"out.mp4"), fps=10)

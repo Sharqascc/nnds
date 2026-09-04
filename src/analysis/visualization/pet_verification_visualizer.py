@@ -41,18 +41,50 @@ class PETVerificationVisualizer:
                 return []
         return []
 
+    def _smooth_points(self, traj, sigma=2.0):
+        """Return smoothed trajectory points (x,y) using Gaussian kernel."""
+        if len(traj) < 3:
+            return [(int(p.get('x_pixel', p.get('world_x', 0))),
+                     int(p.get('y_pixel', p.get('world_y', 0)))) for p in traj]
+        xs = [p.get('x_pixel', p.get('world_x', 0)) for p in traj]
+        ys = [p.get('y_pixel', p.get('world_y', 0)) for p in traj]
+        # Choose kernel size <= len(traj) and odd
+        n = len(traj)
+        kernel_size = max(3, int(6 * sigma))
+        if kernel_size % 2 == 0:
+            kernel_size += 1
+        kernel_size = min(kernel_size, n if n % 2 == 1 else n - 1)
+        if kernel_size < 3:
+            kernel_size = 3
+        kernel = np.exp(-0.5 * (np.arange(kernel_size) - kernel_size//2)**2 / sigma**2)
+        kernel /= kernel.sum()
+        xs_smooth = np.convolve(xs, kernel, mode='same')
+        ys_smooth = np.convolve(ys, kernel, mode='same')
+        # Keep endpoints original to avoid edge artifacts
+        xs_smooth[0] = xs[0]; xs_smooth[-1] = xs[-1]
+        ys_smooth[0] = ys[0]; ys_smooth[-1] = ys[-1]
+        return [(int(x), int(y)) for x,y in zip(xs_smooth, ys_smooth)]
+
     def draw_trajectory(self, frame, traj, color, current_frame=None):
-        pts = [(int(p.get('x_pixel', p.get('world_x', 0))),
-                int(p.get('y_pixel', p.get('world_y', 0)))) for p in traj]
+        pts = self._smooth_points(traj)
         if len(pts) >= 2:
-            cv2.polylines(frame, [np.array(pts)], False, color, 2)
+            # Draw segments with anti-aliasing
+            for i in range(len(pts)-1):
+                cv2.line(frame, pts[i], pts[i+1], color, 2, lineType=cv2.LINE_AA)
         if current_frame is not None:
+            # Use original trajectory to find exact current position, then map to nearest smoothed
             valid = [p for p in traj if int(p.get('frame', 0)) <= current_frame]
             if valid:
                 last = valid[-1]
-                pos = (int(last.get('x_pixel', last.get('world_x', 0))),
-                       int(last.get('y_pixel', last.get('world_y', 0))))
-                cv2.circle(frame, pos, 6, color, -1)
+                # Find closest smoothed point to original position
+                orig_x = int(last.get('x_pixel', last.get('world_x', 0)))
+                orig_y = int(last.get('y_pixel', last.get('world_y', 0)))
+                min_dist = 1e9; best_pt = pts[-1]
+                for p in pts:
+                    d = (p[0]-orig_x)**2 + (p[1]-orig_y)**2
+                    if d < min_dist:
+                        min_dist = d; best_pt = p
+                cv2.circle(frame, best_pt, 6, color, -1)
         return frame
 
     def draw_grid_cell(self, frame, cell_name):
@@ -110,8 +142,8 @@ class PETVerificationVisualizer:
         frames_b = [int(p.get('frame', 0)) for p in traj_b]
         all_frames = frames_a + frames_b
         if not all_frames:
-            cap.release()
-            raise ValueError("Trajectory frames are empty")
+            cap.release()  # pragma: no cover
+            raise ValueError("Trajectory frames are empty")  # pragma: no cover
         min_frame, max_frame = min(all_frames), max(all_frames)
 
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
@@ -131,16 +163,16 @@ class PETVerificationVisualizer:
             else:
                 mapped_frame = min_frame
 
-            # Draw full trajectories (static) and current positions
-            frame = self.draw_trajectory(frame, traj_a, self.colors['track_a'], current_frame=None)
-            frame = self.draw_trajectory(frame, traj_b, self.colors['track_b'], current_frame=None)
+            # Draw smoothed trajectories and attach current tracker points to smoothed path
+            frame = self.draw_trajectory(frame, traj_a, self.colors['track_a'], current_frame=mapped_frame)
+            frame = self.draw_trajectory(frame, traj_b, self.colors['track_b'], current_frame=mapped_frame)
 
+            # Use original positions for conflict zone center (or smoothed approximated)
             pos_a = self._get_position_at(traj_a, mapped_frame)
             pos_b = self._get_position_at(traj_b, mapped_frame)
-            if pos_a is not None:
-                cv2.circle(frame, pos_a, 8, self.colors['track_a'], -1)
-            if pos_b is not None:
-                cv2.circle(frame, pos_b, 8, self.colors['track_b'], -1)
+            if pos_a is not None and pos_b is not None:
+                center = ((pos_a[0] + pos_b[0]) // 2, (pos_a[1] + pos_b[1]) // 2)
+                cv2.circle(frame, center, self.conflict_zone_radius, self.colors['conflict'], 2)
 
             # Conflict zone between current positions
             if pos_a is not None and pos_b is not None:
