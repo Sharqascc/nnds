@@ -1,3 +1,5 @@
+import contextlib
+
 import numpy as np
 import pandas as pd
 import torch
@@ -100,14 +102,10 @@ def sample_with_smoothing(
             x = x - v_pred * dt
         gen = x.cpu().numpy().squeeze(2)  # (B, TH, 2)
         # Smooth along time axis
-        try:
+        with contextlib.suppress(Exception):
             gen = savgol_filter(gen, window_length=savgol_window, polyorder=savgol_poly, axis=1)
-        except Exception:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             gen = gaussian_filter1d(gen, sigma=gaussian_sigma, axis=1)
-        except Exception:
-            pass
         all_gen.append(gen)
     all_gen = np.stack(all_gen, axis=1)  # (B, K, TH, 2)
     return all_gen

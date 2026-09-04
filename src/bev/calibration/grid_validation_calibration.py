@@ -28,7 +28,10 @@ from sklearn.model_selection import KFold
 try:
     from tqdm import tqdm
 except ImportError:  # optional dependency  # pragma: no cover
-    tqdm = lambda x, **kwargs: x  # type: ignore[misc]
+
+    def tqdm(x, **kwargs):
+        return x  # type: ignore[misc]
+
 
 logger = logging.getLogger(__name__)
 

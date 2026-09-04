@@ -123,7 +123,7 @@ class VLMEnhancedPipeline:
             agg = self._aggregate_risks()
             f.writelines(f"- {risk}: {count} frames\n" for risk, count in agg.items())
             f.write("\n## Sample Frame Analyses\n")
-            for idx, res in enumerate(self.results[:5]):
+            for _idx, res in enumerate(self.results[:5]):
                 f.write(f"### Frame {res['frame']}\n")
                 f.write(f"**Image:** {res['image']}\n")
                 f.write("**VLM Output:**\n")

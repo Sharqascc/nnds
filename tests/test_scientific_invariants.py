@@ -66,7 +66,7 @@ def test_no_temporal_duplicates():
     giti, mrc = _load_results()
     for df, site in [(giti, "GITI"), (mrc, "MRC")]:
         key = df.apply(
-            lambda r: tuple(sorted([r["orig_track_a"], r["orig_track_b"]])) + (r["grid_cell"],),
+            lambda r: (*tuple(sorted([r["orig_track_a"], r["orig_track_b"]])), r["grid_cell"]),
             axis=1,
         )
         for key_val in key[key.duplicated(keep=False)].unique():
@@ -107,7 +107,7 @@ def test_mrc_invariants():
     assert (mrc["pet"] > 0).all()
     assert (mrc["orig_track_a"] != mrc["orig_track_b"]).all()
     key = mrc.apply(
-        lambda r: tuple(sorted([r["orig_track_a"], r["orig_track_b"]])) + (r["grid_cell"],), axis=1
+        lambda r: (*tuple(sorted([r["orig_track_a"], r["orig_track_b"]])), r["grid_cell"]), axis=1
     )
     for key_val in key[key.duplicated(keep=False)].unique():
         group = mrc[key == key_val].sort_values("frame")
@@ -126,7 +126,7 @@ def test_output_exists_false(tmp_path, monkeypatch):
     import tests.test_scientific_invariants as sci
 
     monkeypatch.setattr(sci, "REPO", tmp_path)
-    assert sci._output_exists() == False
+    assert not sci._output_exists()
 
 
 def test_output_exists_true(tmp_path, monkeypatch):
@@ -136,7 +136,7 @@ def test_output_exists_true(tmp_path, monkeypatch):
     (tmp_path / "outputs").mkdir()
     (tmp_path / "outputs" / "giti_screened.csv").write_text("pet\n1.0\n")
     (tmp_path / "outputs" / "mrc_screened.csv").write_text("pet\n1.0\n")
-    assert sci._output_exists() == True
+    assert sci._output_exists()
 
 
 def test_load_results_valid(tmp_path, monkeypatch):
@@ -162,7 +162,7 @@ def test_load_results_valid(tmp_path, monkeypatch):
     mrc_df["site"] = ["MRC"]
     giti_df.to_csv(giti_path, index=False)
     mrc_df.to_csv(mrc_path, index=False)
-    giti, mrc = sci._load_results()
+    giti, _mrc = sci._load_results()
     assert "pet" in giti.columns
     assert len(giti) == 1
 

@@ -66,7 +66,7 @@ def main():
                 "  Max spatial jump (pixels): " + f"{distances.max() if len(distances) else 0:.1f}"
             )
 
-            for i, (gap, dist) in enumerate(zip(gaps, distances)):
+            for i, (gap, dist) in enumerate(zip(gaps, distances, strict=False)):
                 if gap > args.max_gap:
                     log_lines.append(
                         "    ⚠️ Gap > "

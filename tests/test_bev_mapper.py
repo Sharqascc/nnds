@@ -227,7 +227,7 @@ def test_real_calibration_success_cv2(tmp_path):
     with patch("cv2.findHomography", return_value=(H, mask)):
         result = test_with_real_calibration(calib_json=calib_path, bev_json=bev_path)
     assert result is not None
-    assert result["passes_validation"] == True
+    assert result["passes_validation"]
     assert result["rmse_m"] < 1.0
 
 
@@ -365,9 +365,9 @@ def test_main_raise_on_failure(tmp_path):
             "src.bev.bev_mapper.test_with_real_calibration",
             return_value={"passes_validation": False, "rmse_m": 2.0},
         ),
+        pytest.raises(RuntimeError),
     ):
-        with pytest.raises(RuntimeError):
-            main()
+        main()
 
 
 def test_real_calibration_shape_mismatch(tmp_path):

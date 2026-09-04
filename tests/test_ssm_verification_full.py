@@ -17,7 +17,7 @@ from src.analysis.ssm.ssm_verification import (
 def test_check_data_quality_type_conversion_success():
     verifier = SSMVerifier(min_sample_size=1)
     result = verifier.check_data_quality([1.0, 2.0, 3.0], name="test")
-    assert result["passed"] == True
+    assert result["passed"]
     assert any(c["check"] == "Type conversion" and c["passed"] for c in result["checks"])
 
 
@@ -29,7 +29,7 @@ class BadArray:
 def test_check_data_quality_type_conversion_failure():
     verifier = SSMVerifier(min_sample_size=1)
     result = verifier.check_data_quality(BadArray(), name="test")
-    assert result["passed"] == False
+    assert not result["passed"]
     assert any("Cannot convert" in e for e in result["errors"])
 
 
@@ -39,7 +39,7 @@ def test_check_data_quality_out_of_range_gt5():
         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 100]
     )  # 1/11 >9%? Actually 1/11=9.09% <5? need >5: 1/11=9.09% >5 yes
     result = verifier.check_data_quality(data, expected_range=(0, 10))
-    assert result["passed"] == False
+    assert not result["passed"]
     assert any("outside expected range" in e for e in result["errors"])
 
 
@@ -49,7 +49,7 @@ def test_check_data_quality_out_of_range_le5():
         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 100]
     )  # 1/21=4.76%
     result = verifier.check_data_quality(data, expected_range=(0, 20))
-    assert result["passed"] == True  # less than 5% out-of-range is warning, not error
+    assert result["passed"]  # less than 5% out-of-range is warning, not error
     assert any("outside expected range" in w for w in result["warnings"])
 
 
@@ -85,7 +85,7 @@ def test_verify_pet_reference_mean_high_error():
     reference = {"mean": 10.0}
     result = verifier.verify_pet_calculation(data, reference_values=reference)
     assert "reference_comparison" in result
-    assert result["reference_comparison"]["mean"]["passed"] == False
+    assert not result["reference_comparison"]["mean"]["passed"]
     assert any("Mean PET differs" in w for w in result["warnings"])
 
 
@@ -94,7 +94,7 @@ def test_verify_pet_reference_mean_low_error():
     data = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
     reference = {"mean": 3.0}
     result = verifier.verify_pet_calculation(data, reference_values=reference)
-    assert result["reference_comparison"]["mean"]["passed"] == True
+    assert result["reference_comparison"]["mean"]["passed"]
 
 
 # ---------- verify_ttc_calculation ----------
@@ -104,7 +104,7 @@ def test_verify_ttc_no_valid_data():
     verifier = SSMVerifier(min_sample_size=1)
     data = np.array([np.nan, np.nan])
     result = verifier.verify_ttc_calculation(data)
-    assert result["passed"] == False
+    assert not result["passed"]
     assert "no valid data" in result["summary"]
 
 
@@ -112,7 +112,7 @@ def test_verify_ttc_near_collision_strict_mode():
     verifier = SSMVerifier(min_sample_size=1, strict_mode=True)
     data = np.array([0.1, 1.0, 2.0])
     result = verifier.verify_ttc_calculation(data)
-    assert result["passed"] == False
+    assert not result["passed"]
     assert any("near-collision" in e for e in result["errors"])
 
 
@@ -158,7 +158,7 @@ def test_verify_drac_no_valid_data():
     verifier = SSMVerifier(min_sample_size=1)
     data = np.array([np.nan, np.inf])
     result = verifier.verify_drac_calculation(data)
-    assert result["passed"] == False
+    assert not result["passed"]
     assert "no valid data" in result["summary"]
 
 
@@ -178,7 +178,7 @@ def test_run_verification_suite_all_metrics():
     ttc = np.array([1.0, 2.0, 3.0, 4.0])
     drac = np.array([1.0, 2.0, 3.0])
     result = verifier.run_verification_suite(pet_values=pet, ttc_values=ttc, drac_values=drac)
-    assert result["overall_pass"] == True
+    assert result["overall_pass"]
     assert len(result["tests"]) == 3
 
 
@@ -187,13 +187,13 @@ def test_run_verification_suite_some_fail():
     pet = np.array([1.0, 2.0, 3.0])
     ttc = np.array([np.nan])  # invalid
     result = verifier.run_verification_suite(pet_values=pet, ttc_values=ttc)
-    assert result["overall_pass"] == False
+    assert not result["overall_pass"]
 
 
 def test_run_verification_suite_no_data():
     verifier = SSMVerifier()
     result = verifier.run_verification_suite()
-    assert result["overall_pass"] == False
+    assert not result["overall_pass"]
     assert result["summary"] == "Verification Suite: No data provided"
 
 
@@ -225,7 +225,7 @@ def test_check_data_quality_low_completeness_and_small_sample():
 def test_verify_pet_no_valid_data():
     verifier = SSMVerifier(min_sample_size=1)
     result = verifier.verify_pet_calculation(np.array([np.nan, np.inf]))
-    assert result["passed"] == False
+    assert not result["passed"]
     assert "no valid data" in result["summary"]
 
 
@@ -233,8 +233,8 @@ def test_run_verification_suite_pet_fails():
     verifier = SSMVerifier(min_sample_size=1)
     pet = np.array([np.nan, np.inf])
     result = verifier.run_verification_suite(pet_values=pet)
-    assert result["overall_pass"] == False
-    assert any(t["passed"] == False for t in result["tests"])
+    assert not result["overall_pass"]
+    assert any(not t["passed"] for t in result["tests"])
 
 
 def test_convenience_wrappers():
@@ -255,5 +255,5 @@ def test_run_verification_suite_drac_fails():
     verifier = SSMVerifier(min_sample_size=1)
     drac = np.array([np.nan, np.inf])
     result = verifier.run_verification_suite(drac_values=drac)
-    assert result["overall_pass"] == False
-    assert any(t["passed"] == False for t in result["tests"])
+    assert not result["overall_pass"]
+    assert any(not t["passed"] for t in result["tests"])

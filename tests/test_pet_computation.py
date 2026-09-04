@@ -39,7 +39,7 @@ def test_pet_sequential_a_to_b():
 
 def test_pet_sequential_b_to_a():
     """Test PET when B exits before A enters."""
-    pet, first, second, frame_ref = _compute_pet_from_windows(
+    pet, first, second, _frame_ref = _compute_pet_from_windows(
         a_entry=80, a_exit=95, b_entry=60, b_exit=70, fps=30.0
     )
     assert pet == pytest.approx((80 - 70) / 30, abs=0.001)

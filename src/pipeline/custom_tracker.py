@@ -214,7 +214,7 @@ class CustomTracker:
         matched_track_ids = set()
         unmatched_dets = set(range(len(detections)))
 
-        for i, j in zip(row_ind, col_ind):
+        for i, j in zip(row_ind, col_ind, strict=False):
             if cost[i, j] < 1.0 - self.iou_threshold:  # IoU > threshold
                 tid = active_ids[i]
                 self.tracks[tid].update(detections[j])
@@ -255,7 +255,7 @@ class CustomTracker:
                     cost2[i, j] = dist + app_cost
 
             row_ind2, col_ind2 = linear_sum_assignment(cost2)
-            for i, j in zip(row_ind2, col_ind2):
+            for i, j in zip(row_ind2, col_ind2, strict=False):
                 if cost2[i, j] < 150.0:  # threshold increased due to appearance cost scale
                     tid = remaining_tracks[i]
                     det_idx = remaining_dets[j]

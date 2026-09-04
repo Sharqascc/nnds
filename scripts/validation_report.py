@@ -73,7 +73,7 @@ def tracking_metrics(det_df, max_gap=10, max_jump=50.0):
     track_lengths = []
     gaps_over = 0
     jumps_over = 0
-    for track_id, group in det_df.groupby("track_id"):
+    for _track_id, group in det_df.groupby("track_id"):
         group = group.sort_values("frame")
         track_lengths.append(len(group))
         if len(group) >= 2:

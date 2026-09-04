@@ -243,13 +243,13 @@ def test_normalize_class_name(tmp_path):
 def test_allowed_detection(tmp_path):
     counter = make_counter(tmp_path, classes=["car"])
     det = {"centroid": (10, 10), "cls": "car", "conf": 0.9}
-    assert counter._allowed_detection(det) == True
+    assert counter._allowed_detection(det)
     det2 = {"centroid": (10, 10), "cls": "person", "conf": 0.9}
-    assert counter._allowed_detection(det2) == False
+    assert not counter._allowed_detection(det2)
     det3 = {"centroid": (10, 10), "cls": "car", "conf": 0.1}
-    assert counter._allowed_detection(det3) == False
+    assert not counter._allowed_detection(det3)
     det4 = {"cls": "car", "conf": 0.9}  # missing centroid
-    assert counter._allowed_detection(det4) == False
+    assert not counter._allowed_detection(det4)
 
 
 def test_draw_gate_labels(tmp_path):
@@ -325,7 +325,7 @@ def test_process_video_full(tmp_path):
         patch("cv2.VideoCapture", return_value=cap),
         patch("cv2.VideoWriter", MagicMock()) as writer_cls,
         patch("cv2.VideoWriter_fourcc", return_value=0),
-        patch("src.analysis.gate_counter.logger") as logger_mock,
+        patch("src.analysis.gate_counter.logger"),
     ):
         writer = MagicMock()
         writer_cls.return_value = writer

@@ -471,7 +471,7 @@ def test_smooth_points_preserves_straight_line():
     traj = [{"x_pixel": i, "y_pixel": 2 * i} for i in range(30)]
     pts = viz._smooth_points(traj, window=11, polyorder=3)
     # All points should remain on the line (max deviation < 1 pixel)
-    for (x, y), orig in zip(pts, traj):
+    for (x, y), orig in zip(pts, traj, strict=False):
         expected_y = 2 * orig["x_pixel"]
         assert abs(y - expected_y) < 1.0, f"Smoothed point {x, y} deviates from line"
 
@@ -506,7 +506,7 @@ def test_draw_trajectory_uses_anti_aliased_line():
         # Check that at least one call used LINE_AA
         line_type_used = False
         for call in mock_line.call_args_list:
-            args, kwargs = call
+            _args, kwargs = call
             if "lineType" in kwargs and kwargs["lineType"] == cv2.LINE_AA:
                 line_type_used = True
                 break

@@ -22,7 +22,7 @@ class TrajDiffusionDatasetNorm(Dataset):
         t_i_list, xy_i_list, xy_j_list = [], [], []
         lengths = []
 
-        for ci, cj in zip(df["world_traj_i"], df["world_traj_j"]):
+        for ci, cj in zip(df["world_traj_i"], df["world_traj_j"], strict=False):
             t_i, xy_i = parse_traj_txy(ci)
             t_j, xy_j = parse_traj_txy(cj)
             T = min(len(t_i), len(t_j))
@@ -39,7 +39,7 @@ class TrajDiffusionDatasetNorm(Dataset):
         T_max = max(lengths)
         traj_list = []
 
-        for xy_i, xy_j in zip(xy_i_list, xy_j_list):
+        for xy_i, xy_j in zip(xy_i_list, xy_j_list, strict=False):
             T = min(len(xy_i), T_max)
             pad_len = T_max - T
             xy_i_p = np.pad(xy_i[:T], ((0, pad_len), (0, 0)), mode="edge")
@@ -110,7 +110,7 @@ def compute_ttc_seq(pos1, pos2, dt, d_thresh=1.0, eps=1e-6):
     p_rel = pos2[:-1] - pos1[:-1]
 
     ttc = []
-    for p, v in zip(p_rel, v_rel):
+    for p, v in zip(p_rel, v_rel, strict=False):
         vr2 = float(np.dot(v, v))
         if vr2 < eps:
             ttc.append(None)

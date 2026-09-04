@@ -86,9 +86,9 @@ def main():
         trail_b = trail_b[-args.trail_length :]
 
         # Draw trails
-        for f, (x, y) in trail_a:
+        for _f, (x, y) in trail_a:
             cv2.circle(frame, (int(x), int(y)), 4, (0, 0, 255), -1)  # red
-        for f, (x, y) in trail_b:
+        for _f, (x, y) in trail_b:
             cv2.circle(frame, (int(x), int(y)), 4, (255, 0, 0), -1)  # blue
 
         # Draw bigger current marker

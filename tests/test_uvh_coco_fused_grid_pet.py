@@ -363,7 +363,7 @@ def test_can_intersect_temporal_no_overlap():
 
 def test_compute_pet_from_windows_sequential():
     """Test PET computation for sequential windows."""
-    pet, first, second, frame_ref = _compute_pet_from_windows(80, 90, 105, 115, 30)
+    pet, first, second, _frame_ref = _compute_pet_from_windows(80, 90, 105, 115, 30)
     assert pet == pytest.approx(0.5, abs=0.001)
     assert first == "a"
     assert second == "b"
@@ -377,7 +377,7 @@ def test_compute_pet_from_windows_overlap():
 
 def test_compute_pet_from_windows_reverse():
     """Test PET computation for reversed order."""
-    pet, first, second, frame_ref = _compute_pet_from_windows(80, 95, 60, 70, 30)
+    pet, first, _second, _frame_ref = _compute_pet_from_windows(80, 95, 60, 70, 30)
     assert pet == pytest.approx((80 - 70) / 30, abs=0.001)
     assert first == "b"
 
@@ -2149,7 +2149,7 @@ def test_run_uvh_coco_fused_grid_pet_coco_detection_mocked(tmp_path):
         def update(self, raw_dets, frame_img=None, frame=0):
             print(f"DEBUG update: raw_dets_len={len(raw_dets)}")
             matched = {}
-            for i, det in enumerate(raw_dets):
+            for i, _det in enumerate(raw_dets):
                 matched[i] = 2000 + i
             print(f"DEBUG matched={matched}")
             return matched

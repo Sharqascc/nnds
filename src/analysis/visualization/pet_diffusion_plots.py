@@ -110,7 +110,7 @@ def plot_pet_like_histogram(
     diffs = [(ps - pr) for (pr, ps) in pet_pairs if pr is not None and ps is not None]
 
     if not diffs:
-        warnings.warn("No examples with both real and sample PET-like defined.")
+        warnings.warn("No examples with both real and sample PET-like defined.", stacklevel=2)
         return
 
     diffs = np.array(diffs, dtype=float)
@@ -227,7 +227,7 @@ def plot_true_vs_pet_like(
     pet_real = []
     pet_sample = []
 
-    for row_idx, t_pet, pr, ps in records:
+    for _row_idx, t_pet, pr, ps in records:
         if pr is None or ps is None:
             continue
         true_pet.append(float(t_pet))
@@ -235,7 +235,7 @@ def plot_true_vs_pet_like(
         pet_sample.append(float(ps))
 
     if not true_pet:
-        warnings.warn("No records with both real and sample PET-like defined.")
+        warnings.warn("No records with both real and sample PET-like defined.", stacklevel=2)
         return
 
     true_pet = np.array(true_pet)
@@ -335,14 +335,14 @@ def plot_true_vs_sample_delta(
     true_pet = []
     delta_steps = []
 
-    for row_idx, t_pet, pr, ps in records:
+    for _row_idx, t_pet, pr, ps in records:
         if pr is None or ps is None:
             continue
         true_pet.append(float(t_pet))
         delta_steps.append(float(ps - pr))
 
     if not true_pet:
-        warnings.warn("No records with both real and sample PET-like defined.")
+        warnings.warn("No records with both real and sample PET-like defined.", stacklevel=2)
         return
 
     true_pet = np.array(true_pet)
@@ -471,14 +471,14 @@ def plot_residual_analysis(
     true_pet = []  # pragma: no cover
     residuals = []  # pragma: no cover
     # pragma: no cover
-    for row_idx, t_pet, pr, ps in records:  # pragma: no cover
+    for _row_idx, t_pet, pr, ps in records:  # pragma: no cover
         if pr is None or ps is None:  # pragma: no cover
             continue  # pragma: no cover
         true_pet.append(float(t_pet))  # pragma: no cover
         residuals.append(float(ps - pr))  # pragma: no cover
     # pragma: no cover
     if not true_pet:  # pragma: no cover
-        warnings.warn("No valid records for residual analysis.")  # pragma: no cover
+        warnings.warn("No valid records for residual analysis.", stacklevel=2)  # pragma: no cover
         return  # pragma: no cover
     # pragma: no cover
     true_pet = np.array(true_pet)  # pragma: no cover
@@ -587,14 +587,14 @@ def plot_bland_altman(
     pet_real = []
     pet_sample = []
 
-    for row_idx, t_pet, pr, ps in records:
+    for _row_idx, _t_pet, pr, ps in records:
         if pr is None or ps is None:
             continue
         pet_real.append(float(pr))
         pet_sample.append(float(ps))
 
     if not pet_real:
-        warnings.warn("No valid records for Bland-Altman plot.")
+        warnings.warn("No valid records for Bland-Altman plot.", stacklevel=2)
         return
 
     pet_real = np.array(pet_real)

@@ -235,7 +235,7 @@ def test_update_dead_track_removal():
     tracker.update([det1])  # track 1 with time_since_update=0
     # Far detection so no match, then dead track removal runs
     det2 = make_detection(x1=1000, y1=1000, x2=1020, y2=1020)
-    result = tracker.update([det2])
+    tracker.update([det2])
     # Old track should be removed (time_since_update = 1 >= max_age)
     assert 1 not in tracker.tracks
     # New track created
@@ -281,6 +281,6 @@ def test_update_reid_encoder_called():
     tracker.update([det], frame_img=frame)
     # After first update, track exists. Now add new detection with no embedding, trigger stage2
     det2 = make_detection(x1=50, y1=50, x2=70, y2=70)
-    matched = tracker.update([det2], frame_img=frame)
+    tracker.update([det2], frame_img=frame)
     # Encoder should have been called at least once (for det2 in stage2)
     assert mock_encoder.encode_crop.called

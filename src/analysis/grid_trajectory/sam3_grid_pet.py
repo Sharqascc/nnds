@@ -313,7 +313,7 @@ def run_sam3_grid_pet(
             try:
                 boxes = getattr(res, "boxes", None)
                 frame = res.orig_img.copy()
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 _log(f"⚠️ Skipping frame {frame_idx} due to SAM3 error: {e}")
                 continue
 

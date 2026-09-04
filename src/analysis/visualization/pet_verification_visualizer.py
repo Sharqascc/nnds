@@ -102,7 +102,7 @@ class PETVerificationVisualizer:
         # Keep endpoints original
         xs_s[0], xs_s[-1] = xs[0], xs[-1]
         ys_s[0], ys_s[-1] = ys[0], ys[-1]
-        return [(int(x), int(y)) for x, y in zip(xs_s, ys_s)]
+        return [(int(x), int(y)) for x, y in zip(xs_s, ys_s, strict=False)]
 
     def draw_trajectory(self, frame, traj, color, current_frame=None):
         if current_frame is not None:
@@ -283,7 +283,7 @@ class PETVerificationVisualizer:
                 video_idx_range = [min_frame + int(i * step) for i in range(max_frames)]
             else:
                 video_idx_range = list(range(min_frame, end_frame + 1))
-            total_frames = len(video_idx_range)
+            len(video_idx_range)
         else:
             # Open real video (optional; blurry source not used by default)
             cap = cv2.VideoCapture(str(self.video_path))
@@ -318,7 +318,7 @@ class PETVerificationVisualizer:
         if not all_frames:
             cap.release()  # pragma: no cover
             raise ValueError("Trajectory frames are empty")  # pragma: no cover
-        min_frame, max_frame = min(all_frames), max(all_frames)
+        min_frame, _max_frame = min(all_frames), max(all_frames)
 
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         out = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))

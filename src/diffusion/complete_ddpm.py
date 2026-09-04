@@ -122,7 +122,7 @@ def load_data_from_csv(csv_path, Th=16):
     if "world_traj_i" in df.columns and "world_traj_j" in df.columns:
         gt_trajs, cond_trajs, start_pos_arr = [], [], []
 
-        for idx, row in df.iterrows():
+        for _idx, row in df.iterrows():
             traj_i = parse_traj(row["world_traj_i"], Th=Th)
             traj_j = parse_traj(row["world_traj_j"], Th=Th)
 

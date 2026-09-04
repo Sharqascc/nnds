@@ -18,7 +18,7 @@ def load_position_data(csv_path, Th=16):
     df = pd.read_csv(csv_path)
     df = df.sort_values(["event_id", "frame"])
     target_list, cond_list = [], []
-    for eid, grp in df.groupby("event_id"):
+    for _eid, grp in df.groupby("event_id"):
         if len(grp) < Th:
             continue
         sub = grp.iloc[:Th]

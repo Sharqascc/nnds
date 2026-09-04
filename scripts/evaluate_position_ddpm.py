@@ -18,7 +18,7 @@ def load_position_data_subset(csv_path, Th=16, max_events=200):
     df = df[df["event_id"].isin(event_ids)]
     target_list = []
     cond_list = []
-    for eid, grp in df.groupby("event_id"):
+    for _eid, grp in df.groupby("event_id"):
         if len(grp) < Th:
             continue
         sub = grp.iloc[:Th]

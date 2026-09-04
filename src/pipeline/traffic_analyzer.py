@@ -153,7 +153,9 @@ class CompleteTrafficAnalyzer:
             raise RuntimeError("Calibration must be run before BEV validation")
 
         validation_results: list[dict[str, Any]] = []
-        for i, (pix, world) in enumerate(zip(self.pixel_points, self.world_points_approx)):
+        for i, (pix, world) in enumerate(
+            zip(self.pixel_points, self.world_points_approx, strict=False)
+        ):
             world_computed = self.pixel_to_world(pix)
             error = float(np.linalg.norm(world_computed - world[:2]))
             validation_results.append(
@@ -379,8 +381,8 @@ def run_demo() -> tuple[CompleteTrafficAnalyzer, dict[str, Any], dict[str, float
 # ======================== Video → PET CLI ========================
 def run_video_to_pet(
     video_path: Path | str,
-    video_source: str = None,
-    time_of_day_label: str = None,
+    video_source: str | None = None,
+    time_of_day_label: str | None = None,
     bev_config_path: Path | str = "configs/bev_config.json",
     grid_config_path: Path | str = "configs/GITI_grid_config.json",
     sam3_weights_path: Path | str = "sam3.pt",
@@ -420,7 +422,7 @@ def run_video_to_pet(
     out_csv_path = Path(out_csv_path)
 
     # Validate inputs early with clear messages
-    for path, name in [
+    for path, _name in [
         (video_path, "Video"),
         (bev_config_path, "BEV config"),
         (grid_config_path, "Grid config"),
@@ -539,7 +541,7 @@ def run_video_to_pet(
 
     # Handle empty results robustly
     if not pet_events:
-        warnings.warn(f"No PET events detected in {video_path}", RuntimeWarning)
+        warnings.warn(f"No PET events detected in {video_path}", RuntimeWarning, stacklevel=2)
         empty_df = pd.DataFrame(
             columns=[
                 "event_id",

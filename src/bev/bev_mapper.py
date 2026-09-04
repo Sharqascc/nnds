@@ -263,7 +263,9 @@ def test_with_real_calibration(
     if hasattr(mapper, "world_to_bev_batch"):
         bev_coords, valid_bev = mapper.world_to_bev_batch(test_world_points)
         print(f"  Corner points within grid: {int(np.sum(valid_bev))}/4")
-        for world_pt, bev_pt, is_valid in zip(test_world_points, bev_coords, valid_bev):
+        for world_pt, bev_pt, is_valid in zip(
+            test_world_points, bev_coords, valid_bev, strict=False
+        ):
             status = "✓" if is_valid else "✗"
             print(f"    {status} World {world_pt} -> BEV {bev_pt}")
     else:

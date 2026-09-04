@@ -118,7 +118,7 @@ def main():
     cell_size = args.cell_size
     for tid, tr in tracks.items():
         cells = set()
-        for x, y in zip(tr["x"], tr["y"]):
+        for x, y in zip(tr["x"], tr["y"], strict=False):
             cx = int(x // cell_size)
             cy = int(y // cell_size)
             cells.add((cx, cy))
@@ -169,7 +169,7 @@ def main():
             if pet is None:
                 continue
 
-            for k, f in enumerate(common):
+            for k, _f in enumerate(common):
                 events.append(
                     {
                         "event_id": event_id,

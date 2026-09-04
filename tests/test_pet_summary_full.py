@@ -109,8 +109,8 @@ def test_by_conflict_type_present(tmp_path):
 
 
 def test_compare_with_baseline_no_overlap(tmp_path):
-    path1 = make_pet_csv(tmp_path, data={"pet": []})  # empty
-    path2 = make_pet_csv(tmp_path, data={"pet": []})
+    make_pet_csv(tmp_path, data={"pet": []})  # empty
+    make_pet_csv(tmp_path, data={"pet": []})
     # Need analyzer with empty series? _load_and_validate raises ValueError for empty.
     # So create non-empty and then monkeypatch to empty series? Better use two non-empty with n>0.
     # Actually n=min(len) so both non-empty but maybe zero after truncate? No.
@@ -134,7 +134,7 @@ def test_compare_with_baseline_parametric(tmp_path):
     ):
         result = analyzer.compare_with_baseline(path2)
     assert result["test_used"] == "paired t-test"
-    assert result["is_significant"] == True
+    assert result["is_significant"]
     assert "r2" in result
 
 

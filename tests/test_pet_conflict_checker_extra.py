@@ -84,12 +84,14 @@ def test_cli_main_guard(monkeypatch, tmp_path):
     csv = tmp_path / "events.csv"
     csv.write_text("pet\n0.5\n4.0\n")
     monkeypatch.setattr(sys, "argv", ["prog", "--csv", str(csv), "--no-uncertainty"])
-    with patch(
-        "src.analysis.pet_conflict_checker.PETConflictChecker.detect_from_csv",
-        return_value=pd.DataFrame(columns=["pet"]),
+    with (
+        patch(
+            "src.analysis.pet_conflict_checker.PETConflictChecker.detect_from_csv",
+            return_value=pd.DataFrame(columns=["pet"]),
+        ),
+        pytest.raises(SystemExit) as e,
     ):
-        with pytest.raises(SystemExit) as e:
-            runpy.run_module("src.analysis.pet_conflict_checker", run_name="__main__")
+        runpy.run_module("src.analysis.pet_conflict_checker", run_name="__main__")
     assert e.value.code == 0
 
 
@@ -102,10 +104,12 @@ def test_cli_main_block(monkeypatch, tmp_path):
     csv = tmp_path / "events.csv"
     csv.write_text("pet\n0.5\n4.0\n")
     monkeypatch.setattr(sys, "argv", ["prog", "--csv", str(csv), "--no-uncertainty"])
-    with patch(
-        "src.analysis.pet_conflict_checker.PETConflictChecker.detect_from_csv",
-        return_value=pd.DataFrame(columns=["pet"]),
+    with (
+        patch(
+            "src.analysis.pet_conflict_checker.PETConflictChecker.detect_from_csv",
+            return_value=pd.DataFrame(columns=["pet"]),
+        ),
+        pytest.raises(SystemExit) as e,
     ):
-        with pytest.raises(SystemExit) as e:
-            runpy.run_module("src.analysis.pet_conflict_checker", run_name="__main__")
+        runpy.run_module("src.analysis.pet_conflict_checker", run_name="__main__")
     assert e.value.code == 0

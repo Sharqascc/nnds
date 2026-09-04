@@ -35,7 +35,9 @@ try:
     HAS_PANDAS = True
 except ImportError:  # pragma: no cover
     HAS_PANDAS = False  # pragma: no cover
-    warnings.warn("pandas not available - correlation heatmap disabled")  # pragma: no cover
+    warnings.warn(
+        "pandas not available - correlation heatmap disabled", stacklevel=2
+    )  # pragma: no cover
 
 
 __all__ = [
@@ -788,7 +790,7 @@ class SSMPlotter:
         bars = ax.barh(y_pos, counts, color=colors, edgecolor="black", linewidth=0.8)
 
         # Add count labels on bars
-        for i, (bar, count) in enumerate(zip(bars, counts)):
+        for i, (bar, count) in enumerate(zip(bars, counts, strict=False)):
             if count > 0:  # pragma: no cover
                 ax.text(  # pragma: no cover
                     bar.get_width() + max(counts) * 0.01,

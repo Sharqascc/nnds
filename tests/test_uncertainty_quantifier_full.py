@@ -16,7 +16,7 @@ from src.analysis.ssm.uncertainty_quantifier import (
 def test_analyze_empty_data():
     uq = UncertaintyQuantifier(n_bootstrap=100)
     res = uq.analyze(np.array([]), name="empty")
-    assert res["passed"] == False
+    assert not res["passed"]
     assert "No valid data" in res["errors"][0]
 
 
@@ -93,7 +93,7 @@ def test_monte_carlo_normal_uniform_lognormal():
         lambda **kw: kw["a"] + kw["b"] + kw["c"],
         n_samples=20,
     )
-    assert result["passed"] == True
+    assert result["passed"]
 
 
 # ---------- compute_effect_size ----------

@@ -29,7 +29,7 @@ def main():
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    for idx, row in pet.iterrows():
+    for _idx, row in pet.iterrows():
         frame_conflict = int(row["frame"])
         event_id = row["event_id"]
         event_dir = out_dir / f"event_{event_id:03d}"

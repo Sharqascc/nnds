@@ -254,9 +254,7 @@ def test_generate_conflict_video_success(plotter):
 
 
 def test_convenience_overlay_conflict_frame():
-    with patch.object(
-        VideoOverlayPlotter, "overlay_conflict_frame", return_value=make_frame()
-    ) as mock_overlay:
+    with patch.object(VideoOverlayPlotter, "overlay_conflict_frame", return_value=make_frame()):
         out = overlay_conflict_frame("dummy.mp4", 0, [[(0, 0, 0), (1, 1, 1)]])
     assert out.shape == (150, 200, 3)
 

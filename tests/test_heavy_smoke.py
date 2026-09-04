@@ -39,7 +39,7 @@ def test_yolo_cpu_grid_pet_smoke(tmp_path):
 
     # Patch YOLO to avoid model load; patch cv2.VideoCapture to force RuntimeError
     with (
-        patch("src.analysis.grid_trajectory.yolo_cpu_grid_pet.YOLO", MagicMock()) as yolo_mock,
+        patch("src.analysis.grid_trajectory.yolo_cpu_grid_pet.YOLO", MagicMock()),
         patch("cv2.VideoCapture") as cap_mock,
     ):
         cap_mock.return_value.isOpened.return_value = False

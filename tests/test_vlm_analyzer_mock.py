@@ -43,7 +43,7 @@ def test_analyze_image_mocks():
         patch("src.vlm.analyzer.BlipProcessor.from_pretrained") as mock_proc_from,
         patch("src.vlm.analyzer.BlipForQuestionAnswering.from_pretrained") as mock_model_from,
         patch("PIL.Image.open") as mock_image_open,
-        patch("torch.no_grad") as mock_no_grad,
+        patch("torch.no_grad"),
     ):
         mock_proc = MagicMock()
         mock_model = MagicMock()

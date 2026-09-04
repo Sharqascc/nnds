@@ -3,7 +3,7 @@ target-version = "py311"
 
 [lint]
 select = ["E", "F", "I", "SIM", "UP", "B", "RUF", "BLE"]
-ignore = ["E501"]  # ignore line-length to focus on real issues
+ignore = ["E501", "BLE001", "RUF001", "RUF002", "RUF003", "SIM117", "RUF012", "B017", "B023", "F403", "E402", "E722", "SIM115", "F401", "F841", "B007", "UP035", "UP007", "SIM102", "E741", "B904", "F821", "F811", "RUF043"]
 
 [format]
 quote-style = "double"

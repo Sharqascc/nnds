@@ -128,7 +128,7 @@ def test_plot_pet_distribution_invalid(plotter):
 
 def test_plot_pet_distribution_valid(plotter):
     data = np.array([0.1, 0.6, 1.2, 2.0, 6.0])
-    with patch_plotting() as mocks:
+    with patch_plotting():
         fig = plotter.plot_pet_distribution(data, show_kde=True, save_path=None)
     assert fig is not None
 

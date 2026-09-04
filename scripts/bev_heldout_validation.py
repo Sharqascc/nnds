@@ -34,7 +34,7 @@ def main():
     with open(calib_path) as f:
         calib = json.load(f)
     with open(bev_path) as f:
-        bev = json.load(f)
+        json.load(f)
     points = calib["calibration_points"]
     pixel = np.array([[p["pixel"]["x"], p["pixel"]["y"]] for p in points], dtype=float)
     world = np.array([[p["world"]["easting"], p["world"]["northing"]] for p in points], dtype=float)

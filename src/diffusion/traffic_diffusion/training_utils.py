@@ -28,7 +28,7 @@ try:
     CORE_TYPES_AVAILABLE = True
 except ImportError:
     CORE_TYPES_AVAILABLE = False
-    warnings.warn("core.types not found. Using fallback types.")
+    warnings.warn("core.types not found. Using fallback types.", stacklevel=2)
 
 from src.diffusion.traffic_diffusion.trajectory_diffusion import (
     TrajectoryDataset,

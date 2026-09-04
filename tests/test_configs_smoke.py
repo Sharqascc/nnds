@@ -125,6 +125,7 @@ def test_bev_config_has_required_fields_and_bounds():
                 "Intersection should typically span >10m in each direction."
             ),
             UserWarning,
+            stacklevel=2,
         )
 
 
@@ -146,6 +147,7 @@ def test_bev_config_has_valid_homography():
         warnings.warn(
             "Homography appears to be identity matrix - check calibration",
             UserWarning,
+            stacklevel=2,
         )
 
 
@@ -208,6 +210,7 @@ def test_calibration_points_have_spread_and_required_fields():
                     f"expected at least ~{min_spread} in at least one direction."
                 ),
                 UserWarning,
+                stacklevel=2,
             )
 
 
@@ -234,6 +237,7 @@ def test_demo_csv_exists_and_has_rows():
                 "Consider populating with real sample data."
             ),
             UserWarning,
+            stacklevel=2,
         )
     else:
         # PET should be strictly positive
@@ -244,4 +248,5 @@ def test_demo_csv_exists_and_has_rows():
                     "PET should be strictly positive."
                 ),
                 UserWarning,
+                stacklevel=2,
             )

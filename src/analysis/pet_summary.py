@@ -80,7 +80,8 @@ class PETEventAnalyzer:
         if n_invalid > 0:
             warnings.warn(
                 f"{n_invalid} rows had invalid PET values and were removed "
-                f"(from {original_len} total rows)."
+                f"(from {original_len} total rows).",
+                stacklevel=2,
             )
             df = df.loc[~invalid_mask].copy()
 
@@ -89,10 +90,12 @@ class PETEventAnalyzer:
 
         # Range checks (domain sanity, not hard errors).
         if (df["pet"] < 0).any():
-            warnings.warn("Negative PET values found; check data quality.")
+            warnings.warn("Negative PET values found; check data quality.", stacklevel=2)
 
         if (df["pet"] > 10).any():
-            warnings.warn("Very large PET values (>10 s) found; ensure they are expected.")
+            warnings.warn(
+                "Very large PET values (>10 s) found; ensure they are expected.", stacklevel=2
+            )
 
         self.df = df
         self.pet_series = df["pet"]

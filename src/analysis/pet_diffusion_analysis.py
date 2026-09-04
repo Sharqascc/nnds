@@ -34,7 +34,9 @@ try:
     TQDM_AVAILABLE = True
 except ImportError:
     TQDM_AVAILABLE = False
-    warnings.warn("tqdm not available - progress bars disabled. Install with: pip install tqdm")
+    warnings.warn(
+        "tqdm not available - progress bars disabled. Install with: pip install tqdm", stacklevel=2
+    )
 
     # Fallback: dummy tqdm
     def tqdm(iterable, **kwargs):

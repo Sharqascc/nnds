@@ -380,7 +380,7 @@ def compute_pet_batch(
         try:
             pets[i] = compute_pet(times_a_list[i], times_b_list[i])
         except Exception as e:
-            warnings.warn(f"PET computation failed for pair {i}: {e}", RuntimeWarning)
+            warnings.warn(f"PET computation failed for pair {i}: {e}", RuntimeWarning, stacklevel=2)
 
     return pets
 
@@ -593,8 +593,8 @@ def detect_conflicts(
         pet_col = _find_pet_column(df)
 
     if pet_col is None:
-        warnings.warn("No PET column found; cannot detect conflicts.", RuntimeWarning)
-        return pd.DataFrame(columns=list(df.columns) + ["is_conflict"])
+        warnings.warn("No PET column found; cannot detect conflicts.", RuntimeWarning, stacklevel=2)
+        return pd.DataFrame(columns=[*list(df.columns), "is_conflict"])
 
     # Filter conflicts
     conflicts = df[df[pet_col] <= pet_threshold].copy()

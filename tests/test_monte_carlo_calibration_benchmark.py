@@ -172,7 +172,7 @@ def test_solve_pnp_Z0_world_error():
         "src.bev.calibration.monte_carlo_calibration_benchmark.solve_pnp_world_error",
         return_value=(0.5, None, None),
     ) as mock_solve:
-        mae, R, t = solve_pnp_Z0_world_error(world, img, 0)
+        mae, _R, _t = solve_pnp_Z0_world_error(world, img, 0)
     # Verify Z set to zero before solve
     called_wp = mock_solve.call_args[0][0]
     assert np.all(called_wp[:, 2] == 0.0)

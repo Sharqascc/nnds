@@ -35,7 +35,9 @@ try:
     from src.analysis.grid_trajectory.spatial_grid import SpatialGrid
 except ImportError:  # pragma: no cover
     SpatialGrid = None  # pragma: no cover
-    warnings.warn("SpatialGrid not available - grid overlay disabled")  # pragma: no cover
+    warnings.warn(
+        "SpatialGrid not available - grid overlay disabled", stacklevel=2
+    )  # pragma: no cover
 
 
 __all__ = [

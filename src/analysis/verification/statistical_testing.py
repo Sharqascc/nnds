@@ -766,10 +766,7 @@ def multiple_comparisons(
     tester = StatisticalTester(alpha=alpha, correction_method=correction)
 
     # Omnibus test
-    if parametric:
-        omnibus = tester.anova(*groups)
-    else:
-        omnibus = tester.kruskal_wallis(*groups)
+    omnibus = tester.anova(*groups) if parametric else tester.kruskal_wallis(*groups)
 
     # Pairwise comparisons
     pairwise = []

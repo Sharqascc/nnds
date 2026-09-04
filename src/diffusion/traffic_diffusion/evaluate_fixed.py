@@ -1,3 +1,4 @@
+import contextlib
 import os
 
 import numpy as np
@@ -188,7 +189,7 @@ def run_evaluation(
     all_generated_pos = []
 
     with torch.no_grad():
-        for k in range(K):
+        for _k in range(K):
             v_sampled_norm = model.sample(cond=cond_tensor).cpu().numpy()
 
             if v_sampled_norm.ndim == 4:
@@ -199,10 +200,8 @@ def run_evaluation(
                 v_sampled = v_sampled.squeeze(2)
 
             # Apply Savitzky-Golay smoothing to velocity trajectories
-            try:
+            with contextlib.suppress(Exception):
                 v_sampled = savgol_filter(v_sampled, window_length=7, polyorder=3, axis=1)
-            except Exception:
-                pass
 
             # Reconstruct absolute positions via cumulative summation of velocities
             gen_pos = np.cumsum(v_sampled, axis=1)
@@ -215,20 +214,14 @@ def run_evaluation(
     best_trajs = pred_k_trajs[np.arange(len(pred_k_trajs)), best_k_idx]
 
     # Additional Gaussian smoothing on final positions
-    try:
+    with contextlib.suppress(Exception):
         best_trajs = gaussian_filter1d(best_trajs, sigma=1.5, axis=1)
-    except Exception:
-        pass
 
     # RTS smoothing
-    try:
+    with contextlib.suppress(Exception):
         best_trajs = rts_smooth(best_trajs, dt=0.1)
-    except Exception:
-        pass
-    try:
+    with contextlib.suppress(Exception):
         best_trajs = gaussian_filter1d(best_trajs, sigma=1.5, axis=1)
-    except Exception:
-        pass
 
     results = compute_metrics(best_trajs, gt_arr, cond_trajs_full, real_pets_arr)
 

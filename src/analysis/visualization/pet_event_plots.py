@@ -94,8 +94,8 @@ def compute_timing_from_traj(df: pd.DataFrame) -> pd.DataFrame:
     """
 
     def closest_approach_times(traj_i, traj_j):
-        ti, xi, yi = zip(*traj_i)
-        tj, xj, yj = zip(*traj_j)
+        ti, xi, yi = zip(*traj_i, strict=False)
+        tj, xj, yj = zip(*traj_j, strict=False)
 
         ti = np.array(ti)
         xi = np.array(xi)
@@ -266,8 +266,8 @@ class EventPlotter:
         traj_i = row["traj_i"]
         traj_j = row["traj_j"]
 
-        ti, xi, yi = zip(*traj_i)
-        tj, xj, yj = zip(*traj_j)
+        ti, xi, yi = zip(*traj_i, strict=False)
+        tj, xj, yj = zip(*traj_j, strict=False)
 
         ti = np.array(ti)
         xi = np.array(xi)
@@ -517,7 +517,9 @@ class EventPlotter:
                     print(f"  Progress: {i}/{len(event_ids)} events plotted")  # pragma: no cover
             # pragma: no cover
             except Exception as e:  # pragma: no cover
-                warnings.warn(f"Failed to plot event {event_id}: {e}")  # pragma: no cover
+                warnings.warn(
+                    f"Failed to plot event {event_id}: {e}", stacklevel=2
+                )  # pragma: no cover
 
         print(f"✅ All plots saved to: {save_dir}/")
         if save_pdf:

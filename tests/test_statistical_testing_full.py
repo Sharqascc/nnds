@@ -31,7 +31,7 @@ def test_clean_data():
 def test_check_normality_shapiro_small():
     tester = StatisticalTester()
     res = tester.check_normality(np.array([1.0]))
-    assert res["passed"] == False
+    assert not res["passed"]
     assert "error" in res
 
 
@@ -114,7 +114,7 @@ def test_t_test_one_sample():
 def test_t_test_one_sample_insufficient():
     tester = StatisticalTester()
     res = tester.t_test(np.array([1.0]))
-    assert res["passed"] == False
+    assert not res["passed"]
 
 
 def test_t_test_two_sample_welch():
@@ -148,20 +148,20 @@ def test_t_test_paired_equal_length():
 def test_t_test_paired_length_mismatch():
     tester = StatisticalTester()
     res = tester.t_test(np.array([1, 2, 3]), np.array([1, 2]), paired=True)
-    assert res["passed"] == False
+    assert not res["passed"]
 
 
 def test_t_test_insufficient_group2():
     tester = StatisticalTester()
     res = tester.t_test(np.array([1, 2, 3]), np.array([1]))
-    assert res["passed"] == False
+    assert not res["passed"]
 
 
 # ---------- mann_whitney ----------
 def test_mann_whitney_insufficient():
     tester = StatisticalTester()
     res = tester.mann_whitney(np.array([1]), np.array([2]))
-    assert res["passed"] == False
+    assert not res["passed"]
 
 
 def test_mann_whitney_valid():
@@ -178,13 +178,13 @@ def test_mann_whitney_valid():
 def test_wilcoxon_length_mismatch():
     tester = StatisticalTester()
     res = tester.wilcoxon(np.array([1, 2, 3]), np.array([1, 2]))
-    assert res["passed"] == False
+    assert not res["passed"]
 
 
 def test_wilcoxon_insufficient():
     tester = StatisticalTester()
     res = tester.wilcoxon(np.array([1]), np.array([1]))
-    assert res["passed"] == False
+    assert not res["passed"]
 
 
 def test_wilcoxon_valid():
@@ -200,13 +200,13 @@ def test_wilcoxon_valid():
 def test_anova_need_two_groups():
     tester = StatisticalTester()
     res = tester.anova(np.array([1, 2, 3]))
-    assert res["passed"] == False
+    assert not res["passed"]
 
 
 def test_anova_small_group():
     tester = StatisticalTester()
     res = tester.anova(np.array([1]), np.array([2]))
-    assert res["passed"] == False
+    assert not res["passed"]
 
 
 def test_anova_valid():
@@ -224,13 +224,13 @@ def test_anova_valid():
 def test_kruskal_need_two_groups():
     tester = StatisticalTester()
     res = tester.kruskal_wallis(np.array([1, 2, 3]))
-    assert res["passed"] == False
+    assert not res["passed"]
 
 
 def test_kruskal_small_group():
     tester = StatisticalTester()
     res = tester.kruskal_wallis(np.array([1]), np.array([2]))
-    assert res["passed"] == False
+    assert not res["passed"]
 
 
 def test_kruskal_valid():
@@ -352,7 +352,7 @@ def test_check_assumptions_nonnormal():
     g2 = rng.exponential(1.5, 30)
     tester = StatisticalTester(alpha=0.05)
     res = tester.check_assumptions(g1, g2, test_type="t-test")
-    assert res["all_passed"] == False
+    assert not res["all_passed"]
     assert any("non-normal" in rec for rec in res["recommendations"])
 
 
@@ -362,7 +362,7 @@ def test_check_assumptions_unequal_variances_t_test():
     g2 = rng.normal(0, 10, 30)  # much larger variance
     tester = StatisticalTester(alpha=0.05)
     res = tester.check_assumptions(g1, g2, test_type="t-test")
-    assert res["all_passed"] == False
+    assert not res["all_passed"]
     assert any("Welch's t-test" in rec for rec in res["recommendations"])
 
 
@@ -373,7 +373,7 @@ def test_check_assumptions_unequal_variances_anova():
     g3 = rng.normal(0, 10, 30)
     tester = StatisticalTester(alpha=0.05)
     res = tester.check_assumptions(g1, g2, g3, test_type="anova")
-    assert res["all_passed"] == False
+    assert not res["all_passed"]
     assert any("Kruskal-Wallis" in rec for rec in res["recommendations"])
 
 

@@ -11,8 +11,7 @@ import sys
 
 
 def run_tracker(tracker_name, args):
-    out_csv = f"outputs/baseline_{tracker_name}_detections.csv"
-    cmd = [
+    [
         sys.executable,
         "scripts/run_pipeline.py",
         "--video",

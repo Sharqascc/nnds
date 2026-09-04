@@ -109,7 +109,7 @@ def test_generate_synthetic_grid_shapes():
 
 def test_generate_synthetic_grid_single_row_col():
     rng = np.random.default_rng(42)
-    pixel, noisy, true = generate_synthetic_grid(
+    pixel, _noisy, true = generate_synthetic_grid(
         grid_rows=1,
         grid_cols=1,
         x_min_px=0,
@@ -203,7 +203,7 @@ def test_main_end_to_end(tmp_path, monkeypatch):
     )
 
     H = np.eye(3, dtype=np.float32)
-    mask = np.ones((6, 1), dtype=np.uint8)
+    np.ones((6, 1), dtype=np.uint8)
 
     def fake_find_homography(*args, **kwargs):
         # Return H and mask with same length as input points

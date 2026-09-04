@@ -267,8 +267,8 @@ def run_uvh_coco_fused_grid_pet(
     max_frame_gap: int = 5,
     max_spatial_jump: float = 30.0,
     prediction_tolerance: float = 80.0,
-    video_source: str = None,
-    time_of_day_label: str = None,
+    video_source: str | None = None,
+    time_of_day_label: str | None = None,
     gate_config_path: str = "configs/gate_config.yaml",
 ) -> dict[str, Any]:
     video_path = str(Path(video_path).resolve())
@@ -385,7 +385,7 @@ def run_uvh_coco_fused_grid_pet(
     pbar = tqdm(
         total=total_iters, desc="Processing frames", unit="frame", disable=not show_progress
     )
-    for uvh_r, coco_r in zip(uvh_results, coco_results):
+    for uvh_r, coco_r in zip(uvh_results, coco_results, strict=False):
         if max_frames is not None and frame_idx >= max_frames:
             break
 
@@ -547,7 +547,6 @@ def run_uvh_coco_fused_grid_pet(
             user_input = input().strip().lower()
             if user_input == "stop":
                 print("⏹️ Stopped by user.")
-                stop_processing = True
                 break
 
     pbar.close()
@@ -668,7 +667,7 @@ def run_uvh_coco_fused_grid_pet(
             pet_result = _compute_pet_from_windows(a_entry, a_exit, b_entry, b_exit, fps)
             if pet_result is None:
                 continue
-            pet, first_placeholder, second_placeholder, frame_ref = pet_result
+            pet, first_placeholder, _second_placeholder, frame_ref = pet_result
 
             # Map placeholder IDs back to actual track IDs
             if first_placeholder == "a":
@@ -881,6 +880,4 @@ def _can_intersect_temporal(track_a, track_b, fps=25.0, max_pet=2.0):
     min_a, max_a = track_a["frames"][0], track_a["frames"][-1]
     min_b, max_b = track_b["frames"][0], track_b["frames"][-1]
 
-    if min_b > (max_a + max_frames_diff) or min_a > (max_b + max_frames_diff):
-        return False
-    return True
+    return not (min_b > max_a + max_frames_diff or min_a > max_b + max_frames_diff)

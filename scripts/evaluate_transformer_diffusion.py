@@ -3,6 +3,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import contextlib
+
 import numpy as np
 import pandas as pd
 import torch
@@ -22,7 +24,7 @@ def load_position_data_subset(csv_path, Th=16, max_events=200):
     event_ids = df["event_id"].unique()[:max_events]
     df = df[df["event_id"].isin(event_ids)]
     target_list, cond_list, real_pets = [], [], []
-    for eid, grp in df.groupby("event_id"):
+    for _eid, grp in df.groupby("event_id"):
         if len(grp) < Th:
             continue
         sub = grp.iloc[:Th]
@@ -67,7 +69,7 @@ def evaluate_transformer_diffusion(
     cond_tensor = torch.from_numpy(conds_norm).float()
     all_gen = []
     with torch.no_grad():
-        for k in range(K):
+        for _k in range(K):
             # Start from noise, shape (N, Th, 1, 2)
             x = torch.randn(N, Th, 1, 2)
             for t in torch.linspace(ckpt["num_timesteps"] - 1, 0, num_steps).long():
@@ -88,14 +90,10 @@ def evaluate_transformer_diffusion(
     best = all_gen[np.arange(N), best_k]
 
     # Apply smoothing for kinematic improvement
-    try:
+    with contextlib.suppress(Exception):
         best = savgol_filter(best, window_length=5, polyorder=2, axis=1)
-    except Exception:
-        pass
-    try:
+    with contextlib.suppress(Exception):
         best = gaussian_filter1d(best, sigma=0.8, axis=1)
-    except Exception:
-        pass
 
     ade = np.mean(np.linalg.norm(best - targets, axis=-1))
     fde = np.mean(np.linalg.norm(best[:, -1] - targets[:, -1], axis=-1))

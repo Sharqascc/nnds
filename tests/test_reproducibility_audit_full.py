@@ -262,7 +262,7 @@ def test_verify_reproducibility_with_mismatches(tmp_path):
         patch.object(auditor, "_get_git_info", return_value={"commit": "cafebabe", "dirty": True}),
     ):
         result = auditor.verify_reproducibility(str(report_path))
-    assert result["reproducible"] == False
+    assert not result["reproducible"]
     assert len(result["mismatches"]) > 0
 
 
@@ -394,7 +394,7 @@ def test_verify_reproducibility_pkg_mismatch(tmp_path):
         ),
     ):
         result = auditor.verify_reproducibility(str(report_path))
-    assert result["reproducible"] == True
+    assert result["reproducible"]
     assert any("not installed" in w for w in result["warnings"])
 
 
@@ -416,7 +416,7 @@ def test_verify_reproducibility_input_checksum_mismatch(tmp_path):
     report_path.write_text(json.dumps(saved))
     with patch.object(auditor, "_get_git_info", return_value=auditor._get_git_info()):
         result = auditor.verify_reproducibility(str(report_path))
-    assert result["reproducible"] == False
+    assert not result["reproducible"]
     assert any("checksum mismatch" in m for m in result["mismatches"])
 
 
@@ -519,7 +519,7 @@ def test_verify_reproducibility_pip_freeze_skipped(tmp_path):
     report_path.write_text(json.dumps(saved))
     with patch.object(auditor, "_get_git_info", return_value=auditor._get_git_info()):
         result = auditor.verify_reproducibility(str(report_path))
-    assert result["reproducible"] == True
+    assert result["reproducible"]
 
 
 def test_verify_reproducibility_pkg_version_mismatch(tmp_path):

@@ -255,18 +255,21 @@ def test_run_video_to_pet_empty_events_writes_csv(tmp_path):
     class FakeResult:
         pet_events = []
 
-    with mock.patch(
-        "src.analysis.grid_trajectory.sam3_grid_pet.run_sam3_grid_pet", return_value=FakeResult()
+    with (
+        mock.patch(
+            "src.analysis.grid_trajectory.sam3_grid_pet.run_sam3_grid_pet",
+            return_value=FakeResult(),
+        ),
+        pytest.warns(RuntimeWarning, match="No PET events detected"),
     ):
-        with pytest.warns(RuntimeWarning, match="No PET events detected"):
-            df = run_video_to_pet(
-                video,
-                bev_config_path=bev,
-                grid_config_path=grid,
-                detector="sam3",
-                sam3_weights_path=sam3,
-                out_csv_path=out,
-            )
+        df = run_video_to_pet(
+            video,
+            bev_config_path=bev,
+            grid_config_path=grid,
+            detector="sam3",
+            sam3_weights_path=sam3,
+            out_csv_path=out,
+        )
     assert df.empty
     assert out.exists()
 

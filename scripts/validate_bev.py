@@ -69,8 +69,8 @@ def main():
     rank = np.linalg.matrix_rank(H)
 
     # Normalized condition number: normalize points, compute H_norm, then cond
-    pixel_norm, T_pixel = hartley_normalize(pixel_pts)
-    world_norm, T_world = hartley_normalize(world_pts)
+    pixel_norm, _T_pixel = hartley_normalize(pixel_pts)
+    world_norm, _T_world = hartley_normalize(world_pts)
     H_norm, _ = cv2.findHomography(pixel_norm, world_norm, cv2.RANSAC, 5.0)
     cond_norm = np.linalg.cond(H_norm)
 
