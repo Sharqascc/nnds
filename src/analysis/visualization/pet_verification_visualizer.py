@@ -89,27 +89,77 @@ class PETVerificationVisualizer:
 
     def generate_video(self, event_id, output_path, fps=10):
         event = self.load_event(event_id)
+        traj_a = self.parse_traj(event.get('traj_a_json', event.get('world_traj_i')))
+        traj_b = self.parse_traj(event.get('traj_b_json', event.get('world_traj_j')))
+        if not traj_a and not traj_b:
+            raise ValueError(f"No trajectory data for event {event_id}")
+
+        # Open real video
         cap = cv2.VideoCapture(str(self.video_path))
-        total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        if total == 0:
+        if not cap.isOpened():
+            raise RuntimeError("Could not open source video")
+        total_video_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        if total_video_frames == 0:
             cap.release()
             raise RuntimeError("Video has no frames")
-        conflict_frame = int(event['frame'])
-        start = max(0, conflict_frame - 25)
-        end = min(total - 1, conflict_frame + 25)
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
+
+        # Determine trajectory frame range
+        frames_a = [int(p.get('frame', 0)) for p in traj_a]
+        frames_b = [int(p.get('frame', 0)) for p in traj_b]
+        all_frames = frames_a + frames_b
+        if not all_frames:
+            cap.release()
+            raise ValueError("Trajectory frames are empty")
+        min_frame, max_frame = min(all_frames), max(all_frames)
+
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
         if not out.isOpened():
             cap.release()
             raise RuntimeError("Could not open VideoWriter")
-        for idx in range(start, end + 1):
-            cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
+
+        for video_idx in range(total_video_frames):
             ret, frame = cap.read()
             if not ret:
                 break
-            frame = self.process_frame(frame, event, idx)
+
+            # Map video frame to trajectory frame proportionally
+            if total_video_frames > 1:
+                mapped_frame = min_frame + (video_idx / (total_video_frames - 1)) * (max_frame - min_frame)
+            else:
+                mapped_frame = min_frame
+
+            # Draw full trajectories (static) and current positions
+            frame = self.draw_trajectory(frame, traj_a, self.colors['track_a'], current_frame=None)
+            frame = self.draw_trajectory(frame, traj_b, self.colors['track_b'], current_frame=None)
+
+            pos_a = self._get_position_at(traj_a, mapped_frame)
+            pos_b = self._get_position_at(traj_b, mapped_frame)
+            if pos_a is not None:
+                cv2.circle(frame, pos_a, 8, self.colors['track_a'], -1)
+            if pos_b is not None:
+                cv2.circle(frame, pos_b, 8, self.colors['track_b'], -1)
+
+            # Conflict zone between current positions
+            if pos_a is not None and pos_b is not None:
+                center = ((pos_a[0] + pos_b[0]) // 2, (pos_a[1] + pos_b[1]) // 2)
+                cv2.circle(frame, center, self.conflict_zone_radius, self.colors['conflict'], 2)
+
+            # Timing and event info
+            frame = self.draw_timing_info(frame, event)
             out.write(frame)
+
         cap.release()
         out.release()
-        return output_path
+        return str(output_path)
+
+    def _get_position_at(self, traj, frame_idx):
+        """Return (x_pixel, y_pixel) at or before frame_idx, or None."""
+        valid = [p for p in traj if int(p.get('frame', 0)) <= frame_idx]
+        if not valid:
+            return None
+        last = valid[-1]
+        return (int(last.get('x_pixel', last.get('world_x', 0))),
+                int(last.get('y_pixel', last.get('world_y', 0))))
