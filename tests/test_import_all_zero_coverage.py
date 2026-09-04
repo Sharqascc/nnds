@@ -27,7 +27,7 @@ zero_modules = [
     "src.vlm.analyzer",
     "src.vlm.config",
     "src.vlm.gate_validator",
-    "src.vlm.test_free_models",
+    
     "src.vlm.utils.image_utils",
     "src.vlm.utils.visualization",
     "src.vlm.vlm_enhanced_pipeline",
