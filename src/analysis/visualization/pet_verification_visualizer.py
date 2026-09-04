@@ -9,7 +9,7 @@ from pathlib import Path
 class PETVerificationVisualizer:
     """Draws PET conflict event overlays on video frames for reviewer verification."""
 
-    def __init__(self, pet_csv_path, video_path, conflict_zone_radius=40, background_mode='schematic'):
+    def __init__(self, pet_csv_path, video_path, conflict_zone_radius=40, background_mode='schematic', spatial_grid=None):
         self.df = pd.read_csv(pet_csv_path)
         self.video_path = Path(video_path)
         self.conflict_zone_radius = conflict_zone_radius
@@ -21,11 +21,12 @@ class PETVerificationVisualizer:
             'text': (255, 255, 255),
         }
         self.background_mode = background_mode
+        self.spatial_grid = spatial_grid
 
 
     def _schematic_background(self, width=1600, height=720):
         """Return a clean dark canvas for schematic mode."""
-        return np.full((height, width, 3), (45, 45, 45), dtype=np.uint8)
+        return np.full((height, width, 3), (240, 240, 240), dtype=np.uint8)
 
     def load_event(self, event_id):
         rows = self.df[self.df['event_id'] == event_id]
@@ -72,25 +73,20 @@ class PETVerificationVisualizer:
         return [(int(x), int(y)) for x, y in zip(xs_s, ys_s)]
 
     def draw_trajectory(self, frame, traj, color, current_frame=None):
+        if current_frame is not None:
+            # Only keep points up to current frame for animation
+            traj = [p for p in traj if int(p.get('frame', 0)) <= current_frame]
         pts = self._smooth_points(traj)
         if len(pts) >= 2:
-            # Draw segments with anti-aliasing
             for i in range(len(pts)-1):
-                cv2.line(frame, pts[i], pts[i+1], color, 2, lineType=cv2.LINE_AA)
-        if current_frame is not None:
-            # Use original trajectory to find exact current position, then map to nearest smoothed
-            valid = [p for p in traj if int(p.get('frame', 0)) <= current_frame]
-            if valid:
-                last = valid[-1]
-                # Find closest smoothed point to original position
-                orig_x = int(last.get('x_pixel', last.get('world_x', 0)))
-                orig_y = int(last.get('y_pixel', last.get('world_y', 0)))
-                min_dist = 1e9; best_pt = pts[-1]
-                for p in pts:
-                    d = (p[0]-orig_x)**2 + (p[1]-orig_y)**2
-                    if d < min_dist:
-                        min_dist = d; best_pt = p
-                cv2.circle(frame, best_pt, 6, color, -1)
+                cv2.line(frame, pts[i], pts[i+1], color, 3, lineType=cv2.LINE_AA)
+        if pts:
+            # Draw current position at last point
+            last = pts[-1]
+            h, w = frame.shape[:2]
+            x = max(0, min(w-1, last[0]))
+            y = max(0, min(h-1, last[1]))
+            cv2.circle(frame, (x, y), 6, color, -1)
         return frame
 
     def draw_grid_cell(self, frame, cell_name, center=None, radius=None):
@@ -99,16 +95,28 @@ class PETVerificationVisualizer:
             center = (w // 2, h // 2)
         if radius is None:
             radius = self.conflict_zone_radius
-        # Draw rectangle around the grid cell region
         x1 = max(0, center[0] - radius)
         y1 = max(0, center[1] - radius)
         x2 = min(w, center[0] + radius)
         y2 = min(h, center[1] + radius)
-        cv2.rectangle(frame, (x1, y1), (x2, y2), self.colors['grid'], 2, cv2.LINE_AA)
-        # Label the cell
+
+        # 1) Translucent red fill for high visibility
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (x1, y1), (x2, y2), (0, 0, 255), -1)
+        frame = cv2.addWeighted(overlay, 0.35, frame, 0.65, 0)
+
+        # 2) Thick red border
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 4, cv2.LINE_AA)
+
+        # 3) Label with dark background for contrast
         label = f"Cell: {cell_name}"
-        cv2.putText(frame, label, (x1 + 5, max(20, y1 - 10)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.colors['grid'], 2, cv2.LINE_AA)
+        (tw, th), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
+        label_y = max(20, y1 - 10)
+        # Black rectangle behind text
+        cv2.rectangle(frame, (x1, label_y - th - baseline), (x1 + tw + 10, label_y + baseline),
+                      (0, 0, 0), -1)
+        cv2.putText(frame, label, (x1 + 5, label_y),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv2.LINE_AA)
         return frame
 
 
@@ -188,10 +196,17 @@ class PETVerificationVisualizer:
             frames_a = [int(p.get('frame', 0)) for p in traj_a]
             frames_b = [int(p.get('frame', 0)) for p in traj_b]
             min_frame = min(frames_a + frames_b)
-            max_frame = max(frames_a + frames_b)
-            # Generate 100 evenly spaced frames across trajectory span
-            total_frames = 100
-            video_idx_range = list(range(total_frames))
+            conflict_frame = int(event.get('frame', max(frames_a + frames_b)))
+            # Use conflict frame as the end (or max if conflict not set)
+            end_frame = conflict_frame if conflict_frame > min_frame else max(frames_a + frames_b)
+            total_span = end_frame - min_frame + 1
+            # Determine step to keep <= max_frames
+            if total_span > max_frames:
+                step = total_span / (max_frames - 1)
+                video_idx_range = [min_frame + int(i * step) for i in range(max_frames)]
+            else:
+                video_idx_range = list(range(min_frame, end_frame + 1))
+            total_frames = len(video_idx_range)
         else:
             # Open real video (optional; blurry source not used by default)
             cap = cv2.VideoCapture(str(self.video_path))
@@ -203,11 +218,17 @@ class PETVerificationVisualizer:
                 raise RuntimeError("Video has no frames")
             width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            # Cap number of video frames to max_frames by sampling evenly
-            if total_video_frames > max_frames:
-                video_idx_range = np.linspace(0, total_video_frames - 1, max_frames, dtype=int)
+            # Center the sampling window around the conflict frame to avoid missing it.
+            conflict_frame = int(event.get('frame', 0))
+            half_window = max_frames // 2
+            start = max(0, conflict_frame - half_window)
+            end = min(total_video_frames, conflict_frame + half_window)
+            available = end - start
+            if available > max_frames:
+                # Sample within the conflict-centered window
+                video_idx_range = np.linspace(start, end - 1, max_frames, dtype=int)
             else:
-                video_idx_range = range(total_video_frames)
+                video_idx_range = list(range(start, end))
 
         # Determine trajectory frame range
         frames_a = [int(p.get('frame', 0)) for p in traj_a]
@@ -225,30 +246,28 @@ class PETVerificationVisualizer:
                 cap.release()
             raise RuntimeError("Could not open VideoWriter")
 
-        for video_idx in video_idx_range:
+        for frame_idx in video_idx_range:
             if self.background_mode == 'schematic':
                 frame = self._schematic_background(width, height)
-                # Map idx to trajectory frame
-                mapped_frame = min_frame + (video_idx / (total_frames - 1)) * (max_frame - min_frame) if total_frames > 1 else min_frame
             else:
                 ret, frame = cap.read()
                 if not ret:
                     break
                 # Sharpen/contrast the real footage background
                 frame = self._enhance_background(frame)
-                # Map video frame to trajectory frame proportionally
-                if total_video_frames > 1:
-                    mapped_frame = min_frame + (video_idx / (total_video_frames - 1)) * (max_frame - min_frame)
-                else:
-                    mapped_frame = min_frame
+                # frame_idx is already the current loop variable from video_idx_range
+
+            # Draw full spatial grid if available
+            if self.spatial_grid is not None:
+                frame = self.spatial_grid.draw_overlay(frame, alpha=0.3)
 
             # Draw smoothed trajectories and attach current tracker points to smoothed path
-            frame = self.draw_trajectory(frame, traj_a, self.colors['track_a'], current_frame=mapped_frame)
-            frame = self.draw_trajectory(frame, traj_b, self.colors['track_b'], current_frame=mapped_frame)
+            frame = self.draw_trajectory(frame, traj_a, self.colors['track_a'], current_frame=frame_idx)
+            frame = self.draw_trajectory(frame, traj_b, self.colors['track_b'], current_frame=frame_idx)
 
             # Use original positions for conflict zone center (or smoothed approximated)
-            pos_a = self._get_position_at(traj_a, mapped_frame)
-            pos_b = self._get_position_at(traj_b, mapped_frame)
+            pos_a = self._get_position_at(traj_a, frame_idx)
+            pos_b = self._get_position_at(traj_b, frame_idx)
             if pos_a is not None and pos_b is not None:
                 center = ((pos_a[0] + pos_b[0]) // 2, (pos_a[1] + pos_b[1]) // 2)
                 cv2.circle(frame, center, self.conflict_zone_radius, self.colors['conflict'], 2)
@@ -257,7 +276,7 @@ class PETVerificationVisualizer:
             if pos_a is not None and pos_b is not None:
                 center = ((pos_a[0] + pos_b[0]) // 2, (pos_a[1] + pos_b[1]) // 2)
                 # Pulse effect near conflict frame
-                if abs(mapped_frame - event.get('frame', 0)) < 5:
+                if abs(frame_idx - event.get('frame', 0)) < 5:
                     thickness = 5
                     alpha = 0.5
                 else:

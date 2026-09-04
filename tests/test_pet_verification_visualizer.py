@@ -407,3 +407,121 @@ def test_draw_grid_cell_with_center():
     frame = np.full((200, 300, 3), 255, dtype=np.uint8)
     out = viz.draw_grid_cell(frame, 'G_A_1', center=(150,100), radius=40)
     assert out.shape == frame.shape
+
+
+def test_smooth_points_preserves_straight_line():
+    viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
+    # Perfect straight line y = 2*x
+    traj = [{'x_pixel': i, 'y_pixel': 2*i} for i in range(30)]
+    pts = viz._smooth_points(traj, window=11, polyorder=3)
+    # All points should remain on the line (max deviation < 1 pixel)
+    for (x, y), orig in zip(pts, traj):
+        expected_y = 2 * orig['x_pixel']
+        assert abs(y - expected_y) < 1.0, f"Smoothed point {x, y} deviates from line"
+
+def test_smooth_points_reduces_noise():
+    viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
+    # Trajectory with sinusoidal noise
+    n = 50
+    x = np.arange(n)
+    y_true = 0.1 * x  # gentle slope
+    noise = 5 * np.sin(np.linspace(0, 4*np.pi, n))
+    y_raw = y_true + noise
+    traj_raw = [{'x_pixel': float(x[i]), 'y_pixel': float(y_raw[i])} for i in range(n)]
+
+    # Total variation (sum of absolute first differences)
+    raw_tv = np.sum(np.abs(np.diff(y_raw)))
+
+    pts_smooth = viz._smooth_points(traj_raw, window=21, polyorder=3)
+    y_smooth = np.array([p[1] for p in pts_smooth])
+    smooth_tv = np.sum(np.abs(np.diff(y_smooth)))
+
+    assert smooth_tv < raw_tv, f"Smoothed TV {smooth_tv:.2f} should be less than raw {raw_tv:.2f}"
+
+def test_draw_trajectory_uses_anti_aliased_line():
+    viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
+    # Patch cv2.line to assert lineType=cv2.LINE_AA is passed
+    with patch('cv2.line', wraps=cv2.line) as mock_line:
+        frame = np.zeros((100,100,3), dtype=np.uint8)
+        traj = [{'x_pixel':10, 'y_pixel':10}, {'x_pixel':80, 'y_pixel':80}]
+        viz.draw_trajectory(frame, traj, (255,0,0), current_frame=None)
+        # Check that at least one call used LINE_AA
+        line_type_used = False
+        for call in mock_line.call_args_list:
+            args, kwargs = call
+            if 'lineType' in kwargs and kwargs['lineType'] == cv2.LINE_AA:
+                line_type_used = True
+                break
+        assert line_type_used, "cv2.line was not called with LINE_AA"
+
+
+def test_draw_grid_cell_red_visible():
+    viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
+    viz.colors = {
+        'track_a': (255, 0, 0),
+        'track_b': (0, 165, 255),
+        'grid': (0, 0, 255),      # red
+        'conflict': (0, 0, 255),
+        'text': (255, 255, 255),
+    }
+    frame = np.full((200, 300, 3), 255, dtype=np.uint8)
+    out = viz.draw_grid_cell(frame, 'G_A_1', center=(150,100), radius=40)
+    # Check for red pixels (BGR red = 0,0,255)
+    red_mask = (out[:,:,2] > 200) & (out[:,:,0] < 100) & (out[:,:,1] < 100)
+    assert int(np.sum(red_mask)) > 100, "Expected visible red grid cell"
+
+
+def test_generate_video_centered_window(sample_event_df, tmp_path):
+    csv_path = tmp_path / "events.csv"
+    sample_event_df.to_csv(csv_path, index=False)
+    viz = PETVerificationVisualizer(str(csv_path), str(tmp_path/"dummy.mp4"), background_mode='video')
+    cap = MagicMock()
+    cap.isOpened.return_value = True
+    total_frames = 1000
+    cap.get.side_effect = lambda prop: {
+        cv2.CAP_PROP_FRAME_COUNT: total_frames,
+        cv2.CAP_PROP_FRAME_WIDTH: 320,
+        cv2.CAP_PROP_FRAME_HEIGHT: 240
+    }.get(prop, 0)
+    cap.read.return_value = (True, np.zeros((240,320,3), dtype=np.uint8))
+    writer = MagicMock()
+    writer.isOpened.return_value = True
+    with patch('cv2.VideoCapture', return_value=cap), patch('cv2.VideoWriter', return_value=writer):
+        viz.generate_video(1, str(tmp_path/"out.mp4"), fps=30, max_frames=200)
+    # Should write 200 frames (window centered on event frame=100)
+    assert writer.write.call_count == 200
+
+
+def test_generate_video_with_spatial_grid(sample_event_df, tmp_path):
+    csv_path = tmp_path / "events.csv"
+    sample_event_df.to_csv(csv_path, index=False)
+    mock_grid = MagicMock()
+    mock_grid.draw_overlay.return_value = np.zeros((240,320,3), dtype=np.uint8)
+    viz = PETVerificationVisualizer(str(csv_path), str(tmp_path/"dummy.mp4"), background_mode='schematic', spatial_grid=mock_grid)
+    cap = MagicMock()
+    cap.isOpened.return_value = True
+    cap.get.side_effect = lambda prop: {
+        cv2.CAP_PROP_FRAME_COUNT: 2,
+        cv2.CAP_PROP_FRAME_WIDTH: 320,
+        cv2.CAP_PROP_FRAME_HEIGHT: 240
+    }.get(prop, 0)
+    cap.read.return_value = (True, np.zeros((240,320,3), dtype=np.uint8))
+    writer = MagicMock()
+    writer.isOpened.return_value = True
+    with patch('cv2.VideoCapture', return_value=cap), patch('cv2.VideoWriter', return_value=writer):
+        viz.generate_video(1, str(tmp_path/"out.mp4"), fps=10, max_frames=2)
+    assert mock_grid.draw_overlay.call_count > 0
+
+
+def test_draw_trajectory_animation_grows():
+    viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
+    frame = np.zeros((100,100,3), dtype=np.uint8)
+    traj = [{'frame':0,'x_pixel':10,'y_pixel':10},
+            {'frame':1,'x_pixel':20,'y_pixel':20},
+            {'frame':2,'x_pixel':80,'y_pixel':80}]
+    out0 = viz.draw_trajectory(frame.copy(), traj, (255,0,0), current_frame=0)
+    out2 = viz.draw_trajectory(frame.copy(), traj, (255,0,0), current_frame=2)
+    # At frame 0, the segment between point0 and point1 should not exist
+    assert out0[15, 15].sum() == 0, "Early frame should not draw future segment"
+    # At frame 2, the segment should be drawn
+    assert out2[15, 15].sum() > 0, "Later frame should include the segment"
