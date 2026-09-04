@@ -9,7 +9,7 @@ from pathlib import Path
 class PETVerificationVisualizer:
     """Draws PET conflict event overlays on video frames for reviewer verification."""
 
-    def __init__(self, pet_csv_path, video_path, conflict_zone_radius=40):
+    def __init__(self, pet_csv_path, video_path, conflict_zone_radius=40, background_mode='schematic'):
         self.df = pd.read_csv(pet_csv_path)
         self.video_path = Path(video_path)
         self.conflict_zone_radius = conflict_zone_radius
@@ -20,6 +20,12 @@ class PETVerificationVisualizer:
             'conflict': (0, 0, 255),
             'text': (255, 255, 255),
         }
+        self.background_mode = background_mode
+
+
+    def _schematic_background(self, width=1600, height=720):
+        """Return a clean dark canvas for schematic mode."""
+        return np.full((height, width, 3), (45, 45, 45), dtype=np.uint8)
 
     def load_event(self, event_id):
         rows = self.df[self.df['event_id'] == event_id]
@@ -145,6 +151,20 @@ class PETVerificationVisualizer:
         frame = self.draw_timing_info(frame, event)
         return frame
 
+
+    def _enhance_background(self, frame):
+        """Apply unsharp masking and CLAHE to make source video less blurry."""
+        # Unsharp mask
+        blurred = cv2.GaussianBlur(frame, (0, 0), 3.0)
+        frame = cv2.addWeighted(frame, 1.5, blurred, -0.5, 0)
+        # Contrast enhancement via CLAHE on L channel in LAB
+        lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+        l, a, b = cv2.split(lab)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        l2 = clahe.apply(l)
+        lab2 = cv2.merge((l2, a, b))
+        return cv2.cvtColor(lab2, cv2.COLOR_LAB2BGR)
+
     def generate_video(self, event_id, output_path, fps=10):
         event = self.load_event(event_id)
         traj_a = self.parse_traj(event.get('traj_a_json', event.get('world_traj_i')))
@@ -152,16 +172,28 @@ class PETVerificationVisualizer:
         if not traj_a and not traj_b:
             raise ValueError(f"No trajectory data for event {event_id}")
 
-        # Open real video
-        cap = cv2.VideoCapture(str(self.video_path))
-        if not cap.isOpened():
-            raise RuntimeError("Could not open source video")
-        total_video_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        if total_video_frames == 0:
-            cap.release()
-            raise RuntimeError("Video has no frames")
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        # Schematic mode: no blurry video, use dark canvas
+        if self.background_mode == 'schematic':
+            width, height = 1600, 720
+            frames_a = [int(p.get('frame', 0)) for p in traj_a]
+            frames_b = [int(p.get('frame', 0)) for p in traj_b]
+            min_frame = min(frames_a + frames_b)
+            max_frame = max(frames_a + frames_b)
+            # Generate 100 evenly spaced frames across trajectory span
+            total_frames = 100
+            video_idx_range = list(range(total_frames))
+        else:
+            # Open real video (optional; blurry source not used by default)
+            cap = cv2.VideoCapture(str(self.video_path))
+            if not cap.isOpened():
+                raise RuntimeError("Could not open source video")
+            total_video_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            if total_video_frames == 0:
+                cap.release()
+                raise RuntimeError("Video has no frames")
+            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            video_idx_range = range(total_video_frames)
 
         # Determine trajectory frame range
         frames_a = [int(p.get('frame', 0)) for p in traj_a]
@@ -175,19 +207,26 @@ class PETVerificationVisualizer:
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
         if not out.isOpened():
-            cap.release()
+            if hasattr(self, 'background_mode') and self.background_mode != 'schematic':
+                cap.release()
             raise RuntimeError("Could not open VideoWriter")
 
-        for video_idx in range(total_video_frames):
-            ret, frame = cap.read()
-            if not ret:
-                break
-
-            # Map video frame to trajectory frame proportionally
-            if total_video_frames > 1:
-                mapped_frame = min_frame + (video_idx / (total_video_frames - 1)) * (max_frame - min_frame)
+        for video_idx in video_idx_range:
+            if self.background_mode == 'schematic':
+                frame = self._schematic_background(width, height)
+                # Map idx to trajectory frame
+                mapped_frame = min_frame + (video_idx / (total_frames - 1)) * (max_frame - min_frame) if total_frames > 1 else min_frame
             else:
-                mapped_frame = min_frame
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                # Sharpen/contrast the real footage background
+                frame = self._enhance_background(frame)
+                # Map video frame to trajectory frame proportionally
+                if total_video_frames > 1:
+                    mapped_frame = min_frame + (video_idx / (total_video_frames - 1)) * (max_frame - min_frame)
+                else:
+                    mapped_frame = min_frame
 
             # Draw smoothed trajectories and attach current tracker points to smoothed path
             frame = self.draw_trajectory(frame, traj_a, self.colors['track_a'], current_frame=mapped_frame)
@@ -223,7 +262,8 @@ class PETVerificationVisualizer:
             frame = self.draw_timing_info(frame, event)
             out.write(frame)
 
-        cap.release()
+        if self.background_mode != 'schematic':
+            cap.release()
         out.release()
         return str(output_path)
 

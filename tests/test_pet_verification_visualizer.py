@@ -237,7 +237,7 @@ def test_generate_video_no_trajectory(sample_event_df, tmp_path):
 def test_generate_video_cannot_open_source(sample_event_df, tmp_path):
     csv_path = tmp_path / "events.csv"
     sample_event_df.to_csv(csv_path, index=False)
-    viz = PETVerificationVisualizer(str(csv_path), str(tmp_path/"dummy.mp4"))
+    viz = PETVerificationVisualizer(str(csv_path), str(tmp_path/"dummy.mp4"), background_mode='video')
     with patch('cv2.VideoCapture', return_value=MagicMock(isOpened=lambda: False)):
         with pytest.raises(RuntimeError):
             viz.generate_video(1, str(tmp_path/"out.mp4"))
@@ -245,7 +245,7 @@ def test_generate_video_cannot_open_source(sample_event_df, tmp_path):
 def test_generate_video_zero_frames(sample_event_df, tmp_path):
     csv_path = tmp_path / "events.csv"
     sample_event_df.to_csv(csv_path, index=False)
-    viz = PETVerificationVisualizer(str(csv_path), str(tmp_path/"dummy.mp4"))
+    viz = PETVerificationVisualizer(str(csv_path), str(tmp_path/"dummy.mp4"), background_mode='video')
     cap = MagicMock()
     cap.isOpened.return_value = True
     cap.get.return_value = 0  # frame count zero
@@ -340,3 +340,35 @@ def test_draw_text_background_invalid_roi():
     frame = np.full((100, 200, 3), 255, dtype=np.uint8)
     out = viz._draw_text_background(frame, (150, 150), (140, 140), alpha=0.5)
     assert np.array_equal(out, frame)
+
+
+def test_enhance_background_changes_frame():
+    viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
+    frame = np.full((100,100,3), 100, dtype=np.uint8)
+    out = viz._enhance_background(frame)
+    assert out.shape == frame.shape
+    # CLAHE/unsharp should produce some change
+    assert not np.array_equal(out, frame)
+
+
+def test_generate_video_with_video_background_success(sample_event_df, tmp_path):
+    csv_path = tmp_path / "events.csv"
+    sample_event_df.to_csv(csv_path, index=False)
+    viz = PETVerificationVisualizer(str(csv_path), str(tmp_path/"dummy.mp4"), background_mode='video')
+    cap = MagicMock()
+    cap.isOpened.return_value = True
+    cap.get.side_effect = lambda prop: {
+        cv2.CAP_PROP_FRAME_COUNT: 2,
+        cv2.CAP_PROP_FRAME_WIDTH: 320,
+        cv2.CAP_PROP_FRAME_HEIGHT: 240
+    }.get(prop, 0)
+    frame0 = np.zeros((240,320,3), dtype=np.uint8)
+    frame1 = np.zeros((240,320,3), dtype=np.uint8)
+    cap.read.side_effect = [(True, frame0), (True, frame1)]
+    cap.release.return_value = None
+    writer = MagicMock()
+    writer.isOpened.return_value = True
+    with patch('cv2.VideoCapture', return_value=cap), patch('cv2.VideoWriter', return_value=writer):
+        out = viz.generate_video(1, str(tmp_path/"out.mp4"), fps=10)
+    assert out is not None
+    assert writer.write.call_count == 2
