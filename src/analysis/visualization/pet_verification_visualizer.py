@@ -11,6 +11,11 @@ class PETVerificationVisualizer:
 
     def __init__(self, pet_csv_path, video_path, conflict_zone_radius=40, background_mode='schematic', spatial_grid=None):
         self.df = pd.read_csv(pet_csv_path)
+        required = {'event_id', 'pet', 'frame', 'track_a', 'track_b',
+                    'grid_cell', 'track_a_exit_frame', 'track_b_entry_frame'}
+        missing = required - set(self.df.columns)
+        if missing:
+            raise ValueError(f"CSV missing required columns: {sorted(missing)}")
         self.video_path = Path(video_path)
         self.conflict_zone_radius = conflict_zone_radius
         self.colors = {
@@ -52,10 +57,21 @@ class PETVerificationVisualizer:
     def _smooth_points(self, traj, window=9, polyorder=3):
         """Return smoothed trajectory points using Savitzky-Golay filter."""
         if len(traj) < 3:
-            return [(int(p.get('x_pixel', p.get('world_x', 0))),
-                     int(p.get('y_pixel', p.get('world_y', 0)))) for p in traj]
-        xs = [p.get('x_pixel', p.get('world_x', 0)) for p in traj]
-        ys = [p.get('y_pixel', p.get('world_y', 0)) for p in traj]
+            pts = []
+            for p in traj:
+                if 'x_pixel' in p and 'y_pixel' in p:
+                    pts.append((int(p['x_pixel']), int(p['y_pixel'])))
+                else:
+                    return []
+            return pts
+        xs = []
+        ys = []
+        for p in traj:
+            if 'x_pixel' in p and 'y_pixel' in p:
+                xs.append(p['x_pixel'])
+                ys.append(p['y_pixel'])
+            else:
+                return []
         n = len(traj)
         # Ensure window_length is odd and <= n
         w = min(window, n if n % 2 == 1 else n - 1)
@@ -135,14 +151,31 @@ class PETVerificationVisualizer:
         frame[y1:y2, x1:x2] = blended
         return frame
 
+
+    def _get_event_value(self, event, keys, default=None):
+        """Return first available key from event (pandas Series)."""
+        for k in keys:
+            if k in event and event[k] is not None:
+                return event[k]
+        return default
+
     def draw_timing_info(self, frame, event):
+        first_track = self._get_event_value(event, ['first_track_id', 'track_a'], -1)
+        second_track = self._get_event_value(event, ['second_track_id', 'track_b'], -1)
+        first_exit_frame = self._get_event_value(event, ['first_exit_frame', 'track_a_exit_frame'], -1)
+        second_entry_frame = self._get_event_value(event, ['second_entry_frame', 'track_b_entry_frame'], -1)
+        first_exit_time = self._get_event_value(event, ['first_exit_time_sec', 'track_a_exit_time_sec'], 0.0)
+        second_entry_time = self._get_event_value(event, ['second_entry_time_sec', 'track_b_entry_time_sec'], 0.0)
+        site = self._get_event_value(event, ['site', 'video_source'], 'unknown')
+        cell = self._get_event_value(event, ['grid_cell'], 'unknown')
         info = [
             f"Event {event['event_id']}  PET={event['pet']:.3f}s",
-            f"First: track {event['first_track_id']} exit frame {event['first_exit_frame']}",
-            f"Second: track {event['second_track_id']} entry frame {event['second_entry_frame']}",
-            f"Time A exit: {event['first_exit_time_sec']:.2f}s",
-            f"Time B entry: {event['second_entry_time_sec']:.2f}s",
-            f"Site: {event['site']}  Cell: {event['grid_cell']}",
+            f"First: track {first_track} exit frame {first_exit_frame}",
+            f"Second: track {second_track} entry frame {second_entry_frame}",
+            f"PET = (second_entry - first_exit) / fps = {event['pet']:.3f}s",
+            f"Time A exit: {first_exit_time:.2f}s",
+            f"Time B entry: {second_entry_time:.2f}s",
+            f"Site: {site}  Cell: {cell}",
         ]
         font = cv2.FONT_HERSHEY_SIMPLEX
         font_scale = 0.5
@@ -184,6 +217,7 @@ class PETVerificationVisualizer:
         return cv2.cvtColor(lab2, cv2.COLOR_LAB2BGR)
 
     def generate_video(self, event_id, output_path, fps=10, max_frames=200):
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
         event = self.load_event(event_id)
         traj_a = self.parse_traj(event.get('traj_a_json', event.get('world_traj_i')))
         traj_b = self.parse_traj(event.get('traj_b_json', event.get('world_traj_j')))

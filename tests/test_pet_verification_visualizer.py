@@ -18,12 +18,10 @@ def sample_event_df():
         'track_a': [1],
         'track_b': [2],
         'grid_cell': ['G_A_1'],
-        'first_track_id': [1],
-        'second_track_id': [2],
-        'first_exit_frame': [90],
-        'first_exit_time_sec': [3.0],
-        'second_entry_frame': [110],
-        'second_entry_time_sec': [3.667],
+        'track_a_exit_frame': [90],
+        'track_a_exit_time_sec': [3.0],
+        'track_b_entry_frame': [110],
+        'track_b_entry_time_sec': [3.667],
         'site': ['GITI'],
         'world_traj_i': [json.dumps([{'frame': 80, 'x_pixel': 100, 'y_pixel': 200},
                                        {'frame': 90, 'x_pixel': 120, 'y_pixel': 220}])],
@@ -547,3 +545,10 @@ def test_generate_video_uses_cap_set(sample_event_df, tmp_path):
     assert cap.set.called
     # At least one call with property CAP_PROP_POS_FRAMES
     assert any(args[0] == cv2.CAP_PROP_POS_FRAMES for args, kwargs in cap.set.call_args_list)
+
+
+def test_init_missing_required_columns(tmp_path):
+    csv_path = tmp_path / "bad.csv"
+    pd.DataFrame({'event_id':[1], 'pet':[2.0]}).to_csv(csv_path, index=False)
+    with pytest.raises(ValueError):
+        PETVerificationVisualizer(str(csv_path), "dummy.mp4")
