@@ -1,0 +1,25 @@
+{
+  "reviewer_asset": {
+    "type": "video_frames_archive",
+    "file_path": "outputs/reviewer_traffic_frames.zip",
+    "file_name": "reviewer_traffic_frames.zip",
+    "ready_for_sharing": true,
+    "file_size_bytes": 4155564,
+    "sha256": "b62eb48c338840d316d73f5ba043a4316ae459bfef0c524b2e4e02417eb6add7",
+    "source_video": {
+      "path": "data/sample_data/anonymized_traffic_video_50f.mp4",
+      "resolution": "1600x720",
+      "fps": 30.0,
+      "total_frames": 50
+    },
+    "archive_contents": {
+      "format": "zip",
+      "number_of_frames": 50,
+      "frame_file_pattern": "frame_{NNN}.jpg",
+      "frame_start": "frame_000.jpg",
+      "frame_end": "frame_049.jpg",
+      "image_format": "JPEG",
+      "extracted_frames_dir": "outputs/reviewer_traffic_frames/"
+    }
+  }
+}
