@@ -218,14 +218,18 @@ class PETVerificationVisualizer:
                 raise RuntimeError("Video has no frames")
             width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            # Center the sampling window around the conflict frame to avoid missing it.
+            # Start from earliest trajectory frame to conflict + small padding
+            frames_a = [int(p.get('frame', 0)) for p in traj_a]
+            frames_b = [int(p.get('frame', 0)) for p in traj_b]
+            min_traj_frame = min(frames_a + frames_b)
             conflict_frame = int(event.get('frame', 0))
-            half_window = max_frames // 2
-            start = max(0, conflict_frame - half_window)
-            end = min(total_video_frames, conflict_frame + half_window)
+            start = max(0, min_traj_frame - 10)
+            end = min(total_video_frames, conflict_frame + 10)
+            if end <= start:
+                start = 0
+                end = total_video_frames
             available = end - start
             if available > max_frames:
-                # Sample within the conflict-centered window
                 video_idx_range = np.linspace(start, end - 1, max_frames, dtype=int)
             else:
                 video_idx_range = list(range(start, end))
@@ -250,12 +254,12 @@ class PETVerificationVisualizer:
             if self.background_mode == 'schematic':
                 frame = self._schematic_background(width, height)
             else:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
                 ret, frame = cap.read()
                 if not ret:
                     break
                 # Sharpen/contrast the real footage background
                 frame = self._enhance_background(frame)
-                # frame_idx is already the current loop variable from video_idx_range
 
             # Draw full spatial grid if available
             if self.spatial_grid is not None:

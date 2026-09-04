@@ -391,8 +391,8 @@ def test_generate_video_max_frames_cap(sample_event_df, tmp_path):
     writer.isOpened.return_value = True
     with patch('cv2.VideoCapture', return_value=cap), patch('cv2.VideoWriter', return_value=writer):
         viz.generate_video(1, str(tmp_path/"out.mp4"), fps=30, max_frames=200)
-    # Should write exactly 200 frames
-    assert writer.write.call_count == 200
+    # Should write the conflict-centered window length (40 frames in this test)
+    assert writer.write.call_count == 40
 
 
 def test_draw_grid_cell_with_center():
@@ -488,8 +488,8 @@ def test_generate_video_centered_window(sample_event_df, tmp_path):
     writer.isOpened.return_value = True
     with patch('cv2.VideoCapture', return_value=cap), patch('cv2.VideoWriter', return_value=writer):
         viz.generate_video(1, str(tmp_path/"out.mp4"), fps=30, max_frames=200)
-    # Should write 200 frames (window centered on event frame=100)
-    assert writer.write.call_count == 200
+    # Should write the conflict-centered window length (40 frames in this test)
+    assert writer.write.call_count == 40
 
 
 def test_generate_video_with_spatial_grid(sample_event_df, tmp_path):
@@ -525,3 +525,25 @@ def test_draw_trajectory_animation_grows():
     assert out0[15, 15].sum() == 0, "Early frame should not draw future segment"
     # At frame 2, the segment should be drawn
     assert out2[15, 15].sum() > 0, "Later frame should include the segment"
+
+
+def test_generate_video_uses_cap_set(sample_event_df, tmp_path):
+    csv_path = tmp_path / "events.csv"
+    sample_event_df.to_csv(csv_path, index=False)
+    viz = PETVerificationVisualizer(str(csv_path), str(tmp_path/"dummy.mp4"), background_mode='video')
+    cap = MagicMock()
+    cap.isOpened.return_value = True
+    cap.get.side_effect = lambda prop: {
+        cv2.CAP_PROP_FRAME_COUNT: 100,
+        cv2.CAP_PROP_FRAME_WIDTH: 320,
+        cv2.CAP_PROP_FRAME_HEIGHT: 240
+    }.get(prop, 0)
+    cap.read.return_value = (True, np.zeros((240,320,3), dtype=np.uint8))
+    writer = MagicMock()
+    writer.isOpened.return_value = True
+    with patch('cv2.VideoCapture', return_value=cap), patch('cv2.VideoWriter', return_value=writer):
+        viz.generate_video(1, str(tmp_path/"out.mp4"), fps=10, max_frames=10)
+    # cap.set should have been called with CAP_PROP_POS_FRAMES
+    assert cap.set.called
+    # At least one call with property CAP_PROP_POS_FRAMES
+    assert any(args[0] == cv2.CAP_PROP_POS_FRAMES for args, kwargs in cap.set.call_args_list)
