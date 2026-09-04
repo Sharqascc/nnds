@@ -1,0 +1,13 @@
+#!/bin/bash
+# Pre-push hook: run quality checks before pushing.
+REPO_ROOT=$(git rev-parse --show-toplevel)
+cd "$REPO_ROOT"
+
+echo "🔍 Running pre-push checks (Ruff + Pytest)..."
+if bash scripts/pre_push_checks.sh; then
+    echo "✅ Pre-push checks passed."
+    exit 0
+else
+    echo "❌ Pre-push checks failed. Fix issues and try again."
+    exit 1
+fi
