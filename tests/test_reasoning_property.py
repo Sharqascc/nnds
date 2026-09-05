@@ -15,22 +15,27 @@ from src.core.reasoning import (
 
 
 # ---------- WorldPoint ----------
-@given(st.floats(min_value=0, max_value=100), st.floats(), st.floats())
+@given(st.floats(min_value=0, max_value=100), st.floats(min_value=0, max_value=100), st.floats(min_value=0, max_value=100))
 def test_world_point_accepts_non_negative_time(t, x, y):
     p = WorldPoint(t=t, x=x, y=y)
     assert p.t >= 0
 
-@given(st.floats(max_value=-0.001), st.floats(), st.floats())
+@given(st.floats(max_value=-0.001), st.floats(min_value=0, max_value=100), st.floats(min_value=0, max_value=100))
 def test_world_point_rejects_negative_time(t, x, y):
     with pytest.raises(ValidationError):
         WorldPoint(t=t, x=x, y=y)
 
 
 # ---------- Trajectory ----------
-@given(st.lists(st.builds(WorldPoint, t=st.floats(min_value=0, max_value=10), x=st.floats(), y=st.floats()), min_size=2, max_size=20))
-def test_trajectory_accepts_ordered_points(points):
-    # sort by t to ensure valid
-    points = sorted(points, key=lambda p: p.t)
+@given(st.lists(st.tuples(
+    st.floats(min_value=0, max_value=10),
+    st.floats(min_value=0, max_value=100),
+    st.floats(min_value=0, max_value=100),
+), min_size=2, max_size=20, unique_by=lambda tup: tup[0]))
+def test_trajectory_accepts_ordered_points(point_tuples):
+    # sort by time to ensure valid
+    sorted_tuples = sorted(point_tuples, key=lambda tup: tup[0])
+    points = [WorldPoint(t=t, x=x, y=y) for t, x, y in sorted_tuples]
     traj = Trajectory(track_id=0, points=points)
     assert len(traj.points) >= 2
 

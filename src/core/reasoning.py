@@ -15,6 +15,15 @@ from typing import Any, Dict, List, Literal, Optional
 import numpy as np
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+__all__ = [
+    "Detection",
+    "PETEvent",
+    "TrackingState",
+    "TrackingStateMachine",
+    "Trajectory",
+    "WorldPoint",
+    "pure",
+]
 
 def pure(func):
     """Mark a function as pure (no side effects, deterministic)."""
@@ -24,8 +33,8 @@ def pure(func):
 
 class WorldPoint(BaseModel):
     t: float = Field(..., ge=0, description="Time in seconds")
-    x: float = Field(..., description="Pixel X coordinate")
-    y: float = Field(..., description="Pixel Y coordinate")
+    x: float = Field(..., ge=0, description="Pixel X coordinate (non-negative)")
+    y: float = Field(..., ge=0, description="Pixel Y coordinate (non-negative)")
 
 
 class Trajectory(BaseModel):
@@ -37,8 +46,8 @@ class Trajectory(BaseModel):
     @model_validator(mode="after")
     def points_must_be_ordered(self):
         times = [p.t for p in self.points]
-        if any(times[i] > times[i + 1] for i in range(len(times) - 1)):
-            raise ValueError("Trajectory points must be ordered by time")
+        if any(times[i] >= times[i + 1] for i in range(len(times) - 1)):
+            raise ValueError("Trajectory points must be strictly increasing in time")
         return self
 
 
@@ -59,6 +68,8 @@ class Detection(BaseModel):
     def check_box_valid(self):
         if self.x1 >= self.x2 or self.y1 >= self.y2:
             raise ValueError("Invalid bounding box: x1 < x2 and y1 < y2 required")
+        if not (self.x1 <= self.cx <= self.x2 and self.y1 <= self.cy <= self.y2):
+            raise ValueError("Center (cx, cy) must lie within bounding box")
         return self
 
 
@@ -66,13 +77,19 @@ class PETEvent(BaseModel):
     event_id: int
     pet: float = Field(..., ge=0)
     frame: int = Field(..., ge=0)
-    track_a: int
-    track_b: int
+    track_a: int = Field(..., ge=0)
+    track_b: int = Field(..., ge=0)
     conflict_type: Literal["crossing", "head_on", "rear_end", "side_swipe", "other"]
     grid_cell: str
     track_a_exit_frame: int
     track_b_entry_frame: int
     site: str
+
+    @model_validator(mode="after")
+    def distinct_tracks(self):
+        if self.track_a == self.track_b:
+            raise ValueError("track_a and track_b must be different")
+        return self
 
 
 # Tracking state machine

@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 PathLike = Union[str, Path]
 
 
-@lru_cache(maxsize=4)
 def load_giti_homography(
     json_path: PathLike,
     ransac_thresh: float = 5.0,
@@ -75,14 +74,22 @@ def load_giti_homography(
     RuntimeError
         If cv2.findHomography fails.
     """
+    if ransac_thresh <= 0:
+        raise ValueError(f"ransac_thresh must be positive, got {ransac_thresh}")
+
     json_path = Path(json_path)
     logger.info("Loading BEV homography calibration from %s", json_path)
 
     if not json_path.exists():
         raise FileNotFoundError(f"Calibration JSON not found: {json_path}")
+    if not json_path.is_file():
+        raise FileNotFoundError(f"Calibration path is not a file: {json_path}")
 
-    with json_path.open("r", encoding="utf-8") as f:
-        data = json.load(f)
+    try:
+        with json_path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Malformed JSON in calibration file {json_path}: {e}")
 
     points = data.get("calibration_points", [])
     if not points or len(points) < 4:
@@ -105,8 +112,8 @@ def load_giti_homography(
         pts_pix.append([px, py])
         pts_world.append([X, Y])
 
-    pts_pix = np.asarray(pts_pix, dtype=np.float32)
-    pts_world = np.asarray(pts_world, dtype=np.float32)
+    pts_pix = np.asarray(pts_pix, dtype=np.float64)
+    pts_world = np.asarray(pts_world, dtype=np.float64)
 
     logger.debug(
         "Computing homography with %d calibration points (ransac_thresh=%.3f)",

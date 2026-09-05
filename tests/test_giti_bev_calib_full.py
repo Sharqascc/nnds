@@ -80,9 +80,3 @@ def test_success_no_inliers_without_stats(tmp_path):
     assert result[1] is mask
 
 
-# Clear cache before each test to avoid interference
-@pytest.fixture(autouse=True)
-def clear_cache():
-    load_giti_homography.cache_clear()
-    yield
-    load_giti_homography.cache_clear()
