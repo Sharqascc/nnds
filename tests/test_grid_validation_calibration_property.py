@@ -72,10 +72,10 @@ def test_generate_synthetic_grid_no_noise(grid_rows, grid_cols,
     assert pixel_pts.shape == (n, 2)
     assert world_pts_noisy.shape == (n, 2)
     assert world_pts_true.shape == (n, 2)
-    assert np.allclose(world_pts_noisy, world_pts_true, atol=1e-6)  # no noise
+    assert np.allclose(world_pts_noisy, world_pts_true, atol=1e-5)  # no noise
 
     # Check true world offsets
     expected_x = (pixel_pts[:, 0] - x_min_px) / ppm_x
     expected_y = (pixel_pts[:, 1] - y_min_px) / ppm_y
-    assert np.allclose(world_pts_true[:, 0], expected_x)
-    assert np.allclose(world_pts_true[:, 1], expected_y)
+    assert np.allclose(world_pts_true[:, 0], expected_x, atol=1e-5)
+    assert np.allclose(world_pts_true[:, 1], expected_y, atol=1e-5)

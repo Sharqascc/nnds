@@ -1,26 +1,15 @@
-
-import sys
-import types
-from dataclasses import dataclass
-
-# Mock heavy dependencies before importing the module
-sys.modules['ultralytics'] = types.SimpleNamespace(YOLO=object)
-sys.modules['cv2'] = types.SimpleNamespace(VideoCapture=object, VideoWriter=object)
-
 import numpy as np
 import pytest
-from hypothesis import given, settings
-from hypothesis import strategies as st
+from hypothesis import given, settings, strategies as st
 
 from src.analysis.grid_trajectory.yolo_cpu_grid_pet import (
     TrackPoint,
+    _segment_intersection,
+    _point_in_square,
     _entry_exit_frames,
     _pair_conflict_point,
-    _point_in_square,
-    _segment_intersection,
 )
 
-# ---------- Helper strategies ----------
 point_st = st.tuples(st.floats(min_value=0, max_value=100), st.floats(min_value=0, max_value=100))
 
 @st.composite
@@ -31,10 +20,8 @@ def track_point_list(draw, min_size=1, max_size=20):
         frame = draw(st.integers(min_value=0, max_value=100))
         x = draw(st.floats(min_value=0, max_value=100))
         y = draw(st.floats(min_value=0, max_value=100))
-        points.append(TrackPoint(frame=frame, x=x, y=y, cls_id=0, cls_name='car', conf=1.0))
+        points.append(TrackPoint(frame=frame, x=x, y=y, cls_id=0, cls_name="car", conf=1.0))
     return points
-
-# ---------- Property tests ----------
 
 @given(st.floats(min_value=-100, max_value=100), st.floats(min_value=-100, max_value=100),
        st.floats(min_value=-100, max_value=100), st.floats(min_value=-100, max_value=100),
@@ -68,9 +55,7 @@ def test_segment_intersection_symmetry(p1, p2, q1, q2):
 
 @given(point_st, point_st)
 def test_segment_intersection_with_self(p1, p2):
-    # A segment should not intersect itself as a non-degenerate segment
     inter = _segment_intersection(p1, p2, p1, p2)
-    # Collinear overlapping may return None by design, so we just assert it doesn't raise
     assert inter is None or isinstance(inter, tuple)
 
 @given(track_point_list(min_size=2, max_size=10), track_point_list(min_size=2, max_size=10))
