@@ -626,49 +626,39 @@ class StatisticalTester:
         Returns:
             Adjusted p-values
         """
-        p_values = np.array(p_values)
-        n = len(p_values)
+        p_values = np.asarray(p_values, dtype=float)
+        n = p_values.size
 
+        method = method.lower()
         if method == "bonferroni":
-            # Simple Bonferroni correction
             return np.minimum(p_values * n, 1.0)
 
-        elif method == "holm":
-            # Holm-Bonferroni (uniformly more powerful than Bonferroni)
-            sorted_idx = np.argsort(p_values)
-            sorted_p = p_values[sorted_idx]
-
-            adjusted = np.zeros(n)
-            for i, p in enumerate(sorted_p):
-                adjusted[sorted_idx[i]] = min(p * (n - i), 1.0)
-
-            # Ensure monotonicity
-            for i in range(1, n):
-                adjusted[sorted_idx[i]] = max(adjusted[sorted_idx[i]], adjusted[sorted_idx[i - 1]])
-
+        if method == "holm":
+            # Holm-Bonferroni: step-down procedure
+            order = np.argsort(p_values)
+            sorted_p = p_values[order]
+            factors = n - np.arange(n)          # (n, n-1, ..., 1)
+            raw = sorted_p * factors
+            raw = np.minimum(raw, 1.0)
+            cummax = np.maximum.accumulate(raw)  # enforce monotonicity
+            adjusted = np.empty_like(p_values)
+            adjusted[order] = cummax
             return adjusted
 
-        elif method == "fdr_bh":
-            # Benjamini-Hochberg FDR control
-            sorted_idx = np.argsort(p_values)
-            sorted_p = p_values[sorted_idx]
-
-            adjusted = np.zeros(n)
-            for i in range(n - 1, -1, -1):
-                adjusted[sorted_idx[i]] = min(sorted_p[i] * n / (i + 1), 1.0)
-                if i < n - 1:
-                    adjusted[sorted_idx[i]] = min(
-                        adjusted[sorted_idx[i]], adjusted[sorted_idx[i + 1]]
-                    )
-
+        if method == "fdr_bh":
+            # Benjamini-Hochberg: step-up procedure
+            order = np.argsort(p_values)
+            sorted_p = p_values[order]
+            ranks = np.arange(1, n + 1)          # (1, 2, ..., n)
+            raw = sorted_p * n / ranks
+            raw = np.minimum(raw, 1.0)
+            cummin = np.minimum.accumulate(raw[::-1])[::-1]  # enforce monotonicity
+            adjusted = np.empty_like(p_values)
+            adjusted[order] = cummin
             return adjusted
 
-        else:
-            raise ValueError(f"Unknown method: {method}")
+        raise ValueError(f"Unknown method: {method}")
 
-    # ===================================================================
-    # HELPER METHODS
-    # ===================================================================
 
     def _interpret_effect_size(self, d: float) -> str:
         """Interpret Cohen's d (Cohen, 1988)."""
