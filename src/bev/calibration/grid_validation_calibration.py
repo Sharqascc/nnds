@@ -140,6 +140,9 @@ def generate_synthetic_grid(
     world_pts_noisy: list[list[float]] = []
     world_pts_true: list[list[float]] = []
 
+    if pixels_per_meter_x == 0 or pixels_per_meter_y == 0:
+        raise ValueError("pixels_per_meter_x and pixels_per_meter_y must be non-zero")
+
     x_range_px = x_max_px - x_min_px
     y_range_px = y_max_px - y_min_px
 
@@ -198,6 +201,18 @@ def export_results(results: dict, output_path: Path) -> None:
 def main() -> None:
     args = parse_args()
     configure_logging(args.verbose)
+
+    # --- Input validation (fix for issues found) ---
+    if args.grid_cols < 2 or args.grid_rows < 2:
+        raise ValueError("grid_cols and grid_rows must be at least 2")
+    if args.activa_length_m <= 0:
+        raise ValueError("activa_length_m must be positive")
+    if args.noise_std_m < 0:
+        raise ValueError("noise_std_m must be non-negative")
+    if args.n_splits < 2:
+        raise ValueError("n_splits must be at least 2")
+    if args.ransac_thresh <= 0:
+        raise ValueError("ransac_thresh must be positive")
 
     rng = np.random.default_rng(args.seed)
     project_root: Path = args.project_root
@@ -511,7 +526,10 @@ def main() -> None:
     # 2) Grid true world layout (color = val error if it was in val set)
     ax = axes[0, 1]
     colors = np.zeros(N_POINTS)
-    colors[val_idx] = np.interp(val_errors, (val_errors.min(), val_errors.max()), (0.2, 1.0))
+    if val_errors.min() == val_errors.max():
+        colors[val_idx] = 0.5  # constant error; avoid np.interp with identical bounds
+    else:
+        colors[val_idx] = np.interp(val_errors, (val_errors.min(), val_errors.max()), (0.2, 1.0))
     scatter = ax.scatter(
         world_pts_true[:, 0],
         world_pts_true[:, 1],

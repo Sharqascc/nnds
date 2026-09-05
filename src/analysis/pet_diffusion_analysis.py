@@ -128,6 +128,11 @@ def compute_error_metrics(
     if len(real_values) != len(predicted_values):
         raise ValueError(f"Array length mismatch: {len(real_values)} vs {len(predicted_values)}")
 
+    real = np.asarray(real_values, dtype=float)
+    pred = np.asarray(predicted_values, dtype=float)
+    if not np.all(np.isfinite(real)) or not np.all(np.isfinite(pred)):
+        raise ValueError("Input arrays must contain only finite values")
+
     errors = predicted_values - real_values
     abs_errors = np.abs(errors)
     sq_errors = errors**2

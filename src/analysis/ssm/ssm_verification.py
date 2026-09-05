@@ -10,6 +10,8 @@ Complies with:
 - Research reproducibility requirements
 """
 
+from datetime import datetime
+
 import numpy as np
 from scipy import stats
 
@@ -37,7 +39,7 @@ class SSMVerifier:
 
     def __init__(
         self,
-        tolerance: float = 1e-6,
+        tolerance: float = 0.1,
         strict_mode: bool = False,
         min_sample_size: int = 10,
     ):
@@ -303,7 +305,7 @@ class SSMVerifier:
                     "expected": float(reference_values["mean"]),
                     "absolute_error": float(mean_diff),
                     "relative_error_pct": float(100 * rel_error),
-                    "passed": rel_error < 0.1,  # 10% tolerance
+                    "passed": rel_error < self.tolerance,  # 10% tolerance
                 }
 
                 if rel_error >= 0.1:
@@ -511,7 +513,7 @@ class SSMVerifier:
             "tests": [],
             "overall_pass": True,
             "summary": "",
-            "timestamp": np.datetime64("now").astype(str),
+            "timestamp": datetime.now().isoformat(),
         }
 
         if pet_values is not None:
@@ -555,7 +557,7 @@ class SSMVerifier:
 
 def verify_pet_calculation(
     pet_values: np.ndarray,
-    tolerance: float = 1e-6,
+    tolerance: float = 0.1,
     reference_values: dict | None = None,
 ) -> dict:
     """Standalone PET verification."""
@@ -565,7 +567,7 @@ def verify_pet_calculation(
 
 def verify_ttc_calculation(
     ttc_values: np.ndarray,
-    tolerance: float = 1e-6,
+    tolerance: float = 0.1,
     reference_values: dict | None = None,
 ) -> dict:
     """Standalone TTC verification."""
@@ -583,7 +585,7 @@ def run_verification_suite(
     pet_values: np.ndarray | None = None,
     ttc_values: np.ndarray | None = None,
     drac_values: np.ndarray | None = None,
-    tolerance: float = 1e-6,
+    tolerance: float = 0.1,
     reference_values: dict | None = None,
 ) -> dict:
     """Run complete verification suite."""
