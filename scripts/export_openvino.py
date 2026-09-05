@@ -6,6 +6,8 @@ Usage:
 """
 
 import argparse
+import os
+import sys
 
 from ultralytics import YOLO
 
@@ -22,10 +24,22 @@ def main():
     )
     args = parser.parse_args()
 
-    for path in [args.uvh, args.yolo]:
-        model = YOLO(path)
-        print(f"Exporting {path} to OpenVINO...")
-        model.export(format="openvino", imgsz=args.imgsz, dynamic=True)
+    # Verify that the model files exist before proceeding
+    for path in (args.uvh, args.yolo):
+        if not os.path.isfile(path):
+            print(f"❌ Error: Model file not found: '{path}'")
+            sys.exit(1)
+
+    # Load each model and export to OpenVINO, handling any errors gracefully
+    for path in (args.uvh, args.yolo):
+        try:
+            model = YOLO(path)
+            print(f"Exporting {path} to OpenVINO...")
+            model.export(format="openvino", imgsz=args.imgsz, dynamic=True)
+        except Exception as e:
+            print(f"❌ Error processing '{path}': {e}")
+            sys.exit(1)
+
     print("✅ OpenVINO export complete.")
 
 
