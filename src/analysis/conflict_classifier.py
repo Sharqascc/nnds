@@ -21,8 +21,15 @@ def _get_velocity_vector(
     points: list[dict], before_frame: int, window: int = 5
 ) -> tuple[float, float]:
     """Compute average velocity vector from the last `window` points before `before_frame`."""
+    # Validate input type: must be a sequence of dicts
+    if not isinstance(points, (list, tuple)):
+        return (0.0, 0.0)
+
     # Filter points before before_frame, sorted by frame
-    pts = [p for p in points if p.get("frame", 0) < before_frame]
+    try:
+        pts = [p for p in points if isinstance(p, dict) and p.get("frame", 0) < before_frame]
+    except Exception:
+        return (0.0, 0.0)
     if len(pts) < 2:
         return (0.0, 0.0)
     pts = sorted(pts, key=lambda p: p["frame"])[-window:]
@@ -54,7 +61,10 @@ def _angle_between(v1: tuple[float, float], v2: tuple[float, float]) -> float:
     mag2 = math.hypot(*v2)
     if mag1 == 0 or mag2 == 0:
         return 0.0
-    cos_theta = max(-1.0, min(1.0, dot / (mag1 * mag2)))
+    denominator = mag1 * mag2
+    if denominator == 0.0:  # underflow protection
+        return 0.0
+    cos_theta = max(-1.0, min(1.0, dot / denominator))
     return math.degrees(math.acos(cos_theta))
 
 
