@@ -74,9 +74,7 @@ class UncertaintyQuantifier:
         self.alpha = 1 - confidence_level
         self.n_bootstrap = n_bootstrap
         self.random_state = random_state
-
-        if random_state is not None:
-            np.random.seed(random_state)
+        self._rng = np.random.default_rng(random_state)
 
     # ===================================================================
     # COMPREHENSIVE ANALYSIS
@@ -225,12 +223,17 @@ class UncertaintyQuantifier:
         Returns:
             (lower, upper) confidence bounds
         """
+        data = np.asarray(data)
+        data = data[np.isfinite(data)]
+        if len(data) == 0:
+            raise ValueError("bootstrap_ci requires at least one finite value")
+
         n = len(data)
         bootstrap_stats = np.zeros(self.n_bootstrap)
 
         # Generate bootstrap samples
         for i in range(self.n_bootstrap):
-            resample = np.random.choice(data, size=n, replace=True)
+            resample = self._rng.choice(data, size=n, replace=True)
             bootstrap_stats[i] = statistic(resample)
 
         if method == "percentile":
@@ -321,11 +324,11 @@ class UncertaintyQuantifier:
             inputs = {}
             for param, (dist_type, dist_params) in input_distributions.items():
                 if dist_type == "normal":
-                    inputs[param] = np.random.normal(*dist_params)
+                    inputs[param] = self._rng.normal(*dist_params)
                 elif dist_type == "uniform":
-                    inputs[param] = np.random.uniform(*dist_params)
+                    inputs[param] = self._rng.uniform(*dist_params)
                 elif dist_type == "lognormal":
-                    inputs[param] = np.random.lognormal(*dist_params)
+                    inputs[param] = self._rng.lognormal(*dist_params)
                 else:
                     raise ValueError(f"Unknown distribution: {dist_type}")
 
@@ -372,8 +375,12 @@ class UncertaintyQuantifier:
 
         if group2 is None:
             # One-sample effect size
-            d = np.mean(g1) / np.std(g1, ddof=1) if np.std(g1, ddof=1) > 0 else 0
-            ci = self.bootstrap_ci(g1, statistic=lambda x: np.mean(x) / np.std(x, ddof=1))
+            std_g1 = np.std(g1, ddof=1)
+            d = np.mean(g1) / std_g1 if std_g1 > 0 else 0
+            def safe_one_sample_stat(x):
+                std_x = np.std(x, ddof=1)
+                return np.mean(x) / std_x if std_x > 0 else 0.0
+            ci = self.bootstrap_ci(g1, statistic=safe_one_sample_stat)
 
         else:
             # Two-sample effect size
@@ -417,7 +424,7 @@ class UncertaintyQuantifier:
 
             bootstrap_d = np.zeros(self.n_bootstrap)
             for i in range(self.n_bootstrap):
-                idx = np.random.choice(len(combined), size=len(combined), replace=True)
+                idx = self._rng.choice(len(combined), size=len(combined), replace=True)
                 boot_g1 = combined[idx][labels[idx] == 0]
                 boot_g2 = combined[idx][labels[idx] == 1]
 
