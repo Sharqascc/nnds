@@ -7,11 +7,12 @@ Usage:
 """
 
 import argparse
+import subprocess
 import sys
 
 
 def run_tracker(tracker_name, args):
-    [
+    cmd = [
         sys.executable,
         "scripts/run_pipeline.py",
         "--video",
@@ -25,10 +26,8 @@ def run_tracker(tracker_name, args):
         "--tracker",
         tracker_name if tracker_name in ["bytetrack", "botsort"] else "bytetrack",
     ]
-    # Note: run_pipeline currently doesn't accept --tracker; we'll rely on default TrackTrack for main, but this script is placeholder.
-    # For now, just print command.
-    print(f"Running {tracker_name} baseline (placeholder)")
-    # subprocess.run(cmd, check=True)
+    # Execute the pipeline
+    subprocess.run(cmd, check=True)
 
 
 def main():

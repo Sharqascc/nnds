@@ -731,3 +731,7 @@ def verify_reproducibility(report_path: str) -> dict:
     auditor = ReproducibilityAuditor()
     auditor.start_session(description="Verification run")
     return auditor.verify_reproducibility(report_path)
+
+def verify_reproducibility(*args, **kwargs):
+    return ReproducibilityAuditor().verify_reproducibility(*args, **kwargs)
+
