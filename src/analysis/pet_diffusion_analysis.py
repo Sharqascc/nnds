@@ -132,9 +132,17 @@ def compute_error_metrics(
     abs_errors = np.abs(errors)
     sq_errors = errors**2
 
-    # Avoid division by zero for R²
+    # Avoid division by zero or overflow for R²
     var_real = np.sum((real_values - np.mean(real_values)) ** 2)
-    r_squared = 1 - (np.sum(sq_errors) / var_real) if var_real > 0 else 0.0
+    if var_real > np.finfo(float).eps:
+        try:
+            r_squared = 1.0 - (np.sum(sq_errors) / var_real)
+            if not np.isfinite(r_squared):
+                r_squared = 0.0
+        except (ZeroDivisionError, OverflowError, FloatingPointError):
+            r_squared = 0.0
+    else:
+        r_squared = 0.0
 
     metrics = {
         "mae": float(np.mean(abs_errors)),
