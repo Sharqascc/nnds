@@ -5,6 +5,8 @@ Generate a summary results table comparing methods.
 Usage: python scripts/generate_results_table.py
 """
 
+import os
+
 import pandas as pd
 
 
@@ -23,6 +25,10 @@ def main():
         "PET RMSE": [0.0, 0.0, 0.0, 0.0, 0.0],
     }
     df = pd.DataFrame(data)
+
+    # Ensure the output directory exists
+    os.makedirs("outputs", exist_ok=True)
+
     df.to_csv("outputs/results_table.csv", index=False)
     print(df.to_string(index=False))
     print("\nResults table saved to outputs/results_table.csv")
