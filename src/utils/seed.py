@@ -5,9 +5,14 @@ import random
 import numpy as np
 import torch
 
+# Module-level variable to store the current seed
+_seed = 42
+
 
 def set_seed(seed=42):
     """Set random seed for Python, NumPy, and PyTorch."""
+    global _seed
+    _seed = seed
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -16,4 +21,6 @@ def set_seed(seed=42):
 
 
 def get_seed():
-    return 42
+    """Return the seed currently set for reproducibility."""
+    return _seed
+
