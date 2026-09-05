@@ -304,8 +304,13 @@ class VideoOverlayPlotter:
         Returns:
             Frame with statistics overlay
         """
-        output = frame.copy()
+        if frame.ndim != 3 or frame.shape[2] != 3:
+            raise ValueError("frame must be a colour (H, W, 3) image")
         h, w = frame.shape[:2]
+        if h == 0 or w == 0:
+            raise ValueError("frame dimensions must be non-zero")
+
+        output = frame.copy()
 
         severity_color = self._get_severity_color(pet_value)
         severity_label = self._get_severity_label(pet_value)
@@ -336,11 +341,11 @@ class VideoOverlayPlotter:
         if position == "top-left":
             x, y = 10, 10
         elif position == "top-right":
-            x, y = w - box_width - 10, 10
+            x, y = max(w - box_width - 10, 0), 10
         elif position == "bottom-left":
-            x, y = 10, h - box_height - 10
+            x, y = 10, max(h - box_height - 10, 0)
         else:  # bottom-right
-            x, y = w - box_width - 10, h - box_height - 10
+            x, y = max(w - box_width - 10, 0), max(h - box_height - 10, 0)
 
         # Draw semi-transparent background
         overlay = output.copy()
@@ -387,6 +392,15 @@ class VideoOverlayPlotter:
         Returns:
             Frame with conflict zone highlighted
         """
+        if frame.ndim != 3 or frame.shape[2] != 3:
+            raise ValueError("frame must be a colour (H, W, 3) image")
+        if radius <= 0:
+            raise ValueError("radius must be a positive integer")
+        cx, cy = center
+        h, w = frame.shape[:2]
+        if not (0 <= cx < w and 0 <= cy < h):
+            raise ValueError("center must be within the frame dimensions")
+
         output = frame.copy()
 
         if color is None:
@@ -428,6 +442,9 @@ class VideoOverlayPlotter:
         Returns:
             Processed frame
         """
+        if frame_idx < 0:
+            raise ValueError("frame_idx must be non-negative")
+
         # Extract frame
         cap = cv2.VideoCapture(video_path)
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
@@ -711,13 +728,13 @@ def overlay_full_visualization(
         info_lines = [
             f"PET = {pet_value:.3f}s",
             f"Conflict Cell: {conflict_cell}",
-            f"Vehicles: {vehicle_ids[0]} & {vehicle_ids[1]}" if vehicle_ids else "Vehicles: ? & ?",
+            f"Vehicles: {vehicle_ids[0] if len(vehicle_ids) > 0 else '?'} & {vehicle_ids[1] if len(vehicle_ids) > 1 else '?'}",
             f"Frame: {frame_num}",
         ]
 
         for i, line in enumerate(info_lines):
             y_pos = 40 + i * 25
-            color = (0, 0, 255) if "PET" in line and pet_value < 1.5 else (255, 255, 255)
+            color = (0, 0, 255) if "PET" in line and pet_value < DEFAULT_THRESHOLDS["moderate"] else (255, 255, 255)
             cv2.putText(frame, line, (20, y_pos), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
     return frame
