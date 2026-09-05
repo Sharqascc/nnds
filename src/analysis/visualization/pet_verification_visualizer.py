@@ -59,13 +59,17 @@ class PETVerificationVisualizer:
             return json_str
         if isinstance(json_str, str):
             try:
-                return json.loads(json_str)
+                result = json.loads(json_str)
+                if isinstance(result, list):
+                    return result
             except Exception:
                 pass
             try:
                 import ast
 
-                return ast.literal_eval(json_str)
+                result = ast.literal_eval(json_str)
+                if isinstance(result, list):
+                    return result
             except Exception:
                 return []
         return []
