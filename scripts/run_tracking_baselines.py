@@ -37,6 +37,11 @@ def main():
     parser.add_argument("--imgsz", type=int, default=640)
     args = parser.parse_args()
 
+    if args.max_frames <= 0:
+        parser.error("--max-frames must be a positive integer")
+    if args.imgsz <= 0:
+        parser.error("--imgsz must be a positive integer")
+
     for tracker in ["bytetrack", "botsort"]:
         run_tracker(tracker, args)
 

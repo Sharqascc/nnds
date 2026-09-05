@@ -35,7 +35,11 @@ def main():
         try:
             model = YOLO(path)
             print(f"Exporting {path} to OpenVINO...")
-            model.export(format="openvino", imgsz=args.imgsz, dynamic=True)
+            try:
+                model.export(format="openvino", imgsz=args.imgsz, dynamic=True)
+            except Exception as e:
+                print(f"Dynamic export failed: {e}. Retrying with dynamic=False...")
+                model.export(format="openvino", imgsz=args.imgsz, dynamic=False)
         except Exception as e:
             print(f"❌ Error processing '{path}': {e}")
             sys.exit(1)

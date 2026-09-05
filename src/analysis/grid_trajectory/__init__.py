@@ -26,3 +26,5 @@ try:
     __all__.extend([n for n in globals() if not n.startswith("_")])  # pragma: no cover
 except ImportError as exc:
     _logger.exception("Failed to import trajectory_safety_analyzer")
+
+__all__ = list(dict.fromkeys(__all__))  # remove duplicates

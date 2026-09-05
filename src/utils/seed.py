@@ -11,6 +11,8 @@ _seed = 42
 
 def set_seed(seed=42):
     """Set random seed for Python, NumPy, and PyTorch."""
+    if not isinstance(seed, int):
+        raise TypeError(f"seed must be an integer, got {type(seed).__name__}")
     global _seed
     _seed = seed
     random.seed(seed)
