@@ -50,13 +50,13 @@ try:
     from src.core.types import PETEvent, Trajectory, WorldPoint
 except ImportError:
     # Fallback: define minimal types if core module unavailable
-    class WorldPoint:
+    class WorldPoint:  # type: ignore[no-redef]
         def __init__(self, t: float, x: float, y: float):
             self.t = t  # pragma: no cover
             self.x = x  # pragma: no cover
             self.y = y  # pragma: no cover
 
-    class Trajectory:
+    class Trajectory:  # type: ignore[no-redef]
         def __init__(
             self,
             track_id: int,
@@ -69,7 +69,7 @@ except ImportError:
             self.actor_type = actor_type  # pragma: no cover
             self.source = source  # pragma: no cover
 
-    class PETEvent:
+    class PETEvent:  # type: ignore[no-redef]
         def __init__(
             self,
             event_id: int,
@@ -609,7 +609,7 @@ def detect_conflicts(
     conflicts["is_conflict"] = True
 
     # Add severity classification
-    conflicts["severity"] = conflicts[pet_col].apply(classify_pet_severity)
+    conflicts["severity"] = conflicts[pet_col].apply(classify_pet_severity)  # type: ignore[arg-type]
 
     # Optional uncertainty quantification (vectorized for performance)
     if estimate_uncertainty:
@@ -618,15 +618,15 @@ def detect_conflicts(
             sigma_total = np.sqrt(
                 DEFAULT_DETECTION_ERROR**2 + DEFAULT_HOMOGRAPHY_ERROR**2 + DEFAULT_TRACKING_ERROR**2
             )
-            velocity_safe = np.maximum(conflicts[velocity_col].values, 0.1)
-            conflicts["pet_uncertainty_std"] = sigma_total / velocity_safe
+            velocity_safe = np.maximum(conflicts[velocity_col].values, 0.1)  # type: ignore[arg-type]
+            conflicts["pet_uncertainty_std"] = sigma_total / velocity_safe  # type: ignore[operator]
         else:
             # Use default velocity (5.0 m/s)
             sigma_total = np.sqrt(
                 DEFAULT_DETECTION_ERROR**2 + DEFAULT_HOMOGRAPHY_ERROR**2 + DEFAULT_TRACKING_ERROR**2
             )
-            velocity_safe = 5.0  # Default velocity
-            conflicts["pet_uncertainty_std"] = sigma_total / velocity_safe
+            velocity_safe = 5.0  # type: ignore[assignment]  # Default velocity
+            conflicts["pet_uncertainty_std"] = sigma_total / velocity_safe  # type: ignore[operator]
 
     return conflicts
 
@@ -898,12 +898,12 @@ class PETConflictChecker:
             try:
                 # Compute PET from timestamps
                 pet = compute_pet(
-                    traj_a["timestamp"].values
+                    traj_a["timestamp"].values  # type: ignore[arg-type]
                     if "timestamp" in traj_a.columns
-                    else traj_a["frame"].values / fps,
-                    traj_b["timestamp"].values
+                    else traj_a["frame"].values / fps,  # type: ignore[arg-type, operator]
+                    traj_b["timestamp"].values  # type: ignore[arg-type]
                     if "timestamp" in traj_b.columns
-                    else traj_b["frame"].values / fps,
+                    else traj_b["frame"].values / fps,  # type: ignore[arg-type, operator]
                 )
 
                 if pet > self.pet_threshold:
@@ -958,12 +958,12 @@ class PETConflictChecker:
         if len(traj) < 2:
             return 5.0
 
-        dx = np.diff(traj["x"].values)
-        dy = np.diff(traj["y"].values)
+        dx = np.diff(traj["x"].values)  # type: ignore[arg-type]
+        dy = np.diff(traj["y"].values)  # type: ignore[arg-type]
         dt = (
-            np.diff(traj["timestamp"].values)
+            np.diff(traj["timestamp"].values)  # type: ignore[arg-type]
             if "timestamp" in traj.columns
-            else np.diff(traj["frame"].values) / 30.0
+            else np.diff(traj["frame"].values) / 30.0  # type: ignore[arg-type]
         )
 
         speeds = np.sqrt(dx**2 + dy**2) / np.maximum(dt, 0.001)

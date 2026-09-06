@@ -22,6 +22,7 @@ import numpy as np
 
 matplotlib.use("Agg")  # Non-interactive backend
 import warnings
+from typing import Any
 
 from matplotlib.ticker import MaxNLocator
 from scipy import stats
@@ -181,7 +182,7 @@ class SSMPlotter:
         Returns:
             Validation results with cleaned data
         """
-        results = {"valid": True, "clean_data": None, "warnings": [], "errors": []}
+        results: dict[str, Any] = {"valid": True, "clean_data": None, "warnings": [], "errors": []}
 
         if data is None:
             results["valid"] = False
@@ -278,7 +279,7 @@ class SSMPlotter:
 
         # Color bars by severity (using configurable thresholds)
         pet_thresh = self.thresholds["pet"]
-        for i, patch in enumerate(patches):
+        for i, patch in enumerate(patches):  # type: ignore[arg-type]
             bin_center = (bin_edges[i] + bin_edges[i + 1]) / 2
             if bin_center < pet_thresh["critical"]:
                 patch.set_facecolor(self.COLORS["red"])
@@ -667,7 +668,7 @@ class SSMPlotter:
         # Boxplot
         ax.boxplot(
             data_list,
-            labels=labels,
+            tick_labels=labels,
             patch_artist=True,
             notch=True,
             showmeans=True,
@@ -772,7 +773,7 @@ class SSMPlotter:
         else:
             bands = custom_bands
             labels = [f"{bands[i]:.1f}-{bands[i + 1]:.1f}s" for i in range(len(bands) - 1)]
-            colors = plt.cm.RdYlGn_r(np.linspace(0, 1, len(labels)))
+            colors = plt.cm.RdYlGn_r(np.linspace(0, 1, len(labels)))  # type: ignore[attr-defined]
 
         # Count events in each band
         counts = []
@@ -1084,7 +1085,7 @@ def plot_temporal_heatmap(
         H_smooth,
         aspect="auto",
         origin="lower",
-        extent=[timestamps.min(), timestamps.max(), pet_values.min(), pet_values.max()],
+        extent=(timestamps.min(), timestamps.max(), pet_values.min(), pet_values.max()),
         cmap="YlOrRd",
         interpolation="bilinear",
     )
