@@ -34,7 +34,7 @@ import numpy as np
 try:
     from src.analysis.grid_trajectory.spatial_grid import SpatialGrid
 except ImportError:  # pragma: no cover
-    SpatialGrid = None  # pragma: no cover
+    SpatialGrid = None  # type: ignore[assignment,misc]  # pragma: no cover
     warnings.warn(
         "SpatialGrid not available - grid overlay disabled", stacklevel=2
     )  # pragma: no cover
@@ -533,7 +533,7 @@ class VideoOverlayPlotter:
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore[attr-defined]
         out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
         start_frame, end_frame = frame_range

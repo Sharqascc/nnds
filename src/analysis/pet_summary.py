@@ -120,7 +120,7 @@ class PETEventAnalyzer:
             "count": n,
             "mean": float(pet.mean()),
             "std": float(pet.std(ddof=1)) if n > 1 else float("nan"),
-            "sem": float(pet.sem()) if n > 1 else float("nan"),
+            "sem": float(pet.sem()) if n > 1 else float("nan"),  # type: ignore[arg-type]
             "min": float(pet.min()),
             "q25": float(pet.quantile(0.25)),
             "median": float(pet.median()),
@@ -128,8 +128,8 @@ class PETEventAnalyzer:
             "max": float(pet.max()),
             "iqr": float(pet.quantile(0.75) - pet.quantile(0.25)),
             "cv": float(pet.std(ddof=1) / pet.mean()) if pet.mean() > 0 and n > 1 else float("nan"),
-            "skew": float(pet.skew()) if n > 2 else float("nan"),
-            "kurtosis": float(pet.kurtosis()) if n > 3 else float("nan"),
+            "skew": float(pet.skew()) if n > 2 else float("nan"),  # type: ignore[arg-type]
+            "kurtosis": float(pet.kurtosis()) if n > 3 else float("nan"),  # type: ignore[arg-type]
         }
 
         # CI for mean (Student t).[web:38][web:40]

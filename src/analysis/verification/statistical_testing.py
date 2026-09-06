@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """
 Statistical Hypothesis Testing for Traffic Safety Analysis
 

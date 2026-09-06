@@ -133,7 +133,7 @@ class CustomTracker:
                 "frame,track_a,track_b,iou,pred_cx_a,pred_cy_a,pred_cx_b,pred_cy_b,box_a,box_b\n"
             )
         else:
-            self.log_handle = None
+            self.log_handle = None  # type: ignore[assignment]
         self.next_id = 1
         self.tracks = {}
 

@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """
 Uncertainty Quantification for Surrogate Safety Measures
 

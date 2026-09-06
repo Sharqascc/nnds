@@ -447,7 +447,7 @@ class TrafficVolumeCounter:
                 color = (80, 200, 255)
             elif ": IN " in text and "| OUT " in text:
                 gate_name = text.split(":")[0]
-                gate = self.gates.get(gate_name)
+                gate = self.gates.get(gate_name)  # type: ignore[assignment]
                 if gate is not None:
                     cv2.rectangle(
                         frame,
@@ -502,7 +502,7 @@ class TrafficVolumeCounter:
             h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
             if output_video is not None:
-                fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+                fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore[attr-defined]
                 out = cv2.VideoWriter(output_video, fourcc, fps, (w, h))
 
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))

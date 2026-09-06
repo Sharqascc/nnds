@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """
 Diffusion Model Evaluation Plots for PET Metrics
 

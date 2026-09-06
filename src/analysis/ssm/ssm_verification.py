@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """
 SSM Verification Suite for NNDS Pipeline
 

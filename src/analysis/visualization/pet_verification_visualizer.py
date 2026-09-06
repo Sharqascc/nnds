@@ -311,7 +311,7 @@ class PETVerificationVisualizer:
                 end = total_video_frames
             available = end - start
             if available > max_frames:
-                video_idx_range = np.linspace(start, end - 1, max_frames, dtype=int)
+                video_idx_range = np.linspace(start, end - 1, max_frames, dtype=int)  # type: ignore[assignment]
             else:
                 video_idx_range = list(range(start, end))
 
@@ -324,7 +324,7 @@ class PETVerificationVisualizer:
             raise ValueError("Trajectory frames are empty")  # pragma: no cover
         min_frame, _max_frame = min(all_frames), max(all_frames)
 
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore[attr-defined]
         out = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
         if not out.isOpened():
             if hasattr(self, "background_mode") and self.background_mode != "schematic":

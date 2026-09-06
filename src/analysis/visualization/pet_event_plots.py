@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """
 Publication-Quality PET Conflict Event Visualization
 

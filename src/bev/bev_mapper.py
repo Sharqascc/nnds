@@ -4,6 +4,7 @@ import io
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -175,7 +176,7 @@ def test_with_real_calibration(
     world_reproj = _project_points_homography(pixel_points, H)
     valid = np.all(np.isfinite(world_reproj), axis=1)
 
-    errors = []
+    errors: Any = []
     for i in range(len(pixel_points)):
         if valid[i]:
             error = np.linalg.norm(world_reproj[i] - world_points_xy[i])
@@ -277,7 +278,7 @@ def test_with_real_calibration(
 
     roundtrip_mean_px = float("nan")
     try:
-        H_inv = np.linalg.inv(H)
+        H_inv = np.linalg.inv(H)  # type: ignore[arg-type]
         test_pixels = pixel_points[: min(3, len(pixel_points))]
         world_fwd = _project_points_homography(test_pixels, H)
         pixels_back = _project_points_homography(world_fwd, H_inv)
