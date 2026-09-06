@@ -47,6 +47,12 @@ validate-contracts = "scripts.validate_contracts:main"
 inspect-pet = "scripts.inspect_pet:main"
 generate-pet-verification-video = "scripts.generate_pet_verification_video:main"
 validation-report = "scripts.validation_report:main"
+estimate-time-of-day = "scripts.estimate_time_of_day:main"
+generate-safety-report-groq = "scripts.generate_safety_report_groq:main"
+evaluate-tracking-metrics = "scripts.evaluate_tracking_metrics:main"
+tracking-report = "scripts.tracking_report:main"
+tracking-report-fast = "scripts.tracking_report_fast:main"
+validate-all = "scripts.validate_all:main"
 
 [tool.black]
 line-length = 100
