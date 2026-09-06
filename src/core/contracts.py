@@ -97,3 +97,17 @@ class PETSummaryBasicStats(BaseModel):
     p90: float
     p95: float
     p99: float
+
+
+class PETUncertaintyContract(BaseModel):
+    nominal_pet: float = Field(..., ge=0)
+    uncertainty_std: float = Field(..., ge=0)
+    error_sources: dict[str, float]
+
+    @model_validator(mode="after")
+    def check_error_sources(self):
+        if not self.error_sources:
+            raise ValueError("error_sources must not be empty")
+        if any(v < 0 for v in self.error_sources.values()):
+            raise ValueError("error_sources values must be non-negative")
+        return self

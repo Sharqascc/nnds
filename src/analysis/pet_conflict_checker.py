@@ -43,6 +43,8 @@ import numpy as np
 import pandas as pd
 from scipy.signal import savgol_filter
 
+from src.core.contracts import PETUncertaintyContract
+
 # Import core types (ensure core.types exists)
 try:
     from src.core.types import PETEvent, Trajectory, WorldPoint
@@ -479,6 +481,12 @@ def estimate_pet_uncertainty(
         "tracking": tracking_error_m / velocity_safe,
     }
 
+    # Validate against production contract
+    _ = PETUncertaintyContract(
+        nominal_pet=pet_value,
+        uncertainty_std=sigma_pet,
+        error_sources=error_sources,
+    )
     return PETUncertainty(
         nominal_pet=pet_value,
         uncertainty_std=sigma_pet,
