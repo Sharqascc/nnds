@@ -109,7 +109,7 @@ def compute_ttc_seq(pos1, pos2, dt, d_thresh=1.0, eps=1e-6):
     v_rel = v2 - v1
     p_rel = pos2[:-1] - pos1[:-1]
 
-    ttc = []
+    ttc: list[float | None] = []
     for p, v in zip(p_rel, v_rel, strict=False):
         vr2 = float(np.dot(v, v))
         if vr2 < eps:

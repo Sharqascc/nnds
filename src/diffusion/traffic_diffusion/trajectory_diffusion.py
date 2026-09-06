@@ -123,7 +123,7 @@ class TrajectoryDiffusionModel(nn.Module):
             acc = torch.diff(pred_v, n=2, dim=1)
             smooth_loss = torch.mean(acc**2)
         else:
-            smooth_loss = 0.0
+            smooth_loss = torch.zeros((), device=pred_v.device, dtype=pred_v.dtype)
 
         return base_loss + smoothness_weight * smooth_loss
 
