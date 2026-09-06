@@ -33,9 +33,6 @@ from src.diffusion.traffic_diffusion.training_utils import (
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_DIR = ROOT / "outputs"
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 logger = logging.getLogger(__name__)
 if not logger.handlers:
@@ -150,12 +147,14 @@ def run_safety_eval_pipeline(
         load_trajdiff_dataset,
     )
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info("Loading trajectory diffusion dataset from %s", ROOT)
     raw_dataset, meta_df = load_trajdiff_dataset(ROOT)
 
     N = 1
     F = 4
 
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     logger.info("Building dataloaders (batch_size=%d, T=%d, N=%d, F=%d)", batch_size, T, N, F)
     train_loader, eval_loader, _train_dataset, eval_dataset, _stats = build_clean_dataloaders(
         raw_dataset, batch_size=batch_size, T=T, N=N, F=F
