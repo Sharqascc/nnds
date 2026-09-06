@@ -23,6 +23,8 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
+from src.core.contracts import PETSummaryBasicStats, PETSummaryRiskSummary
+
 
 class PETEventAnalyzer:
     """Comprehensive PET event analyzer with statistical rigor."""
@@ -143,6 +145,8 @@ class PETEventAnalyzer:
         for pct in (1, 5, 10, 90, 95, 99):
             stats_dict[f"p{pct}"] = float(pet.quantile(pct / 100.0))
 
+        # Validate against production contract
+        _ = PETSummaryBasicStats(**stats_dict)
         return stats_dict
 
     # ------------------------------------------------------------------ #
@@ -192,6 +196,8 @@ class PETEventAnalyzer:
             "per_1000_events": float(1000.0 * conflict_count / total) if total > 0 else 0.0,
         }
 
+        # Validate against production contract
+        _ = PETSummaryRiskSummary(**summary)
         return summary
 
     # ------------------------------------------------------------------ #
