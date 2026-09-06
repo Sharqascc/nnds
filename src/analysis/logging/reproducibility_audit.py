@@ -46,9 +46,9 @@ class ReproducibilityAuditor:
             project_root: Root directory of project (defaults to CWD)
         """
         self.project_root = Path(project_root or os.getcwd())
-        self.session_start = None
-        self.session_data = {}
-        self._execution_times = {}
+        self.session_start: datetime | None = None
+        self.session_data: dict[str, Any] = {}
+        self._execution_times: dict[str, Any] = {}
 
     def start_session(
         self,
@@ -140,7 +140,7 @@ class ReproducibilityAuditor:
             import numpy as np
 
             state = np.random.get_state()
-            random_state["numpy_seed"] = int(state[1][0])  # First seed value
+            random_state["numpy_seed"] = int(state[1][0])  # type: ignore[index]
         except ImportError:
             pass
 
@@ -160,7 +160,7 @@ class ReproducibilityAuditor:
     # SYSTEM & HARDWARE DETECTION
     # ===================================================================
 
-    def _get_system_info(self) -> dict[str, str]:
+    def _get_system_info(self) -> dict[str, Any]:
         """Capture OS and Python environment."""
         return {
             "python_version": sys.version,
@@ -224,9 +224,9 @@ class ReproducibilityAuditor:
             pass
         return 0.0
 
-    def _get_gpu_info(self) -> list[dict[str, str]]:
+    def _get_gpu_info(self) -> list[dict[str, Any]]:
         """Detect available GPUs (NVIDIA, AMD, Apple Silicon)."""
-        gpus = []
+        gpus: list[dict[str, Any]] = []
 
         # Try NVIDIA
         try:
@@ -264,7 +264,7 @@ class ReproducibilityAuditor:
     # CONTAINER DETECTION
     # ===================================================================
 
-    def _get_container_info(self) -> dict[str, str]:
+    def _get_container_info(self) -> dict[str, Any]:
         """Detect if running in container (Docker, Colab, Singularity)."""
         container = {"type": "bare-metal", "details": None}
 
@@ -398,7 +398,7 @@ class ReproducibilityAuditor:
     # CODE VERSIONING
     # ===================================================================
 
-    def _get_git_info(self) -> dict[str, str]:
+    def _get_git_info(self) -> dict[str, Any]:
         """Get Git repository state."""
         try:
             commit = subprocess.run(
@@ -547,9 +547,10 @@ class ReproducibilityAuditor:
             "logged_at": datetime.now().isoformat(),
         }
 
-    def _hash_file(self, path: str, algorithm: str = "sha256") -> str:
+    def _hash_file(self, path: str | Path, algorithm: str = "sha256") -> str:
         """Compute file hash."""
         try:
+            path = str(path)
             hasher = hashlib.new(algorithm)
             with open(path, "rb") as f:
                 for chunk in iter(lambda: f.read(65536), b""):
@@ -558,7 +559,7 @@ class ReproducibilityAuditor:
         except Exception as e:
             return f"error: {str(e)[:20]}"
 
-    def _format_bytes(self, size_bytes: int) -> str:
+    def _format_bytes(self, size_bytes: float) -> str:
         """Format bytes to human-readable size."""
         for unit in ["B", "KB", "MB", "GB", "TB"]:
             if size_bytes < 1024.0:
@@ -725,12 +726,6 @@ def generate_audit_report(
     auditor.start_session(config=config, description=description)
     return auditor.generate_report(save_path)
 
-
-def verify_reproducibility(report_path: str) -> dict:
-    """Verify current environment against saved report."""
-    auditor = ReproducibilityAuditor()
-    auditor.start_session(description="Verification run")
-    return auditor.verify_reproducibility(report_path)
 
 def verify_reproducibility(*args, **kwargs):
     return ReproducibilityAuditor().verify_reproducibility(*args, **kwargs)
