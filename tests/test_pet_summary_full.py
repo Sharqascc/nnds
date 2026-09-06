@@ -241,3 +241,20 @@ def test_main_no_export(tmp_path, capsys):
 def test_cliffs_delta_empty():
     assert PETEventAnalyzer._cliffs_delta(np.array([]), np.array([1, 2])) == 0.0
     assert PETEventAnalyzer._cliffs_delta(np.array([1, 2]), np.array([])) == 0.0
+
+# Consolidated from test_pet_summary.py
+def test_pet_event_analyzer_import():
+    """Test that PETEventAnalyzer can be imported."""
+    assert PETEventAnalyzer is not None
+
+
+def test_pet_event_analyzer_requires_csv_path():
+    """Test PETEventAnalyzer requires csv_path."""
+    with pytest.raises(Exception):
+        PETEventAnalyzer()  # Missing csv_path should raise error
+
+
+def test_pet_event_analyzer_initialization(pet_csv_path):
+    """Test PETEventAnalyzer initializes with a CSV."""
+    analyzer = PETEventAnalyzer(str(pet_csv_path))
+    assert analyzer is not None
