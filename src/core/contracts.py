@@ -111,3 +111,17 @@ class PETUncertaintyContract(BaseModel):
         if any(v < 0 for v in self.error_sources.values()):
             raise ValueError("error_sources values must be non-negative")
         return self
+
+
+class UQAnalysisContract(BaseModel):
+    metric_name: str
+    passed: bool
+    warnings: list[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
+    method: str
+
+    @model_validator(mode="after")
+    def check_passed_consistency(self):
+        if not self.passed and not self.errors:
+            raise ValueError("If passed is False, errors must not be empty")
+        return self

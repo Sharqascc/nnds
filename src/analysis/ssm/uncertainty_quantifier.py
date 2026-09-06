@@ -20,6 +20,8 @@ from dataclasses import dataclass
 import numpy as np
 from scipy import stats
 
+from src.core.contracts import UQAnalysisContract
+
 __all__ = [
     "UncertaintyQuantifier",
     "bootstrap_ci",
@@ -107,6 +109,7 @@ class UncertaintyQuantifier:
         if len(data) == 0:
             results["passed"] = False
             results["errors"].append("No valid data for analysis")
+            _ = UQAnalysisContract(**results)
             return results
 
         n = len(data)
@@ -192,6 +195,7 @@ class UncertaintyQuantifier:
             f"CV={cv:.1f}%"
         )
 
+        _ = UQAnalysisContract(**results)
         return results
 
     # ===================================================================
