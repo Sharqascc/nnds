@@ -111,7 +111,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Enable debug logging.",
     )
-    return p
+    return p.parse_args()
 
 
 def configure_logging(verbose: bool) -> None:
@@ -153,7 +153,7 @@ def add_plane_bias(world_pts: np.ndarray, bias_cm: float = 1.5) -> np.ndarray:
     """
     bias_m = bias_cm / 100.0
     wp = world_pts.copy()
-    x_range = np.ptp(wp[:, 0])
+    x_range: float = float(np.ptp(wp[:, 0]))
     x_norm = (wp[:, 0] - wp[:, 0].min()) / max(1e-6, x_range)
     wp[:, 2] = x_norm * bias_m
     return wp

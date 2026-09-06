@@ -1,8 +1,8 @@
 
-from enum import StrEnum
+from enum import Enum
 
 
-class TrackState(StrEnum):
+class TrackState(str, Enum):  # noqa: UP042
     DETECTED = "DETECTED"
     TRACKING = "TRACKING"
     MISSED = "MISSED"

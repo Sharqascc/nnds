@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 
 def plot_vlm_results(
-    results: list[dict[str, Any]], output_path: str, title: str = "VLM Analysis Results"
+    results: list[dict[str, Any]], output_path: str | Path, title: str = "VLM Analysis Results"
 ) -> None:
     """
     Plot VLM analysis results.
@@ -45,7 +45,7 @@ def plot_vlm_results(
 
     # Severity distribution
     ax2 = axes[1]
-    severity_counts = {}
+    severity_counts: dict[str, int] = {}
     for sev in severities:
         severity_counts[sev] = severity_counts.get(sev, 0) + 1
 

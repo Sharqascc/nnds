@@ -11,8 +11,8 @@ import cv2
 
 
 def extract_frames(
-    video_path: str,
-    output_dir: str,
+    video_path: str | Path,
+    output_dir: str | Path,
     frame_interval: int = 30,
     max_frames: int | None = None,
 ) -> list[str]:

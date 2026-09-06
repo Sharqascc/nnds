@@ -1,15 +1,17 @@
 # --- Auto-generated stubs for missing globals (F821) ---
-inputs_np = None
-targets_np = None
-device = None
-sample_timesteps = None
-sqrt_alphas_cumprod = None
-sqrt_one_minus_alphas_cumprod = None
-T_steps = 0
-model = None
-alphas = None
-betas = None
-alphas_cumprod = None
+inputs_np: Any = None
+targets_np: Any = None
+device: Any = None
+sample_timesteps: Any = None
+sqrt_alphas_cumprod: Any = None
+sqrt_one_minus_alphas_cumprod: Any = None
+T_steps: int = 0
+model: Any = None
+alphas: Any = None
+betas: Any = None
+alphas_cumprod: Any = None
+from typing import Any
+
 # --------------------------------------------------------
 
 

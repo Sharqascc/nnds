@@ -133,7 +133,7 @@ Be precise. Count only vehicles that are on or have crossed the gate line."""
             description = f"Parse error: {vlm_text[:200]}"
 
         return GateValidationResult(
-            frame_id=Path(image_path).stem,
+            frame_id=int(Path(image_path).stem),
             gate_name=gate_name,
             vlm_count=vlm_count,
             automated_count=automated_count,
@@ -202,7 +202,7 @@ Be precise. Count only vehicles that are on or have crossed the gate line."""
 
         return results
 
-    def generate_report(self, results: list[GateValidationResult], output_path: str) -> None:
+    def generate_report(self, results: list[GateValidationResult], output_path: str | Path) -> None:
         """Generate validation report."""
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)

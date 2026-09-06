@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Any
 
 import cv2
 import numpy as np
@@ -41,7 +42,7 @@ class VLMEnhancedPipeline:
                 # Simulate trajectory data (since we don't have real tracking here)
                 if self.yolo:
                     detections = self.yolo(frame)
-                    boxes = []
+                    boxes: list[dict[str, Any]] = []
                     for r in detections:
                         if r.boxes is not None:
                             for box in r.boxes:
@@ -71,7 +72,7 @@ class VLMEnhancedPipeline:
                     }
                     traj_df = pd.DataFrame(dummy_data)
 
-                vlm_result = self.vlm.analyze_with_trajectory(img_path, traj_df)
+                vlm_result = self.vlm.analyze_with_trajectory(img_path, traj_df)  # type: ignore[attr-defined]
                 self.results.append(
                     {
                         "frame": frames_processed,
@@ -157,7 +158,7 @@ if __name__ == "__main__":
                 :5
             ]
             for img in images:
-                res = pipeline.vlm.analyze_with_trajectory(img, pd.DataFrame())
+                res = pipeline.vlm.analyze_with_trajectory(img, pd.DataFrame())  # type: ignore[attr-defined]
                 print(f"Image: {img}\n{json.dumps(res, indent=2)}\n")
         else:
             print("No images found. Exiting.")

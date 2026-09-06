@@ -32,8 +32,9 @@ def show_frame(video_path, title="Video Frame", frame_idx=0):
         If the requested frame cannot be read.
     """
     # ---- Validate video_path -------------------------------------------------
-    if not isinstance(video_path, (str, bytes, os.PathLike)):
+    if not isinstance(video_path, (str, os.PathLike)):
         raise TypeError("video_path must be a string or path‑like object")
+    video_path = str(video_path)
     if not os.path.isfile(video_path):
         raise FileNotFoundError(f"Video file not found: {video_path}")
 

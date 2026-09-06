@@ -433,7 +433,7 @@ def run_video_to_pet(
     if detector == "sam3":
         # SAM3 path: validate SAM3 weights and run existing pipeline
         if not sam3_weights_path.exists():
-            sam3_weights_path = None
+            sam3_weights_path = None  # type: ignore[assignment]
 
         try:
             from src.analysis.grid_trajectory.sam3_grid_pet import run_sam3_grid_pet
