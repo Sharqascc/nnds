@@ -295,7 +295,7 @@ class PETDiffusionAnalyzer:
         sample_future_fn: Callable,
         noise_scale: float = 0.01,
         verbose: bool = True,
-    ) -> tuple[list[tuple[float | None, float | None]], pd.DataFrame]:
+    ) -> tuple[list[tuple[int | None, int | None]], pd.DataFrame]:
         """
         Compute PET-like metrics comparing real and sampled futures.
 
@@ -466,7 +466,7 @@ class PETDiffusionAnalyzer:
                 logger.warning(f"Row index {row_idx} out of bounds (CSV has {len(df_pet)} rows)")
                 continue
 
-            true_pet_sec = float(df_pet.loc[row_idx, "PET"])
+            true_pet_sec = float(str(df_pet.loc[row_idx, "PET"]))
 
             # Compute PET-like from trajectories
             real_traj = real_np[b]
@@ -487,11 +487,11 @@ class PETDiffusionAnalyzer:
                     "pet_like_sample_steps": pet_like_sample,
                     "pet_like_real_sec": self.steps_to_seconds(pet_like_real),
                     "pet_like_sample_sec": self.steps_to_seconds(pet_like_sample),
-                    "error_real": (self.steps_to_seconds(pet_like_real) - true_pet_sec)
-                    if pet_like_real
+                    "error_real": (self.steps_to_seconds(pet_like_real) - true_pet_sec)  # type: ignore[operator]
+                    if pet_like_real is not None
                     else None,
-                    "error_sample": (self.steps_to_seconds(pet_like_sample) - true_pet_sec)
-                    if pet_like_sample
+                    "error_sample": (self.steps_to_seconds(pet_like_sample) - true_pet_sec)  # type: ignore[operator]
+                    if pet_like_sample is not None
                     else None,
                 }
             )
@@ -637,7 +637,7 @@ def compute_pet_like_metrics(
     scale: float,
     noise_scale: float = 0.01,
     d_thresh: float = 1.0,
-) -> list[tuple[float | None, float | None]]:
+) -> list[tuple[int | None, int | None]]:
     """
     Backward compatible function for computing PET-like metrics.
 

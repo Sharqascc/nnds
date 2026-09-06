@@ -244,7 +244,7 @@ def run_sam3_grid_pet(
     if debug_video_rel_path is not None:
         debug_video_path = root / debug_video_rel_path
         debug_video_path.parent.mkdir(parents=True, exist_ok=True)
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore[attr-defined]
         writer = cv2.VideoWriter(str(debug_video_path), fourcc, fps, (w0, h0))
 
     # Grid and BEV mapper
@@ -320,14 +320,14 @@ def run_sam3_grid_pet(
             if boxes is None or getattr(boxes, "xyxy", None) is None:
                 if writer is not None:
                     frame = overlay_pet_info(frame, frame_idx, fps)
-                writer.write(frame)
+                    writer.write(frame)
                 continue
 
             xyxy = boxes.xyxy.detach().cpu().numpy()
             if xyxy.size == 0:
                 if writer is not None:
                     frame = overlay_pet_info(frame, frame_idx, fps)
-                writer.write(frame)
+                    writer.write(frame)
                 continue
 
             track_ids_attr = getattr(boxes, "id", None)
