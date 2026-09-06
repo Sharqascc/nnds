@@ -362,3 +362,31 @@ def test_process_video_no_output(tmp_path):
     with patch("cv2.VideoCapture", return_value=cap):
         result = counter.process_video(detector=lambda f: [], max_frames=2, show_progress=False)
     assert result["total_entries"] == 0
+
+# Consolidated from test_gate_counter.py
+def _make_dummy_video(tmp_path, name="dummy.mp4"):
+    video = tmp_path / name
+    video.write_bytes(b"fake video content")
+    return video
+
+
+def test_counter_initialization(tmp_path):
+    """Test counter initializes correctly with dummy video file."""
+    video = _make_dummy_video(tmp_path)
+    counter = TrafficVolumeCounter(str(video))
+    assert counter is not None
+    assert len(counter.gates) == 0  # no gate config -> empty
+
+
+def test_counter_gate_config_validation(tmp_path):
+    """Test that invalid gate config does not raise, but loads no gates."""
+    video = _make_dummy_video(tmp_path)
+    counter = TrafficVolumeCounter(str(video), gate_config="invalid_path.yaml")
+    assert counter.gates == {}
+
+
+def test_counter_classes_of_interest(tmp_path):
+    """Test that classes_of_interest is set correctly."""
+    video = _make_dummy_video(tmp_path)
+    counter = TrafficVolumeCounter(str(video), classes_of_interest=["car", "motorcycle"])
+    assert counter.classes_of_interest == ["car", "motorcycle"]
