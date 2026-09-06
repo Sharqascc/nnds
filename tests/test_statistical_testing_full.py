@@ -3,6 +3,7 @@ import pytest
 
 from src.analysis.verification.statistical_testing import (
     StatisticalTester,
+    TestResult,
     check_assumptions,
     chi_square_test,
     multiple_comparisons,
@@ -415,3 +416,50 @@ def test_convenience_check_assumptions():
     g2 = rng.normal(0.5, 1, 30)
     res = check_assumptions(g1, g2, test_type="t-test")
     assert "checks" in res
+
+# Consolidated from test_statistical_testing.py
+def test_paired_test_basic():
+    """Test paired t-test with known difference."""
+    np.random.seed(42)
+    group1 = np.random.normal(10, 2, 100)
+    group2 = group1 + np.random.normal(0.5, 0.1, 100)
+    result = paired_test(group1, group2)
+    assert result is not None
+
+
+def test_chi_square_test():
+    """Test chi-square test."""
+    observed = np.array([10, 20, 30])
+    expected = np.array([15, 15, 30])
+    result = chi_square_test(observed, expected)
+    assert result is not None
+
+
+def test_check_assumptions():
+    """Test assumption checking."""
+    np.random.seed(42)
+    data1 = np.random.normal(10, 2, 100)
+    data2 = np.random.normal(12, 2, 100)
+    result = check_assumptions(data1, data2)
+    assert result is not None
+
+
+def test_multiple_comparisons():
+    """Test multiple comparisons correction."""
+    np.random.seed(42)
+    p_values = np.random.uniform(0, 0.1, 10)
+    result = multiple_comparisons(p_values)
+    assert result is not None
+
+
+def test_statistical_tester_initialization():
+    """Test StatisticalTester initialization."""
+    tester = StatisticalTester()
+    assert tester is not None
+
+
+def test_test_result_dataclass():
+    """Test TestResult dataclass."""
+    result = TestResult(test_name="test", statistic=1.5, p_value=0.05, significant=True)
+    assert result.test_name == "test"
+    assert result.p_value == 0.05
