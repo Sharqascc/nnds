@@ -40,7 +40,7 @@ test = [
 ]
 
 [project.scripts]
-nnds = "traffic_analyzer:main"
+nnds = "pipeline.traffic_analyzer:main"
 
 [tool.black]
 line-length = 100
@@ -62,3 +62,8 @@ testpaths = [
 omit = [
     "src/analysis/safety_eval_diffusion_notebook.py",
 ]
+
+[tool.setuptools]
+packages.find.include = ["*"]
+packages.find.where = ["src"]
+
