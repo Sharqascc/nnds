@@ -8,6 +8,7 @@ from src.core.contracts import (
     PETSummaryRiskSummary,
     PETUncertaintyContract,
     RiskLevelSummary,
+    StatisticalTestResultContract,
 )
 
 
@@ -133,4 +134,38 @@ def test_pet_uncertainty_contract_empty_error_sources():
             nominal_pet=2.5,
             uncertainty_std=0.1,
             error_sources={},
+        )
+
+
+# ---------------------- StatisticalTestResultContract ----------------------
+def test_statistical_test_result_contract_valid():
+    obj = StatisticalTestResultContract(
+        test="t-test",
+        alpha=0.05,
+        passed=True,
+        warnings=[],
+        errors=[],
+        type="two-sample",
+        statistics={},
+        test_statistics={"t_statistic": 0.0, "p_value": 1.0},
+        assumptions={},
+        summary="t-test result",
+    )
+    assert obj.test == "t-test"
+    assert obj.passed is True
+
+def test_statistical_test_result_contract_invalid_passed_no_errors():
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        StatisticalTestResultContract(
+            test="t-test",
+            alpha=0.05,
+            passed=False,
+            warnings=[],
+            errors=[],
+            type="two-sample",
+            statistics={},
+            test_statistics={"t_statistic": 0.0, "p_value": 1.0},
+            assumptions={},
+            summary="t-test result",
         )

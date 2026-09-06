@@ -7,7 +7,7 @@ These Pydantic models mirror the actual columns in
 """
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -119,6 +119,25 @@ class UQAnalysisContract(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
     method: str
+
+    @model_validator(mode="after")
+    def check_passed_consistency(self):
+        if not self.passed and not self.errors:
+            raise ValueError("If passed is False, errors must not be empty")
+        return self
+
+
+class StatisticalTestResultContract(BaseModel):
+    test: str
+    alpha: float = Field(..., ge=0, le=1)
+    passed: bool
+    warnings: list[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
+    type: str | None = None
+    statistics: dict[str, Any] = Field(default_factory=dict)
+    test_statistics: dict[str, Any] = Field(default_factory=dict)
+    assumptions: dict[str, Any] = Field(default_factory=dict)
+    summary: str | None = None
 
     @model_validator(mode="after")
     def check_passed_consistency(self):
