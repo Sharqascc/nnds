@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-cov pytest-timeout hypothesis pytest-mock syrupy pydantic ipython
+          pip install pytest pytest-cov pytest-timeout hypothesis pytest-mock syrupy pydantic ipython mypy
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f requirements-vlm.txt ]; then pip install -r requirements-vlm.txt; fi
 
@@ -31,6 +31,14 @@ jobs:
             --ignore=tests/test_snapshot_pet_summary.py \
             --cov=src --cov-branch --cov-report=term-missing \
             --cov-fail-under=70
+
+      - name: Run mypy type checking (analysis)
+        run: mypy --config-file mypy.ini src/analysis
+
+      - name: Run property tests
+        run: pytest tests/ -m property -q \
+          --ignore=tests/test_snapshot_bev_mapper.py \
+          --ignore=tests/test_snapshot_pet_summary.py
 
       - name: Run smoke tests (integration)
         run: pytest tests/ -m "integration or smoke" -q \
