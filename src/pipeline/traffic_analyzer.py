@@ -12,6 +12,7 @@ from typing import Any
 import cv2
 import numpy as np
 import pandas as pd
+from pydantic import ConfigDict, validate_call
 
 __version__ = "2.0.0"
 __author__ = "NNDS Team"
@@ -194,6 +195,7 @@ class CompleteTrafficAnalyzer:
 
     # ------------------------ Speed estimation ------------------------
 
+    @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
     def estimate_speed(
         self,
         pixel_positions: np.ndarray,
@@ -264,6 +266,7 @@ class CompleteTrafficAnalyzer:
 
     # ------------------------ Reporting & Export ------------------------
 
+    @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
     def generate_report(self, speed_results: dict[str, Any]) -> dict[str, float]:
         """Generate concise research report."""
         logger.info("")
@@ -297,6 +300,7 @@ class CompleteTrafficAnalyzer:
             "uncertainty": float(speed_results["speed_std"]),
         }
 
+    @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
     def save_calibration(self, path: str | Path) -> None:
         """Save calibration results and BEV configuration to JSON."""
         out_path = Path(path)

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
+from pydantic import ConfigDict, validate_call
 
 
 @dataclass
@@ -16,6 +17,7 @@ class ValidationMetrics:
     num_samples: int | None = None
 
 
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def compute_error_metrics(errors: Sequence[float] | np.ndarray) -> ValidationMetrics:
     arr = np.asarray(errors, dtype=float)
     if arr.size == 0:
@@ -28,6 +30,7 @@ def compute_error_metrics(errors: Sequence[float] | np.ndarray) -> ValidationMet
     )
 
 
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def validate_numeric_array(name: str, value: Any, ndim: int | None = None) -> np.ndarray:
     arr = np.asarray(value, dtype=float)
     if arr.size == 0:
@@ -39,6 +42,7 @@ def validate_numeric_array(name: str, value: Any, ndim: int | None = None) -> np
     return arr
 
 
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def validate_bev_result(result: dict[str, Any]) -> None:
     required = {
         "pointerrors",
