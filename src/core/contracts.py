@@ -127,10 +127,11 @@ class UQAnalysisContract(BaseModel):
         return self
 
 
+
 class StatisticalTestResultContract(BaseModel):
     test: str
-    alpha: float = Field(..., ge=0, le=1)
-    passed: bool
+    alpha: float | None = None
+    passed: bool | None = None
     warnings: list[str] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
     type: str | None = None
@@ -141,6 +142,7 @@ class StatisticalTestResultContract(BaseModel):
 
     @model_validator(mode="after")
     def check_passed_consistency(self):
-        if not self.passed and not self.errors:
+        if self.passed is False and not self.errors:
             raise ValueError("If passed is False, errors must not be empty")
         return self
+

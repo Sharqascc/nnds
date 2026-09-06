@@ -20,6 +20,8 @@ from dataclasses import dataclass
 import numpy as np
 from scipy import stats
 
+from src.core.contracts import StatisticalTestResultContract
+
 __all__ = [
     "StatisticalTester",
     "check_assumptions",
@@ -688,9 +690,11 @@ def test_pet_difference(
     tester = StatisticalTester(alpha=alpha)
 
     if parametric:
-        return tester.t_test(pet_group1, pet_group2, equal_var=False)
+        result = tester.t_test(pet_group1, pet_group2, equal_var=False)
     else:
-        return tester.mann_whitney(pet_group1, pet_group2)
+        result = tester.mann_whitney(pet_group1, pet_group2)
+    _ = StatisticalTestResultContract(**result)
+    return result
 
 
 def test_ttc_difference(
@@ -703,9 +707,11 @@ def test_ttc_difference(
     tester = StatisticalTester(alpha=alpha)
 
     if parametric:
-        return tester.t_test(ttc_group1, ttc_group2, equal_var=False)
+        result = tester.t_test(ttc_group1, ttc_group2, equal_var=False)
     else:
-        return tester.mann_whitney(ttc_group1, ttc_group2)
+        result = tester.mann_whitney(ttc_group1, ttc_group2)
+    _ = StatisticalTestResultContract(**result)
+    return result
 
 
 def test_drac_difference(
@@ -718,16 +724,20 @@ def test_drac_difference(
     tester = StatisticalTester(alpha=alpha)
 
     if parametric:
-        return tester.t_test(drac_group1, drac_group2, equal_var=False)
+        result = tester.t_test(drac_group1, drac_group2, equal_var=False)
     else:
-        return tester.mann_whitney(drac_group1, drac_group2)
+        result = tester.mann_whitney(drac_group1, drac_group2)
+    _ = StatisticalTestResultContract(**result)
+    return result
 
 
 def chi_square_test(
     observed: np.ndarray, expected: np.ndarray | None = None, alpha: float = 0.05
 ) -> dict:
     """Chi-square goodness-of-fit test."""
-    return StatisticalTester(alpha=alpha).chi_square_test(observed, expected)
+    result = StatisticalTester(alpha=alpha).chi_square_test(observed, expected)
+    _ = StatisticalTestResultContract(**result)
+    return result
 
 
 def paired_test(
@@ -737,9 +747,11 @@ def paired_test(
     tester = StatisticalTester(alpha=alpha)
 
     if parametric:
-        return tester.t_test(before, after, paired=True)
+        result = tester.t_test(before, after, paired=True)
     else:
-        return tester.wilcoxon(before, after)
+        result = tester.wilcoxon(before, after)
+    _ = StatisticalTestResultContract(**result)
+    return result
 
 
 def multiple_comparisons(
