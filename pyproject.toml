@@ -41,6 +41,8 @@ test = [
 
 [project.scripts]
 nnds = "pipeline.traffic_analyzer:main"
+validate-nnds-outputs = "scripts.validate_outputs:main"
+paired-ttest = "scripts.paired_ttest:main"
 
 [tool.black]
 line-length = 100
@@ -64,6 +66,6 @@ omit = [
 ]
 
 [tool.setuptools]
-packages.find.include = ["*"]
+packages.find.include = ["*", "scripts"]
 packages.find.where = ["src"]
 
