@@ -138,7 +138,7 @@ def compute_error_metrics(
     sq_errors = errors**2
 
     # Avoid division by zero or overflow for R²
-    var_real = np.sum((real_values - np.mean(real_values)) ** 2)
+    var_real: float = float(np.sum((real_values - np.mean(real_values)) ** 2))
     if var_real > np.finfo(float).eps:
         try:
             r_squared = 1.0 - (np.sum(sq_errors) / var_real)
