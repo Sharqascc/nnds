@@ -1,13 +1,14 @@
 import numpy as np
 import pytest
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from src.analysis.grid_trajectory.yolo_cpu_grid_pet import (
     TrackPoint,
-    _segment_intersection,
-    _point_in_square,
     _entry_exit_frames,
     _pair_conflict_point,
+    _point_in_square,
+    _segment_intersection,
 )
 
 point_st = st.tuples(st.floats(min_value=0, max_value=100), st.floats(min_value=0, max_value=100))

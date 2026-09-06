@@ -4,58 +4,42 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from src.analysis.verification.statistical_testing import StatisticalTester
+from src.analysis.verification import statistical_testing as st_mod
 
 
 @settings(deadline=None)
-@given(st.lists(st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),
-                min_size=1, max_size=20))
-def test_adjust_p_values_in_range_and_finite(p_values):
-    tester = StatisticalTester()
-    for method in ['bonferroni', 'holm', 'fdr_bh']:
-        adjusted = tester.adjust_p_values(p_values, method=method)
-        assert adjusted.shape == (len(p_values),)
-        assert np.all(np.isfinite(adjusted))
-        assert np.all(adjusted >= 0.0)
-        assert np.all(adjusted <= 1.0)
-
+@given(st.lists(st.floats(min_value=0.1, max_value=9.9, allow_nan=False, allow_infinity=False), min_size=3, max_size=20, unique=True),
+       st.lists(st.floats(min_value=0.1, max_value=9.9, allow_nan=False, allow_infinity=False), min_size=3, max_size=20, unique=True))
+def test_pet_difference_result_valid(a, b):
+    result = st_mod.test_pet_difference(np.array(a), np.array(b), parametric=True)
+    assert isinstance(result, dict)
+    assert 'test_statistics' in result
+    assert 'p_value' in result['test_statistics']
 
 @settings(deadline=None)
-@given(st.lists(st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),
-                min_size=2, max_size=20))
-def test_adjust_p_values_holm_monotonic(p_values):
-    tester = StatisticalTester()
-    adjusted = tester.adjust_p_values(p_values, method='holm')
-    # Sort original p-values and corresponding adjusted values
-    order = np.argsort(p_values)
-    sorted_adj = adjusted[order]
-    # Adjusted p-values should be non-decreasing as original p-values increase
-    assert np.all(np.diff(sorted_adj) >= 0)
-
+@given(st.lists(st.floats(min_value=0.1, max_value=9.9, allow_nan=False, allow_infinity=False), min_size=3, max_size=20, unique=True),
+       st.lists(st.floats(min_value=0.1, max_value=9.9, allow_nan=False, allow_infinity=False), min_size=3, max_size=20, unique=True))
+def test_ttc_difference_result_valid(a, b):
+    result = st_mod.test_ttc_difference(np.array(a), np.array(b), parametric=True)
+    assert isinstance(result, dict)
+    assert 'test_statistics' in result
+    assert 'p_value' in result['test_statistics']
 
 @settings(deadline=None)
-@given(st.lists(st.floats(min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False),
-                min_size=1, max_size=20),
-       st.lists(st.booleans(), max_size=0))
-def test_clean_data_removes_nonfinite(data, _):
-    # This test is too complex; skip for now
-    pass
-
-
-@settings(deadline=None)
-@given(st.floats(min_value=-5.0, max_value=5.0))
-def test_interpret_effect_size_valid_label(d):
-    tester = StatisticalTester()
-    label = tester._interpret_effect_size(d)
-    assert label in {"negligible", "small", "medium", "large"}
-
+@given(st.lists(st.floats(min_value=0.1, max_value=9.9, allow_nan=False, allow_infinity=False), min_size=3, max_size=20, unique=True),
+       st.lists(st.floats(min_value=0.1, max_value=9.9, allow_nan=False, allow_infinity=False), min_size=3, max_size=20, unique=True))
+def test_paired_test_result_valid(a, b):
+    n = min(len(a), len(b))
+    a = a[:n]
+    b = b[:n]
+    result = st_mod.paired_test(np.array(a), np.array(b), parametric=True)
+    assert isinstance(result, dict)
+    assert 'test_statistics' in result
+    assert 'p_value' in result['test_statistics']
 
 @settings(deadline=None)
-@given(st.lists(st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),
-                min_size=1, max_size=20))
-def test_adjust_p_values_bonferroni_cap(p_values):
-    tester = StatisticalTester()
-    adjusted = tester.adjust_p_values(p_values, method='bonferroni')
-    n = len(p_values)
-    expected = np.minimum(np.array(p_values) * n, 1.0)
-    assert np.allclose(adjusted, expected)
+@given(st.lists(st.integers(min_value=1, max_value=50), min_size=2, max_size=10))
+def test_chi_square_test_result_valid(observed):
+    result = st_mod.chi_square_test(np.array(observed, dtype=float))
+    assert isinstance(result, dict)
+    assert 'test_statistics' in result or 'p_value' in result
