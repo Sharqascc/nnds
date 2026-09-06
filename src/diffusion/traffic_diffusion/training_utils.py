@@ -187,7 +187,7 @@ def stratified_split(
     Returns:
         (train_dataset, eval_dataset)
     """
-    n_total = len(dataset)
+    n_total = len(dataset)  # type: ignore[arg-type]
     n_train = int(train_ratio * n_total)
     n_eval = n_total - n_train
 
@@ -340,7 +340,7 @@ def build_clean_dataloaders(
 
     print(f"✅ Built dataloaders: train={len(train_dataset)}, eval={len(eval_dataset)}")
 
-    return train_loader, eval_loader, train_dataset, eval_dataset, stats
+    return train_loader, eval_loader, train_dataset, eval_dataset, stats  # type: ignore[return-value]
 
 
 # ---------------------------------------------------------------------
@@ -374,7 +374,7 @@ def create_model(
     traj_shape = (T, N, F)
 
     model_kwargs = model_kwargs or {}
-    model = TrajectoryDiffusionModel(
+    model = TrajectoryDiffusionModel(  # type: ignore[call-arg]
         traj_shape=traj_shape,
         cond_dim=cond_dim,
         num_steps=num_steps,
@@ -447,7 +447,7 @@ def train_diffusion_model(
 
     scheduler = None
     if use_scheduler:
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(  # type: ignore[call-arg]
             optimizer,
             mode="min",
             patience=scheduler_patience,

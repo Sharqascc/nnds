@@ -143,7 +143,7 @@ def run_safety_eval_pipeline(
     df_summary_model : pd.DataFrame
         Aggregated safety metrics.
     """
-    from src.diffusion.traffic_diffusion.trajectory_diffusion import (
+    from src.diffusion.traffic_diffusion.trajectory_diffusion import (  # type: ignore[attr-defined]
         load_trajdiff_dataset,
     )
 
@@ -204,7 +204,7 @@ def run_safety_eval_pipeline(
 
     # Map back to meta rows corresponding to eval set
     eval_indices = (
-        eval_dataset.indices if hasattr(eval_dataset, "indices") else eval_dataset.dataset.indices
+        eval_dataset.indices if hasattr(eval_dataset, "indices") else eval_dataset.dataset.indices  # type: ignore[attr-defined]
     )
     meta_eval = meta_df.iloc[eval_indices].reset_index(drop=True)
 
