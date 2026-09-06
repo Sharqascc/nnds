@@ -53,3 +53,47 @@ class PETEventRecord(BaseModel):
         if self.track_a == self.track_b:
             raise ValueError("track_a and track_b must differ")
         return self
+
+
+# ----------------------------------------------------------------------
+# PET Summary contracts
+# ----------------------------------------------------------------------
+class RiskLevelSummary(BaseModel):
+    count: int = Field(..., ge=0)
+    percentage: float = Field(..., ge=0, le=100)
+
+class ConflictRateSummary(BaseModel):
+    count: int = Field(..., ge=0)
+    percentage: float = Field(..., ge=0, le=100)
+    per_1000_events: float = Field(..., ge=0)
+
+class PETSummaryRiskSummary(BaseModel):
+    critical: RiskLevelSummary
+    serious: RiskLevelSummary
+    moderate: RiskLevelSummary
+    safe: RiskLevelSummary
+    conflict_rate: ConflictRateSummary
+
+class PETSummaryBasicStats(BaseModel):
+    count: int = Field(..., ge=0)
+    mean: float
+    std: float | None = None
+    sem: float | None = None
+    min: float
+    q25: float
+    median: float
+    q75: float
+    max: float
+    iqr: float
+    cv: float | None = None
+    skew: float | None = None
+    kurtosis: float | None = None
+    ci_mean_lower: float | None = None
+    ci_mean_upper: float | None = None
+    ci_level: float | None = None
+    p1: float
+    p5: float
+    p10: float
+    p90: float
+    p95: float
+    p99: float
