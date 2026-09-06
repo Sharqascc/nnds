@@ -43,6 +43,10 @@ test = [
 nnds = "pipeline.traffic_analyzer:main"
 validate-nnds-outputs = "scripts.validate_outputs:main"
 paired-ttest = "scripts.paired_ttest:main"
+validate-contracts = "scripts.validate_contracts:main"
+inspect-pet = "scripts.inspect_pet:main"
+generate-pet-verification-video = "scripts.generate_pet_verification_video:main"
+validation-report = "scripts.validation_report:main"
 
 [tool.black]
 line-length = 100
