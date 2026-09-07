@@ -377,10 +377,7 @@ def fix_path_join():
 
 # Map task_id to built-in function if possible
 BUILTIN_MAP = {
-    1: fix_mutable_defaults,
     3: fix_numpy_aliases,
-    7: fix_assert_to_raise,
-    8: fix_global_seed,
     9: fix_exception_chaining,
     12: fix_path_join,
 }
