@@ -65,8 +65,10 @@ def call_llm(messages, max_tokens=600, temperature=0.2):
     last_error = None
     for provider in PROVIDERS:
         api_key = os.environ.get(provider["api_key_env"])
-        if not api_key:
-            print(f"  Skipping {provider['name']} (no {provider['api_key_env']})")
+        if api_key:
+            api_key = api_key.strip()
+        if not api_key or api_key == "***" or len(api_key) < 10:
+            print(f"  Skipping {provider['name']} (missing or invalid {provider['api_key_env']})")
             continue
         try:
             resp = requests.post(
