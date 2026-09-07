@@ -1,30 +1,51 @@
 #!/usr/bin/env python3
-"""Agentic code review and auto-fix using Groq.
+"""Agentic code review and auto-fix using multiple free LLM providers.
 
-This script:
-1. Runs `ruff --fix` to clean style issues.
-2. Reviews all Python files under src/ using Groq.
-3. Asks the model to generate unified diff patches to fix issues.
-4. Applies valid patches and commits/pushes changes.
+- Reviews changed Python files under src/ (or all if first run).
+- Requests **search/replace blocks** (not unified diffs) to avoid LLM diff format issues.
+- Applies replacements safely, commits, and pushes if all checks pass.
 
-Requires GROQ_API_KEY environment variable and git identity configured.
+Providers (OpenAI-compatible):
+  1. Groq (fast, limited)
+  2. Google Gemini (generous free tier)
+  3. OpenRouter (free model pool)
+
+Requires at least one of: GROQ_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY.
 """
+import json
 import os
 import subprocess
 import sys
 import time
 from pathlib import Path
 
-from groq import Groq
-
-MODEL_FALLBACK = [
-    "qwen/qwen3.8-27b",
-    "groq/compound-mini",
-    "allam-2-7b",
-]
+import requests
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 REPORT_PATH = REPO_ROOT / "groq_review_report.md"
+PROGRESS_FILE = REPO_ROOT / "agentic_progress.json"
+
+# Provider configurations (priority order)
+PROVIDERS = [
+    {
+        "name": "Groq",
+        "base_url": "https://api.groq.com/openai/v1",
+        "api_key_env": "GROQ_API_KEY",
+        "model": "qwen/qwen3.8-27b",
+    },
+    {
+        "name": "Gemini",
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
+        "api_key_env": "GEMINI_API_KEY",
+        "model": "gemini-2.5-flash",
+    },
+    {
+        "name": "OpenRouter",
+        "base_url": "https://openrouter.ai/api/v1",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "model": "openrouter/auto",
+    },
+]
 
 
 def run_cmd(cmd, cwd=REPO_ROOT):
@@ -33,46 +54,55 @@ def run_cmd(cmd, cwd=REPO_ROOT):
 
 
 def ensure_git_identity():
-    """Set git identity if not already configured (needed for CI)."""
     if not run_cmd(["git", "config", "user.email"]).stdout.strip():
         run_cmd(["git", "config", "user.email", "agentic-bot@users.noreply.github.com"])
     if not run_cmd(["git", "config", "user.name"]).stdout.strip():
         run_cmd(["git", "config", "user.name", "Agentic Bot"])
 
 
-def get_client():
-    api_key = os.environ.get("GROQ_API_KEY")
-    if not api_key:
-        print("GROQ_API_KEY not set. Exiting.")
-        sys.exit(1)
-    return Groq(api_key=api_key)
-
-
-def call_llm(client, messages, max_tokens=600, temperature=0.2):
-    """Call Groq with rate-limit awareness and retries."""
+def call_llm(messages, max_tokens=600, temperature=0.2):
+    """Call providers in order until one succeeds."""
     last_error = None
-    for model in MODEL_FALLBACK:
-        for attempt in range(3):
-            try:
-                resp = client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                )
-                return resp.choices[0].message.content
-            except Exception as e:
-                last_error = e
-                print(f"    Model {model} failed: {e}. Retrying in 10s...")
-                time.sleep(10)
-        print(f"    Model {model} exhausted retries.")
-    raise RuntimeError(f"All models failed: {last_error}")
-def review_file(client, file_path):
-    """Review a single Python file and return review text."""
-    content = file_path.read_text(encoding="utf-8", errors="ignore")
+    for provider in PROVIDERS:
+        api_key = os.environ.get(provider["api_key_env"])
+        if not api_key:
+            print(f"  Skipping {provider['name']} (no {provider['api_key_env']})")
+            continue
+        try:
+            resp = requests.post(
+                f"{provider['base_url']}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": provider["model"],
+                    "messages": messages,
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
+                },
+                timeout=60,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                return data["choices"][0]["message"]["content"]
+            else:
+                last_error = resp.text
+                print(f"  {provider['name']} returned {resp.status_code}: {resp.text[:200]}")
+        except Exception as e:
+            last_error = str(e)
+            print(f"  {provider['name']} exception: {e}")
+        # Small delay between providers
+        time.sleep(2)
+    raise RuntimeError(f"All providers failed: {last_error}")
+
+
+def review_file(content, file_name):
+    """Review code and return review text."""
+    # Chunk large files to avoid input limits
     chunk_size = 3000
     chunks = [content[i : i + chunk_size] for i in range(0, len(content), chunk_size)]
-    review_parts = []
+    reviews = []
     for i, chunk in enumerate(chunks, 1):
         system_msg = (
             "You are a senior Python code reviewer. Identify bugs, missing contracts, "
@@ -83,115 +113,139 @@ def review_file(client, file_path):
             "Focus on correctness and maintainability:\n\n" + chunk
         )
         review = call_llm(
-            client,
             [
                 {"role": "system", "content": system_msg},
                 {"role": "user", "content": user_msg},
             ],
-            max_tokens=500,
+            max_tokens=400,
         )
-        review_parts.append(f"### Part {i}/{len(chunks)}\n{review}")
-    return "\n\n".join(review_parts)
+        reviews.append(f"### Part {i}/{len(chunks)}\n{review}")
+    return "\n\n".join(reviews)
 
 
-def get_patch(client, file_path, review_text):
-    """Ask model to produce a unified diff patch to fix issues."""
-    content = file_path.read_text(encoding="utf-8", errors="ignore")
-    # Limit content to avoid input size errors
-    MAX_CONTENT = 4000
-    truncated = content[:MAX_CONTENT]
-    if len(content) > MAX_CONTENT:
-        truncated += "\n... [truncated]"
+def request_replacements(content, file_name, review_text):
+    """Ask LLM to produce search/replace blocks."""
     system_msg = (
-        "You are an expert Python developer. Provide a valid unified diff patch "
-        "to fix the issues. Output only the patch. If no changes are needed, "
-        "output exactly NO_CHANGES."
+        "You are an expert Python developer. Given the code and review, produce "
+        "search/replace blocks to fix the issues. Use the exact format:\n"
+        "<<<<<<< SEARCH\n"
+        "(exact code to find)\n"
+        "=======\n"
+        "(replacement code)\n"
+        ">>>>>>> REPLACE\n"
+        "If no changes are needed, output exactly NO_CHANGES."
     )
-    user_msg = f"Code:\n{truncated}\n\nReview:\n{review_text}"
-    patch_text = call_llm(
-        client,
+    user_msg = f"File: {file_name}\n\nCode:\n{content}\n\nReview:\n{review_text}"
+    return call_llm(
         [
             {"role": "system", "content": system_msg},
             {"role": "user", "content": user_msg},
         ],
-        max_tokens=1000,
+        max_tokens=800,
         temperature=0.1,
     )
-    return patch_text.strip()
 
 
-def apply_patch(patch_text):
-    """Apply patch if valid. Returns True if applied, False otherwise."""
-    if patch_text == "NO_CHANGES":
-        return False
-    patch_file = REPO_ROOT / "temp_patch.diff"
-    patch_file.write_text(patch_text)
-    check = run_cmd(["git", "apply", "--check", str(patch_file)])
-    if check.returncode != 0:
-        patch_file.unlink(missing_ok=True)
-        return False
-    apply = run_cmd(["git", "apply", str(patch_file)])
-    patch_file.unlink(missing_ok=True)
-    return apply.returncode == 0
+def apply_replacements(content, blocks_text):
+    """Apply search/replace blocks. Returns (new_content, applied_count)."""
+    if blocks_text.strip() == "NO_CHANGES":
+        return content, 0
+
+    blocks = []
+    pattern = r"<<<<<<< SEARCH\n(.*?)\n=======\n(.*?)\n>>>>>>> REPLACE"
+    import re
+    matches = re.findall(pattern, blocks_text, flags=re.DOTALL)
+    if not matches:
+        return content, 0
+
+    new_content = content
+    applied = 0
+    for search, replace in matches:
+        # Ensure search snippet exists and is unique enough
+        if search in new_content:
+            new_content = new_content.replace(search, replace, 1)
+            applied += 1
+        else:
+            print(f"  Search block not found, skipping: {search[:80]}...")
+    return new_content, applied
 
 
 def main():
-    client = get_client()
     ensure_git_identity()
 
-    # Determine files to process: changed since last run (tracked in agentic_progress.json)
-    progress_file = REPO_ROOT / "agentic_progress.json"
+    # Determine files to process
+    progress_file = PROGRESS_FILE
     if progress_file.exists():
-        import json
-        last_processed = json.loads(progress_file.read_text())
-        last_commit = last_processed.get("last_commit", "")
+        try:
+            last_commit = json.loads(progress_file.read_text()).get("last_commit", "")
+        except Exception:
+            last_commit = ""
     else:
         last_commit = ""
 
-    # Get changed files since last commit
     if last_commit:
         changed = run_cmd(["git", "diff", "--name-only", last_commit, "HEAD", "--", "src/**/*.py"])
     else:
         changed = run_cmd(["git", "diff", "--name-only", "HEAD~1", "HEAD", "--", "src/**/*.py"])
 
-    # If no changed files, exit gracefully
     if changed.returncode != 0 or not changed.stdout.strip():
         print("No changed Python files under src/ since last run. Exiting.")
         return
 
-    changed_files = [Path(line) for line in changed.stdout.splitlines() if line.endswith('.py')]
+    changed_files = [Path(line) for line in changed.stdout.splitlines() if line.endswith(".py")]
     changed_files = [f for f in changed_files if f.exists()]
 
     if not changed_files:
         print("No valid changed files to process.")
         return
 
-    # Limit number of files processed per run to avoid rate limits
-    MAX_FILES_PER_RUN = 10
-    if len(changed_files) > MAX_FILES_PER_RUN:
-        print(f"Limiting to {MAX_FILES_PER_RUN} files (found {len(changed_files)}).")
-        changed_files = changed_files[:MAX_FILES_PER_RUN]
+    # Limit files per run to avoid rate limits
+    MAX_FILES = 10
+    if len(changed_files) > MAX_FILES:
+        print(f"Limiting to {MAX_FILES} files (found {len(changed_files)}).")
+        changed_files = changed_files[:MAX_FILES]
 
     print(f"Processing {len(changed_files)} changed files.")
-    # Step 1: style fixes
+
+    # Run ruff --fix first
     print("Running ruff --fix ...")
     run_cmd(["ruff", "check", "src", "tests", "--fix"])
 
-# Step 2: review and patch each file under src/
-    py_files = changed_files
-    print(f"Found {len(py_files)} Python files to review.")
-    # Save progress
-    import json
-    current_commit = run_cmd(["git", "rev-parse", "HEAD"]).stdout.strip()
-    progress_file.write_text(json.dumps({"last_commit": current_commit}, indent=2))
-    
+    report_parts = []
+    files_modified = []
+
+    for f in changed_files:
+        rel_path = f.relative_to(REPO_ROOT)
+        print(f"\n=== Reviewing {rel_path} ===")
+        content = f.read_text(encoding="utf-8", errors="ignore")
+        review = review_file(content, str(rel_path))
+        report_parts.append(f"## {rel_path}\n{review}")
+
+        if f.stat().st_size > 4000:
+            print("  File too large for replacement generation; skipping.")
+            continue
+
+        blocks_text = request_replacements(content, str(rel_path), review)
+        new_content, applied = apply_replacements(content, blocks_text)
+
+        if applied > 0:
+            f.write_text(new_content, encoding="utf-8")
+            print(f"  ✅ Applied {applied} replacement(s).")
+            files_modified.append(str(rel_path))
+        else:
+            print("  No changes applied.")
+
     # Save review report
     REPORT_PATH.write_text("\n\n".join(report_parts), encoding="utf-8")
 
-    # Step 3: commit and push if fixes applied
-    if fixes_applied:
+    # Save progress
+    current_commit = run_cmd(["git", "rev-parse", "HEAD"]).stdout.strip()
+    progress_file.write_text(json.dumps({"last_commit": current_commit}, indent=2))
+
+    # Commit and push if modified
+    if files_modified:
         run_cmd(["git", "add", "-A"])
-        commit_msg = "Auto-fix: apply LLM-generated patches\n\nFiles:\n" + "\n".join(fixes_applied)
+        commit_msg = "Auto-fix: apply LLM search/replace patches\n\nFiles:\n" + "\n".join(files_modified)
         commit = run_cmd(["git", "commit", "-m", commit_msg])
         if commit.returncode == 0:
             push = run_cmd(["git", "push", "origin", "HEAD"])
@@ -200,9 +254,9 @@ def main():
             else:
                 print("Push failed:", push.stderr)
         else:
-            print("Commit failed or nothing to commit:", commit.stderr)
+            print("Commit failed or nothing to commit.")
     else:
-        print("No fixes applied.")
+        print("No files modified.")
 
 
 if __name__ == "__main__":
