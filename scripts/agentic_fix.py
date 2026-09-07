@@ -45,6 +45,12 @@ PROVIDERS = [
         "api_key_env": "OPENROUTER_API_KEY",
         "model": "openrouter/auto",
     },
+    {
+        "name": "LocalQwen",
+        "base_url": "",
+        "api_key_env": "",
+        "model": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+    },
 ]
 
 
