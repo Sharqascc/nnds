@@ -31,7 +31,7 @@ PROVIDERS = [
         "name": "Gemini",
         "base_url": "",
         "api_key_env": "GEMINI_API_KEY",
-        "model": "gemini-3.6-flash",
+        "model": "gemini-2.5-flash",
     },
     {
         "name": "Groq",
