@@ -116,14 +116,31 @@ Relevant code snippets:
 {context_snippets}
 """
 
-    # Try a list of common Groq models; use the first that succeeds
-    model_names = [
-        "llama-3.1-8b-instant",
-        "llama-3.3-70b-versatile",
-        "llama-3.2-3b-preview",
-        "mixtral-8x7b-32768",
-        "gemma2-9b-it",
-    ]
+    # Dynamically list available models from Groq, then try them
+    model_names = []
+    try:
+        models = client.models.list()
+        # Prefer llama or mixtral or gemma; otherwise take first few
+        preferred = []
+        for m in models.data:
+            mid = m.id
+            if any(k in mid for k in ['llama', 'mixtral', 'gemma']):
+                preferred.append(mid)
+        if preferred:
+            model_names = preferred[:5]
+        else:
+            model_names = [m.id for m in models.data[:5]]
+    except Exception as e:
+        print(f"    Could not list models: {e}")
+    if not model_names:
+        # Fallback list (just in case)
+        model_names = [
+            "llama-3.1-8b-instant",
+            "llama-3.3-70b-versatile",
+            "llama-3.2-3b-preview",
+            "mixtral-8x7b-32768",
+            "gemma2-9b-it",
+        ]
     last_error = None
     for model in model_names:
         try:
