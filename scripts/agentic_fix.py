@@ -117,7 +117,7 @@ Relevant code snippets:
 """
 
     resp = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="llama-3.1-8b-instant",
         messages=[
             {"role": "system", "content": system_msg},
             {"role": "user", "content": user_msg},
@@ -142,7 +142,6 @@ def run_full_checks():
         ["pytest", "tests/", "-q", "--timeout=120",
          "--ignore=tests/test_snapshot_bev_mapper.py",
          "--ignore=tests/test_snapshot_pet_summary.py",
-         "-m", "not integration and not slow",
          "-o", "addopts="],
         ["ruff", "check", "src", "tests", "scripts"],
         ["mypy", "--config-file", "mypy.ini", "src/analysis", "src/diffusion", "src/pipeline", "src/vlm", "src/bev", "src/utils"],
