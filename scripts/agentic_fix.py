@@ -49,24 +49,24 @@ def get_client():
 
 
 def call_llm(client, messages, max_tokens=600, temperature=0.2):
-    """Call Groq with model fallback."""
+    """Call Groq with rate-limit awareness and retries."""
     last_error = None
     for model in MODEL_FALLBACK:
-        try:
-            resp = client.chat.completions.create(
-                model=model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-            )
-            return resp.choices[0].message.content
-        except Exception as e:
-            last_error = e
-            print(f"    Model {model} failed: {e}. Trying next...")
-            time.sleep(2)
+        for attempt in range(3):
+            try:
+                resp = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+                return resp.choices[0].message.content
+            except Exception as e:
+                last_error = e
+                print(f"    Model {model} failed: {e}. Retrying in 10s...")
+                time.sleep(10)
+        print(f"    Model {model} exhausted retries.")
     raise RuntimeError(f"All models failed: {last_error}")
-
-
 def review_file(client, file_path):
     """Review a single Python file and return review text."""
     content = file_path.read_text(encoding="utf-8", errors="ignore")
@@ -139,38 +139,52 @@ def main():
     client = get_client()
     ensure_git_identity()
 
+    # Determine files to process: changed since last run (tracked in agentic_progress.json)
+    progress_file = REPO_ROOT / "agentic_progress.json"
+    if progress_file.exists():
+        import json
+        last_processed = json.loads(progress_file.read_text())
+        last_commit = last_processed.get("last_commit", "")
+    else:
+        last_commit = ""
+
+    # Get changed files since last commit
+    if last_commit:
+        changed = run_cmd(["git", "diff", "--name-only", last_commit, "HEAD", "--", "src/**/*.py"])
+    else:
+        changed = run_cmd(["git", "diff", "--name-only", "HEAD~1", "HEAD", "--", "src/**/*.py"])
+
+    # If no changed files, exit gracefully
+    if changed.returncode != 0 or not changed.stdout.strip():
+        print("No changed Python files under src/ since last run. Exiting.")
+        return
+
+    changed_files = [Path(line) for line in changed.stdout.splitlines() if line.endswith('.py')]
+    changed_files = [f for f in changed_files if f.exists()]
+
+    if not changed_files:
+        print("No valid changed files to process.")
+        return
+
+    # Limit number of files processed per run to avoid rate limits
+    MAX_FILES_PER_RUN = 10
+    if len(changed_files) > MAX_FILES_PER_RUN:
+        print(f"Limiting to {MAX_FILES_PER_RUN} files (found {len(changed_files)}).")
+        changed_files = changed_files[:MAX_FILES_PER_RUN]
+
+    print(f"Processing {len(changed_files)} changed files.")
     # Step 1: style fixes
     print("Running ruff --fix ...")
     run_cmd(["ruff", "check", "src", "tests", "--fix"])
 
-    # Step 2: review and patch each file under src/
-    py_files = sorted((REPO_ROOT / "src").glob("**/*.py"))
-    print(f"Found {len(py_files)} Python files under src/")
-
-    report_parts = []
-    fixes_applied = []
-
-    for f in py_files:
-        rel_path = f.relative_to(REPO_ROOT)
-        print(f"\n=== Reviewing {rel_path} ===")
-        review = review_file(client, f)
-        report_parts.append(f"## {rel_path}\n{review}")
-
-        # Skip patch generation for very large files to avoid input size errors
-        if f.stat().st_size > 4000:
-            print("  File too large for patch generation; skipping patch.")
-            continue
-        patch_text = get_patch(client, f, review)
-        if patch_text == "NO_CHANGES":
-            print("  No changes suggested.")
-            continue
-        print("  Patch proposed. Checking validity...")
-        if apply_patch(patch_text):
-            print("  ✅ Applied patch.")
-            fixes_applied.append(str(rel_path))
-        else:
-            print("  ❌ Patch invalid or did not apply cleanly; skipping.")
-
+# Step 2: review and patch each file under src/
+    py_files = changed_files
+    print(f"Found {len(py_files)} Python files to review.")
+    # Save progress
+    import json
+    current_commit = run_cmd(["git", "rev-parse", "HEAD"]).stdout.strip()
+    progress_file.write_text(json.dumps({"last_commit": current_commit}, indent=2))
+    
     # Save review report
     REPORT_PATH.write_text("\n\n".join(report_parts), encoding="utf-8")
 
