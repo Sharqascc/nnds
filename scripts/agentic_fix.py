@@ -104,15 +104,18 @@ def save_progress(progress):
     PROGRESS_FILE.write_text(json.dumps(progress, indent=2))
 
 def parse_tasks():
-    """Extract numbered tasks from the review report."""
+    """Extract numbered tasks with full descriptions from the review report."""
     text = REPORT_FILE.read_text()
-    # Patterns like "### 1. Title" and "### 2. Title"
-    tasks = []
     pattern = re.compile(r'^###\s+(\d+)\.\s+(.+)$', re.MULTILINE)
-    for match in pattern.finditer(text):
+    matches = list(pattern.finditer(text))
+    tasks = []
+    for idx, match in enumerate(matches):
         task_id = int(match.group(1))
         title = match.group(2).strip()
-        tasks.append((task_id, title))
+        start = match.end()
+        end = matches[idx + 1].start() if idx + 1 < len(matches) else len(text)
+        description = text[start:end].strip()
+        tasks.append((task_id, title, description))
     return tasks
 
 # ============ Built-in fixers ============
@@ -189,12 +192,16 @@ def main():
             print("  Using LLM fallback.")
             for attempt in range(MAX_ATTEMPTS_PER_TASK):
                 print(f"    Attempt {attempt+1}")
-                diff_text = get_llm_diff(title)
-                if diff_text and "diff --git" in diff_text and apply_diff(diff_text):
-                    success = True
-                    break
-                else:
-                    print("    LLM diff invalid or failed to apply.")
+                try:
+                    diff_text = get_llm_diff(description)
+                    if diff_text and "diff --git" in diff_text and apply_diff(diff_text):
+                        success = True
+                        break
+                    else:
+                        print("    LLM diff invalid or failed to apply.")
+                        run(["git", "checkout", "--", "."])
+                except Exception as e:
+                    print(f"    LLM error: {e}")
                     run(["git", "checkout", "--", "."])
 
         if success and run_full_checks():
