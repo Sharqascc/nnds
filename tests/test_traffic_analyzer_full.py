@@ -1,7 +1,7 @@
 import json
+import sys
 import tempfile
 from pathlib import Path
-import sys
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 

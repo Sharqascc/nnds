@@ -26,6 +26,6 @@ jobs:
 
       - name: Run agentic fixer
         env:
-          GROUQ_API_KEY: ${{ secrets.GROUQ_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           python scripts/agentic_fix.py

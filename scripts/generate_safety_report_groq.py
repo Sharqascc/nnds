@@ -55,7 +55,7 @@ def main():
 
 Write a 3-paragraph objective report describing the findings, including implications for intersection safety. Do not invent data or make claims beyond the supplied numbers. Clearly separate results, interpretation, and limitations."""
     response = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+        model="qwen/qwen3.8-27b",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.3,
         max_tokens=1000,
