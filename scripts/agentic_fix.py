@@ -61,7 +61,7 @@ def ensure_git_identity():
 
 
 def call_llm(messages, max_tokens=600, temperature=0.2):
-    """Call providers in order until one succeeds. Supports native Gemini."""
+    """Call providers in order with retries on transient errors."""
     last_error = None
     for provider in PROVIDERS:
         api_key = os.environ.get(provider["api_key_env"])
@@ -71,60 +71,62 @@ def call_llm(messages, max_tokens=600, temperature=0.2):
             print(f"  Skipping {provider['name']} (missing or invalid {provider['api_key_env']})")
             continue
 
-        try:
-            if provider["name"] == "Gemini":
-                # Native Gemini REST call
-                import requests as req
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{provider['model']}:generateContent"
-                headers = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
-                # Convert messages to Gemini format (simple: concatenate system + user)
-                prompt_parts = []
-                for m in messages:
-                    role = m.get("role", "user")
-                    text = m.get("content", "")
-                    prompt_parts.append({"text": f"[{role}] {text}"})
-                data = {
-                    "contents": [{"parts": prompt_parts}],
-                    "generationConfig": {
-                        "temperature": temperature,
-                        "maxOutputTokens": max_tokens,
+        for attempt in range(3):
+            try:
+                if provider["name"] == "Gemini":
+                    import requests as req
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{provider['model']}:generateContent"
+                    headers = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
+                    prompt_parts = []
+                    for m in messages:
+                        prompt_parts.append({"text": f"[{m.get('role', 'user')}] {m.get('content', '')}"})
+                    data = {
+                        "contents": [{"parts": prompt_parts}],
+                        "generationConfig": {
+                            "temperature": temperature,
+                            "maxOutputTokens": max_tokens,
+                        }
                     }
-                }
-                resp = req.post(url, headers=headers, json=data, timeout=60)
-                if resp.status_code == 200:
-                    return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+                    resp = req.post(url, headers=headers, json=data, timeout=90)
+                    if resp.status_code == 200:
+                        return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+                    else:
+                        last_error = resp.text
+                        print(f"  {provider['name']} returned {resp.status_code}: {resp.text[:200]}")
+                        if resp.status_code in (429, 503):
+                            wait = 5 * (attempt + 1)
+                            print(f"  Transient error, retrying in {wait}s...")
+                            time.sleep(wait)
+                            continue
                 else:
-                    last_error = resp.text
-                    print(f"  Gemini returned {resp.status_code}: {resp.text[:200]}")
-            else:
-                # OpenAI-compatible providers
-                import requests as req
-                resp = req.post(
-                    f"{provider['base_url']}/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {api_key}",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "model": provider["model"],
-                        "messages": messages,
-                        "temperature": temperature,
-                        "max_tokens": max_tokens,
-                    },
-                    timeout=60,
-                )
-                if resp.status_code == 200:
-                    data = resp.json()
-                    return data["choices"][0]["message"]["content"]
-                else:
-                    last_error = resp.text
-                    print(f"  {provider['name']} returned {resp.status_code}: {resp.text[:200]}")
-        except Exception as e:
-            last_error = str(e)
-            print(f"  {provider['name']} exception: {e}")
-
-        # If rate-limited, wait a bit before next provider
-        time.sleep(5)
+                    import requests as req
+                    resp = req.post(
+                        f"{provider['base_url']}/chat/completions",
+                        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                        json={
+                            "model": provider["model"],
+                            "messages": messages,
+                            "temperature": temperature,
+                            "max_tokens": max_tokens,
+                        },
+                        timeout=90,
+                    )
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        return data["choices"][0]["message"]["content"]
+                    else:
+                        last_error = resp.text
+                        print(f"  {provider['name']} returned {resp.status_code}: {resp.text[:200]}")
+                        if resp.status_code in (429, 503):
+                            wait = 5 * (attempt + 1)
+                            print(f"  Transient error, retrying in {wait}s...")
+                            time.sleep(wait)
+                            continue
+            except Exception as e:
+                last_error = str(e)
+                print(f"  {provider['name']} exception: {e}")
+                time.sleep(5)
+        print(f"  {provider['name']} exhausted retries.")
     raise RuntimeError(f"All providers failed: {last_error}")
 def review_file(content, file_name):
     """Review code and return review text."""
@@ -225,7 +227,7 @@ def main():
         changed_files = all_py[:10]
 
     # Limit files per run to avoid rate limits
-    MAX_FILES = 10
+    MAX_FILES = 5
     if len(changed_files) > MAX_FILES:
         print(f"Limiting to {MAX_FILES} files (found {len(changed_files)}).")
         changed_files = changed_files[:MAX_FILES]
@@ -242,23 +244,29 @@ def main():
     for f in changed_files:
         rel_path = f.relative_to(REPO_ROOT)
         print(f"\n=== Reviewing {rel_path} ===")
-        content = f.read_text(encoding="utf-8", errors="ignore")
-        review = review_file(content, str(rel_path))
-        report_parts.append(f"## {rel_path}\n{review}")
+        try:
+            content = f.read_text(encoding="utf-8", errors="ignore")
+            review = review_file(content, str(rel_path))
+            report_parts.append(f"## {rel_path}\n{review}")
+        except Exception as e:
+            print(f"  Failed to review {rel_path}: {e}")
+            continue
 
         if f.stat().st_size > 4000:
             print("  File too large for replacement generation; skipping.")
             continue
 
-        blocks_text = request_replacements(content, str(rel_path), review)
-        new_content, applied = apply_replacements(content, blocks_text)
-
-        if applied > 0:
-            f.write_text(new_content, encoding="utf-8")
-            print(f"  ✅ Applied {applied} replacement(s).")
-            files_modified.append(str(rel_path))
-        else:
-            print("  No changes applied.")
+        try:
+            blocks_text = request_replacements(content, str(rel_path), review)
+            new_content, applied = apply_replacements(content, blocks_text)
+            if applied > 0:
+                f.write_text(new_content, encoding="utf-8")
+                print(f"  ✅ Applied {applied} replacement(s).")
+                files_modified.append(str(rel_path))
+            else:
+                print("  No changes applied.")
+        except Exception as e:
+            print(f"  Failed to generate/apply patch for {rel_path}: {e}")
 
     # Save review report
     REPORT_PATH.write_text("\n\n".join(report_parts), encoding="utf-8")
