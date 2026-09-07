@@ -28,16 +28,16 @@ PROGRESS_FILE = REPO_ROOT / "agentic_progress.json"
 # Provider configurations (priority order)
 PROVIDERS = [
     {
+        "name": "Gemini",
+        "base_url": "",
+        "api_key_env": "GEMINI_API_KEY",
+        "model": "gemini-3.6-flash",
+    },
+    {
         "name": "Groq",
         "base_url": "https://api.groq.com/openai/v1",
         "api_key_env": "GROQ_API_KEY",
         "model": "qwen/qwen3.8-27b",
-    },
-    {
-        "name": "Gemini",
-        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
-        "api_key_env": "GEMINI_API_KEY",
-        "model": "gemini-3.6-flash",
     },
     {
         "name": "OpenRouter",
@@ -94,7 +94,7 @@ def call_llm(messages, max_tokens=600, temperature=0.2):
                         last_error = resp.text
                         print(f"  {provider['name']} returned {resp.status_code}: {resp.text[:200]}")
                         if resp.status_code in (429, 503):
-                            wait = 5 * (attempt + 1)
+                            wait = 20 * (attempt + 1)
                             print(f"  Transient error, retrying in {wait}s...")
                             time.sleep(wait)
                             continue
@@ -118,7 +118,7 @@ def call_llm(messages, max_tokens=600, temperature=0.2):
                         last_error = resp.text
                         print(f"  {provider['name']} returned {resp.status_code}: {resp.text[:200]}")
                         if resp.status_code in (429, 503):
-                            wait = 5 * (attempt + 1)
+                            wait = 20 * (attempt + 1)
                             print(f"  Transient error, retrying in {wait}s...")
                             time.sleep(wait)
                             continue
@@ -227,7 +227,7 @@ def main():
         changed_files = all_py[:10]
 
     # Limit files per run to avoid rate limits
-    MAX_FILES = 5
+    MAX_FILES = 3
     if len(changed_files) > MAX_FILES:
         print(f"Limiting to {MAX_FILES} files (found {len(changed_files)}).")
         changed_files = changed_files[:MAX_FILES]
