@@ -61,7 +61,11 @@ def apply_diff(diff_text):
 def run_full_checks():
     """Run property tests, ruff, and mypy on key directories."""
     checks = [
-        ["pytest", "tests/", "-m", "property", "-q", "-o", "addopts="],
+        ["pytest", "tests/", "-q", "--timeout=120",
+         "--ignore=tests/test_snapshot_bev_mapper.py",
+         "--ignore=tests/test_snapshot_pet_summary.py",
+         "-m", "not integration and not slow",
+         "-o", "addopts="],
         ["ruff", "check", "src", "tests", "scripts"],
         ["mypy", "--config-file", "mypy.ini", "src/analysis", "src/diffusion", "src/pipeline", "src/vlm", "src/bev", "src/utils"],
     ]
