@@ -116,31 +116,45 @@ Relevant code snippets:
 {context_snippets}
 """
 
-    # Dynamically list available models from Groq, then try them
+    # Dynamically list available models and filter for code-generation suitable ones
     model_names = []
     try:
         models = client.models.list()
-        # Prefer llama or mixtral or gemma; otherwise take first few
-        preferred = []
+        candidates = []
         for m in models.data:
-            mid = m.id
-            if any(k in mid for k in ['llama', 'mixtral', 'gemma']):
-                preferred.append(mid)
-        if preferred:
-            model_names = preferred[:5]
-        else:
-            model_names = [m.id for m in models.data[:5]]
+            mid = m.id.lower()
+            # Skip non-chat models (prompt guard, embeddings, moderation, whisper, etc.)
+            if any(k in mid for k in ['prompt-guard', 'embed', 'moderation', 'whisper', 'guard', 'tool', 'vision', 'rerank']):
+                continue
+            # Prefer instruct or chat models
+            if 'instruct' in mid or 'chat' in mid:
+                # Get context window if available
+                ctx = getattr(m, 'context_window', None)
+                if ctx is None or ctx >= 4096:
+                    candidates.append((mid, ctx if ctx else 8192))
+        # Sort by context window descending, then take top 5
+        candidates.sort(key=lambda x: x[1], reverse=True)
+        model_names = [c[0] for c in candidates[:5]]
+        if not model_names:
+            # Fallback: any model with context >= 4096
+            for m in models.data:
+                ctx = getattr(m, 'context_window', None)
+                if ctx and ctx >= 4096:
+                    model_names.append(m.id)
+            model_names = model_names[:5]
     except Exception as e:
         print(f"    Could not list models: {e}")
+
     if not model_names:
-        # Fallback list (just in case)
+        # Hardcoded fallback (should be updated if these are decommissioned)
         model_names = [
-            "llama-3.1-8b-instant",
-            "llama-3.3-70b-versatile",
-            "llama-3.2-3b-preview",
+            "meta-llama/llama-4-scout-17b-16e-instruct",
+            "meta-llama/llama-4-maverick-17b-128e-instruct",
+            "meta-llama/llama-3.3-70b-versatile",
+            "meta-llama/llama-3.1-8b-instant",
             "mixtral-8x7b-32768",
-            "gemma2-9b-it",
         ]
+
     last_error = None
     for model in model_names:
         try:
@@ -151,7 +165,7 @@ Relevant code snippets:
                     {"role": "user", "content": user_msg},
                 ],
                 temperature=0.1,
-                max_tokens=3000,
+                max_tokens=1500,  # safer for most models
             )
             raw = resp.choices[0].message.content
             return extract_diff(raw)
