@@ -30,9 +30,9 @@ def run(cmd, **kwargs):
 
 def get_llm_diff(issue_description):
     """Ask Groq for a code improvement as a unified diff."""
-    api_key = os.environ.get("GROUQ_API_KEY")
+    api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
-        print("No GROUQ_API_KEY set; exiting.")
+        print("No GROQ_API_KEY set; exiting.")
         sys.exit(1)
     from groq import Groq
     client = Groq(api_key=api_key)
