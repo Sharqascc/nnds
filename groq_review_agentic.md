@@ -287,20 +287,6 @@ The agent can infer a sensible default (`0`, `False`, `[]`, `{}`) based on the a
 
 ---
 
-### 15. Update `pyproject.toml` to enable `ruff` rule `F401` (unused‑import) as an error and run it automatically in CI
-
-**Why:** Guarantees that the fixes above stay enforced.
-
-**Patch (add to `[tool.ruff]` section):**
-
-```toml
-select = ["F401"]
-```
-
-If the section already exists, just ensure `F401` is included.
-
----
-
 ### Summary of actions
 
 | # | Category | Files affected | Approx. lines changed |

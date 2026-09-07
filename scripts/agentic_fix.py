@@ -116,18 +116,33 @@ Relevant code snippets:
 {context_snippets}
 """
 
-    resp = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[
-            {"role": "system", "content": system_msg},
-            {"role": "user", "content": user_msg},
-        ],
-        temperature=0.1,
-        max_tokens=3000,
-    )
-    raw = resp.choices[0].message.content
-    # Sometimes the model wraps diff in code fences; extract only the diff part
-    return extract_diff(raw)
+    # Try a list of common Groq models; use the first that succeeds
+    model_names = [
+        "llama-3.1-8b-instant",
+        "llama-3.3-70b-versatile",
+        "llama-3.2-3b-preview",
+        "mixtral-8x7b-32768",
+        "gemma2-9b-it",
+    ]
+    last_error = None
+    for model in model_names:
+        try:
+            resp = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_msg},
+                    {"role": "user", "content": user_msg},
+                ],
+                temperature=0.1,
+                max_tokens=3000,
+            )
+            raw = resp.choices[0].message.content
+            return extract_diff(raw)
+        except Exception as e:
+            last_error = e
+            print(f"    Model {model} failed: {e}")
+    # If all fail, raise the last error
+    raise last_error
 
 def apply_diff(diff_text):
     patch_file = REPO / ".agentic.patch"
