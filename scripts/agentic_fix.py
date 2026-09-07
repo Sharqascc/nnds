@@ -10,6 +10,7 @@ in agentic_progress.json to avoid repeating completed tasks.
 """
 
 import os
+import requests
 import subprocess
 import sys
 import json
@@ -91,13 +92,11 @@ def gather_context(description, max_files=10, max_chars=4000):
 
 
 def get_llm_diff(issue_description):
-    """Ask Groq for a code improvement as a unified diff, with context."""
-    api_key = os.environ.get("GROQ_API_KEY")
+    """Ask DeepSeek Coder for a code improvement as a unified diff."""
+    api_key = os.environ.get("DEEPSEEK_API_KEY")
     if not api_key:
-        print("No GROQ_API_KEY set; exiting.")
+        print("No DEEPSEEK_API_KEY set; exiting.")
         sys.exit(1)
-    from groq import Groq
-    client = Groq(api_key=api_key)
 
     # Gather relevant source files based on the description
     context_snippets = gather_context(issue_description)
@@ -116,64 +115,30 @@ Relevant code snippets:
 {context_snippets}
 """
 
-    # Dynamically list available models and filter for code-generation suitable ones
-    model_names = []
+    url = "https://api.deepseek.com/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": "deepseek-coder",
+        "messages": [
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": user_msg},
+        ],
+        "temperature": 0.1,
+        "max_tokens": 1500,
+        "stream": False,
+    }
     try:
-        models = client.models.list()
-        candidates = []
-        for m in models.data:
-            mid = m.id.lower()
-            # Skip non-chat models (prompt guard, embeddings, moderation, whisper, etc.)
-            if any(k in mid for k in ['prompt-guard', 'embed', 'moderation', 'whisper', 'guard', 'tool', 'vision', 'rerank']):
-                continue
-            # Prefer instruct or chat models
-            if 'instruct' in mid or 'chat' in mid:
-                # Get context window if available
-                ctx = getattr(m, 'context_window', None)
-                if ctx is None or ctx >= 4096:
-                    candidates.append((mid, ctx if ctx else 8192))
-        # Sort by context window descending, then take top 5
-        candidates.sort(key=lambda x: x[1], reverse=True)
-        model_names = [c[0] for c in candidates[:5]]
-        if not model_names:
-            # Fallback: any model with context >= 4096
-            for m in models.data:
-                ctx = getattr(m, 'context_window', None)
-                if ctx and ctx >= 4096:
-                    model_names.append(m.id)
-            model_names = model_names[:5]
+        resp = requests.post(url, headers=headers, json=payload, timeout=60)
+        resp.raise_for_status()
+        data = resp.json()
+        raw = data["choices"][0]["message"]["content"]
+        return extract_diff(raw)
     except Exception as e:
-        print(f"    Could not list models: {e}")
-
-    if not model_names:
-        # Hardcoded fallback (should be updated if these are decommissioned)
-        model_names = [
-            "meta-llama/llama-4-scout-17b-16e-instruct",
-            "meta-llama/llama-4-maverick-17b-128e-instruct",
-            "meta-llama/llama-3.3-70b-versatile",
-            "meta-llama/llama-3.1-8b-instant",
-            "mixtral-8x7b-32768",
-        ]
-
-    last_error = None
-    for model in model_names:
-        try:
-            resp = client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": system_msg},
-                    {"role": "user", "content": user_msg},
-                ],
-                temperature=0.1,
-                max_tokens=1500,  # safer for most models
-            )
-            raw = resp.choices[0].message.content
-            return extract_diff(raw)
-        except Exception as e:
-            last_error = e
-            print(f"    Model {model} failed: {e}")
-    # If all fail, raise the last error
-    raise last_error
+        print(f"    DeepSeek API error: {e}")
+        raise
 
 def apply_diff(diff_text):
     patch_file = REPO / ".agentic.patch"
