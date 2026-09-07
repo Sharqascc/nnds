@@ -61,7 +61,7 @@ def ensure_git_identity():
 
 
 def call_llm(messages, max_tokens=600, temperature=0.2):
-    """Call providers in order until one succeeds."""
+    """Call providers in order until one succeeds. Supports native Gemini."""
     last_error = None
     for provider in PROVIDERS:
         api_key = os.environ.get(provider["api_key_env"])
@@ -70,35 +70,62 @@ def call_llm(messages, max_tokens=600, temperature=0.2):
         if not api_key or api_key == "***" or len(api_key) < 10:
             print(f"  Skipping {provider['name']} (missing or invalid {provider['api_key_env']})")
             continue
+
         try:
-            resp = requests.post(
-                f"{provider['base_url']}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": provider["model"],
-                    "messages": messages,
-                    "temperature": temperature,
-                    "max_tokens": max_tokens,
-                },
-                timeout=60,
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                return data["choices"][0]["message"]["content"]
+            if provider["name"] == "Gemini":
+                # Native Gemini REST call
+                import requests as req
+                url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+                headers = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
+                # Convert messages to Gemini format (simple: concatenate system + user)
+                prompt_parts = []
+                for m in messages:
+                    role = m.get("role", "user")
+                    text = m.get("content", "")
+                    prompt_parts.append({"text": f"[{role}] {text}"})
+                data = {
+                    "contents": [{"parts": prompt_parts}],
+                    "generationConfig": {
+                        "temperature": temperature,
+                        "maxOutputTokens": max_tokens,
+                    }
+                }
+                resp = req.post(url, headers=headers, json=data, timeout=60)
+                if resp.status_code == 200:
+                    return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+                else:
+                    last_error = resp.text
+                    print(f"  Gemini returned {resp.status_code}: {resp.text[:200]}")
             else:
-                last_error = resp.text
-                print(f"  {provider['name']} returned {resp.status_code}: {resp.text[:200]}")
+                # OpenAI-compatible providers
+                import requests as req
+                resp = req.post(
+                    f"{provider['base_url']}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": provider["model"],
+                        "messages": messages,
+                        "temperature": temperature,
+                        "max_tokens": max_tokens,
+                    },
+                    timeout=60,
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    return data["choices"][0]["message"]["content"]
+                else:
+                    last_error = resp.text
+                    print(f"  {provider['name']} returned {resp.status_code}: {resp.text[:200]}")
         except Exception as e:
             last_error = str(e)
             print(f"  {provider['name']} exception: {e}")
-        # Small delay between providers
-        time.sleep(2)
+
+        # If rate-limited, wait a bit before next provider
+        time.sleep(5)
     raise RuntimeError(f"All providers failed: {last_error}")
-
-
 def review_file(content, file_name):
     """Review code and return review text."""
     # Chunk large files to avoid input limits
