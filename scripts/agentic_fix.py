@@ -70,7 +70,7 @@ def call_llm(client, messages, max_tokens=600, temperature=0.2):
 def review_file(client, file_path):
     """Review a single Python file and return review text."""
     content = file_path.read_text(encoding="utf-8", errors="ignore")
-    chunk_size = 5000
+    chunk_size = 3000
     chunks = [content[i : i + chunk_size] for i in range(0, len(content), chunk_size)]
     review_parts = []
     for i, chunk in enumerate(chunks, 1):
@@ -97,12 +97,17 @@ def review_file(client, file_path):
 def get_patch(client, file_path, review_text):
     """Ask model to produce a unified diff patch to fix issues."""
     content = file_path.read_text(encoding="utf-8", errors="ignore")
+    # Limit content to avoid input size errors
+    MAX_CONTENT = 4000
+    truncated = content[:MAX_CONTENT]
+    if len(content) > MAX_CONTENT:
+        truncated += "\n... [truncated]"
     system_msg = (
         "You are an expert Python developer. Provide a valid unified diff patch "
         "to fix the issues. Output only the patch. If no changes are needed, "
         "output exactly NO_CHANGES."
     )
-    user_msg = f"Code:\n{content}\n\nReview:\n{review_text}"
+    user_msg = f"Code:\n{truncated}\n\nReview:\n{review_text}"
     patch_text = call_llm(
         client,
         [
@@ -151,6 +156,10 @@ def main():
         review = review_file(client, f)
         report_parts.append(f"## {rel_path}\n{review}")
 
+        # Skip patch generation for very large files to avoid input size errors
+        if f.stat().st_size > 4000:
+            print("  File too large for patch generation; skipping patch.")
+            continue
         patch_text = get_patch(client, f, review)
         if patch_text == "NO_CHANGES":
             print("  No changes suggested.")
