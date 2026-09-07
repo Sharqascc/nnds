@@ -48,7 +48,7 @@ def extract_frames(
             if frame_count % frame_interval == 0:
                 frame_path = output_dir / f"frame_{saved_count:05d}.jpg"
                 if not cv2.imwrite(str(frame_path), frame):
-                    raise IOError(f"Failed to write frame: {frame_path}")
+                    raise OSError(f"Failed to write frame: {frame_path}")
                 frame_paths.append(str(frame_path))
                 saved_count += 1
 

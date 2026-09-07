@@ -58,8 +58,8 @@ def plot_vlm_results(
     ax2.set_ylabel("Count")
     ax2.set_title("Severity Distribution")
 
-    plt.suptitle(title)
-    plt.tight_layout()
+    fig.suptitle(title)
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
 
     # Save
     output_path = Path(output_path)
@@ -71,7 +71,7 @@ def plot_vlm_results(
 
 
 def create_heatmap(
-    conflict_data: list[dict[str, Any]], output_path: str, grid_size: int = 10
+    conflict_data: list[dict[str, Any]], output_path: str | Path, grid_size: int = 10
 ) -> None:
     """
     Create conflict heatmap from VLM analysis.
@@ -83,4 +83,4 @@ def create_heatmap(
     """
     # Extract conflict locations (simplified - would need actual coordinates)
     # This is a placeholder for actual implementation
-    print("Heatmap creation requires conflict location data")
+    raise NotImplementedError("Heatmap creation requires conflict location data")
