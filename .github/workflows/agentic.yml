@@ -3,7 +3,17 @@ name: Agentic Auto-Fix
 on:
   schedule:
     - cron: '0 0 * * *'   # daily at midnight UTC
-  workflow_dispatch:       # manual trigger
+  workflow_dispatch:
+    inputs:
+      full_review:
+        description: 'Review all files under src/ (true) or only changed files (false)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
 
 permissions:
   contents: write
@@ -32,5 +42,6 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          FULL_REVIEW: ${{ github.event.inputs.full_review || 'false' }}
         run: |
           python scripts/agentic_fix.py

@@ -226,38 +226,47 @@ def request_repair(content, file_name, review_text, validation_error):
     )
 
 
+
 def main():
+    full_review = os.environ.get("FULL_REVIEW", "false").lower() == "true"
+    if full_review:
+        print("Full review mode: processing all Python files under src/")
+
     ensure_git_identity()
 
     # Determine files to process
-    progress_file = PROGRESS_FILE
-    last_commit = ""
-    if progress_file.exists():
-        try:
-            last_commit = json.loads(progress_file.read_text()).get("last_commit", "")
-        except Exception:
-            last_commit = ""
+    if full_review:
+        changed_files = sorted((REPO_ROOT / "src").glob("**/*.py"))
+        print(f"Full review: processing all {len(changed_files)} Python files under src/")
+    else:
+        progress_file = PROGRESS_FILE
+        last_commit = ""
+        if progress_file.exists():
+            try:
+                last_commit = json.loads(progress_file.read_text()).get("last_commit", "")
+            except Exception:
+                last_commit = ""
 
-    changed_files = []
-    if last_commit:
-        changed = run_cmd(["git", "diff", "--name-only", last_commit, "HEAD", "--", "src/"])
-        if changed.returncode == 0 and changed.stdout.strip():
-            changed_files = [Path(line) for line in changed.stdout.splitlines() if line.endswith(".py")]
-            changed_files = [f for f in changed_files if f.exists()]
+        changed_files = []
+        if last_commit:
+            changed = run_cmd(["git", "diff", "--name-only", last_commit, "HEAD", "--", "src/"])
+            if changed.returncode == 0 and changed.stdout.strip():
+                changed_files = [Path(line) for line in changed.stdout.splitlines() if line.endswith(".py")]
+                changed_files = [f for f in changed_files if f.exists()]
 
-    # Fallback: if no changed files detected (first run or shallow clone), use recently modified files
-    if not changed_files:
-        print("No changed files from diff; falling back to most recently modified Python files.")
-        all_py = sorted((REPO_ROOT / "src").glob("**/*.py"), key=lambda p: p.stat().st_mtime, reverse=True)
-        changed_files = all_py[:10]
+        # Fallback: if no changed files detected (first run or shallow clone), use recently modified files
+        if not changed_files:
+            print("No changed files from diff; falling back to most recently modified Python files.")
+            all_py = sorted((REPO_ROOT / "src").glob("**/*.py"), key=lambda p: p.stat().st_mtime, reverse=True)
+            changed_files = all_py[:10]
 
-    # Limit files per run to avoid rate limits
-    MAX_FILES = 3
-    if len(changed_files) > MAX_FILES:
-        print(f"Limiting to {MAX_FILES} files (found {len(changed_files)}).")
-        changed_files = changed_files[:MAX_FILES]
+        # Limit files per run to avoid rate limits
+        MAX_FILES = 3
+        if len(changed_files) > MAX_FILES:
+            print(f"Limiting to {MAX_FILES} files (found {len(changed_files)}).")
+            changed_files = changed_files[:MAX_FILES]
 
-    print(f"Processing {len(changed_files)} files.")
+        print(f"Processing {len(changed_files)} files.")
 
     # Run ruff --fix first
     print("Running ruff --fix ...")
