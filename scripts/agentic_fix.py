@@ -10,6 +10,8 @@ in agentic_progress.json to avoid repeating completed tasks.
 """
 
 import os
+import time
+import hashlib
 import requests
 import subprocess
 import sys
@@ -92,53 +94,99 @@ def gather_context(description, max_files=10, max_chars=4000):
 
 
 def get_llm_diff(issue_description):
-    """Ask DeepSeek Coder for a code improvement as a unified diff."""
-    api_key = os.environ.get("DEEPSEEK_API_KEY")
+    """Ask Groq for a code improvement, with rate-limit awareness."""
+    api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
-        print("No DEEPSEEK_API_KEY set; exiting.")
+        print("No GROQ_API_KEY set; exiting.")
         sys.exit(1)
 
-    # Gather relevant source files based on the description
-    context_snippets = gather_context(issue_description)
+    # Cache prompt-response pairs to avoid repeated calls
+    cache_dir = REPO / ".agentic_cache"
+    cache_dir.mkdir(exist_ok=True)
+    cache_key = hashlib.sha256(issue_description.encode()).hexdigest()[:16]
+    cache_file = cache_dir / f"{cache_key}.json"
+    if cache_file.exists():
+        try:
+            cached = json.loads(cache_file.read_text())
+            print("    Using cached diff.")
+            return cached.get("diff", "")
+        except Exception:
+            pass
+
+    # Gather context (smaller limit to reduce input tokens)
+    context_snippets = gather_context(issue_description, max_files=6, max_chars=2000)
 
     system_msg = (
-        "You are an expert software engineer. You will be given a repository issue "
-        "and relevant code snippets. Your task is to return ONLY a valid unified diff "
-        "that fixes the issue. Do not include explanations, comments, or markdown fences. "
-        "The diff must apply cleanly with `git apply`. If no changes are needed, return empty string."
+        "You are an expert code repair assistant. Return ONLY a valid unified diff "
+        "that fixes the given issue. The diff must apply cleanly with `git apply`. "
+        "Do not include explanations, markdown fences, or extra text."
     )
     user_msg = f"""
-Repository issue:
+Issue:
 {issue_description}
 
-Relevant code snippets:
+Code context:
 {context_snippets}
 """
 
-    url = "https://api.deepseek.com/chat/completions"
+    # Model fallback list: prefer models with higher free-tier limits
+    model_names = [
+        "openai/gpt-oss-120b",
+        "groq/compound",
+        "meta-llama/llama-4-scout-17b-16e-instruct",
+        "qwen/qwen3.8-27b",
+    ]
+
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
-    payload = {
-        "model": "deepseek-coder",
+    payload_template = {
         "messages": [
             {"role": "system", "content": system_msg},
             {"role": "user", "content": user_msg},
         ],
-        "temperature": 0.1,
-        "max_tokens": 1500,
+        "temperature": 0,
+        "max_tokens": 250,  # stay under OTPM limits
         "stream": False,
     }
-    try:
-        resp = requests.post(url, headers=headers, json=payload, timeout=60)
-        resp.raise_for_status()
-        data = resp.json()
-        raw = data["choices"][0]["message"]["content"]
-        return extract_diff(raw)
-    except Exception as e:
-        print(f"    DeepSeek API error: {e}")
-        raise
+
+    last_error = None
+    for model in model_names:
+        payload = payload_template.copy()
+        payload["model"] = model
+        attempt = 0
+        while attempt < 5:
+            try:
+                resp = requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers=headers,
+                    json=payload,
+                    timeout=60,
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    raw = data["choices"][0]["message"]["content"]
+                    diff = extract_diff(raw)
+                    # Cache the result
+                    cache_file.write_text(json.dumps({"diff": diff}))
+                    return diff
+                elif resp.status_code == 429:
+                    retry_after = resp.headers.get("retry-after")
+                    wait = int(retry_after) if retry_after and retry_after.isdigit() else min(60, 2 ** attempt)
+                    print(f"    429 rate limited on {model}, retrying in {wait}s...")
+                    time.sleep(wait)
+                    attempt += 1
+                    continue
+                else:
+                    error_text = resp.text[:200]
+                    print(f"    Model {model} failed: {resp.status_code} {error_text}")
+                    break  # try next model
+            except Exception as e:
+                print(f"    Request error for {model}: {e}")
+                break
+        last_error = f"All attempts failed for {model}"
+    raise RuntimeError(last_error)
 
 def apply_diff(diff_text):
     patch_file = REPO / ".agentic.patch"
@@ -291,6 +339,7 @@ def main():
                 except Exception as e:
                     print(f"    LLM error: {e}")
                     run(["git", "checkout", "--", "."])
+                    time.sleep(2)
 
         if success and run_full_checks():
             print("✅ Checks passed. Committing.")
