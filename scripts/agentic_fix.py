@@ -37,7 +37,7 @@ PROVIDERS = [
         "name": "Gemini",
         "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
         "api_key_env": "GEMINI_API_KEY",
-        "model": "gemini-2.5-flash",
+        "model": "gemini-3.6-flash",
     },
     {
         "name": "OpenRouter",
@@ -75,7 +75,7 @@ def call_llm(messages, max_tokens=600, temperature=0.2):
             if provider["name"] == "Gemini":
                 # Native Gemini REST call
                 import requests as req
-                url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{provider['model']}:generateContent"
                 headers = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
                 # Convert messages to Gemini format (simple: concatenate system + user)
                 prompt_parts = []
