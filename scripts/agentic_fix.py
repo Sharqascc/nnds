@@ -201,6 +201,31 @@ def apply_replacements(content, blocks_text):
     return new_content, applied
 
 
+
+
+def request_repair(content, file_name, review_text, validation_error):
+    """Ask LLM to produce new replacements to fix validation failures."""
+    system_msg = (
+        "You are an expert Python developer. The previous fix caused tests or "
+        "checks to fail. Given the current code, review, and validation error, "
+        "produce new search/replace blocks to correct the issue. Use the exact format:\n"
+        "<<<<<<< SEARCH\n(exact code to find)\n=======\n(replacement code)\n>>>>>>> REPLACE\n"
+        "If no changes are needed, output exactly NO_CHANGES."
+    )
+    user_msg = (
+        f"File: {file_name}\n\nCurrent code:\n{content}\n\nReview:\n{review_text}\n\n"
+        f"Validation error:\n{validation_error}"
+    )
+    return call_llm(
+        [
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": user_msg},
+        ],
+        max_tokens=800,
+        temperature=0.1,
+    )
+
+
 def main():
     ensure_git_identity()
 
@@ -240,12 +265,15 @@ def main():
 
     report_parts = []
     files_modified = []
+    original_contents = {}
 
+    # First pass: review and apply initial replacements
     for f in changed_files:
         rel_path = f.relative_to(REPO_ROOT)
         print(f"\n=== Reviewing {rel_path} ===")
         try:
             content = f.read_text(encoding="utf-8", errors="ignore")
+            original_contents[str(rel_path)] = content
             review = review_file(content, str(rel_path))
             report_parts.append(f"## {rel_path}\n{review}")
         except Exception as e:
