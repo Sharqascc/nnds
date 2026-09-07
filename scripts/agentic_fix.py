@@ -171,7 +171,7 @@ def main():
     tasks = parse_tasks()
     print(f"Loaded {len(tasks)} tasks from report.")
 
-    for task_id, title in tasks:
+    for task_id, title, description in tasks:
         if task_id in completed:
             print(f"\n✅ Task {task_id} already completed: {title}")
             continue
