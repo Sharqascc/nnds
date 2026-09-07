@@ -28,28 +28,106 @@ MAX_ATTEMPTS_PER_TASK = 5
 def run(cmd, **kwargs):
     return subprocess.run(cmd, capture_output=True, text=True, cwd=REPO, **kwargs)
 
+def extract_diff(text):
+    """Extract unified diff from LLM output, stripping code fences."""
+    import re
+    if not text:
+        return ""
+    # Remove markdown code fences if present
+    if "```diff" in text:
+        start = text.find("```diff") + len("```diff")
+        end = text.find("```", start)
+        if end != -1:
+            return text[start:end].strip()
+    # Otherwise return text as is, trimmed
+    return text.strip()
+
+def gather_context(description, max_files=10, max_chars=4000):
+    """Collect relevant repository code snippets based on issue description."""
+    # Determine target directories from description
+    targets = []
+    if 'src/core' in description or 'core/*.py' in description:
+        targets.append(REPO / 'src' / 'core')
+    if 'src/pipeline' in description:
+        targets.append(REPO / 'src' / 'pipeline')
+    if 'src/analysis' in description:
+        targets.append(REPO / 'src' / 'analysis')
+    if 'src/bev' in description:
+        targets.append(REPO / 'src' / 'bev')
+    if 'src/diffusion' in description:
+        targets.append(REPO / 'src' / 'diffusion')
+    if 'src/vlm' in description:
+        targets.append(REPO / 'src' / 'vlm')
+    if 'src/scripts' in description or 'scripts' in description:
+        targets.append(REPO / 'scripts')
+    # Fallback to entire src if no specific target found
+    if not targets:
+        targets.append(REPO / 'src')
+
+    snippets = []
+    total_chars = 0
+    for target in targets:
+        if not target.exists():
+            continue
+        # Collect Python files up to max_files
+        py_files = list(target.rglob('*.py'))
+        py_files = [f for f in py_files if '__pycache__' not in str(f)]
+        # Prioritize files with changes or core files? Simple: take first max_files
+        py_files = py_files[:max_files]
+        for f in py_files:
+            try:
+                content = f.read_text()
+                # Limit each file snippet to 800 chars
+                snippet = f"--- {f.relative_to(REPO)} ---\n{content[:800]}"
+                if total_chars + len(snippet) > max_chars:
+                    break
+                snippets.append(snippet)
+                total_chars += len(snippet)
+            except Exception:
+                continue
+        if total_chars >= max_chars:
+            break
+    return "\n\n".join(snippets) if snippets else "(no relevant files found)"
+
+
 def get_llm_diff(issue_description):
-    """Ask Groq for a code improvement as a unified diff."""
+    """Ask Groq for a code improvement as a unified diff, with context."""
     api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
         print("No GROQ_API_KEY set; exiting.")
         sys.exit(1)
     from groq import Groq
     client = Groq(api_key=api_key)
-    prompt = f"""
-You are an AI coding assistant. The repository has this issue:
+
+    # Gather relevant source files based on the description
+    context_snippets = gather_context(issue_description)
+
+    system_msg = (
+        "You are an expert software engineer. You will be given a repository issue "
+        "and relevant code snippets. Your task is to return ONLY a valid unified diff "
+        "that fixes the issue. Do not include explanations, comments, or markdown fences. "
+        "The diff must apply cleanly with `git apply`. If no changes are needed, return empty string."
+    )
+    user_msg = f"""
+Repository issue:
 {issue_description}
 
-Suggest one small, mechanical code improvement to fix it.
-Return ONLY a unified diff that applies cleanly with `git apply`.
+Relevant code snippets:
+{context_snippets}
 """
+
     resp = client.chat.completions.create(
-        model="openai/gpt-oss-120b",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2,
-        max_tokens=1500,
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": user_msg},
+        ],
+        temperature=0.1,
+        max_tokens=3000,
     )
-    return resp.choices[0].message.content
+    raw = resp.choices[0].message.content
+    # Sometimes the model wraps diff in code fences; extract only the diff part
+    return extract_diff(raw)
 
 def apply_diff(diff_text):
     patch_file = REPO / ".agentic.patch"
