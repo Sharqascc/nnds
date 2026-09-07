@@ -31,7 +31,7 @@ def extract_frames(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    cap = cv2.VideoCapture(video_path)
+    cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
         raise ValueError(f"Cannot open video: {video_path}")
 
@@ -39,23 +39,26 @@ def extract_frames(
     frame_count = 0
     saved_count = 0
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        if frame_count % frame_interval == 0:
-            frame_path = output_dir / f"frame_{saved_count:05d}.jpg"
-            cv2.imwrite(str(frame_path), frame)
-            frame_paths.append(str(frame_path))
-            saved_count += 1
-
-            if max_frames and saved_count >= max_frames:
+    try:
+        while True:
+            ret, frame = cap.read()
+            if not ret:
                 break
 
-        frame_count += 1
+            if frame_count % frame_interval == 0:
+                frame_path = output_dir / f"frame_{saved_count:05d}.jpg"
+                if not cv2.imwrite(str(frame_path), frame):
+                    raise IOError(f"Failed to write frame: {frame_path}")
+                frame_paths.append(str(frame_path))
+                saved_count += 1
 
-    cap.release()
+                if max_frames is not None and saved_count >= max_frames:
+                    break
+
+            frame_count += 1
+    finally:
+        cap.release()
+
     print(f"Extracted {saved_count} frames to {output_dir}")
     return frame_paths
 
