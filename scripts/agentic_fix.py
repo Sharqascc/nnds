@@ -294,11 +294,95 @@ def add_ruff_select():
             text += '\n[tool.ruff]\nselect = ["F401"]\n'
         p.write_text(text)
 
+
+def fix_mutable_defaults():
+    """Replace mutable default arguments with None and initialize inside."""
+    import ast
+    all_py_files = list((REPO / 'src').rglob('*.py'))
+    for f in all_py_files:
+        try:
+            tree = ast.parse(f.read_text())
+        except SyntaxError:
+            continue
+        changed = False
+        class MutableDefaultFixer(ast.NodeTransformer):
+            def visit_FunctionDef(self, node):
+                # only modify functions with mutable defaults
+                for i, default in enumerate(node.args.defaults):
+                    if isinstance(default, (ast.List, ast.Dict, ast.Set, ast.Call)):
+                        # create None default
+                        node.args.defaults[i] = ast.Constant(value=None)
+                        # insert if arg is None: arg = original at start of body
+                        arg_name = node.args.args[-len(node.args.defaults) + i].arg
+                        original = ast.unparse(default)
+                        assign = ast.parse(f"if {arg_name} is None:\n    {arg_name} = {original}").body[0]
+                        node.body.insert(0, assign)
+                        changed = True
+                self.generic_visit(node)
+                return node
+        new_tree = MutableDefaultFixer().visit(tree)
+        ast.fix_missing_locations(new_tree)
+        new_code = ast.unparse(new_tree)
+        if changed:
+            f.write_text(new_code)
+
+def fix_assert_to_raise():
+    """Convert assert statements used for validation into explicit raises."""
+    all_py_files = list((REPO / 'src').rglob('*.py')) + list((REPO / 'scripts').rglob('*.py'))
+    for f in all_py_files:
+        text = f.read_text()
+        # Simple regex replacement: assert condition, message -> if not condition: raise ...
+        pattern = re.compile(r'assert\s+(.+?),\s+(.+?)\n', re.MULTILINE)
+        def repl(match):
+            cond = match.group(1).strip()
+            msg = match.group(2).strip()
+            return "if not " + cond + ":\n    raise ValueError(" + msg + ")"
+        new_text = pattern.sub(repl, text)
+        if new_text != text:
+            f.write_text(new_text)
+
+def fix_global_seed():
+    """Add deterministic seed initialization to src/__init__.py."""
+    init_file = REPO / 'src' / '__init__.py'
+    if not init_file.exists():
+        init_file.write_text("")
+    text = init_file.read_text()
+    if 'set_global_seed' not in text:
+        addition = (
+            "\nimport os\n"
+            "from .utils.seed import set_global_seed\n\n"
+            "DEFAULT_SEED = int(os.getenv(\"GLOBAL_SEED\", \"42\"))\n"
+            "set_global_seed(DEFAULT_SEED)\n"
+        )
+        init_file.write_text(text + addition)
+
+def fix_path_join():
+    """Replace os.path.join with pathlib / operator."""
+    all_py_files = list((REPO / 'src').rglob('*.py')) + list((REPO / 'scripts').rglob('*.py'))
+    for f in all_py_files:
+        text = f.read_text()
+        # Only replace simple os.path.join calls: os.path.join(a, b, ...)
+        pattern = re.compile(r'os\.path\.join\(([^)]+)\)')
+        def repl(match):
+            args = [a.strip() for a in match.group(1).split(',') if a.strip()]
+            if not args:
+                return match.group(0)
+            expr = 'Path(' + args[0] + ')'
+            for arg in args[1:]:
+                expr += ' / ' + arg
+            return expr
+        new_text = pattern.sub(repl, text)
+        if new_text != text:
+            f.write_text(new_text)
+
 # Map task_id to built-in function if possible
 BUILTIN_MAP = {
+    1: fix_mutable_defaults,
     3: fix_numpy_aliases,
+    7: fix_assert_to_raise,
+    8: fix_global_seed,
     9: fix_exception_chaining,
-    15: add_ruff_select,
+    12: fix_path_join,
 }
 
 def main():
@@ -325,21 +409,10 @@ def main():
             except Exception as e:
                 print(f"  Built-in failed: {e}")
         else:
-            print("  Using LLM fallback.")
-            for attempt in range(MAX_ATTEMPTS_PER_TASK):
-                print(f"    Attempt {attempt+1}")
-                try:
-                    diff_text = get_llm_diff(description)
-                    if diff_text and "diff --git" in diff_text and apply_diff(diff_text):
-                        success = True
-                        break
-                    else:
-                        print("    LLM diff invalid or failed to apply.")
-                        run(["git", "checkout", "--", "."])
-                except Exception as e:
-                    print(f"    LLM error: {e}")
-                    run(["git", "checkout", "--", "."])
-                    time.sleep(2)
+            print("  No built-in fixer for this task. Skipping.")
+            # Revert any stash (none should have been made if skipped)
+            run(["git", "checkout", "--", "."])
+            continue
 
         if success and run_full_checks():
             print("✅ Checks passed. Committing.")
