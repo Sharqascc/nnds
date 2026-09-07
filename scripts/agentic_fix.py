@@ -175,29 +175,25 @@ def main():
 
     # Determine files to process
     progress_file = PROGRESS_FILE
+    last_commit = ""
     if progress_file.exists():
         try:
             last_commit = json.loads(progress_file.read_text()).get("last_commit", "")
         except Exception:
             last_commit = ""
-    else:
-        last_commit = ""
 
+    changed_files = []
     if last_commit:
-        changed = run_cmd(["git", "diff", "--name-only", last_commit, "HEAD", "--", "src/**/*.py"])
-    else:
-        changed = run_cmd(["git", "diff", "--name-only", "HEAD~1", "HEAD", "--", "src/**/*.py"])
+        changed = run_cmd(["git", "diff", "--name-only", last_commit, "HEAD", "--", "src/"])
+        if changed.returncode == 0 and changed.stdout.strip():
+            changed_files = [Path(line) for line in changed.stdout.splitlines() if line.endswith(".py")]
+            changed_files = [f for f in changed_files if f.exists()]
 
-    if changed.returncode != 0 or not changed.stdout.strip():
-        print("No changed Python files under src/ since last run. Exiting.")
-        return
-
-    changed_files = [Path(line) for line in changed.stdout.splitlines() if line.endswith(".py")]
-    changed_files = [f for f in changed_files if f.exists()]
-
+    # Fallback: if no changed files detected (first run or shallow clone), use recently modified files
     if not changed_files:
-        print("No valid changed files to process.")
-        return
+        print("No changed files from diff; falling back to most recently modified Python files.")
+        all_py = sorted((REPO_ROOT / "src").glob("**/*.py"), key=lambda p: p.stat().st_mtime, reverse=True)
+        changed_files = all_py[:10]
 
     # Limit files per run to avoid rate limits
     MAX_FILES = 10
@@ -205,7 +201,7 @@ def main():
         print(f"Limiting to {MAX_FILES} files (found {len(changed_files)}).")
         changed_files = changed_files[:MAX_FILES]
 
-    print(f"Processing {len(changed_files)} changed files.")
+    print(f"Processing {len(changed_files)} files.")
 
     # Run ruff --fix first
     print("Running ruff --fix ...")
