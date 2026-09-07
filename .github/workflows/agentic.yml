@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: agentic/auto-fixes
+          ref: cleanup/system-reorganization
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-python@v5

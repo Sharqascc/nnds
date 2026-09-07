@@ -2,80 +2,140 @@
 """Agentic code review and auto-fix using Groq.
 
 This script:
-1. Reviews all Python files under src/ using Groq.
-2. Saves a combined report to groq_review_report.md.
-3. Applies safe automatic fixes (ruff --fix) before review to clean style issues.
+1. Runs `ruff --fix` to clean style issues.
+2. Reviews all Python files under src/ using Groq.
+3. Asks the model to generate unified diff patches to fix issues.
+4. Applies valid patches and commits/pushes changes.
 
-Requires GROQ_API_KEY environment variable.
+Requires GROQ_API_KEY environment variable and git identity configured.
 """
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 from groq import Groq
 
-MODEL = "qwen/qwen3.8-27b"  # Update if model changes
-
+MODEL = "qwen/qwen3.8-27b"
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SRC_DIR = REPO_ROOT / "src"
 REPORT_PATH = REPO_ROOT / "groq_review_report.md"
 
 
-def review_text(code_chunk, file_name, part, total_parts):
-    prompt = f"""Review the following Python code from {file_name} (part {part}/{total_parts}).
+def run_cmd(cmd, cwd=REPO_ROOT):
+    """Run a shell command and return CompletedProcess."""
+    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+
+
+def ensure_git_identity():
+    """Set git identity if not already configured (needed for CI)."""
+    if run_cmd(["git", "config", "user.email"]).stdout.strip() == "":
+        run_cmd(["git", "config", "user.email", "agentic-bot@users.noreply.github.com"])
+    if run_cmd(["git", "config", "user.name"]).stdout.strip() == "":
+        run_cmd(["git", "config", "user.name", "Agentic Bot"])
+
+
+def review_and_fix():
+    client = Groq(api_key=os.environ["GROQ_API_KEY"])
+
+    # Step 1: style fixes
+    print("Running ruff --fix ...")
+    run_cmd(["ruff", "check", "src", "tests", "--fix"])
+
+    # Step 2: review and patch each file
+    py_files = sorted((REPO_ROOT / "src").glob("**/*.py"))
+    print(f"Found {len(py_files)} Python files under src/")
+
+    report_parts = []
+    fixes_applied = []
+
+    for f in py_files:
+        rel_path = f.relative_to(REPO_ROOT)
+        content = f.read_text(encoding="utf-8", errors="ignore")
+        print(f"\n=== Reviewing {rel_path} ===")
+
+        # Review
+        review_prompt = f"""Review the following Python code from {rel_path}.
 Identify bugs, missing contracts, style issues, and potential improvements.
 Be concise.
 
 Code:
-{code_chunk}
+{content}
 """
-    client = Groq(api_key=os.environ["GROQ_API_KEY"])
-    response = client.chat.completions.create(
-        model=MODEL,
-        messages=[
-            {"role": "system", "content": "You are a senior Python code reviewer. Provide actionable feedback."},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.2,
-        max_tokens=500,
-    )
-    return response.choices[0].message.content
+        review_resp = client.chat.completions.create(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": "You are a senior Python code reviewer. Provide actionable feedback."},
+                {"role": "user", "content": review_prompt},
+            ],
+            temperature=0.2,
+            max_tokens=500,
+        )
+        review_text = review_resp.choices[0].message.content
+        report_parts.append(f"## {rel_path}\n{review_text}")
 
+        # Request patch
+        patch_prompt = f"""Given the code and the review, produce a unified diff patch to fix the issues.
+Output only the patch. If no changes are needed, output exactly NO_CHANGES.
+Do not include any explanation or markdown fences.
 
-def review_file(path):
-    content = path.read_text(encoding="utf-8", errors="ignore")
-    chunk_size = 5000
-    chunks = [content[i : i + chunk_size] for i in range(0, len(content), chunk_size)]
-    reviews = []
-    for i, chunk in enumerate(chunks, 1):
-        print(f"  Reviewing {path.relative_to(REPO_ROOT)} chunk {i}/{len(chunks)}...")
-        review = review_text(chunk, str(path.relative_to(REPO_ROOT)), i, len(chunks))
-        reviews.append(f"## {path.relative_to(REPO_ROOT)} (part {i}/{len(chunks)})\n{review}")
-    return "\n\n".join(reviews)
+Code:
+{content}
 
+Review:
+{review_text}
+"""
+        patch_resp = client.chat.completions.create(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": "You are an expert Python developer. Provide a valid unified diff patch."},
+                {"role": "user", "content": patch_prompt},
+            ],
+            temperature=0.1,
+            max_tokens=1000,
+        )
+        patch_text = patch_resp.choices[0].message.content.strip()
 
-def main():
-    if not os.environ.get("GROQ_API_KEY"):
-        print("GROQ_API_KEY not set. Exiting.")
-        return
+        if patch_text != "NO_CHANGES":
+            patch_file = REPO_ROOT / "temp_patch.diff"
+            patch_file.write_text(patch_text)
+            # Verify patch applies cleanly
+            check = run_cmd(["git", "apply", "--check", str(patch_file)])
+            if check.returncode == 0:
+                apply = run_cmd(["git", "apply", str(patch_file)])
+                if apply.returncode == 0:
+                    print(f"  ✅ Applied patch for {rel_path}")
+                    fixes_applied.append(str(rel_path))
+                else:
+                    print(f"  ❌ Failed to apply patch for {rel_path}: {apply.stderr}")
+            else:
+                print(f"  ❌ Patch check failed for {rel_path}: {check.stderr}")
+            patch_file.unlink(missing_ok=True)
+        else:
+            print("  No changes suggested.")
 
-    # Apply safe style fixes first
-    print("Running ruff --fix ...")
-    subprocess.run(["ruff", "check", "src", "tests", "--fix"], cwd=REPO_ROOT, check=False)
+    # Save review report
+    REPORT_PATH.write_text("\n\n".join(report_parts), encoding="utf-8")
 
-    # Review all Python files under src/
-    py_files = sorted(SRC_DIR.glob("**/*.py"))
-    print(f"Found {len(py_files)} Python files under src/")
-
-    report_parts = []
-    for f in py_files:
-        print(f"\n=== Reviewing {f.relative_to(REPO_ROOT)} ===")
-        report_parts.append(review_file(f))
-
-    full_report = "\n\n".join(report_parts)
-    REPORT_PATH.write_text(full_report, encoding="utf-8")
-    print(f"✅ Saved report to {REPORT_PATH}")
+    # Commit and push if fixes were applied
+    if fixes_applied:
+        ensure_git_identity()
+        run_cmd(["git", "add", "-A"])
+        commit_msg = "Auto-fix: apply LLM-generated patches\n\nFiles:\n" + "\n".join(fixes_applied)
+        commit = run_cmd(["git", "commit", "-m", commit_msg])
+        if commit.returncode == 0:
+            push = run_cmd(["git", "push", "origin", "HEAD"])
+            if push.returncode == 0:
+                print("✅ Pushed auto-fixes.")
+            else:
+                print("Push failed:", push.stderr)
+        else:
+            print("No changes to commit or commit failed.")
+    else:
+        print("No fixes applied.")
 
 
 if __name__ == "__main__":
-    main()
+    if not os.environ.get("GROQ_API_KEY"):
+        print("GROQ_API_KEY not set. Exiting.")
+        sys.exit(1)
+    review_and_fix()
