@@ -7,7 +7,6 @@ from typing import Any
 import cv2
 import numpy as np
 import pandas as pd
-from ultralytics import YOLO
 
 ALLOWED_CLASSES = {
     0: "person",
@@ -35,17 +34,18 @@ def _segment_intersection(p1, p2, q1, q2):
     q = np.array(q1, dtype=float)
     s = np.array(q2, dtype=float) - q
 
-    rxs = np.cross(r, s)
+    # Explicit 2D cross products (z-component)
+    rxs = r[0] * s[1] - r[1] * s[0]
     q_p = q - p
-    qpxr = np.cross(q_p, r)
+    qpxr = q_p[0] * r[1] - q_p[1] * r[0]
 
     if abs(rxs) < 1e-9 and abs(qpxr) < 1e-9:
         return None
     if abs(rxs) < 1e-9 and abs(qpxr) >= 1e-9:
         return None
 
-    t = np.cross(q_p, s) / rxs
-    u = np.cross(q_p, r) / rxs
+    t = (q_p[0] * s[1] - q_p[1] * s[0]) / rxs
+    u = (q_p[0] * r[1] - q_p[1] * r[0]) / rxs
 
     if 0.0 <= t <= 1.0 and 0.0 <= u <= 1.0:
         inter = p + t * r
@@ -90,6 +90,7 @@ def run_yolo_cpu_grid_pet(
     weights_path = str(Path(weights_path).resolve())
     output_csv_path = str(Path(output_csv_path).resolve())
 
+    from ultralytics import YOLO
     model = YOLO(weights_path)
 
     cap = cv2.VideoCapture(video_path)
