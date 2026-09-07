@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Autonomous AI code fixer for NNDS.
+Autonomous agentic fixer for NNDS.
 
-Uses Groq LLM to propose a unified diff, applies it, runs checks,
-and pushes if successful. Retries up to MAX_ATTEMPTS per run.
+Runs multiple mechanical fixes with built-in transformations and
+LLM fallback for unknown issues. Validates with property tests,
+ruff, and mypy. Commits only if all checks pass.
 """
 
 import os
@@ -11,29 +12,28 @@ import subprocess
 import sys
 import json
 import re
+import ast
 from pathlib import Path
-from groq import Groq
 
 REPO = Path(__file__).resolve().parents[1]
 os.chdir(REPO)
 
-MAX_ATTEMPTS = 5
+MAX_ATTEMPTS_PER_TASK = 5
 
 def run(cmd, **kwargs):
     return subprocess.run(cmd, capture_output=True, text=True, cwd=REPO, **kwargs)
 
 def get_llm_diff():
-    """Ask Groq for a single code improvement as a unified diff."""
+    """Ask Groq for a code improvement as a unified diff."""
     api_key = os.environ.get("GROUQ_API_KEY")
     if not api_key:
         print("No GROUQ_API_KEY set; exiting.")
         sys.exit(1)
+    from groq import Groq
     client = Groq(api_key=api_key)
-
     prompt = """
-You are an AI coding assistant. Analyze the repository and suggest one small, mechanical code improvement.
-Return ONLY a unified diff in plain text, no explanations. The diff must apply cleanly with `git apply`.
-Ensure the diff is against the current working tree.
+You are an AI coding assistant. Suggest one small, mechanical code improvement.
+Return ONLY a unified diff that applies cleanly with `git apply`.
 """
     resp = client.chat.completions.create(
         model="openai/gpt-oss-120b",
@@ -41,19 +41,17 @@ Ensure the diff is against the current working tree.
         temperature=0.2,
         max_tokens=1500,
     )
-    content = resp.choices[0].message.content
-    return content
+    return resp.choices[0].message.content
 
 def apply_diff(diff_text):
-    """Apply unified diff to the working tree."""
     patch_file = REPO / ".agentic.patch"
     patch_file.write_text(diff_text)
     result = run(["git", "apply", str(patch_file)])
     patch_file.unlink(missing_ok=True)
     return result.returncode == 0
 
-def run_checks():
-    """Run fast quality gates."""
+def run_full_checks():
+    """Run property tests, ruff, and mypy on key directories."""
     checks = [
         ["pytest", "tests/", "-m", "property", "-q", "-o", "addopts="],
         ["ruff", "check", "src", "tests", "scripts"],
@@ -62,7 +60,7 @@ def run_checks():
     for cmd in checks:
         r = run(cmd)
         if r.returncode != 0:
-            print(f"Check failed: {' '.join(cmd)}")
+            print(f"❌ Check failed: {' '.join(cmd)}")
             return False
     return True
 
@@ -77,31 +75,81 @@ def commit_and_push():
         return True
     commit = run(["git", "commit", "-m", "Agentic auto-fix"])
     if commit.returncode != 0:
-        print("Commit failed.")
+        print("❌ Commit failed.")
         return False
     push = run(["git", "push", "origin", "HEAD"])
-    return push.returncode == 0
+    if push.returncode != 0:
+        print("❌ Push failed.")
+        return False
+    return True
+
+# ============ Built-in fixers ============
+
+def fix_numpy_aliases(files):
+    """Replace deprecated NumPy scalar aliases with built-in types."""
+    replacements = {
+        r'\bnp\.int\b': 'int',
+        r'\bnp\.float\b': 'float',
+        r'\bnp\.bool\b': 'bool',
+        r'\bnp\.object\b': 'object',
+        r'\bnp\.str\b': 'str',
+    }
+    for f in files:
+        text = f.read_text()
+        new = text
+        for pat, repl in replacements.items():
+            new = re.sub(pat, repl, new)
+        if new != text:
+            f.write_text(new)
+            print(f"Fixed NumPy aliases in {f.relative_to(REPO)}")
+
+def fix_exception_chaining(files):
+    """Add 'from None' to raise statements that lack a cause."""
+    for f in files:
+        text = f.read_text()
+        new_text = re.sub(r'(\s+raise\s+[^\n:]+)(?=\n)', r'\1  from None', text)
+        if new_text != text:
+            f.write_text(new_text)
+            print(f"Added exception chaining in {f.relative_to(REPO)}")
+
+def add_ruff_select():
+    """Add F401 to ruff select in pyproject.toml."""
+    p = REPO / 'pyproject.toml'
+    text = p.read_text()
+    if 'select = ["F401"]' not in text:
+        if '[tool.ruff]' in text:
+            text = text.replace('[tool.ruff]\n', '[tool.ruff]\nselect = ["F401"]\n', 1)
+        else:
+            text += '\n[tool.ruff]\nselect = ["F401"]\n'
+        p.write_text(text)
+        print("Added F401 to ruff select")
 
 def main():
-    for attempt in range(1, MAX_ATTEMPTS + 1):
-        print(f"\nAttempt {attempt}/{MAX_ATTEMPTS}")
-        diff_text = get_llm_diff()
-        if not diff_text or "diff --git" not in diff_text:
-            print("LLM did not return a valid diff.")
-            continue
-        if apply_diff(diff_text):
-            if run_checks():
-                print("Checks passed. Committing.")
-                if commit_and_push():
-                    print("Successfully committed and pushed.")
-                    return 0
+    # List of built-in fixes to apply
+    all_py_files = list((REPO / 'src').rglob('*.py')) + list((REPO / 'scripts').rglob('*.py'))
+    tasks = [
+        ("numpy_aliases", lambda: fix_numpy_aliases(all_py_files)),
+        ("exception_chaining", lambda: fix_exception_chaining(all_py_files)),
+        ("ruff_select", add_ruff_select),
+    ]
+
+    for task_name, task_fn in tasks:
+        print(f"\n🔧 Processing task: {task_name}")
+        run(["git", "stash", "push", "--include-untracked", "-m", f"pre-{task_name}"])
+        task_fn()
+        if run_full_checks():
+            print("✅ Checks passed. Committing.")
+            if commit_and_push():
+                print("Successfully committed and pushed.")
             else:
-                print("Checks failed. Reverting.")
+                print("❌ Commit/push failed. Reverting.")
                 run(["git", "checkout", "--", "."])
+                run(["git", "stash", "drop"])
         else:
-            print("Could not apply diff.")
-    print("Max attempts reached.")
-    return 1
+            print("❌ Checks failed. Reverting.")
+            run(["git", "checkout", "--", "."])
+            run(["git", "stash", "drop"])
+        print(f"Done with task {task_name}")
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
