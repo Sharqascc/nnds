@@ -9,7 +9,7 @@ Provides:
 
 from __future__ import annotations
 
-from enum import Enum, StrEnum
+from enum import Enum
 from typing import Any, Dict, List, Literal, Optional
 
 import numpy as np
@@ -93,7 +93,7 @@ class PETEvent(BaseModel):
 
 
 # Tracking state machine
-class TrackingState(StrEnum):
+class TrackingState(str, Enum):  # noqa: UP042
     DETECTED = "DETECTED"
     TRACKING = "TRACKING"
     MISSED = "MISSED"
