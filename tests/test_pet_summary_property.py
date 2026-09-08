@@ -18,6 +18,7 @@ def make_analyzer(pet_values):
     return PETEventAnalyzer(csv_path), tmpdir
 
 @given(st.lists(st.floats(min_value=0.1, max_value=9.9), min_size=2, max_size=30))
+@pytest.mark.property
 def test_basic_stats_count_matches_rows(pet_values):
     analyzer, tmpdir = make_analyzer(pet_values)
     try:
@@ -27,6 +28,7 @@ def test_basic_stats_count_matches_rows(pet_values):
         tmpdir.cleanup()
 
 @given(st.lists(st.floats(min_value=0.1, max_value=9.9), min_size=2, max_size=30))
+@pytest.mark.property
 def test_basic_stats_ci_bounds(pet_values):
     analyzer, tmpdir = make_analyzer(pet_values)
     try:
@@ -42,6 +44,7 @@ def test_basic_stats_ci_bounds(pet_values):
         st.lists(st.floats(min_value=0.1, max_value=9.9), min_size=n, max_size=n)
     )
 ))
+@pytest.mark.property
 def test_cohens_d_non_negative(samples):
     a, b = samples
     d = PETEventAnalyzer._cohens_d(np.array(a), np.array(b))
@@ -49,11 +52,13 @@ def test_cohens_d_non_negative(samples):
 
 @given(st.lists(st.floats(min_value=0.1, max_value=9.9), min_size=1, max_size=20),
        st.lists(st.floats(min_value=0.1, max_value=9.9), min_size=1, max_size=20))
+@pytest.mark.property
 def test_cliffs_delta_in_range(a, b):
     delta = PETEventAnalyzer._cliffs_delta(np.array(a), np.array(b))
     assert -1.0 <= delta <= 1.0
 
 @given(st.floats(min_value=-10, max_value=10))
+@pytest.mark.property
 def test_interpret_effect_size_valid(d):
     label = PETEventAnalyzer._interpret_effect_size(d)
     assert label in {"negligible", "small", "medium", "large"}

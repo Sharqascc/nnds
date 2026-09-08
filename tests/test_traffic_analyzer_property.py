@@ -14,6 +14,7 @@ def identity_analyzer():
 
 @given(st.lists(st.tuples(st.floats(0, 100), st.floats(0, 100)), min_size=5, max_size=20),
        st.floats(min_value=0.1, max_value=10))
+@pytest.mark.property
 def test_estimate_speed_non_negative(pixel_pts, dt):
     analyzer = identity_analyzer()
     pixel_positions = np.array(pixel_pts, dtype=np.float32)
@@ -24,6 +25,7 @@ def test_estimate_speed_non_negative(pixel_pts, dt):
 
 @given(st.lists(st.tuples(st.floats(0, 100), st.floats(0, 100)), min_size=5, max_size=20),
        st.floats(min_value=0.1, max_value=10))
+@pytest.mark.property
 def test_estimate_speed_finite(pixel_pts, dt):
     analyzer = identity_analyzer()
     pixel_positions = np.array(pixel_pts, dtype=np.float32)

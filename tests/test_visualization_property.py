@@ -13,6 +13,7 @@ from src.analysis.visualization.video_overlays import (
 
 
 @given(st.sampled_from(list(COLORS_BGR.keys())))
+@pytest.mark.property
 def test_color_palette_valid_bgr(color_name):
     bgr = COLORS_BGR[color_name]
     assert isinstance(bgr, tuple)
@@ -20,11 +21,13 @@ def test_color_palette_valid_bgr(color_name):
     assert all(0 <= channel <= 255 for channel in bgr)
 
 @given(st.lists(st.floats(min_value=0.01, max_value=10.0), min_size=5, max_size=5))
+@pytest.mark.property
 def test_default_thresholds_positive_sorted(values):
     thresholds = DEFAULT_THRESHOLDS
     assert all(v > 0 for v in thresholds.values())
     assert thresholds["critical"] < thresholds["serious"] < thresholds["moderate"] < thresholds["safe"]
 
+@pytest.mark.property
 def test_overlay_conflict_frame_shape_preserved(tmp_path):
     # Create a short synthetic video
     video_path = tmp_path / "test.mp4"
