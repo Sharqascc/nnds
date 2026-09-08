@@ -18,27 +18,43 @@ from pathlib import Path
 from groq import Groq
 
 
-def call_with_retry(client, messages, model, max_retries=5, base_wait=20):
-    """Call Groq with retry/backoff for rate limits."""
-    for attempt in range(max_retries):
-        try:
-            return client.chat.completions.create(
-                model=model,
-                messages=messages,
-                temperature=0.2,
-                max_tokens=800,
-            )
-        except Exception as e:
-            if "rate_limit" in str(e) or "429" in str(e):
-                wait = base_wait * (2 ** attempt)
-                print(f"Rate limit hit. Retrying in {wait}s...")
-                time.sleep(wait)
-            else:
-                raise
-    raise RuntimeError("Max retries exceeded for Groq API call")
+def call_with_fallback(client, messages, models, max_retries_per_model=2, base_wait=10):
+    """Try multiple models in order, falling back on rate limit/transient errors."""
+    last_error = None
+    for model in models:
+        for attempt in range(max_retries_per_model):
+            try:
+                return client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    temperature=0.2,
+                    max_tokens=800,
+                )
+            except Exception as e:
+                last_error = e
+                if "rate_limit" in str(e) or "429" in str(e):
+                    wait = base_wait * (2 ** attempt)
+                    print(f"Rate limit on {model}, attempt {attempt+1}/{max_retries_per_model}. Waiting {wait}s...")
+                    time.sleep(wait)
+                else:
+                    # Non-rate-limit error: break retry loop for this model and try next
+                    print(f"Model {model} failed with {e}. Trying next model...")
+                    break
+        else:
+            continue
+        # If all retries on a model exhausted (rate limit), continue to next model
+        continue
+    raise RuntimeError(f"All models failed. Last error: {last_error}")
 
 
-MODEL = "openai/gpt-oss-120b"
+# Available models ordered by preference (fallback on rate limit)
+MODELS = [
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "qwen/qwen3.8-27b",
+    "qwen/qwen3.6-27b",
+    "allam-2-7b",
+]
 REPO_ROOT = Path(__file__).resolve().parents[1]
 REPORT_PATH = REPO_ROOT / "groq_review_report.md"
 
@@ -83,8 +99,9 @@ Be concise.
 Code:
 {content}
 """
-        review_resp = call_with_retry(
+        review_resp = call_with_fallback(
             client,
+            models=MODELS,
             messages=[
                 {"role": "system", "content": "You are a senior Python code reviewer. Provide actionable feedback."},
                 {"role": "user", "content": review_prompt},
@@ -105,8 +122,9 @@ Code:
 Review:
 {review_text}
 """
-        patch_resp = call_with_retry(
+        patch_resp = call_with_fallback(
             client,
+            models=MODELS,
             messages=[
                 {"role": "system", "content": "You are an expert Python developer. Provide a valid unified diff patch."},
                 {"role": "user", "content": patch_prompt},
@@ -138,6 +156,10 @@ Review:
 
     # Commit and push if fixes were applied
     if fixes_applied:
+        if not run_quick_tests():
+            print("❌ Quick tests failed. Reverting patches and aborting.")
+            run_cmd(["git", "restore", "."])
+            return
         ensure_git_identity()
         run_cmd(["git", "add", "-A"])
         commit_msg = "Auto-fix: apply LLM-generated patches\n\nFiles:\n" + "\n".join(fixes_applied)
@@ -153,6 +175,21 @@ Review:
     else:
         print("No fixes applied.")
 
+
+
+
+def run_quick_tests():
+    """Run a fast subset of tests and return True if they pass."""
+    print("\nRunning quick tests...")
+    res = run_cmd([
+        "pytest", "tests/test_pet_summary_property.py",
+        "tests/test_traffic_analyzer_property.py",
+        "tests/test_core_validation_property.py",
+        "-q", "-o", "addopts=",
+    ])
+    print(res.stdout)
+    print(res.stderr)
+    return res.returncode == 0
 
 if __name__ == "__main__":
     if not os.environ.get("GROQ_API_KEY"):
