@@ -18,7 +18,7 @@ from pathlib import Path
 from groq import Groq
 
 
-def call_with_fallback(client, messages, models, max_retries_per_model=2, base_wait=10):
+def call_with_fallback(client, messages, models, max_retries_per_model=2, base_wait=10, max_tokens=800):
     """Try multiple models in order, falling back on rate limit/transient errors."""
     last_error = None
     for model in models:
@@ -95,6 +95,19 @@ def extract_patch(raw):
         end_idx = len(lines)
     return '\n'.join(lines[start_idx:end_idx]).strip() + '\n'
 
+
+
+def extract_full_file(raw):
+    """Extract the corrected file content between fixed markers."""
+    start_marker = "<<<FIXED_FILE_START>>>"
+    end_marker = "<<<FIXED_FILE_END>>>"
+    if start_marker in raw and end_marker in raw:
+        start = raw.index(start_marker) + len(start_marker)
+        end = raw.index(end_marker)
+        return raw[start:end].strip("\n")
+    # Fallback: if markers missing, assume raw is the file content
+    return raw.strip("\n")
+
 def ensure_git_identity():
     """Set git identity if not already configured (needed for CI)."""
     if run_cmd(["git", "config", "user.email"]).stdout.strip() == "":
@@ -150,48 +163,43 @@ Code:
                 print(f"  ❌ Review failed for {rel_path}: {e}")
                 continue
 
-            # Request patch
-            patch_prompt = f"""Given the code and the review, produce a unified diff patch to fix the issues.
-Output only the patch. If no changes are needed, output exactly NO_CHANGES.
+            # Request full corrected file
+            fix_prompt = f"""Based on the review, output the complete corrected file content.
+Wrap the corrected content between the markers:
+<<<FIXED_FILE_START>>>
+... corrected code ...
+<<<FIXED_FILE_END>>>
+If no changes are needed, output exactly NO_CHANGES.
 Do not include any explanation or markdown fences.
 
-Code:
+Original Code:
 {content}
 
 Review:
 {review_text}
 """
             try:
-                patch_resp = call_with_fallback(
+                fix_resp = call_with_fallback(
                     client,
                     models=MODELS,
+                    max_tokens=2000,
                     messages=[
-                        {"role": "system", "content": "You are an expert Python developer. Provide a valid unified diff patch."},
-                        {"role": "user", "content": patch_prompt},
+                        {"role": "system", "content": "You are an expert Python developer. Provide the entire corrected file."},
+                        {"role": "user", "content": fix_prompt},
                     ],
                 )
-                patch_text = extract_patch(patch_resp.choices[0].message.content)
+                fixed_content = extract_full_file(fix_resp.choices[0].message.content)
             except Exception as e:
-                print(f"  ❌ Patch generation failed for {rel_path}: {e}")
+                print(f"  ❌ Fix generation failed for {rel_path}: {e}")
                 continue
 
-            if patch_text != "NO_CHANGES":
-                patch_file = REPO_ROOT / "temp_patch.diff"
-                patch_file.write_text(patch_text)
-                # Verify patch applies cleanly
-                check = run_cmd(["git", "apply", "--check", str(patch_file)])
-                if check.returncode == 0:
-                    apply = run_cmd(["git", "apply", str(patch_file)])
-                    if apply.returncode == 0:
-                        print(f"  ✅ Applied patch for {rel_path}")
-                        fixes_applied.append(str(rel_path))
-                    else:
-                        print(f"  ❌ Failed to apply patch for {rel_path}: {apply.stderr}")
-                else:
-                    print(f"  ❌ Patch check failed for {rel_path}: {check.stderr}")
-                patch_file.unlink(missing_ok=True)
-            else:
+            if fixed_content.strip() == "NO_CHANGES":
                 print("  No changes suggested.")
+            else:
+                # Write the corrected file directly
+                f.write_text(fixed_content, encoding="utf-8")
+                print(f"  ✅ Replaced {rel_path} with corrected version")
+                fixes_applied.append(str(rel_path))
         except Exception as e:
             print(f"  ❌ Unexpected error for {rel_path}: {e}")
             continue
