@@ -56,6 +56,11 @@ MODELS = [
     "allam-2-7b",
 ]
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+# Skip files larger than this to avoid message length errors
+MAX_FILE_LINES = 400
+MAX_FILE_CHARS = 20000
 REPORT_PATH = REPO_ROOT / "groq_review_report.md"
 
 
