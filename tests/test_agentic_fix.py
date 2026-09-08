@@ -115,6 +115,16 @@ def test_call_with_fallback_all_models_fail_raises(monkeypatch):
             base_wait=0,
         )
 
+def test_run_cmd_timeout_returns_completed_process(monkeypatch):
+    # Monkeypatch subprocess.run to simulate timeout
+    import subprocess as sp
+    def fake_run(cmd, **kwargs):
+        raise sp.TimeoutExpired(cmd, kwargs.get('timeout', 120))
+    monkeypatch.setattr(agentic_fix.subprocess, 'run', fake_run)
+    res = agentic_fix.run_cmd(["fake"], timeout=1)
+    assert res.returncode == 124
+
+
 
 # ---------- Property-based test ----------
 @given(st.lists(st.text(min_size=1, max_size=20), min_size=2, max_size=5))
