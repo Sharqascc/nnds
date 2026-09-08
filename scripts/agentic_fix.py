@@ -106,7 +106,6 @@ Code:
                 {"role": "system", "content": "You are a senior Python code reviewer. Provide actionable feedback."},
                 {"role": "user", "content": review_prompt},
             ],
-            model=MODEL,
         )
         review_text = review_resp.choices[0].message.content
         report_parts.append(f"## {rel_path}\n{review_text}")
@@ -129,7 +128,6 @@ Review:
                 {"role": "system", "content": "You are an expert Python developer. Provide a valid unified diff patch."},
                 {"role": "user", "content": patch_prompt},
             ],
-            model=MODEL,
         )
         patch_text = patch_resp.choices[0].message.content.strip()
 
