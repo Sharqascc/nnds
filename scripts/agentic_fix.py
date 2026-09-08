@@ -98,14 +98,20 @@ def extract_patch(raw):
 
 
 def extract_full_file(raw):
-    """Extract the corrected file content between fixed markers."""
+    """Extract the corrected file content between fixed markers safely."""
     start_marker = "<<<FIXED_FILE_START>>>"
     end_marker = "<<<FIXED_FILE_END>>>"
     if start_marker in raw and end_marker in raw:
         start = raw.index(start_marker) + len(start_marker)
         end = raw.index(end_marker)
-        return raw[start:end].strip("\n")
-    # Fallback: if markers missing, assume raw is the file content
+        content = raw[start:end].strip("\n")
+        if start_marker in content or end_marker in content:
+            print("⚠️ Markers still present in extracted content; rejecting patch")
+            return "NO_CHANGES"
+        return content
+    # Fallback: if markers missing, and raw doesn't look like a diff/patch, assume content
+    if raw.strip().startswith(("---", "***", "+++", "@@")):
+        return "NO_CHANGES"
     return raw.strip("\n")
 
 def ensure_git_identity():
@@ -212,7 +218,7 @@ Review:
         if not run_quick_tests():
             print("❌ Quick tests failed. Reverting patches and aborting.")
             run_cmd(["git", "restore", "."])
-            return
+            sys.exit(1)
         ensure_git_identity()
         run_cmd(["git", "add", "-A"])
         commit_msg = "Auto-fix: apply LLM-generated patches\n\nFiles:\n" + "\n".join(fixes_applied)

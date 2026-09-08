@@ -30,7 +30,7 @@ def test_first_below_threshold_returns_valid_index(dist_seq, thresh):
     )),
     st.floats(min_value=0.01, max_value=10.0, allow_nan=False, allow_infinity=False))
 def test_compute_ttc_seq_length_and_values(samples, dt):
-    pos1_list, _ = samples
+    pos1_list, pos2_list = samples
     pos1 = np.array(pos1_list, dtype=float)
     pos2 = np.array(pos2_list, dtype=float)
     ttc = compute_ttc_seq(pos1, pos2, dt)

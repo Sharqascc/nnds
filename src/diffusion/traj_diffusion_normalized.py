@@ -1,3 +1,5 @@
+from typing import Any
+
 # --- Auto-generated stubs for missing globals (F821) ---
 inputs_np: Any = None
 targets_np: Any = None
@@ -10,7 +12,6 @@ model: Any = None
 alphas: Any = None
 betas: Any = None
 alphas_cumprod: Any = None
-from typing import Any
 
 # --------------------------------------------------------
 

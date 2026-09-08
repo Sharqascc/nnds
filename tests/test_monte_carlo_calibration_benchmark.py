@@ -33,8 +33,7 @@ from src.bev.calibration.monte_carlo_calibration_benchmark import (
 # ---------------- parse_args ----------------
 def test_parse_args_defaults(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["prog"])
-    parser = parse_args()
-    args = parser.parse_args()
+    args = parse_args()
     assert args.num_trials == 50
     assert args.seed == 0
     assert args.plot is False
@@ -47,8 +46,7 @@ def test_parse_args_custom(monkeypatch):
         "argv",
         ["prog", "--num-trials", "5", "--seed", "123", "--plot", "--multi-noise", "--verbose"],
     )
-    parser = parse_args()
-    args = parser.parse_args()
+    args = parse_args()
     assert args.num_trials == 5
     assert args.seed == 123
     assert args.plot is True
