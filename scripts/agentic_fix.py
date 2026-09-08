@@ -93,30 +93,39 @@ def review_and_fix():
 
     for f in py_files:
         rel_path = f.relative_to(REPO_ROOT)
-        content = f.read_text(encoding="utf-8", errors="ignore")
-        print(f"\n=== Reviewing {rel_path} ===")
+        try:
+            content = f.read_text(encoding="utf-8", errors="ignore")
+            if len(content) > MAX_FILE_CHARS or len(content.splitlines()) > MAX_FILE_LINES:
+                print(f"  ⏭️ Skipping {rel_path} (too large: {len(content)} chars, {len(content.splitlines())} lines)")
+                continue
 
-        # Review
-        review_prompt = f"""Review the following Python code from {rel_path}.
+            print(f"\n=== Reviewing {rel_path} ===")
+
+            # Review
+            review_prompt = f"""Review the following Python code from {rel_path}.
 Identify bugs, missing contracts, style issues, and potential improvements.
 Be concise.
 
 Code:
 {content}
 """
-        review_resp = call_with_fallback(
-            client,
-            models=MODELS,
-            messages=[
-                {"role": "system", "content": "You are a senior Python code reviewer. Provide actionable feedback."},
-                {"role": "user", "content": review_prompt},
-            ],
-        )
-        review_text = review_resp.choices[0].message.content
-        report_parts.append(f"## {rel_path}\n{review_text}")
+            try:
+                review_resp = call_with_fallback(
+                    client,
+                    models=MODELS,
+                    messages=[
+                        {"role": "system", "content": "You are a senior Python code reviewer. Provide actionable feedback."},
+                        {"role": "user", "content": review_prompt},
+                    ],
+                )
+                review_text = review_resp.choices[0].message.content
+                report_parts.append(f"## {rel_path}\n{review_text}")
+            except Exception as e:
+                print(f"  ❌ Review failed for {rel_path}: {e}")
+                continue
 
-        # Request patch
-        patch_prompt = f"""Given the code and the review, produce a unified diff patch to fix the issues.
+            # Request patch
+            patch_prompt = f"""Given the code and the review, produce a unified diff patch to fix the issues.
 Output only the patch. If no changes are needed, output exactly NO_CHANGES.
 Do not include any explanation or markdown fences.
 
@@ -126,33 +135,40 @@ Code:
 Review:
 {review_text}
 """
-        patch_resp = call_with_fallback(
-            client,
-            models=MODELS,
-            messages=[
-                {"role": "system", "content": "You are an expert Python developer. Provide a valid unified diff patch."},
-                {"role": "user", "content": patch_prompt},
-            ],
-        )
-        patch_text = patch_resp.choices[0].message.content.strip()
+            try:
+                patch_resp = call_with_fallback(
+                    client,
+                    models=MODELS,
+                    messages=[
+                        {"role": "system", "content": "You are an expert Python developer. Provide a valid unified diff patch."},
+                        {"role": "user", "content": patch_prompt},
+                    ],
+                )
+                patch_text = patch_resp.choices[0].message.content.strip()
+            except Exception as e:
+                print(f"  ❌ Patch generation failed for {rel_path}: {e}")
+                continue
 
-        if patch_text != "NO_CHANGES":
-            patch_file = REPO_ROOT / "temp_patch.diff"
-            patch_file.write_text(patch_text)
-            # Verify patch applies cleanly
-            check = run_cmd(["git", "apply", "--check", str(patch_file)])
-            if check.returncode == 0:
-                apply = run_cmd(["git", "apply", str(patch_file)])
-                if apply.returncode == 0:
-                    print(f"  ✅ Applied patch for {rel_path}")
-                    fixes_applied.append(str(rel_path))
+            if patch_text != "NO_CHANGES":
+                patch_file = REPO_ROOT / "temp_patch.diff"
+                patch_file.write_text(patch_text)
+                # Verify patch applies cleanly
+                check = run_cmd(["git", "apply", "--check", str(patch_file)])
+                if check.returncode == 0:
+                    apply = run_cmd(["git", "apply", str(patch_file)])
+                    if apply.returncode == 0:
+                        print(f"  ✅ Applied patch for {rel_path}")
+                        fixes_applied.append(str(rel_path))
+                    else:
+                        print(f"  ❌ Failed to apply patch for {rel_path}: {apply.stderr}")
                 else:
-                    print(f"  ❌ Failed to apply patch for {rel_path}: {apply.stderr}")
+                    print(f"  ❌ Patch check failed for {rel_path}: {check.stderr}")
+                patch_file.unlink(missing_ok=True)
             else:
-                print(f"  ❌ Patch check failed for {rel_path}: {check.stderr}")
-            patch_file.unlink(missing_ok=True)
-        else:
-            print("  No changes suggested.")
+                print("  No changes suggested.")
+        except Exception as e:
+            print(f"  ❌ Unexpected error for {rel_path}: {e}")
+            continue
 
     # Save review report
     REPORT_PATH.write_text("\n\n".join(report_parts), encoding="utf-8")
