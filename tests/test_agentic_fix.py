@@ -158,3 +158,17 @@ def test_call_with_fallback_always_returns_success_when_one_model_works(model_na
         base_wait=0,
     )
     assert result.choices[0].message.content == "ok"
+
+def test_extract_patch_strips_markdown():
+    raw = """```diff
+--- a/foo.py
++++ b/foo.py
+@@ -1 +1 @@
+-old
++new
+```"""
+    result = agentic_fix.extract_patch(raw)
+    assert result.startswith('--- a/foo.py')
+    assert '+new' in result
+    assert '```' not in result
+

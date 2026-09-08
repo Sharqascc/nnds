@@ -73,6 +73,28 @@ def run_cmd(cmd, cwd=REPO_ROOT, timeout=120):
         return subprocess.CompletedProcess(cmd, 124, stdout="", stderr="Timeout")
 
 
+
+
+def extract_patch(raw):
+    """Extract a valid unified diff from model output, stripping fences and explanations."""
+    lines = raw.splitlines()
+    start_idx = None
+    end_idx = None
+    for i, line in enumerate(lines):
+        if line.startswith(('--- ', '*** ', '+++ ', '@@ ')):
+            start_idx = i
+            break
+    if start_idx is None:
+        return ''
+    # Find end: stop before a closing fence or 'NO_CHANGES'
+    for i in range(start_idx, len(lines)):
+        if lines[i].startswith('```') or lines[i].strip() == 'NO_CHANGES':
+            end_idx = i
+            break
+    if end_idx is None:
+        end_idx = len(lines)
+    return '\n'.join(lines[start_idx:end_idx]).strip() + '\n'
+
 def ensure_git_identity():
     """Set git identity if not already configured (needed for CI)."""
     if run_cmd(["git", "config", "user.email"]).stdout.strip() == "":
@@ -148,7 +170,7 @@ Review:
                         {"role": "user", "content": patch_prompt},
                     ],
                 )
-                patch_text = patch_resp.choices[0].message.content.strip()
+                patch_text = extract_patch(patch_resp.choices[0].message.content)
             except Exception as e:
                 print(f"  ❌ Patch generation failed for {rel_path}: {e}")
                 continue
