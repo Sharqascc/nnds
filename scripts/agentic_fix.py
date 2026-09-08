@@ -12,11 +12,33 @@ Requires GROQ_API_KEY environment variable and git identity configured.
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from groq import Groq
 
-MODEL = "qwen/qwen3.8-27b"
+
+def call_with_retry(client, messages, model, max_retries=5, base_wait=20):
+    """Call Groq with retry/backoff for rate limits."""
+    for attempt in range(max_retries):
+        try:
+            return client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=0.2,
+                max_tokens=800,
+            )
+        except Exception as e:
+            if "rate_limit" in str(e) or "429" in str(e):
+                wait = base_wait * (2 ** attempt)
+                print(f"Rate limit hit. Retrying in {wait}s...")
+                time.sleep(wait)
+            else:
+                raise
+    raise RuntimeError("Max retries exceeded for Groq API call")
+
+
+MODEL = "openai/gpt-oss-120b"
 REPO_ROOT = Path(__file__).resolve().parents[1]
 REPORT_PATH = REPO_ROOT / "groq_review_report.md"
 
@@ -42,7 +64,7 @@ def review_and_fix():
     run_cmd(["ruff", "check", "src", "tests", "--fix"])
 
     # Step 2: review and patch each file
-    py_files = sorted((REPO_ROOT / "src").glob("**/*.py"))
+    py_files = sorted((REPO_ROOT / "src").glob("**/*.py"))[:20]
     print(f"Found {len(py_files)} Python files under src/")
 
     report_parts = []
@@ -61,14 +83,13 @@ Be concise.
 Code:
 {content}
 """
-        review_resp = client.chat.completions.create(
-            model=MODEL,
+        review_resp = call_with_retry(
+            client,
             messages=[
                 {"role": "system", "content": "You are a senior Python code reviewer. Provide actionable feedback."},
                 {"role": "user", "content": review_prompt},
             ],
-            temperature=0.2,
-            max_tokens=500,
+            model=MODEL,
         )
         review_text = review_resp.choices[0].message.content
         report_parts.append(f"## {rel_path}\n{review_text}")
@@ -84,14 +105,13 @@ Code:
 Review:
 {review_text}
 """
-        patch_resp = client.chat.completions.create(
-            model=MODEL,
+        patch_resp = call_with_retry(
+            client,
             messages=[
                 {"role": "system", "content": "You are an expert Python developer. Provide a valid unified diff patch."},
                 {"role": "user", "content": patch_prompt},
             ],
-            temperature=0.1,
-            max_tokens=1000,
+            model=MODEL,
         )
         patch_text = patch_resp.choices[0].message.content.strip()
 
