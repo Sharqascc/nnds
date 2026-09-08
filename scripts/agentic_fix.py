@@ -54,6 +54,21 @@ MODELS = [
     "qwen/qwen3.8-27b",
     "qwen/qwen3.6-27b",
     "allam-2-7b",
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant",
+    "mixtral-8x7b-32768",
+    "gemma2-9b-it",
+    "gemma-7b-it",
+    "llama3-70b-8192",
+    "llama3-8b-8192",
+    "deepseek-r1-distill-llama-70b",
+    "deepseek-r1-distill-qwen-32b",
+    "qwen-2.5-32b",
+    "qwen-2.5-coder-32b",
+    "qwen-qwq-32b",
+    "qwen3-30b-a3b",
+    "kimi-k2-instruct",
+    "glm-4.5-air",
 ]
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
