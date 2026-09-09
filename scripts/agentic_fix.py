@@ -87,11 +87,13 @@ MAX_FILE_LINES = 5000
 REPORT_PATH = REPO_ROOT / "groq_review_report.md"
 
 
-
-
 def call_github_models(messages, model=GITHUB_MODEL_NAME, max_tokens=2000, temperature=0.2):
     """Call GitHub Models (Azure AI Inference) free tier."""
-    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_MODELS_API_KEY") or os.environ.get("GH_TOKEN")
+    token = (
+        os.environ.get("GITHUB_TOKEN")
+        or os.environ.get("GITHUB_MODELS_API_KEY")
+        or os.environ.get("GH_TOKEN")
+    )
     if not token:
         raise RuntimeError("No GitHub token found for GitHub Models fallback")
     headers = {

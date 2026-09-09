@@ -123,17 +123,21 @@ def test_run_cmd_timeout_returns_completed_process(monkeypatch):
     assert res.returncode == 124
 
 
-
 def test_call_github_models_success(monkeypatch):
     """GitHub Models call returns expected content."""
     import json
+
     fake_response = {"choices": [{"message": {"content": "ok-github"}}]}
     monkeypatch.setenv("GITHUB_TOKEN", "fake-token")
-    monkeypatch.setattr(agentic_fix.requests, "post", lambda *args, **kwargs: SimpleNamespace(
-        status_code=200,
-        json=lambda: fake_response,
-        raise_for_status=lambda: None,
-    ))
+    monkeypatch.setattr(
+        agentic_fix.requests,
+        "post",
+        lambda *args, **kwargs: SimpleNamespace(
+            status_code=200,
+            json=lambda: fake_response,
+            raise_for_status=lambda: None,
+        ),
+    )
     result = agentic_fix.call_github_models([{"role": "user", "content": "hi"}])
     assert result.choices[0].message.content == "ok-github"
 
@@ -148,6 +152,7 @@ def test_call_github_models_no_token_raises(monkeypatch):
 
 def test_call_with_github_fallback_uses_github_when_groq_fails(monkeypatch):
     """If all Groq models fail, GitHub Models should be used."""
+
     class FakeCompletions:
         def create(self, **kwargs):
             raise Exception("rate_limit")
@@ -163,11 +168,15 @@ def test_call_with_github_fallback_uses_github_when_groq_fails(monkeypatch):
     client = FakeClient()
     monkeypatch.setattr(agentic_fix.time, "sleep", lambda s: None)
     monkeypatch.setenv("GITHUB_TOKEN", "fake-token")
-    monkeypatch.setattr(agentic_fix.requests, "post", lambda *args, **kwargs: SimpleNamespace(
-        status_code=200,
-        json=lambda: {"choices": [{"message": {"content": "github-ok"}}]},
-        raise_for_status=lambda: None,
-    ))
+    monkeypatch.setattr(
+        agentic_fix.requests,
+        "post",
+        lambda *args, **kwargs: SimpleNamespace(
+            status_code=200,
+            json=lambda: {"choices": [{"message": {"content": "github-ok"}}]},
+            raise_for_status=lambda: None,
+        ),
+    )
     result = agentic_fix.call_with_github_fallback(
         client,
         messages=[{"role": "user", "content": "hi"}],

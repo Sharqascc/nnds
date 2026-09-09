@@ -14,6 +14,7 @@ Requirements:
 Usage:
     python scripts/agentic_fix_ollama.py
 """
+
 import ast
 import os
 import subprocess
@@ -140,7 +141,10 @@ File contents:
             try:
                 raw_output = call_ollama(
                     messages=[
-                        {"role": "system", "content": "You are an expert Python developer. Provide unified diffs."},
+                        {
+                            "role": "system",
+                            "content": "You are an expert Python developer. Provide unified diffs.",
+                        },
                         {"role": "user", "content": combined_prompt},
                     ]
                 )
@@ -170,7 +174,9 @@ File contents:
 
     if fixes_applied:
         run_cmd(["git", "add", "-A"])
-        commit_msg = "Auto-fix (Ollama): apply local LLM patches\n\nFiles:\n" + "\n".join(fixes_applied)
+        commit_msg = "Auto-fix (Ollama): apply local LLM patches\n\nFiles:\n" + "\n".join(
+            fixes_applied
+        )
         run_cmd(["git", "commit", "-m", commit_msg])
         print("Committed changes. Please push manually or configure push.")
 
