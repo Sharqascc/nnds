@@ -16,7 +16,9 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
+import requests
 from groq import Groq
 
 
@@ -73,12 +75,61 @@ MODELS = [
     "kimi-k2-instruct",
     "glm-4.5-air",
 ]
+
+GITHUB_MODELS_ENDPOINT = "https://models.inference.ai.azure.com/chat/completions"
+GITHUB_MODEL_NAME = "gpt-4o"  # or "claude-3-5-sonnet"
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # Increased thresholds to avoid skipping large files unless truly extreme.
 MAX_FILE_CHARS = 200000  # ~50k tokens, within Groq context
 MAX_FILE_LINES = 5000
 REPORT_PATH = REPO_ROOT / "groq_review_report.md"
+
+
+
+
+def call_github_models(messages, model=GITHUB_MODEL_NAME, max_tokens=2000, temperature=0.2):
+    """Call GitHub Models (Azure AI Inference) free tier."""
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_MODELS_API_KEY") or os.environ.get("GH_TOKEN")
+    if not token:
+        raise RuntimeError("No GitHub token found for GitHub Models fallback")
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": model,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }
+    try:
+        resp = requests.post(GITHUB_MODELS_ENDPOINT, headers=headers, json=payload, timeout=60)
+        resp.raise_for_status()
+        data = resp.json()
+        content = data["choices"][0]["message"]["content"]
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content))])
+    except Exception as e:
+        raise RuntimeError(f"GitHub Models call failed: {e}")
+
+
+def call_with_github_fallback(
+    client, messages, models, max_retries_per_model=2, base_wait=10, max_tokens=2000
+):
+    """Try Groq models, then fall back to GitHub Models if all Groq models fail."""
+    try:
+        return call_with_fallback(
+            client,
+            messages,
+            models,
+            max_retries_per_model=max_retries_per_model,
+            base_wait=base_wait,
+            max_tokens=max_tokens,
+        )
+    except RuntimeError as groq_error:
+        print("All Groq models failed. Trying GitHub Models fallback...")
+        return call_github_models(messages, max_tokens=max_tokens)
 
 
 def run_cmd(cmd, cwd=REPO_ROOT, timeout=120):
@@ -167,7 +218,7 @@ File contents:
 {content}
 """
             try:
-                response = call_with_fallback(
+                response = call_with_github_fallback(
                     client,
                     models=MODELS,
                     messages=[
