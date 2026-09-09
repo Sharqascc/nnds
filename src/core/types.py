@@ -10,7 +10,7 @@ import pandas as pd
 # ===== Low-level geometric primitives =====
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class WorldPoint:
     t: float  # seconds
     x: float  # meters
@@ -22,7 +22,7 @@ class WorldPoint:
                 raise ValueError(f"WorldPoint coordinates must be finite, got {coord}")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Trajectory:
     track_id: int
     points: tuple[WorldPoint, ...]
@@ -46,7 +46,7 @@ class Trajectory:
 # ===== PET / conflict events =====
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class PETEvent:
     event_id: int
     pet: float  # seconds
@@ -68,7 +68,7 @@ class PETEvent:
 # ===== Diffusion training / sampling =====
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class TrajectoryBatch:
     """
     Canonical representation for diffusion model training / sampling.
@@ -83,15 +83,19 @@ class TrajectoryBatch:
     def __post_init__(self):
         # Validate that inputs and targets have shape attribute and at least 2 dims
         for name, obj in [("inputs", self.inputs), ("targets", self.targets)]:
-            if not hasattr(obj, "shape") or len(obj.shape) < 2:
-                raise ValueError(f"{name} must have shape (B, T, D) with at least 2 dimensions")
+            if not hasattr(obj, "shape") or len(obj.shape) != 3:
+                raise ValueError(f"{name} must have shape (B, T, D) with exactly 3 dimensions")
             if not all(isinstance(dim, int) and dim >= 0 for dim in obj.shape):
                 raise ValueError(f"{name} shape dimensions must be non-negative integers")
+            if obj.shape[1] == 0:
+                raise ValueError(f"{name} temporal dimension must be positive")
         # Validate batch size compatibility
         if self.inputs.shape[0] != self.targets.shape[0]:
             raise ValueError("inputs and targets must have the same batch size")
         if not math.isfinite(self.fps):
             raise ValueError("fps must be finite")
+        if self.fps <= 0:
+            raise ValueError("fps must be positive")
 
     @property
     def batch_size(self) -> int:
