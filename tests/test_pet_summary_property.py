@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from src.analysis.pet_summary import PETEventAnalyzer
@@ -70,3 +70,53 @@ def test_cliffs_delta_in_range(a, b):
 def test_interpret_effect_size_valid(d):
     label = PETEventAnalyzer._interpret_effect_size(d)
     assert label in {"negligible", "small", "medium", "large"}
+
+
+@given(st.lists(st.floats(-1000.0, 1000.0, allow_nan=False, allow_infinity=False), min_size=2, max_size=20),
+       st.lists(st.floats(-1000.0, 1000.0, allow_nan=False, allow_infinity=False), min_size=2, max_size=20))
+@settings(max_examples=50)
+def test_cohens_d_properties(sample1, sample2):
+    """Cohen's d should be non-negative, finite, and symmetric wrt input order."""
+    # Ensure same length
+    n = min(len(sample1), len(sample2))
+    sample1 = sample1[:n]
+    sample2 = sample2[:n]
+
+    d1 = PETEventAnalyzer._cohens_d(np.array(sample1), np.array(sample2))
+    d2 = PETEventAnalyzer._cohens_d(np.array(sample2), np.array(sample1))
+
+    assert d1 >= 0
+    assert d2 >= 0
+    assert np.isclose(d1, d2, atol=1e-9)  # should be symmetric
+
+@given(st.lists(st.floats(-1000.0, 1000.0, allow_nan=False, allow_infinity=False), min_size=2, max_size=20),
+       st.lists(st.floats(-1000.0, 1000.0, allow_nan=False, allow_infinity=False), min_size=2, max_size=20))
+@settings(max_examples=50)
+def test_cliffs_delta_properties(sample1, sample2):
+    """Cliff's delta should be in [-1, 1] and anti-symmetric under input swap."""
+    n1, n2 = len(sample1), len(sample2)
+    d1 = PETEventAnalyzer._cliffs_delta(np.array(sample1), np.array(sample2))
+    d2 = PETEventAnalyzer._cliffs_delta(np.array(sample2), np.array(sample1))
+
+    assert -1.0 <= d1 <= 1.0
+    assert -1.0 <= d2 <= 1.0
+    # Anti-symmetry: delta(A,B) = -delta(B,A)
+    assert np.isclose(d1, -d2, atol=1e-9)
+
+@given(st.floats(-5.0, 5.0, allow_nan=False, allow_infinity=False))
+@settings(max_examples=100)
+def test_interpret_effect_size_categories(d):
+    """Effect size interpretation should map to known categories."""
+    result = PETEventAnalyzer._interpret_effect_size(d)
+    assert result in {"negligible", "small", "medium", "large"}
+
+    # Check boundaries correspond to thresholds
+    d_abs = abs(d)
+    if d_abs < 0.2:
+        assert result == "negligible"
+    elif d_abs < 0.5:
+        assert result == "small"
+    elif d_abs < 0.8:
+        assert result == "medium"
+    else:
+        assert result == "large"
