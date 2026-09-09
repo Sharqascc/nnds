@@ -35,17 +35,18 @@ def _segment_intersection(p1, p2, q1, q2):
     q = np.array(q1, dtype=float)
     s = np.array(q2, dtype=float) - q
 
-    rxs = np.cross(r, s)
+    # Compute 2D cross products manually (np.cross requires 3D vectors)
+    rxs = r[0] * s[1] - r[1] * s[0]
     q_p = q - p
-    qpxr = np.cross(q_p, r)
+    qpxr = q_p[0] * r[1] - q_p[1] * r[0]
 
     if abs(rxs) < 1e-9 and abs(qpxr) < 1e-9:
         return None
     if abs(rxs) < 1e-9 and abs(qpxr) >= 1e-9:
         return None
 
-    t = np.cross(q_p, s) / rxs
-    u = np.cross(q_p, r) / rxs
+    t = (q_p[0] * s[1] - q_p[1] * s[0]) / rxs
+    u = (q_p[0] * r[1] - q_p[1] * r[0]) / rxs
 
     if 0.0 <= t <= 1.0 and 0.0 <= u <= 1.0:
         inter = p + t * r
