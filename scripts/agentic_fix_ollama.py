@@ -126,14 +126,29 @@ def review_and_fix():
                 continue
 
             print(f"\n=== Reviewing {rel_path} ===")
-            combined_prompt = f"""You are a senior Python code reviewer.
-Analyze the file {rel_path} for bugs, style issues, and improvements.
-Produce a unified diff patch. If no changes are needed, output NO_CHANGES.
-Wrap the patch between:
+            combined_prompt = f"""You are a rigorous senior Python code reviewer.
+Your task is to find and fix at least one real issue in the code below.
+
+Common issues to look for:
+- Bugs (e.g., division by zero, mutable default arguments, incorrect logic)
+- Style violations (PEP 8, unsorted imports, inconsistent naming)
+- Missing type hints where appropriate
+- Resource leaks (files not closed, connections not released)
+- Error handling gaps (missing exceptions, overly broad catches)
+- Performance issues (redundant loops, inefficient data structures)
+
+Analyze the code line by line. If you find ANY issue, produce a unified diff patch that fixes it.
+Only output NO_CHANGES if you are 100% certain the code is perfect in every way.
+Never output NO_CHANGES for code with obvious bugs or style problems.
+
+Wrap the patch between these markers:
 <<<PATCH_START>>>
 ... unified diff ...
 <<<PATCH_END>>>
-Do not include explanation outside the markers.
+
+Do not include any explanation outside the markers.
+
+File: {rel_path}
 
 File contents:
 {content}
