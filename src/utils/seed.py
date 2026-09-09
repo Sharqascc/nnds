@@ -25,4 +25,3 @@ def set_seed(seed=42):
 def get_seed():
     """Return the seed currently set for reproducibility."""
     return _seed
-

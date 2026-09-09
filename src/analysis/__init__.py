@@ -33,8 +33,9 @@ _LAZY_IMPORTS = {
 
 
 # Compatibility flags for existing tests/tools (no heavy imports here)
-_viz_available = importlib.util.find_spec('src.analysis.visualization') is not None
-_pet_summary_available = importlib.util.find_spec('src.analysis.pet_summary') is not None
+_viz_available = importlib.util.find_spec("src.analysis.visualization") is not None
+_pet_summary_available = importlib.util.find_spec("src.analysis.pet_summary") is not None
+
 
 def __getattr__(name: str) -> Any:
     """Lazily import submodules/classes on first access."""

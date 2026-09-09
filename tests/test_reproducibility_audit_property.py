@@ -1,4 +1,3 @@
-
 import hashlib
 import os
 import tempfile
@@ -22,6 +21,7 @@ def test_format_bytes_non_negative(size_bytes):
     if size_bytes == 0:
         assert result.startswith("0.00 B")
 
+
 @given(st.binary(min_size=0, max_size=1000))
 def test_hash_file_matches_manual(data):
     # Write data to a temporary file
@@ -37,6 +37,7 @@ def test_hash_file_matches_manual(data):
         assert result == expected
     finally:
         os.unlink(temp_path)
+
 
 def test_hash_file_nonexistent_returns_error():
     auditor = ReproducibilityAuditor(project_root=tempfile.mkdtemp())

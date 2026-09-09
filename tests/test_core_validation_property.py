@@ -1,4 +1,3 @@
-
 import numpy as np
 import pytest
 from hypothesis import given
@@ -11,8 +10,19 @@ from src.core.validation import (
 )
 
 
-@given(st.lists(st.floats(min_value=-1000.0, max_value=1000.0, allow_nan=False, allow_infinity=False, allow_subnormal=False),
-                min_size=1, max_size=100))
+@given(
+    st.lists(
+        st.floats(
+            min_value=-1000.0,
+            max_value=1000.0,
+            allow_nan=False,
+            allow_infinity=False,
+            allow_subnormal=False,
+        ),
+        min_size=1,
+        max_size=100,
+    )
+)
 def test_compute_error_metrics_invariants(errors):
     metrics = compute_error_metrics(errors)
     arr = np.asarray(errors, dtype=float)
@@ -25,8 +35,19 @@ def test_compute_error_metrics_invariants(errors):
     assert metrics.max_error >= metrics.mean_error - 1e-9
 
 
-@given(st.lists(st.floats(min_value=-1000.0, max_value=1000.0, allow_nan=False, allow_infinity=False, allow_subnormal=False),
-                min_size=1, max_size=100))
+@given(
+    st.lists(
+        st.floats(
+            min_value=-1000.0,
+            max_value=1000.0,
+            allow_nan=False,
+            allow_infinity=False,
+            allow_subnormal=False,
+        ),
+        min_size=1,
+        max_size=100,
+    )
+)
 def test_compute_error_metrics_rmse_bounds(errors):
     metrics = compute_error_metrics(errors)
     arr = np.asarray(errors, dtype=float)
@@ -36,8 +57,19 @@ def test_compute_error_metrics_rmse_bounds(errors):
     assert metrics.rmse <= max_abs + 1e-9
 
 
-@given(st.lists(st.floats(min_value=-1000.0, max_value=1000.0, allow_nan=False, allow_infinity=False, allow_subnormal=False),
-                min_size=1, max_size=50))
+@given(
+    st.lists(
+        st.floats(
+            min_value=-1000.0,
+            max_value=1000.0,
+            allow_nan=False,
+            allow_infinity=False,
+            allow_subnormal=False,
+        ),
+        min_size=1,
+        max_size=50,
+    )
+)
 def test_validate_numeric_array_valid(data):
     arr = validate_numeric_array("test", data, ndim=1)
     assert isinstance(arr, np.ndarray)
@@ -46,17 +78,39 @@ def test_validate_numeric_array_valid(data):
     assert np.all(np.isfinite(arr))
 
 
-@given(st.lists(st.floats(min_value=-1000.0, max_value=1000.0, allow_nan=False, allow_infinity=False, allow_subnormal=False),
-                min_size=0, max_size=0))
+@given(
+    st.lists(
+        st.floats(
+            min_value=-1000.0,
+            max_value=1000.0,
+            allow_nan=False,
+            allow_infinity=False,
+            allow_subnormal=False,
+        ),
+        min_size=0,
+        max_size=0,
+    )
+)
 def test_validate_numeric_array_empty_raises(data):
     with pytest.raises(ValueError):
         validate_numeric_array("test", data, ndim=1)
 
 
-@given(st.lists(st.floats(min_value=-1000.0, max_value=1000.0, allow_nan=False, allow_infinity=False, allow_subnormal=False),
-                min_size=1, max_size=50))
+@given(
+    st.lists(
+        st.floats(
+            min_value=-1000.0,
+            max_value=1000.0,
+            allow_nan=False,
+            allow_infinity=False,
+            allow_subnormal=False,
+        ),
+        min_size=1,
+        max_size=50,
+    )
+)
 def test_validate_numeric_array_nonfinite_raises(data):
     # Force at least one non-finite value
-    data[0] = float('nan')
+    data[0] = float("nan")
     with pytest.raises(ValueError):
         validate_numeric_array("test", data, ndim=1)

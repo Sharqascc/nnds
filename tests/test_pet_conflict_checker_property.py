@@ -1,4 +1,3 @@
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -20,13 +19,23 @@ def test_classify_pet_severity_returns_enum(pet):
     severity = classify_pet_severity(pet)
     assert severity.value in {"critical", "serious", "moderate", "minor", "safe"}
 
-@given(st.lists(st.floats(min_value=0, max_value=10), min_size=1), st.lists(st.floats(min_value=0, max_value=10), min_size=1))
+
+@given(
+    st.lists(st.floats(min_value=0, max_value=10), min_size=1),
+    st.lists(st.floats(min_value=0, max_value=10), min_size=1),
+)
 @pytest.mark.property
 def test_compute_pet_non_negative(times_a, times_b):
     pet = compute_pet(times_a, times_b)
     assert pet >= 0 or np.isinf(pet)
 
-@given(st.integers(min_value=1, max_value=10), st.integers(min_value=1, max_value=10), st.integers(min_value=1, max_value=10), st.integers(min_value=1, max_value=10))
+
+@given(
+    st.integers(min_value=1, max_value=10),
+    st.integers(min_value=1, max_value=10),
+    st.integers(min_value=1, max_value=10),
+    st.integers(min_value=1, max_value=10),
+)
 @pytest.mark.property
 def test_compute_grid_pet_shape_and_non_negative(t, h, w, fps):
     grid_a = np.random.randint(0, 2, size=(t, h, w)).astype(bool)
@@ -34,8 +43,13 @@ def test_compute_grid_pet_shape_and_non_negative(t, h, w, fps):
     pet = compute_grid_pet(grid_a, grid_b, fps)
     assert pet >= 0 or np.isinf(pet)
 
-@given(st.floats(min_value=0, max_value=100), st.floats(min_value=0, max_value=100),
-       st.floats(min_value=0, max_value=100), st.floats(min_value=0, max_value=100))
+
+@given(
+    st.floats(min_value=0, max_value=100),
+    st.floats(min_value=0, max_value=100),
+    st.floats(min_value=0, max_value=100),
+    st.floats(min_value=0, max_value=100),
+)
 @pytest.mark.property
 def test_filter_by_roi_bounds(x, y, x_max, y_max):
     df = pd.DataFrame({"x": [x], "y": [y]})
@@ -45,6 +59,7 @@ def test_filter_by_roi_bounds(x, y, x_max, y_max):
         assert len(out) == 1
     else:
         assert len(out) == 0
+
 
 @given(st.lists(st.integers(min_value=1, max_value=10), min_size=1, max_size=20))
 @pytest.mark.property

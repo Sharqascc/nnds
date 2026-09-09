@@ -1,4 +1,3 @@
-
 import numpy as np
 import pytest
 from hypothesis import given, settings
@@ -13,7 +12,13 @@ def make_plotter():
 
 
 @settings(deadline=None)
-@given(st.lists(st.floats(min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False), min_size=1, max_size=50))
+@given(
+    st.lists(
+        st.floats(min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+        min_size=1,
+        max_size=50,
+    )
+)
 def test_validate_ssm_data_valid_1d(data):
     obj = make_plotter()
     arr = np.array(data, dtype=float)
@@ -24,8 +29,17 @@ def test_validate_ssm_data_valid_1d(data):
     assert result["n_clean"] <= len(arr)
     assert 0.0 <= result["removal_rate"] <= 100.0
 
+
 @settings(deadline=None)
-@given(st.lists(st.one_of(st.floats(min_value=-10.0, max_value=10.0), st.just(float('nan')), st.just(float('inf'))), min_size=1, max_size=50))
+@given(
+    st.lists(
+        st.one_of(
+            st.floats(min_value=-10.0, max_value=10.0), st.just(float("nan")), st.just(float("inf"))
+        ),
+        min_size=1,
+        max_size=50,
+    )
+)
 def test_validate_ssm_data_handles_nan_inf(data):
     obj = make_plotter()
     arr = np.array(data, dtype=float)
@@ -36,6 +50,7 @@ def test_validate_ssm_data_handles_nan_inf(data):
     else:
         assert result["valid"] is False
 
+
 @given(st.floats(min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False))
 def test_validate_ssm_data_shape_errors(data):
     obj = make_plotter()
@@ -43,6 +58,7 @@ def test_validate_ssm_data_shape_errors(data):
     result = obj.validate_ssm_data(arr_2d, metric_name="test")
     assert result["valid"] is False
     assert len(result["errors"]) > 0
+
 
 @given(st.floats(min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False))
 def test_format_p_value_apa_style(p):

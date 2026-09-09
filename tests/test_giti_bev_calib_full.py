@@ -78,5 +78,3 @@ def test_success_no_inliers_without_stats(tmp_path):
     assert len(result) == 3
     assert result[0] is H
     assert result[1] is mask
-
-

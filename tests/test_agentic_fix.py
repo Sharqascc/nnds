@@ -1,4 +1,3 @@
-
 import subprocess
 import sys
 from pathlib import Path
@@ -37,9 +36,7 @@ def test_run_cmd_returns_completed_process():
 def test_call_with_fallback_success_first_model(monkeypatch):
     class FakeCompletions:
         def create(self, **kwargs):
-            return SimpleNamespace(
-                choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))]
-            )
+            return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))])
 
     class FakeChat:
         def __init__(self):
@@ -67,9 +64,7 @@ def test_call_with_fallback_rate_limit_then_success(monkeypatch):
             model = kwargs.get("model")
             if model == "bad-model":
                 raise Exception("rate_limit")
-            return SimpleNamespace(
-                choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))]
-            )
+            return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))])
 
     class FakeChat:
         def __init__(self):
@@ -115,31 +110,33 @@ def test_call_with_fallback_all_models_fail_raises(monkeypatch):
             base_wait=0,
         )
 
+
 def test_run_cmd_timeout_returns_completed_process(monkeypatch):
     # Monkeypatch subprocess.run to simulate timeout
     import subprocess as sp
+
     def fake_run(cmd, **kwargs):
-        raise sp.TimeoutExpired(cmd, kwargs.get('timeout', 120))
-    monkeypatch.setattr(agentic_fix.subprocess, 'run', fake_run)
+        raise sp.TimeoutExpired(cmd, kwargs.get("timeout", 120))
+
+    monkeypatch.setattr(agentic_fix.subprocess, "run", fake_run)
     res = agentic_fix.run_cmd(["fake"], timeout=1)
     assert res.returncode == 124
-
 
 
 # ---------- Property-based test ----------
 @given(st.lists(st.text(min_size=1, max_size=20), min_size=2, max_size=5))
 def test_call_with_fallback_always_returns_success_when_one_model_works(model_names):
     """If the first model rate-limits, fallback to the second model succeeds."""
+
     class FakeCompletions:
         def __init__(self):
             self.calls = 0
+
         def create(self, **kwargs):
             self.calls += 1
             if self.calls == 1:
                 raise Exception("rate_limit")
-            return SimpleNamespace(
-                choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))]
-            )
+            return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))])
 
     class FakeChat:
         def __init__(self):
@@ -159,6 +156,7 @@ def test_call_with_fallback_always_returns_success_when_one_model_works(model_na
     )
     assert result.choices[0].message.content == "ok"
 
+
 def test_extract_patch_strips_markdown():
     raw = """```diff
 --- a/foo.py
@@ -168,7 +166,6 @@ def test_extract_patch_strips_markdown():
 +new
 ```"""
     result = agentic_fix.extract_patch(raw)
-    assert result.startswith('--- a/foo.py')
-    assert '+new' in result
-    assert '```' not in result
-
+    assert result.startswith("--- a/foo.py")
+    assert "+new" in result
+    assert "```" not in result

@@ -1,4 +1,3 @@
-
 import re
 
 import numpy as np
@@ -23,7 +22,13 @@ def test_color_palette_valid_hex(name):
 
 
 def test_default_thresholds_ordered():
-    assert 0 < DEFAULT_THRESHOLDS["critical"] < DEFAULT_THRESHOLDS["serious"] < DEFAULT_THRESHOLDS["moderate"] < DEFAULT_THRESHOLDS["safe"]
+    assert (
+        0
+        < DEFAULT_THRESHOLDS["critical"]
+        < DEFAULT_THRESHOLDS["serious"]
+        < DEFAULT_THRESHOLDS["moderate"]
+        < DEFAULT_THRESHOLDS["safe"]
+    )
 
 
 @given(st.floats(min_value=0.0, max_value=6.0, allow_nan=False, allow_infinity=False))

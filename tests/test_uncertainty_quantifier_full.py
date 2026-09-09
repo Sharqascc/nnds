@@ -219,6 +219,7 @@ def test_analyze_method_bca():
     assert res["method"] == "bca"
     assert "confidence_interval" in res
 
+
 # Consolidated from test_uncertainty_quantifier.py
 def test_standalone_bootstrap_ci_default_bca():
     """Test bootstrap confidence interval."""

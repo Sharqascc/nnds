@@ -13,6 +13,7 @@ from src.analysis.grid_trajectory.yolo_cpu_grid_pet import (
 
 point_st = st.tuples(st.floats(min_value=0, max_value=100), st.floats(min_value=0, max_value=100))
 
+
 @st.composite
 def track_point_list(draw, min_size=1, max_size=20):
     n = draw(st.integers(min_value=min_size, max_value=max_size))
@@ -24,24 +25,40 @@ def track_point_list(draw, min_size=1, max_size=20):
         points.append(TrackPoint(frame=frame, x=x, y=y, cls_id=0, cls_name="car", conf=1.0))
     return points
 
-@given(st.floats(min_value=-100, max_value=100), st.floats(min_value=-100, max_value=100),
-       st.floats(min_value=-100, max_value=100), st.floats(min_value=-100, max_value=100),
-       st.floats(min_value=0.1, max_value=50))
+
+@given(
+    st.floats(min_value=-100, max_value=100),
+    st.floats(min_value=-100, max_value=100),
+    st.floats(min_value=-100, max_value=100),
+    st.floats(min_value=-100, max_value=100),
+    st.floats(min_value=0.1, max_value=50),
+)
 def test_point_in_square_deterministic(px, py, cx, cy, half_size):
-    expected = (cx - half_size) <= px <= (cx + half_size) and (cy - half_size) <= py <= (cy + half_size)
+    expected = (cx - half_size) <= px <= (cx + half_size) and (cy - half_size) <= py <= (
+        cy + half_size
+    )
     assert _point_in_square(px, py, cx, cy, half_size) == expected
 
-@given(track_point_list(), st.floats(min_value=-50, max_value=50), st.floats(min_value=-50, max_value=50), st.floats(min_value=0.1, max_value=50))
+
+@given(
+    track_point_list(),
+    st.floats(min_value=-50, max_value=50),
+    st.floats(min_value=-50, max_value=50),
+    st.floats(min_value=0.1, max_value=50),
+)
 def test_entry_exit_frames_bounds(points, cx, cy, half_size):
     result = _entry_exit_frames(points, cx, cy, half_size)
     if result is None:
         assert all(not _point_in_square(pt.x, pt.y, cx, cy, half_size) for pt in points)
     else:
         entry, exit_ = result
-        inside_frames = [pt.frame for pt in points if _point_in_square(pt.x, pt.y, cx, cy, half_size)]
+        inside_frames = [
+            pt.frame for pt in points if _point_in_square(pt.x, pt.y, cx, cy, half_size)
+        ]
         assert entry == min(inside_frames)
         assert exit_ == max(inside_frames)
         assert entry <= exit_
+
 
 @given(point_st, point_st, point_st, point_st)
 @settings(deadline=None)
@@ -54,10 +71,12 @@ def test_segment_intersection_symmetry(p1, p2, q1, q2):
         assert inter2 is not None
         assert np.allclose(inter1, inter2)
 
+
 @given(point_st, point_st)
 def test_segment_intersection_with_self(p1, p2):
     inter = _segment_intersection(p1, p2, p1, p2)
     assert inter is None or isinstance(inter, tuple)
+
 
 @given(track_point_list(min_size=2, max_size=10), track_point_list(min_size=2, max_size=10))
 @settings(deadline=None)

@@ -1,4 +1,3 @@
-
 import pytest
 from pydantic import ValidationError
 
@@ -40,23 +39,47 @@ def test_pet_event_record_valid():
 
 def test_pet_event_record_negative_pet():
     with pytest.raises(ValidationError):
-        PETEventRecord(**{
-            "event_id": 1, "pet": -0.1, "frame": 10, "track_a": 1, "track_b": 2,
-            "conflict_type": "crossing", "grid_cell": "G_A_1", "site": "GITI"
-        })
+        PETEventRecord(
+            **{
+                "event_id": 1,
+                "pet": -0.1,
+                "frame": 10,
+                "track_a": 1,
+                "track_b": 2,
+                "conflict_type": "crossing",
+                "grid_cell": "G_A_1",
+                "site": "GITI",
+            }
+        )
 
 
 def test_pet_event_record_same_tracks():
     with pytest.raises(ValidationError):
-        PETEventRecord(**{
-            "event_id": 1, "pet": 0.5, "frame": 10, "track_a": 1, "track_b": 1,
-            "conflict_type": "crossing", "grid_cell": "G_A_1", "site": "GITI"
-        })
+        PETEventRecord(
+            **{
+                "event_id": 1,
+                "pet": 0.5,
+                "frame": 10,
+                "track_a": 1,
+                "track_b": 1,
+                "conflict_type": "crossing",
+                "grid_cell": "G_A_1",
+                "site": "GITI",
+            }
+        )
 
 
 def test_pet_event_record_invalid_conflict_type():
     with pytest.raises(ValidationError):
-        PETEventRecord(**{
-            "event_id": 1, "pet": 0.5, "frame": 10, "track_a": 1, "track_b": 2,
-            "conflict_type": "invalid", "grid_cell": "G_A_1", "site": "GITI"
-        })
+        PETEventRecord(
+            **{
+                "event_id": 1,
+                "pet": 0.5,
+                "frame": 10,
+                "track_a": 1,
+                "track_b": 2,
+                "conflict_type": "invalid",
+                "grid_cell": "G_A_1",
+                "site": "GITI",
+            }
+        )

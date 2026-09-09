@@ -25,6 +25,7 @@ __all__ = [
     "pure",
 ]
 
+
 def pure(func):
     """Mark a function as pure (no side effects, deterministic)."""
     func._pure = True

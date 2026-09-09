@@ -242,6 +242,7 @@ def test_cliffs_delta_empty():
     assert PETEventAnalyzer._cliffs_delta(np.array([]), np.array([1, 2])) == 0.0
     assert PETEventAnalyzer._cliffs_delta(np.array([1, 2]), np.array([])) == 0.0
 
+
 # Consolidated from test_pet_summary.py
 def test_pet_event_analyzer_import():
     """Test that PETEventAnalyzer can be imported."""

@@ -5,6 +5,7 @@ Validate PET CSV rows against Pydantic data contracts.
 Usage:
     python scripts/validate_contracts.py --csv outputs/combined_screened_simplified.csv
 """
+
 import argparse
 import sys
 from pathlib import Path

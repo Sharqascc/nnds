@@ -1,10 +1,10 @@
-
 """
 Production data contracts for NNDS simplified PET outputs.
 
 These Pydantic models mirror the actual columns in
 `outputs/*_screened_simplified.csv` and are used to validate rows at runtime.
 """
+
 from __future__ import annotations
 
 from typing import Any, Literal, Optional
@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, model_validator
 
 ConflictType = Literal["crossing", "head_on", "rear_end", "side_swipe", "other"]
 SiteLabel = Literal["GITI", "MRC"]
+
 
 class PETEventRecord(BaseModel):
     event_id: int = Field(..., ge=0)
@@ -62,10 +63,12 @@ class RiskLevelSummary(BaseModel):
     count: int = Field(..., ge=0)
     percentage: float = Field(..., ge=0, le=100)
 
+
 class ConflictRateSummary(BaseModel):
     count: int = Field(..., ge=0)
     percentage: float = Field(..., ge=0, le=100)
     per_1000_events: float = Field(..., ge=0)
+
 
 class PETSummaryRiskSummary(BaseModel):
     critical: RiskLevelSummary
@@ -73,6 +76,7 @@ class PETSummaryRiskSummary(BaseModel):
     moderate: RiskLevelSummary
     safe: RiskLevelSummary
     conflict_rate: ConflictRateSummary
+
 
 class PETSummaryBasicStats(BaseModel):
     count: int = Field(..., ge=0)
@@ -127,7 +131,6 @@ class UQAnalysisContract(BaseModel):
         return self
 
 
-
 class StatisticalTestResultContract(BaseModel):
     test: str
     alpha: float | None = None
@@ -145,4 +148,3 @@ class StatisticalTestResultContract(BaseModel):
         if self.passed is False and not self.errors:
             raise ValueError("If passed is False, errors must not be empty")
         return self
-

@@ -1,4 +1,3 @@
-
 import numpy as np
 import pytest
 from hypothesis import given
@@ -12,8 +11,11 @@ def identity_analyzer():
     analyzer.homography = np.eye(3, dtype=np.float32)
     return analyzer
 
-@given(st.lists(st.tuples(st.floats(0, 100), st.floats(0, 100)), min_size=5, max_size=20),
-       st.floats(min_value=0.1, max_value=10))
+
+@given(
+    st.lists(st.tuples(st.floats(0, 100), st.floats(0, 100)), min_size=5, max_size=20),
+    st.floats(min_value=0.1, max_value=10),
+)
 @pytest.mark.property
 def test_estimate_speed_non_negative(pixel_pts, dt):
     analyzer = identity_analyzer()
@@ -23,8 +25,11 @@ def test_estimate_speed_non_negative(pixel_pts, dt):
     assert result["final_speed"] >= 0
     assert result["speed_std"] >= 0
 
-@given(st.lists(st.tuples(st.floats(0, 100), st.floats(0, 100)), min_size=5, max_size=20),
-       st.floats(min_value=0.1, max_value=10))
+
+@given(
+    st.lists(st.tuples(st.floats(0, 100), st.floats(0, 100)), min_size=5, max_size=20),
+    st.floats(min_value=0.1, max_value=10),
+)
 @pytest.mark.property
 def test_estimate_speed_finite(pixel_pts, dt):
     analyzer = identity_analyzer()

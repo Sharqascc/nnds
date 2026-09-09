@@ -1,4 +1,3 @@
-
 from enum import Enum
 
 
@@ -9,10 +8,16 @@ class TrackState(str, Enum):  # noqa: UP042
     CONFLICT = "CONFLICT"
     EXITED = "EXITED"
 
+
 class TrackStateMachine:
     _transitions = {
         TrackState.DETECTED: {TrackState.TRACKING, TrackState.EXITED},
-        TrackState.TRACKING: {TrackState.TRACKING, TrackState.MISSED, TrackState.CONFLICT, TrackState.EXITED},
+        TrackState.TRACKING: {
+            TrackState.TRACKING,
+            TrackState.MISSED,
+            TrackState.CONFLICT,
+            TrackState.EXITED,
+        },
         TrackState.MISSED: {TrackState.TRACKING, TrackState.EXITED},
         TrackState.CONFLICT: {TrackState.TRACKING, TrackState.EXITED},
         TrackState.EXITED: set(),

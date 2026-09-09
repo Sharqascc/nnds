@@ -1,4 +1,3 @@
-
 import numpy as np
 import pytest
 from hypothesis import given
@@ -22,6 +21,7 @@ def test_verify_pet_calculation_non_negative(pet_values):
     if clean is not None and len(clean) > 0:
         assert np.all(clean >= 0)
 
+
 @given(st.lists(st.floats(min_value=0, max_value=20), min_size=1, max_size=50))
 def test_verify_ttc_calculation_non_negative(ttc_values):
     verifier = SSMVerifier(min_sample_size=1)
@@ -30,6 +30,7 @@ def test_verify_ttc_calculation_non_negative(ttc_values):
     if clean is not None and len(clean) > 0:
         assert np.all(clean >= 0)
 
+
 @given(st.lists(st.floats(min_value=0, max_value=10), min_size=1, max_size=50))
 def test_verify_drac_calculation_non_negative(drac_values):
     verifier = SSMVerifier(min_sample_size=1)
@@ -37,6 +38,7 @@ def test_verify_drac_calculation_non_negative(drac_values):
     clean = result["data_quality"]["clean_data"]
     if clean is not None and len(clean) > 0:
         assert np.all(clean >= 0)
+
 
 @given(st.lists(st.floats(min_value=0.1, max_value=10), min_size=2, max_size=50))
 def test_bootstrap_ci_order(data):

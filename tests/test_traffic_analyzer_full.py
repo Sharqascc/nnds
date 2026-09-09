@@ -470,6 +470,7 @@ def test_run_video_to_pet_uvh_coco_import_error(tmp_path):
                 detector="uvh-coco-fused",
             )
 
+
 # Consolidated from test_traffic_analyzer.py
 # ============================================
 # 1. parse_args Tests

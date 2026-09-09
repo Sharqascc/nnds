@@ -417,6 +417,7 @@ def test_convenience_check_assumptions():
     res = check_assumptions(g1, g2, test_type="t-test")
     assert "checks" in res
 
+
 # Consolidated from test_statistical_testing.py
 def test_paired_test_basic():
     """Test paired t-test with known difference."""

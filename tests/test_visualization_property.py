@@ -1,4 +1,3 @@
-
 import cv2
 import numpy as np
 import pytest
@@ -20,12 +19,16 @@ def test_color_palette_valid_bgr(color_name):
     assert len(bgr) == 3
     assert all(0 <= channel <= 255 for channel in bgr)
 
+
 @given(st.lists(st.floats(min_value=0.01, max_value=10.0), min_size=5, max_size=5))
 @pytest.mark.property
 def test_default_thresholds_positive_sorted(values):
     thresholds = DEFAULT_THRESHOLDS
     assert all(v > 0 for v in thresholds.values())
-    assert thresholds["critical"] < thresholds["serious"] < thresholds["moderate"] < thresholds["safe"]
+    assert (
+        thresholds["critical"] < thresholds["serious"] < thresholds["moderate"] < thresholds["safe"]
+    )
+
 
 @pytest.mark.property
 def test_overlay_conflict_frame_shape_preserved(tmp_path):

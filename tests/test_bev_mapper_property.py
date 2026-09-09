@@ -1,4 +1,3 @@
-
 import numpy as np
 from hypothesis import given
 from hypothesis import strategies as st
@@ -12,6 +11,7 @@ def _make_mapper():
     res = (100, 100)
     return BEVMapper(H, bounds, res)
 
+
 @given(st.floats(min_value=0, max_value=99.9), st.floats(min_value=0, max_value=99.9))
 def test_pixel_to_world_identity(x, y):
     mapper = _make_mapper()
@@ -19,6 +19,7 @@ def test_pixel_to_world_identity(x, y):
     assert world is not None
     assert abs(world[0] - x) < 1e-3
     assert abs(world[1] - y) < 1e-3
+
 
 @given(st.floats(min_value=0, max_value=99.9), st.floats(min_value=0, max_value=99.9))
 def test_world_to_bev_bounds(wx, wy):

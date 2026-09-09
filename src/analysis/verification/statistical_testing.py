@@ -640,7 +640,7 @@ class StatisticalTester:
             # Holm-Bonferroni: step-down procedure
             order = np.argsort(p_values)
             sorted_p = p_values[order]
-            factors = n - np.arange(n)          # (n, n-1, ..., 1)
+            factors = n - np.arange(n)  # (n, n-1, ..., 1)
             raw = sorted_p * factors
             raw = np.minimum(raw, 1.0)
             cummax = np.maximum.accumulate(raw)  # enforce monotonicity
@@ -652,7 +652,7 @@ class StatisticalTester:
             # Benjamini-Hochberg: step-up procedure
             order = np.argsort(p_values)
             sorted_p = p_values[order]
-            ranks = np.arange(1, n + 1)          # (1, 2, ..., n)
+            ranks = np.arange(1, n + 1)  # (1, 2, ..., n)
             raw = sorted_p * n / ranks
             raw = np.minimum(raw, 1.0)
             cummin = np.minimum.accumulate(raw[::-1])[::-1]  # enforce monotonicity
@@ -661,7 +661,6 @@ class StatisticalTester:
             return adjusted
 
         raise ValueError(f"Unknown method: {method}")
-
 
     def _interpret_effect_size(self, d: float) -> str:
         """Interpret Cohen's d (Cohen, 1988)."""

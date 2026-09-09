@@ -1,4 +1,3 @@
-
 import pytest
 from pydantic import ValidationError
 
@@ -18,9 +17,11 @@ def test_risk_level_summary_valid():
     assert obj.count == 5
     assert obj.percentage == 25.0
 
+
 def test_risk_level_summary_negative_count():
     with pytest.raises(ValidationError):
         RiskLevelSummary(count=-1, percentage=10.0)
+
 
 def test_risk_level_summary_percentage_out_of_range():
     with pytest.raises(ValidationError):
@@ -31,6 +32,7 @@ def test_risk_level_summary_percentage_out_of_range():
 def test_conflict_rate_summary_valid():
     obj = ConflictRateSummary(count=2, percentage=50.0, per_1000_events=500.0)
     assert obj.count == 2
+
 
 def test_conflict_rate_summary_negative_per_1000():
     with pytest.raises(ValidationError):
@@ -49,6 +51,7 @@ def test_pet_summary_risk_summary_valid():
     obj = PETSummaryRiskSummary(**data)
     assert obj.critical.count == 1
     assert obj.conflict_rate.per_1000_events == 300.0
+
 
 def test_pet_summary_risk_summary_invalid_nested():
     with pytest.raises(ValidationError):
@@ -91,6 +94,7 @@ def test_pet_summary_basic_stats_valid():
     assert obj.count == 5
     assert obj.p95 == 2.7
 
+
 def test_pet_summary_basic_stats_negative_count():
     with pytest.raises(ValidationError):
         PETSummaryBasicStats(
@@ -120,6 +124,7 @@ def test_pet_uncertainty_contract_valid():
     )
     assert obj.nominal_pet == 2.5
 
+
 def test_pet_uncertainty_contract_negative_std():
     with pytest.raises(ValidationError):
         PETUncertaintyContract(
@@ -127,6 +132,7 @@ def test_pet_uncertainty_contract_negative_std():
             uncertainty_std=-0.1,
             error_sources={"detection": 0.02},
         )
+
 
 def test_pet_uncertainty_contract_empty_error_sources():
     with pytest.raises(ValidationError):
@@ -154,8 +160,10 @@ def test_statistical_test_result_contract_valid():
     assert obj.test == "t-test"
     assert obj.passed is True
 
+
 def test_statistical_test_result_contract_invalid_passed_no_errors():
     from pydantic import ValidationError
+
     with pytest.raises(ValidationError):
         StatisticalTestResultContract(
             test="t-test",

@@ -258,6 +258,7 @@ def test_run_verification_suite_drac_fails():
     assert not result["overall_pass"]
     assert any(not t["passed"] for t in result["tests"])
 
+
 # Consolidated from test_ssm_verification.py
 def test_verify_pet_calculation_basic():
     """Test PET verification with basic values."""

@@ -9,6 +9,7 @@ This script:
 
 Requires GROQ_API_KEY environment variable and git identity configured.
 """
+
 import ast
 import os
 import subprocess
@@ -19,7 +20,9 @@ from pathlib import Path
 from groq import Groq
 
 
-def call_with_fallback(client, messages, models, max_retries_per_model=2, base_wait=10, max_tokens=2000):
+def call_with_fallback(
+    client, messages, models, max_retries_per_model=2, base_wait=10, max_tokens=2000
+):
     """Try multiple models in order, falling back on rate limit/transient errors."""
     last_error = None
     for model in models:
@@ -34,8 +37,10 @@ def call_with_fallback(client, messages, models, max_retries_per_model=2, base_w
             except Exception as e:
                 last_error = e
                 if "rate_limit" in str(e) or "429" in str(e):
-                    wait = base_wait * (2 ** attempt)
-                    print(f"Rate limit on {model}, attempt {attempt+1}/{max_retries_per_model}. Waiting {wait}s...")
+                    wait = base_wait * (2**attempt)
+                    print(
+                        f"Rate limit on {model}, attempt {attempt + 1}/{max_retries_per_model}. Waiting {wait}s..."
+                    )
                     time.sleep(wait)
                 else:
                     print(f"Model {model} failed with {e}. Trying next model...")
@@ -71,7 +76,7 @@ MODELS = [
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # Increased thresholds to avoid skipping large files unless truly extreme.
-MAX_FILE_CHARS = 200000   # ~50k tokens, within Groq context
+MAX_FILE_CHARS = 200000  # ~50k tokens, within Groq context
 MAX_FILE_LINES = 5000
 REPORT_PATH = REPO_ROOT / "groq_review_report.md"
 
@@ -101,14 +106,14 @@ def extract_patch(raw):
     lines = raw.splitlines()
     start_idx = None
     for i, line in enumerate(lines):
-        if line.startswith(('--- ', '*** ', '+++ ', '@@ ')):
+        if line.startswith(("--- ", "*** ", "+++ ", "@@ ")):
             start_idx = i
             break
     if start_idx is None:
         return ""
     end_idx = len(lines)
     for i in range(start_idx, len(lines)):
-        if lines[i].startswith('```') or lines[i].strip() == 'NO_CHANGES':
+        if lines[i].startswith("```") or lines[i].strip() == "NO_CHANGES":
             end_idx = i
             break
     return "\n".join(lines[start_idx:end_idx]).strip() + "\n"
@@ -141,7 +146,9 @@ def review_and_fix():
         try:
             content = f.read_text(encoding="utf-8", errors="ignore")
             if len(content) > MAX_FILE_CHARS or len(content.splitlines()) > MAX_FILE_LINES:
-                print(f"  ⏭️ Skipping {rel_path} (too large: {len(content)} chars, {len(content.splitlines())} lines)")
+                print(
+                    f"  ⏭️ Skipping {rel_path} (too large: {len(content)} chars, {len(content.splitlines())} lines)"
+                )
                 continue
 
             print(f"\n=== Reviewing {rel_path} ===")
@@ -164,7 +171,10 @@ File contents:
                     client,
                     models=MODELS,
                     messages=[
-                        {"role": "system", "content": "You are an expert Python developer. Provide actionable feedback and unified diffs."},
+                        {
+                            "role": "system",
+                            "content": "You are an expert Python developer. Provide actionable feedback and unified diffs.",
+                        },
                         {"role": "user", "content": combined_prompt},
                     ],
                     max_tokens=4000,
@@ -232,12 +242,17 @@ File contents:
 def run_quick_tests():
     """Run a fast subset of tests and return True if they pass."""
     print("\nRunning quick tests...")
-    res = run_cmd([
-        "pytest", "tests/test_pet_summary_property.py",
-        "tests/test_traffic_analyzer_property.py",
-        "tests/test_core_validation_property.py",
-        "-q", "-o", "addopts=",
-    ])
+    res = run_cmd(
+        [
+            "pytest",
+            "tests/test_pet_summary_property.py",
+            "tests/test_traffic_analyzer_property.py",
+            "tests/test_core_validation_property.py",
+            "-q",
+            "-o",
+            "addopts=",
+        ]
+    )
     print(res.stdout)
     print(res.stderr)
     return res.returncode == 0

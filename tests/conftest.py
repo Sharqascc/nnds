@@ -45,20 +45,21 @@ def empty_pet_csv(tmp_path):
     pd.DataFrame(columns=["pet"]).to_csv(csv_path, index=False)
     return csv_path
 
+
 def pytest_collection_modifyitems(config, items):
     """Auto-mark test modules based on filename suffix."""
     for item in items:
         basename = item.fspath.basename
-        if basename.endswith('_property.py'):
+        if basename.endswith("_property.py"):
             item.add_marker(pytest.mark.property)
-        elif basename.endswith('_smoke.py'):
+        elif basename.endswith("_smoke.py"):
             item.add_marker(pytest.mark.smoke)
-        elif basename.endswith('_full.py'):
+        elif basename.endswith("_full.py"):
             item.add_marker(pytest.mark.full)
+
 
 def pytest_configure(config):
     """Register custom markers to avoid warnings."""
     config.addinivalue_line("markers", "property: property-based tests (Hypothesis)")
     config.addinivalue_line("markers", "full: full integration tests")
     config.addinivalue_line("markers", "smoke: smoke tests")
-

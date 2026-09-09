@@ -363,6 +363,7 @@ def test_process_video_no_output(tmp_path):
         result = counter.process_video(detector=lambda f: [], max_frames=2, show_progress=False)
     assert result["total_entries"] == 0
 
+
 # Consolidated from test_gate_counter.py
 def _make_dummy_video(tmp_path, name="dummy.mp4"):
     video = tmp_path / name

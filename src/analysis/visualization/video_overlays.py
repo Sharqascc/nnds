@@ -734,7 +734,11 @@ def overlay_full_visualization(
 
         for i, line in enumerate(info_lines):
             y_pos = 40 + i * 25
-            color = (0, 0, 255) if "PET" in line and pet_value < DEFAULT_THRESHOLDS["moderate"] else (255, 255, 255)
+            color = (
+                (0, 0, 255)
+                if "PET" in line and pet_value < DEFAULT_THRESHOLDS["moderate"]
+                else (255, 255, 255)
+            )
             cv2.putText(frame, line, (20, y_pos), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
     return frame

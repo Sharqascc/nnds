@@ -382,9 +382,11 @@ class UncertaintyQuantifier:
             # One-sample effect size
             std_g1 = np.std(g1, ddof=1)
             d = np.mean(g1) / std_g1 if std_g1 > 0 else 0
+
             def safe_one_sample_stat(x):
                 std_x = np.std(x, ddof=1)
                 return np.mean(x) / std_x if std_x > 0 else 0.0
+
             ci = self.bootstrap_ci(g1, statistic=safe_one_sample_stat)
 
         else:
