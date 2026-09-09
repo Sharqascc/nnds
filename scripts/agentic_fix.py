@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Agentic code review and auto-fix using Groq.
+"""Agentic code review and auto-fix using Groq with fallback models.
 
 This script:
 1. Runs `ruff --fix` to clean style issues.
@@ -19,7 +19,7 @@ from pathlib import Path
 from groq import Groq
 
 
-def call_with_fallback(client, messages, models, max_retries_per_model=2, base_wait=10, max_tokens=800):
+def call_with_fallback(client, messages, models, max_retries_per_model=2, base_wait=10, max_tokens=2000):
     """Try multiple models in order, falling back on rate limit/transient errors."""
     last_error = None
     for model in models:
@@ -29,7 +29,7 @@ def call_with_fallback(client, messages, models, max_retries_per_model=2, base_w
                     model=model,
                     messages=messages,
                     temperature=0.2,
-                    max_tokens=800,
+                    max_tokens=max_tokens,
                 )
             except Exception as e:
                 last_error = e
@@ -38,13 +38,10 @@ def call_with_fallback(client, messages, models, max_retries_per_model=2, base_w
                     print(f"Rate limit on {model}, attempt {attempt+1}/{max_retries_per_model}. Waiting {wait}s...")
                     time.sleep(wait)
                 else:
-                    # Non-rate-limit error: break retry loop for this model and try next
                     print(f"Model {model} failed with {e}. Trying next model...")
                     break
         else:
             continue
-        # If all retries on a model exhausted (rate limit), continue to next model
-        continue
     raise RuntimeError(f"All models failed. Last error: {last_error}")
 
 
@@ -73,10 +70,9 @@ MODELS = [
 ]
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-
-# Skip files larger than this to avoid message length errors
-MAX_FILE_LINES = 400
-MAX_FILE_CHARS = 20000
+# Increased thresholds to avoid skipping large files unless truly extreme.
+MAX_FILE_CHARS = 200000   # ~50k tokens, within Groq context
+MAX_FILE_LINES = 5000
 REPORT_PATH = REPO_ROOT / "groq_review_report.md"
 
 
@@ -89,46 +85,34 @@ def run_cmd(cmd, cwd=REPO_ROOT, timeout=120):
         return subprocess.CompletedProcess(cmd, 124, stdout="", stderr="Timeout")
 
 
-
-
 def extract_patch(raw):
     """Extract a valid unified diff from model output, stripping fences and explanations."""
+    start_marker = "<<<PATCH_START>>>"
+    end_marker = "<<<PATCH_END>>>"
+    if start_marker in raw and end_marker in raw:
+        start = raw.index(start_marker) + len(start_marker)
+        end = raw.index(end_marker)
+        patch = raw[start:end].strip("\n")
+        # Remove code fences if present
+        if patch.startswith("```") and patch.endswith("```"):
+            patch = patch[3:-3].strip("\n")
+        return patch
+    # Fallback: try to find diff-style lines
     lines = raw.splitlines()
     start_idx = None
-    end_idx = None
     for i, line in enumerate(lines):
         if line.startswith(('--- ', '*** ', '+++ ', '@@ ')):
             start_idx = i
             break
     if start_idx is None:
-        return ''
-    # Find end: stop before a closing fence or 'NO_CHANGES'
+        return ""
+    end_idx = len(lines)
     for i in range(start_idx, len(lines)):
         if lines[i].startswith('```') or lines[i].strip() == 'NO_CHANGES':
             end_idx = i
             break
-    if end_idx is None:
-        end_idx = len(lines)
-    return '\n'.join(lines[start_idx:end_idx]).strip() + '\n'
+    return "\n".join(lines[start_idx:end_idx]).strip() + "\n"
 
-
-
-def extract_full_file(raw):
-    """Extract the corrected file content between fixed markers safely."""
-    start_marker = "<<<FIXED_FILE_START>>>"
-    end_marker = "<<<FIXED_FILE_END>>>"
-    if start_marker in raw and end_marker in raw:
-        start = raw.index(start_marker) + len(start_marker)
-        end = raw.index(end_marker)
-        content = raw[start:end].strip("\n")
-        if start_marker in content or end_marker in content:
-            print("⚠️ Markers still present in extracted content; rejecting patch")
-            return "NO_CHANGES"
-        return content
-    # Fallback: if markers missing, and raw doesn't look like a diff/patch, assume content
-    if raw.strip().startswith(("---", "***", "+++", "@@")):
-        return "NO_CHANGES"
-    return raw.strip("\n")
 
 def ensure_git_identity():
     """Set git identity if not already configured (needed for CI)."""
@@ -146,7 +130,7 @@ def review_and_fix():
     run_cmd(["ruff", "check", "src", "tests", "--fix"])
 
     # Step 2: review and patch each file
-    py_files = sorted((REPO_ROOT / "src").glob("**/*.py"))[:20]
+    py_files = sorted((REPO_ROOT / "src").glob("**/*.py"))
     print(f"Found {len(py_files)} Python files under src/")
 
     report_parts = []
@@ -162,73 +146,60 @@ def review_and_fix():
 
             print(f"\n=== Reviewing {rel_path} ===")
 
-            # Review
-            review_prompt = f"""Review the following Python code from {rel_path}.
-Identify bugs, missing contracts, style issues, and potential improvements.
-Be concise.
+            # Single prompt: ask for review and unified diff in one response
+            combined_prompt = f"""You are a senior Python code reviewer and developer.
+Analyze the following file {rel_path} for bugs, missing contracts, style issues, and potential improvements.
+Then produce a unified diff patch that fixes the issues. If no changes are needed, output exactly NO_CHANGES.
+Wrap the patch between:
+<<<PATCH_START>>>
+... unified diff ...
+<<<PATCH_END>>>
+Do not include any explanation outside the markers.
 
-Code:
+File contents:
 {content}
 """
             try:
-                review_resp = call_with_fallback(
+                response = call_with_fallback(
                     client,
                     models=MODELS,
                     messages=[
-                        {"role": "system", "content": "You are a senior Python code reviewer. Provide actionable feedback."},
-                        {"role": "user", "content": review_prompt},
+                        {"role": "system", "content": "You are an expert Python developer. Provide actionable feedback and unified diffs."},
+                        {"role": "user", "content": combined_prompt},
                     ],
+                    max_tokens=4000,
                 )
-                review_text = review_resp.choices[0].message.content
-                report_parts.append(f"## {rel_path}\n{review_text}")
+                raw_output = response.choices[0].message.content
+                # Save review text (outside patch) for report if possible
+                # For simplicity, we only store the patch; report could be separate but we skip
+                patch = extract_patch(raw_output)
+                if patch.strip() == "NO_CHANGES":
+                    print("  No changes suggested.")
+                    report_parts.append(f"## {rel_path}\nNo changes suggested.")
+                elif patch:
+                    # Validate patch syntax by applying it with git apply
+                    patch_path = REPO_ROOT / "temp_patch.diff"
+                    patch_path.write_text(patch, encoding="utf-8")
+                    # Check if patch applies cleanly
+                    check = run_cmd(["git", "apply", "--check", str(patch_path)])
+                    if check.returncode != 0:
+                        print(f"  ❌ Patch does not apply cleanly for {rel_path}: {check.stderr}")
+                        patch_path.unlink(missing_ok=True)
+                        continue
+                    # Apply patch
+                    apply = run_cmd(["git", "apply", str(patch_path)])
+                    if apply.returncode == 0:
+                        print(f"  ✅ Applied patch for {rel_path}")
+                        fixes_applied.append(str(rel_path))
+                        report_parts.append(f"## {rel_path}\nPatch applied.")
+                    else:
+                        print(f"  ❌ Failed to apply patch for {rel_path}: {apply.stderr}")
+                    patch_path.unlink(missing_ok=True)
+                else:
+                    print("  ⚠️ No valid patch extracted; skipping.")
             except Exception as e:
-                print(f"  ❌ Review failed for {rel_path}: {e}")
+                print(f"  ❌ LLM call failed for {rel_path}: {e}")
                 continue
-
-            # Request full corrected file
-            fix_prompt = f"""Based on the review, output the complete corrected file content.
-Wrap the corrected content between the markers:
-<<<FIXED_FILE_START>>>
-... corrected code ...
-<<<FIXED_FILE_END>>>
-If no changes are needed, output exactly NO_CHANGES.
-Do not include any explanation or markdown fences.
-
-Original Code:
-{content}
-
-Review:
-{review_text}
-"""
-            try:
-                fix_resp = call_with_fallback(
-                    client,
-                    models=MODELS,
-                    max_tokens=2000,
-                    messages=[
-                        {"role": "system", "content": "You are an expert Python developer. Provide the entire corrected file."},
-                        {"role": "user", "content": fix_prompt},
-                    ],
-                )
-                fixed_content = extract_full_file(fix_resp.choices[0].message.content)
-            except Exception as e:
-                print(f"  ❌ Fix generation failed for {rel_path}: {e}")
-                continue
-
-            if fixed_content.strip() == "NO_CHANGES":
-                print("  No changes suggested.")
-            else:
-                # Validate syntax before writing
-                try:
-                    ast.parse(fixed_content, filename=str(rel_path))
-                except SyntaxError as e:
-                    print(f"  ❌ Syntax error in generated patch for {rel_path}: {e}")
-                    print("     Skipping this file; no changes applied.")
-                    continue
-                # Write the corrected file directly
-                f.write_text(fixed_content, encoding="utf-8")
-                print(f"  ✅ Replaced {rel_path} with corrected version")
-                fixes_applied.append(str(rel_path))
         except Exception as e:
             print(f"  ❌ Unexpected error for {rel_path}: {e}")
             continue
@@ -258,8 +229,6 @@ Review:
         print("No fixes applied.")
 
 
-
-
 def run_quick_tests():
     """Run a fast subset of tests and return True if they pass."""
     print("\nRunning quick tests...")
@@ -272,6 +241,7 @@ def run_quick_tests():
     print(res.stdout)
     print(res.stderr)
     return res.returncode == 0
+
 
 if __name__ == "__main__":
     try:
