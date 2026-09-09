@@ -9,6 +9,7 @@ This script:
 
 Requires GROQ_API_KEY environment variable and git identity configured.
 """
+import ast
 import os
 import subprocess
 import sys
@@ -217,6 +218,13 @@ Review:
             if fixed_content.strip() == "NO_CHANGES":
                 print("  No changes suggested.")
             else:
+                # Validate syntax before writing
+                try:
+                    ast.parse(fixed_content, filename=str(rel_path))
+                except SyntaxError as e:
+                    print(f"  ❌ Syntax error in generated patch for {rel_path}: {e}")
+                    print("     Skipping this file; no changes applied.")
+                    continue
                 # Write the corrected file directly
                 f.write_text(fixed_content, encoding="utf-8")
                 print(f"  ✅ Replaced {rel_path} with corrected version")
