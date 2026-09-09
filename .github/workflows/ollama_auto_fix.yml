@@ -30,7 +30,7 @@ jobs:
 
       - name: Install Ollama
         run: |
-          curl -fsSL https://ollama.com | sh
+          curl -fsSL https://ollama.com/install.sh | sh
           ollama serve > /tmp/ollama.log 2>&1 &
           sleep 5
           ollama pull qwen2.5-coder:7b
