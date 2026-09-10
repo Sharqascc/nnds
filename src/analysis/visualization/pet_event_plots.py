@@ -59,6 +59,19 @@ DEFAULT_THRESHOLDS = {
 }
 
 
+def _get_pet_seconds(row: pd.Series) -> float:
+    """Return PET in seconds, preferring structured columns."""
+    for column in ("pet_s", "pet_time_based", "pet"):
+        if column not in row.index:
+            continue
+
+        value = pd.to_numeric(row[column], errors="coerce")
+        if pd.notna(value):
+            return float(value)
+
+    raise ValueError("Row contains no valid PET value")
+
+
 def load_pet_csv(csv_path: str) -> pd.DataFrame:
     """
     Load PET CSV and parse world trajectories into Python lists.
@@ -280,8 +293,12 @@ class EventPlotter:
         class_i = class_mapper(int(row["track_a"]))
         class_j = class_mapper(int(row["track_b"]))
 
-        pet = float(row["pet"])
-        float(row.get("pet_approx", pet))
+        pet = _get_pet_seconds(row)
+        pet_approx = pd.to_numeric(row.get("pet_approx", pet), errors="coerce")
+        if pd.isna(pet_approx):
+            pet_approx = pet
+        else:
+            pet_approx = float(pet_approx)
         cell = row["conflict_type"]
         t_leave_i = float(row.get("t_leave_i", 0))
         t_enter_j = float(row.get("t_enter_j", 0))
