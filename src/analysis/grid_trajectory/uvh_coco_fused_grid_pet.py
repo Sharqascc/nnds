@@ -132,6 +132,79 @@ def _bbox_overlap(box1, box2, pad=0.0):
     )
 
 
+
+@dataclass(frozen=True)
+class StructuredPetResult:
+    """Structured PET result preserving overlap information."""
+
+    pet_s: float | None
+    pet_status: str
+    first_actor: str | None
+    second_actor: str | None
+    overlap_duration_s: float
+
+
+def _compute_structured_pet_from_windows(
+    a_entry: int | float,
+    a_exit: int | float,
+    b_entry: int | float,
+    b_exit: int | float,
+    fps: float,
+) -> StructuredPetResult:
+    """Compute PET while distinguishing sequential passage from overlap."""
+    values = {
+        "a_entry": a_entry,
+        "a_exit": a_exit,
+        "b_entry": b_entry,
+        "b_exit": b_exit,
+        "fps": fps,
+    }
+
+    for name, value in values.items():
+        if not np.isfinite(float(value)):
+            raise ValueError(f"{name} must be finite")
+
+    if fps <= 0:
+        raise ValueError("fps must be positive")
+
+    if a_entry > a_exit:
+        raise ValueError("a_entry must be <= a_exit")
+
+    if b_entry > b_exit:
+        raise ValueError("b_entry must be <= b_exit")
+
+    a_entry_s = float(a_entry) / float(fps)
+    a_exit_s = float(a_exit) / float(fps)
+    b_entry_s = float(b_entry) / float(fps)
+    b_exit_s = float(b_exit) / float(fps)
+
+    if a_exit_s <= b_entry_s:
+        return StructuredPetResult(
+            pet_s=b_entry_s - a_exit_s,
+            pet_status="sequential",
+            first_actor="a",
+            second_actor="b",
+            overlap_duration_s=0.0,
+        )
+
+    if b_exit_s <= a_entry_s:
+        return StructuredPetResult(
+            pet_s=a_entry_s - b_exit_s,
+            pet_status="sequential",
+            first_actor="b",
+            second_actor="a",
+            overlap_duration_s=0.0,
+        )
+
+    return StructuredPetResult(
+        pet_s=None,
+        pet_status="overlap",
+        first_actor=None,
+        second_actor=None,
+        overlap_duration_s=min(a_exit_s, b_exit_s)
+        - max(a_entry_s, b_entry_s),
+    )
+
 def _compute_pet_from_windows(a_entry, a_exit, b_entry, b_exit, fps):
     """
     Pure function: compute Post‑Encroachment Time from two entry/exit windows.

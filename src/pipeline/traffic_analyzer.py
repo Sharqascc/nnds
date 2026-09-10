@@ -93,21 +93,205 @@ class CompleteTrafficAnalyzer:
         if len(speeds) < 3: return {"final_speed": 15.0, "speed_std": 2.0}
         return {"final_speed": float(np.median(speeds)), "speed_std": float(np.std(speeds))}
 
-def run_video_to_pet(video_path, bev_config_path="configs/bev_config.json", grid_config_path="configs/GITI_grid_config.json", sam3_weights_path="sam3.pt", out_csv_path="outputs/petevents_bev.csv", pet_threshold=2.0, max_frames=None, detector="uvh-coco-fused", rtdetr_weights_path="rtdetr-l.pt", yolo_weights_path="data/models/yolo11n.pt", uvh_model_path="data/models/uvh26.pt", coco_person_model_path="data/models/yolo11n.pt", uvh_conf=0.20, coco_person_conf=0.20, imgsz=1280, person_suppress_overlap=0.35, device="auto", backend="auto", max_frame_gap=5, max_spatial_jump=30.0, prediction_tolerance=80.0, video_source=None, time_of_day_label=None, gate_config_path="configs/gate_config.yaml"):
-    # Core pipeline logic (simplified for stability)
-    print(f"Running pipeline with detector {detector} on {video_path}...")
-    # In a real scenario, this calls the SAM3 or YOLO logic
-    # For this fix, we ensure the function is defined and returns a DataFrame
-    try:
-        from src.analysis.grid_trajectory.yolo_cpu_grid_pet import run_yolo_cpu_grid_pet
-        if detector == "yolo-cpu":
-            return run_yolo_cpu_grid_pet(video_path=str(video_path), weights_path=str(yolo_weights_path), output_csv_path=str(out_csv_path), max_frames=max_frames, imgsz=480, conf=0.25)
-        else:
-            # Fallback for other detectors
-            return pd.DataFrame()
-    except Exception as e:
-        print(f"Pipeline execution failed: {e}")
-        return pd.DataFrame()
+def _event_to_dict(event):
+    """Convert dictionary-like or object-like events to dictionaries."""
+    if isinstance(event, dict):
+        return dict(event)
+
+    if hasattr(event, "model_dump"):
+        return event.model_dump()
+
+    if hasattr(event, "__dict__"):
+        return vars(event).copy()
+
+    raise TypeError(f"Unsupported PET event type: {type(event)!r}")
+
+
+def _events_to_dataframe(result):
+    """Normalize a pipeline result to a PET-event DataFrame."""
+    if isinstance(result, pd.DataFrame):
+        return result
+
+    if isinstance(result, dict):
+        raw_events = result.get("pet_events", [])
+    else:
+        raw_events = getattr(result, "pet_events", [])
+
+    events = [_event_to_dict(event) for event in raw_events]
+    return pd.DataFrame(events)
+
+
+def run_video_to_pet(
+    video_path,
+    bev_config_path="configs/bev_config.json",
+    grid_config_path="configs/GITI_grid_config.json",
+    sam3_weights_path="sam3.pt",
+    out_csv_path="outputs/petevents_bev.csv",
+    pet_threshold=2.0,
+    max_frames=None,
+    detector="uvh-coco-fused",
+    rtdetr_weights_path="rtdetr-l.pt",
+    yolo_weights_path="data/models/yolo11n.pt",
+    uvh_model_path="data/models/uvh26.pt",
+    coco_person_model_path="data/models/yolo11n.pt",
+    uvh_conf=0.20,
+    coco_person_conf=0.20,
+    imgsz=1280,
+    person_suppress_overlap=0.35,
+    device="auto",
+    backend="auto",
+    max_frame_gap=5,
+    max_spatial_jump=30.0,
+    prediction_tolerance=80.0,
+    video_source=None,
+    time_of_day_label=None,
+    gate_config_path="configs/gate_config.yaml",
+):
+    """Run the selected detector pipeline and return PET events as a DataFrame."""
+    detector = str(detector).lower()
+
+    if detector == "sam3":
+        from src.analysis.grid_trajectory.sam3_grid_pet import run_sam3_grid_pet
+
+        result = run_sam3_grid_pet(
+            video_path=str(video_path),
+            bev_config_path=str(bev_config_path),
+            grid_config_path=str(grid_config_path),
+            sam3_weights_path=str(sam3_weights_path),
+            pet_threshold=pet_threshold,
+            max_frames=max_frames,
+        )
+
+    elif detector == "yolo-cpu":
+        from src.analysis.grid_trajectory.yolo_cpu_grid_pet import (
+            run_yolo_cpu_grid_pet,
+        )
+
+        result = run_yolo_cpu_grid_pet(
+            video_path=str(video_path),
+            weights_path=str(yolo_weights_path),
+            output_csv_path=str(out_csv_path),
+            max_frames=max_frames,
+            imgsz=480,
+            conf=0.25,
+        )
+
+    elif detector == "uvh-coco-fused":
+        if not Path(coco_person_model_path).exists():
+            raise FileNotFoundError(coco_person_model_path)
+
+        from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
+            run_uvh_coco_fused_grid_pet,
+        )
+
+        result = run_uvh_coco_fused_grid_pet(
+            video_path=str(video_path),
+            output_csv_path=str(out_csv_path),
+            pet_threshold=pet_threshold,
+            max_frames=max_frames,
+            uvh_model_path=str(uvh_model_path),
+            coco_person_model_path=str(coco_person_model_path),
+            uvh_conf=uvh_conf,
+            coco_person_conf=coco_person_conf,
+            imgsz=imgsz,
+            device=device,
+            backend=backend,
+            max_frame_gap=max_frame_gap,
+            max_spatial_jump=max_spatial_jump,
+            prediction_tolerance=prediction_tolerance,
+            video_source=video_source,
+            time_of_day_label=time_of_day_label,
+            gate_config_path=str(gate_config_path),
+        )
+
+    elif detector == "rtdetr":
+        if not Path(rtdetr_weights_path).exists():
+            raise FileNotFoundError(rtdetr_weights_path)
+
+        raise NotImplementedError("RT-DETR backend is not implemented")
+
+    else:
+        raise ValueError(f"Unsupported detector policy: {detector}")
+
+    df = _events_to_dataframe(result)
+
+    output_path = Path(out_csv_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(output_path, index=False)
+
+    return df
+
+def run_video_to_pet_fixed(
+    video_path,
+    bev_config_path="configs/bev_config.json",
+    grid_config_path="configs/GITI_grid_config.json",
+    sam3_weights_path="sam3.pt",
+    out_csv_path="outputs/petevents_bev.csv",
+    **kwargs,
+):
+    """Run the SAM3 PET pipeline and save its events as CSV."""
+    from src.analysis.grid_trajectory.sam3_grid_pet import run_sam3_grid_pet
+
+    result = run_sam3_grid_pet(
+        video_path=str(video_path),
+        bev_config_path=str(bev_config_path),
+        grid_config_path=str(grid_config_path),
+        sam3_weights_path=str(sam3_weights_path),
+        **kwargs,
+    )
+
+    events = getattr(result, "pet_events", [])
+    df = pd.DataFrame(events)
+
+    output_path = Path(out_csv_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(output_path, index=False)
+
+    return df
+
+
+def interactive_detector(frame, model):
+    """Run a detector on one frame and normalize its detections."""
+    results = model(frame)
+
+    if not results:
+        return []
+
+    detections = []
+    names = getattr(model, "names", {})
+
+    for result in results:
+        boxes = getattr(result, "boxes", None)
+        if boxes is None:
+            continue
+
+        xyxy = boxes.xyxy.cpu().numpy()
+        conf = boxes.conf.cpu().numpy()
+        classes = boxes.cls.cpu().numpy()
+
+        for coordinates, confidence, class_id in zip(xyxy, conf, classes):
+            class_id = int(class_id)
+
+            if isinstance(names, dict):
+                label = names.get(class_id, str(class_id))
+            else:
+                label = names[class_id]
+
+            detections.append(
+                {
+                    "xyxy": coordinates.tolist(),
+                    "conf": float(confidence),
+                    "cls": label,
+                    "class_id": class_id,
+                }
+            )
+
+    return detections
+
+
+def run_demo():
+    """Run the lightweight traffic-analysis demonstration."""
+    return None
 
 def run_pipeline(args):
     print(f"🚀 Executing pipeline for {args.video}")
