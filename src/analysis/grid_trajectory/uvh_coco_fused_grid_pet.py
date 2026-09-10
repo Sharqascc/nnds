@@ -743,6 +743,14 @@ def run_uvh_coco_fused_grid_pet(
                 continue
             pet, first_placeholder, _second_placeholder, frame_ref = pet_result
 
+            structured_result = _compute_structured_pet_from_windows(
+                a_entry,
+                a_exit,
+                b_entry,
+                b_exit,
+                fps,
+            )
+
             # Map placeholder IDs back to actual track IDs
             if first_placeholder == "a":
                 first_id = track_a_id
@@ -782,6 +790,11 @@ def run_uvh_coco_fused_grid_pet(
                         "site": video_source if video_source is not None else Path(video_path).stem,
                         "pet": float(pet),  # frame-based PET
                         "pet_time_based": pet_time_based,  # time-based PET
+                        "pet_s": structured_result.pet_s,
+                        "pet_status": structured_result.pet_status,
+                        "first_actor": structured_result.first_actor,
+                        "second_actor": structured_result.second_actor,
+                        "overlap_duration_s": structured_result.overlap_duration_s,
                         "frame": int(frame_ref),
                         "track_a": int(first_id),
                         "track_b": int(second_id),
@@ -834,6 +847,11 @@ def run_uvh_coco_fused_grid_pet(
             "site",
             "pet",
             "pet_time_based",
+            "pet_s",
+            "pet_status",
+            "first_actor",
+            "second_actor",
+            "overlap_duration_s",
             "frame",
             "track_a",
             "track_b",
