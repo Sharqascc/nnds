@@ -295,10 +295,7 @@ class EventPlotter:
 
         pet = _get_pet_seconds(row)
         pet_approx = pd.to_numeric(row.get("pet_approx", pet), errors="coerce")
-        if pd.isna(pet_approx):
-            pet_approx = pet
-        else:
-            pet_approx = float(pet_approx)
+        pet_approx = pet if pd.isna(pet_approx) else float(pet_approx)
         cell = row["conflict_type"]
         t_leave_i = float(row.get("t_leave_i", 0))
         t_enter_j = float(row.get("t_enter_j", 0))
