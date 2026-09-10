@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 monte_carlo_calibration_benchmark.py
 
@@ -8,6 +8,7 @@ Monte Carlo benchmark comparing:
 - PnP ITERATIVE with biased Z,
 - PnP ITERATIVE with Z=0,
 - P3P + RANSAC (if available),
+
 
 under:
 - known camera intrinsics + distortion,
@@ -22,6 +23,7 @@ Refinements:
 - tqdm progress bar,
 - JSON export of summary metrics,
 - simple comparative analysis helper.
+
 """
 
 import argparse
@@ -29,6 +31,7 @@ import json
 import logging
 from pathlib import Path
 
+import math
 import cv2
 import numpy as np
 
@@ -37,7 +40,7 @@ try:
 except ImportError:  # optional dep  # pragma: no cover
 
     def tqdm(x, **kwargs):
-        return x  # type: ignore[misc]
+        return x  # type: ignore[misc, return-value]
 
 
 logger = logging.getLogger(__name__)

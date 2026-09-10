@@ -1,7 +1,9 @@
 
-import pytest
 import numpy as np
-from hypothesis import given, strategies as st
+import pytest
+from hypothesis import given
+from hypothesis import strategies as st
+
 from src.analysis.ssm.ssm_verification import SSMVerifier, compare_with_reference
 
 # ------------------------------------------------------------------
