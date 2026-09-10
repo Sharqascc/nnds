@@ -26,6 +26,26 @@ from scipy import stats
 from src.core.contracts import PETSummaryBasicStats, PETSummaryRiskSummary
 
 
+def _resolve_pet_series(df: pd.DataFrame) -> pd.Series:
+    """Resolve PET seconds from structured or legacy CSV columns."""
+    candidates = ["pet_s", "pet_time_based", "pet"]
+
+    available = [column for column in candidates if column in df.columns]
+    if not available:
+        raise ValueError(
+            "No PET column found; expected one of "
+            f"{', '.join(candidates)}"
+        )
+
+    resolved = pd.Series(float("nan"), index=df.index, dtype="float64")
+
+    for column in available:
+        values = pd.to_numeric(df[column], errors="coerce")
+        resolved = resolved.fillna(values)
+
+    return resolved
+
+
 class PETEventAnalyzer:
     """Comprehensive PET event analyzer with statistical rigor."""
 
@@ -68,15 +88,17 @@ class PETEventAnalyzer:
 
         df = pd.read_csv(self.csv_path)
 
-        # Required columns
-        required_cols = ["pet"]
-        missing = [c for c in required_cols if c not in df.columns]
-        if missing:
-            raise ValueError(f"Missing required columns: {missing} in {self.csv_path}")
+        # Prefer structured PET while preserving legacy CSV compatibility.
+        if not any(
+            column in df.columns
+            for column in ["pet_s", "pet_time_based", "pet"]
+        ):
+            raise ValueError(
+                "No PET column found; expected pet_s, pet_time_based, or pet"
+            )
 
-        # Coerce PET to numeric
         original_len = len(df)
-        df["pet"] = pd.to_numeric(df["pet"], errors="coerce")
+        df["pet"] = _resolve_pet_series(df)
         invalid_mask = df["pet"].isna()
         n_invalid = int(invalid_mask.sum())
         if n_invalid > 0:

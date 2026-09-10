@@ -259,3 +259,28 @@ def test_pet_event_analyzer_initialization(pet_csv_path):
     """Test PETEventAnalyzer initializes with a CSV."""
     analyzer = PETEventAnalyzer(str(pet_csv_path))
     assert analyzer is not None
+
+def test_pet_summary_prefers_structured_pet(tmp_path):
+    csv_path = tmp_path / "structured.csv"
+
+    pd.DataFrame(
+        {
+            "pet": [9.0, 8.0],
+            "pet_time_based": [7.0, 6.0],
+            "pet_s": [1.5, 2.5],
+        }
+    ).to_csv(csv_path, index=False)
+
+    analyzer = PETEventAnalyzer(csv_path)
+
+    assert analyzer.pet_series.tolist() == [1.5, 2.5]
+
+
+def test_pet_summary_falls_back_to_legacy_pet(tmp_path):
+    csv_path = tmp_path / "legacy.csv"
+
+    pd.DataFrame({"pet": [1.5, 2.5]}).to_csv(csv_path, index=False)
+
+    analyzer = PETEventAnalyzer(csv_path)
+
+    assert analyzer.pet_series.tolist() == [1.5, 2.5]
