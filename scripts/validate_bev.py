@@ -20,6 +20,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from src.analysis.bev_error import homography_error_metrics
+
 
 def load_calibration(calib_path):
     with open(calib_path) as f:
@@ -68,6 +70,9 @@ def main():
     cond_raw = np.linalg.cond(H)
     rank = np.linalg.matrix_rank(H)
 
+    # Meter-space metrics (world coords are easting/northing in meters)
+    metrics = homography_error_metrics(H, pixel_pts, world_pts)
+
     # Normalized condition number: normalize points, compute H_norm, then cond
     pixel_norm, _T_pixel = hartley_normalize(pixel_pts)
     world_norm, _T_world = hartley_normalize(world_pts)
@@ -83,6 +88,10 @@ def main():
     print(f"Reprojection errors (world units): {errors}")
     print(f"  Mean: {errors.mean():.6f}")
     print(f"  Max:  {errors.max():.6f}")
+    print(f"  MAE (m):  {metrics['mae']:.6f}")
+    print(f"  RMSE (m): {metrics['rmse']:.6f}")
+    print(f"  p95 (m):  {metrics['p95']:.6f}")
+    print(f"  N:        {metrics['n']}")
     print("=" * 60)
 
     # Overlay
