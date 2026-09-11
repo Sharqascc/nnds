@@ -1,42 +1,62 @@
-# scripts/agentic_fix_ollama.py
+"""Ollama-based agentic fix helper."""
 
-OLLAMA_MODELS = ["model1", "model2", "model3"]  # Example value
+from __future__ import annotations
 
-def test_max_file_limits_positive():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
+import os
+import re
+import time
+from typing import Any
 
-def test_models_list_nonempty():
-    assert isinstance(agentic_fix_ollama.OLLAMA_MODELS, list)
+import requests
 
-def test_max_file_limits_positive():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
+OLLAMA_MODELS = [
+    os.environ.get("OLLAMA_MODEL_1", "qwen2.5-coder:7b"),
+    os.environ.get("OLLAMA_MODEL_2", "llama3.1:8b"),
+    os.environ.get("OLLAMA_MODEL_3", "deepseek-coder:6.7b"),
+]
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 
-def test_run_cmd_returns_completed_process():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
+MAX_FILE_LINES = 2000
+MAX_FILE_CHARS = 200_000
 
-def test_call_with_fallback_success_first_model():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
+PATCH_START = "<<<PATCH_START>>>"
+PATCH_END = "<<<PATCH_END>>>"
 
-def test_call_with_fallback_rate_limit_then_success():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
 
-def test_call_with_fallback_all_models_fail_raises():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
+def call_ollama(messages: list[dict[str, Any]]) -> str:
+    """Call Ollama, trying each model in turn. Raise RuntimeError if all fail."""
+    last_exc: Exception | None = None
+    for model in OLLAMA_MODELS:
+        try:
+            resp = requests.post(
+                f"{OLLAMA_HOST}/api/chat",
+                json={"model": model, "messages": messages, "stream": False},
+                timeout=120,
+            )
+            resp.raise_for_status()
+            return resp.json()["message"]["content"]
+        except requests.exceptions.ConnectionError as exc:
+            last_exc = exc
+            time.sleep(1.0)
+            continue
+        except Exception as exc:  # pragma: no cover
+            last_exc = exc
+            continue
+    raise RuntimeError(f"All Ollama models failed: {last_exc}")
 
-def test_run_cmd_timeout_returns_completed_process():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
 
-def test_call_github_models_success():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
+def extract_patch(raw: str) -> str:
+    """Extract a unified diff between PATCH_START/PATCH_END markers.
 
-def test_call_github_models_no_token_raises():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
-
-def test_call_with_github_fallback_uses_github_when_groq_fails():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
-
-def test_call_with_fallback_always_returns_success_when_one_model_works():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
-
-def test_extract_patch_strips_markdown():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
+    Always returns a string; never raises.
+    """
+    if not isinstance(raw, str):
+        return ""
+    if "NO_CHANGES" in raw:
+        return ""
+    m = re.search(
+        re.escape(PATCH_START) + r"(.*?)" + re.escape(PATCH_END),
+        raw,
+        flags=re.DOTALL,
+    )
+    return m.group(1).strip() if m else ""

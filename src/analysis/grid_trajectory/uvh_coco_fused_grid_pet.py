@@ -132,7 +132,6 @@ def _bbox_overlap(box1, box2, pad=0.0):
     )
 
 
-
 @dataclass(frozen=True)
 class StructuredPetResult:
     """Structured PET result preserving overlap information."""
@@ -201,9 +200,9 @@ def _compute_structured_pet_from_windows(
         pet_status="overlap",
         first_actor=None,
         second_actor=None,
-        overlap_duration_s=min(a_exit_s, b_exit_s)
-        - max(a_entry_s, b_entry_s),
+        overlap_duration_s=min(a_exit_s, b_exit_s) - max(a_entry_s, b_entry_s),
     )
+
 
 def _compute_pet_from_windows(a_entry, a_exit, b_entry, b_exit, fps):
     """

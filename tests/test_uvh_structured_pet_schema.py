@@ -1,9 +1,6 @@
 from pathlib import Path
 
-
-UVH_PATH = Path(
-    "src/analysis/grid_trajectory/uvh_coco_fused_grid_pet.py"
-)
+UVH_PATH = Path("src/analysis/grid_trajectory/uvh_coco_fused_grid_pet.py")
 
 
 def test_uvh_exports_structured_pet_fields():

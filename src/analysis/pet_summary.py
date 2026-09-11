@@ -32,10 +32,7 @@ def _resolve_pet_series(df: pd.DataFrame) -> pd.Series:
 
     available = [column for column in candidates if column in df.columns]
     if not available:
-        raise ValueError(
-            "No PET column found; expected one of "
-            f"{', '.join(candidates)}"
-        )
+        raise ValueError(f"No PET column found; expected one of {', '.join(candidates)}")
 
     resolved = pd.Series(float("nan"), index=df.index, dtype="float64")
 
@@ -89,13 +86,8 @@ class PETEventAnalyzer:
         df = pd.read_csv(self.csv_path)
 
         # Prefer structured PET while preserving legacy CSV compatibility.
-        if not any(
-            column in df.columns
-            for column in ["pet_s", "pet_time_based", "pet"]
-        ):
-            raise ValueError(
-                "No PET column found; expected pet_s, pet_time_based, or pet"
-            )
+        if not any(column in df.columns for column in ["pet_s", "pet_time_based", "pet"]):
+            raise ValueError("No PET column found; expected pet_s, pet_time_based, or pet")
 
         original_len = len(df)
         df["pet"] = _resolve_pet_series(df)

@@ -260,6 +260,7 @@ def test_pet_event_analyzer_initialization(pet_csv_path):
     analyzer = PETEventAnalyzer(str(pet_csv_path))
     assert analyzer is not None
 
+
 def test_pet_summary_prefers_structured_pet(tmp_path):
     csv_path = tmp_path / "structured.csv"
 

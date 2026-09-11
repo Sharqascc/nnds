@@ -5,6 +5,7 @@ Implements a minimal 2D social force with destination attraction and
 repulsive interaction between agents. This is a placeholder for baseline
 comparison in research papers.
 """
+
 import numpy as np
 
 
@@ -35,11 +36,11 @@ class SocialForceModel:
 
             # Simple repulsive force between agents (within 2m)
             for i in range(N):
-                for j in range(i+1, N):
+                for j in range(i + 1, N):
                     r_ij = positions[i] - positions[j]
                     d = np.linalg.norm(r_ij)
                     if d < 2.0 and d > 1e-6:
-                        force = 1.0 * (1.0 / d - 1.0/2.0) * r_ij / d
+                        force = 1.0 * (1.0 / d - 1.0 / 2.0) * r_ij / d
                         acceleration[i] += force
                         acceleration[j] -= force
 
@@ -49,8 +50,8 @@ class SocialForceModel:
 
 
 if __name__ == "__main__":
-    pos = np.array([[0,0],[2,0]])
-    vel = np.array([[0.5,0],[-0.5,0]])
+    pos = np.array([[0, 0], [2, 0]])
+    vel = np.array([[0.5, 0], [-0.5, 0]])
     model = SocialForceModel()
-    for p in model.predict(pos, vel, np.array([10,0]), 5):
+    for p in model.predict(pos, vel, np.array([10, 0]), 5):
         print(p)

@@ -13,3 +13,4 @@ lap>=0.5.12
 pytest>=8.0.0
 scikit-learn
 PyYAML
+syrupy>=4.0.0

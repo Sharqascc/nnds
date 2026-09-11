@@ -72,8 +72,14 @@ def test_interpret_effect_size_valid(d):
     assert label in {"negligible", "small", "medium", "large"}
 
 
-@given(st.lists(st.floats(-1000.0, 1000.0, allow_nan=False, allow_infinity=False), min_size=2, max_size=20),
-       st.lists(st.floats(-1000.0, 1000.0, allow_nan=False, allow_infinity=False), min_size=2, max_size=20))
+@given(
+    st.lists(
+        st.floats(-1000.0, 1000.0, allow_nan=False, allow_infinity=False), min_size=2, max_size=20
+    ),
+    st.lists(
+        st.floats(-1000.0, 1000.0, allow_nan=False, allow_infinity=False), min_size=2, max_size=20
+    ),
+)
 @settings(max_examples=50)
 def test_cohens_d_properties(sample1, sample2):
     """Cohen's d should be non-negative, finite, and symmetric wrt input order."""
@@ -89,8 +95,15 @@ def test_cohens_d_properties(sample1, sample2):
     assert d2 >= 0
     assert np.isclose(d1, d2, atol=1e-9)  # should be symmetric
 
-@given(st.lists(st.floats(-1000.0, 1000.0, allow_nan=False, allow_infinity=False), min_size=2, max_size=20),
-       st.lists(st.floats(-1000.0, 1000.0, allow_nan=False, allow_infinity=False), min_size=2, max_size=20))
+
+@given(
+    st.lists(
+        st.floats(-1000.0, 1000.0, allow_nan=False, allow_infinity=False), min_size=2, max_size=20
+    ),
+    st.lists(
+        st.floats(-1000.0, 1000.0, allow_nan=False, allow_infinity=False), min_size=2, max_size=20
+    ),
+)
 @settings(max_examples=50)
 def test_cliffs_delta_properties(sample1, sample2):
     """Cliff's delta should be in [-1, 1] and anti-symmetric under input swap."""
@@ -102,6 +115,7 @@ def test_cliffs_delta_properties(sample1, sample2):
     assert -1.0 <= d2 <= 1.0
     # Anti-symmetry: delta(A,B) = -delta(B,A)
     assert np.isclose(d1, -d2, atol=1e-9)
+
 
 @given(st.floats(-5.0, 5.0, allow_nan=False, allow_infinity=False))
 @settings(max_examples=100)

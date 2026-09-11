@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from math import isfinite
 from typing import Literal
 
-
 PetStatus = Literal["sequential", "overlap", "invalid"]
 
 

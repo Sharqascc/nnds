@@ -1,4 +1,3 @@
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -16,9 +15,16 @@ from src.analysis.visualization.pet_event_plots import (
 def make_traj(times, xs, ys):
     return list(zip(times, xs, ys, strict=False))
 
-@given(st.lists(st.floats(0.0, 10.0, allow_nan=False, allow_infinity=False), min_size=2, max_size=10),
-       st.lists(st.floats(-100.0, 100.0, allow_nan=False, allow_infinity=False), min_size=2, max_size=10),
-       st.lists(st.floats(-100.0, 100.0, allow_nan=False, allow_infinity=False), min_size=2, max_size=10))
+
+@given(
+    st.lists(st.floats(0.0, 10.0, allow_nan=False, allow_infinity=False), min_size=2, max_size=10),
+    st.lists(
+        st.floats(-100.0, 100.0, allow_nan=False, allow_infinity=False), min_size=2, max_size=10
+    ),
+    st.lists(
+        st.floats(-100.0, 100.0, allow_nan=False, allow_infinity=False), min_size=2, max_size=10
+    ),
+)
 @settings(max_examples=50)
 def test_compute_timing_matches_direct_calculation(times, xs, ys):
     # Ensure all lists have same length
@@ -55,6 +61,7 @@ def test_compute_timing_matches_direct_calculation(times, xs, ys):
     assert np.isclose(result.iloc[0]["t_enter_j"], ti[k_enter], atol=1e-9)
     assert np.isclose(result.iloc[0]["pet_approx"], ti[k_enter] - ti[k_leave], atol=1e-9)
 
+
 @given(st.floats(0.0, 10.0, allow_nan=False, allow_infinity=False))
 @settings(max_examples=100)
 def test_severity_color_and_label_consistent(pet_value):
@@ -78,9 +85,16 @@ def test_severity_color_and_label_consistent(pet_value):
         assert color == COLORS["blue"]
         assert label == "Safe"
 
-@given(st.lists(st.floats(0.1, 20.0, allow_nan=False, allow_infinity=False),
-                       min_size=4, max_size=4, unique=True).map(sorted),
-       st.floats(0.0, 30.0, allow_nan=False, allow_infinity=False))
+
+@given(
+    st.lists(
+        st.floats(0.1, 20.0, allow_nan=False, allow_infinity=False),
+        min_size=4,
+        max_size=4,
+        unique=True,
+    ).map(sorted),
+    st.floats(0.0, 30.0, allow_nan=False, allow_infinity=False),
+)
 @settings(max_examples=50)
 def test_severity_with_custom_thresholds(threshold_list, pet_value):
     # Build thresholds from sorted unique values (guaranteed strictly increasing)

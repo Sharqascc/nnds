@@ -3,15 +3,15 @@ def parse_duration_seconds(duration_str: str) -> float:
     seconds = 0.0
     num = ""
     for char in duration_str:
-        if char.isdigit() or char == '.':
+        if char.isdigit() or char == ".":
             num += char
-        elif char == 's':
+        elif char == "s":
             seconds += float(num) if num else 0.0
             num = ""
-        elif char == 'm':
+        elif char == "m":
             seconds += float(num) * 60 if num else 0.0
             num = ""
-        elif char == 'h':
+        elif char == "h":
             seconds += float(num) * 3600 if num else 0.0
             num = ""
         else:

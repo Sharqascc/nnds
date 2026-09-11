@@ -2,6 +2,7 @@
 Constant acceleration baseline for trajectory prediction.
 Uses last three points to estimate acceleration and predict future positions.
 """
+
 import numpy as np
 
 
@@ -26,14 +27,12 @@ def constant_acceleration_predict(past_points, num_future=10):
     future = []
     for i in range(1, num_future + 1):
         t = i
-        future.append((
-            frames[-1] + i,
-            xs[-1] + vx * t + 0.5 * ax * t**2,
-            ys[-1] + vy * t + 0.5 * ay * t**2
-        ))
+        future.append(
+            (frames[-1] + i, xs[-1] + vx * t + 0.5 * ax * t**2, ys[-1] + vy * t + 0.5 * ay * t**2)
+        )
     return future
 
 
 if __name__ == "__main__":
-    past = [(0,0,0), (1,1,1), (2,4,4)]
+    past = [(0, 0, 0), (1, 1, 1), (2, 4, 4)]
     print(constant_acceleration_predict(past, 5))

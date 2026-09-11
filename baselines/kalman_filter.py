@@ -3,18 +3,15 @@ Simple Kalman filter baseline for trajectory filtering.
 
 This is a placeholder to demonstrate baseline inclusion.
 """
+
 import numpy as np
 
 
 class SimpleKalmanFilter:
     def __init__(self, dt=1.0):
         self.dt = dt
-        self.A = np.array([[1, 0, dt, 0],
-                            [0, 1, 0, dt],
-                            [0, 0, 1, 0],
-                            [0, 0, 0, 1]])
-        self.H = np.array([[1, 0, 0, 0],
-                            [0, 1, 0, 0]])
+        self.A = np.array([[1, 0, dt, 0], [0, 1, 0, dt], [0, 0, 1, 0], [0, 0, 0, 1]])
+        self.H = np.array([[1, 0, 0, 0], [0, 1, 0, 0]])
         self.Q = np.eye(4) * 0.01
         self.R = np.eye(2) * 0.1
         self.x = np.zeros((4, 1))
