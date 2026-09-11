@@ -230,3 +230,15 @@ PYTHONPATH=. python scripts/pipeline.py --help
 
 **Branch:** `cleanup/system-reorganization`  
 **PR:** Ready for review and merge
+
+---
+
+## Update (post-cleanup)
+
+Since this document was written, the evaluation framework described in
+METRICS.md and VALIDATION.md has been added. The limitation
+"Full MOT metrics (MOTA, IDF1, HOTA) are not reported" no longer
+applies: HOTA, IDF1, and MOTA are now computed in
+src/analysis/tracking_metrics.py, driven by
+scripts/evaluate_tracking_metrics.py. This summary is retained as a
+historical record of the 2026-05 cleanup pass.

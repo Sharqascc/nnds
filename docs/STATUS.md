@@ -37,6 +37,31 @@ See `MODULE_MANIFEST.md` for the exact path from video to PET events.
 - `calibration_provenance.md` — Calibration details
 - `DEPRECATED_CONFIGS.md` — Deprecated configs
 
+## Evaluation Framework
+
+A full SSM evaluation framework lives alongside the pipeline. It is
+independent of the site-specific numbers above: it measures accuracy of
+NNDS outputs (detection, tracking, BEV, trajectory, PET/TTC) against
+annotated ground truth.
+
+- METRICS.md - every metric, its module, and its JSON key
+- VALIDATION.md - what is verified vs what is not
+- ANNOTATION_GUIDE.md - ground-truth CSV schemas
+
+Entry points:
+
+    python scripts/validate_gt.py --detection ... --tracking ... --trajectory ... --ssm ...
+    python scripts/evaluate_detection_metrics.py  --detections ... --ground-truth ... --out-json det.json
+    python scripts/evaluate_tracking_metrics.py   --tracked ... --ground-truth ... --out-json trk.json
+    python scripts/evaluate_trajectory_metrics.py --predicted ... --ground-truth ... --out-json traj.json
+    python scripts/evaluate_ssm_metrics.py        --predicted ... --ground-truth ... --out-json ssm.json
+    python scripts/gold_standard_report.py --detection-metrics det.json --tracking-metrics trk.json --trajectory-metrics traj.json --ssm-metrics ssm.json --out-md outputs/validation_report.md
+
+As of this writing, real ground-truth annotations do not yet exist in
+the repository, so these scripts have been exercised only on synthetic
+data. The site-level PET numbers above remain the current manuscript
+results.
+
 ## Deprecated Documents
 
 The following documents are historical and may contain outdated numbers.
