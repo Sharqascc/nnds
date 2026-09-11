@@ -22,6 +22,7 @@ from src.analysis.detection_metrics import (
     ap_by_size,
     map_at_iou_range,
     per_class_recall,
+    precision_recall_f1,
 )
 
 
@@ -78,6 +79,7 @@ def main() -> None:
     map_scores = map_at_iou_range(dets, gts)
     recalls = per_class_recall(dets, gts, iou_thr=args.iou_threshold)
     size_ap = ap_by_size(dets, gts, iou_thr=args.iou_threshold)
+    prf = precision_recall_f1(dets, gts, iou_thr=args.iou_threshold)
 
     mean_recall = float(sum(recalls.values()) / len(recalls)) if recalls else 0.0
     print("Detection Metrics:")
@@ -88,11 +90,14 @@ def main() -> None:
     for cls, r in recalls.items():
         print(f"  {cls}: {r:.3f}")
     print(f"APs/APm/APl: {size_ap['APs']:.4f} / {size_ap['APm']:.4f} / {size_ap['APl']:.4f}")
+    print(f"Precision: {prf['precision']:.4f}")
+    print(f"Recall:    {prf['recall']:.4f}")
+    print(f"F1:        {prf['f1']:.4f}")
 
     out_json = {
-        "precision": 0.0,
-        "recall": mean_recall,
-        "f1": 0.0,
+        "precision": prf["precision"],
+        "recall": prf["recall"],
+        "f1": prf["f1"],
         "map50": map_scores["mAP50"],
         "map50_95": map_scores["mAP50:95"],
         "ap75": map_scores["mAP75"],

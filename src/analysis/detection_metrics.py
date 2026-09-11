@@ -198,3 +198,29 @@ def ap_by_size(
         aps = [ap_at_iou(detections, subset, c, iou_thr) for c in classes]
         result[label] = float(np.mean(aps)) if aps else 0.0
     return result
+
+
+def precision_recall_f1(
+    detections: Sequence[Detection],
+    ground_truths: Sequence[GroundTruth],
+    iou_thr: float = 0.5,
+) -> dict[str, float]:
+    """Micro-averaged precision, recall, F1 across all classes.
+
+    Uses every detection (no confidence threshold). A detection counts as TP
+    if it matches an unmatched GT of the same class in the same frame at
+    IoU >= iou_thr, matching in confidence-descending order per class.
+    """
+    classes = sorted({g.cls for g in ground_truths} | {d.cls for d in detections})
+    tp = fp = fn = 0
+    for c in classes:
+        cls_gts = [g for g in ground_truths if g.cls == c]
+        cls_dets = sorted((d for d in detections if d.cls == c), key=lambda d: -d.conf)
+        _, _, n_matched = _evaluate_class(cls_dets, cls_gts, iou_thr)
+        tp += n_matched
+        fp += len(cls_dets) - n_matched
+        fn += len(cls_gts) - n_matched
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+    return {"precision": precision, "recall": recall, "f1": f1, "tp": tp, "fp": fp, "fn": fn}
