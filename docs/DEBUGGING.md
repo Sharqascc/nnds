@@ -31,7 +31,12 @@ In debug mode:
 In any Python cell or script:
 
 ```python
-from utils.debug_helpers import debug_save_image, debug_save_df, debug_print_section, debug_print_tensor_info
+from utils.debug_helpers import (
+    debug_save_image,
+    debug_save_df,
+    debug_print_section,
+    debug_print_tensor_info,
+)
 
 # Print a clear section header
 debug_print_section("After detection step", {"num_detections": len(dets)})
@@ -72,6 +77,7 @@ Example inside a function:
 
 ```python
 from utils.debug_helpers import debug_print_section, debug_save_image
+
 
 def process_frame(frame, frame_idx):
     debug_print_section(f"Processing frame {frame_idx}")

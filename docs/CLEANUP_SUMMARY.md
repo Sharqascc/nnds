@@ -69,6 +69,7 @@ Current root clutter:
 **Create `core/__init__.py`:**
 ```python
 """NNDS core pipeline modules."""
+
 from .traffic_analyzer import TrafficAnalyzer
 from .bev_mapper import BEVMapper
 from .pet_conflict_checker import ConflictDetector
@@ -97,14 +98,17 @@ Create single `scripts/pipeline.py` entry point:
 ```python
 #!/usr/bin/env python
 """Main NNDS pipeline orchestrator."""
+
 import argparse
 from core import TrafficAnalyzer
 from analysis import PETSummary, DiffusionAnalysis
+
 
 def main():
     parser = argparse.ArgumentParser(description="NNDS Pipeline")
     # ... args ...
     # Execute unified pipeline
+
 
 if __name__ == "__main__":
     main()

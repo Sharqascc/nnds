@@ -314,9 +314,7 @@ class KalmanTrack:
         self.kf.processNoiseCov = np.eye(6, dtype=np.float32) * 0.1
         self.kf.measurementNoiseCov = np.eye(4, dtype=np.float32) * 10.0
         self.kf.errorCovPost = np.eye(6, dtype=np.float32)
-        self.kf.statePost = np.array(
-            [det.cx, det.cy, w, h, 0, 0], dtype=np.float32
-        ).reshape(-1, 1)
+        self.kf.statePost = np.array([det.cx, det.cy, w, h, 0, 0], dtype=np.float32).reshape(-1, 1)
 
     def predict(self):
         self.kf.predict()
@@ -422,11 +420,7 @@ class CustomTracker:
             t.predict()
 
         if self.log_overlaps and self.log_handle is not None:
-            frame_now = (
-                frame
-                if frame is not None
-                else (detections[0].frame if detections else -1)
-            )
+            frame_now = frame if frame is not None else (detections[0].frame if detections else -1)
             track_ids = list(self.tracks.keys())
             pred_boxes = {tid: self.tracks[tid].box for tid in track_ids}
             centers = {tid: self.tracks[tid].center for tid in track_ids}
@@ -470,7 +464,9 @@ class CustomTracker:
                 matched[j] = tid
                 matched_track_ids.add(tid)
                 unm
-... (truncated)
+
+
+...(truncated)
 ```
 
 ## 4. ReID Encoder
@@ -528,7 +524,6 @@ class ReIDEncoder:
             return emb / norm
         except Exception:
             return None
-
 ```
 
 ## 5. Tracker Configurations
@@ -721,18 +716,12 @@ def main():
 
     # Precompute per-track summary once
     track_info = {}
-    for tid, grp in tqdm(
-        df.groupby("track_id"), desc="Summarising tracks", unit="track"
-    ):
+    for tid, grp in tqdm(df.groupby("track_id"), desc="Summarising tracks", unit="track"):
         grp = grp.sort_values("frame")
         frames = grp["frame"].values
         cx = grp["cx"].values
         cy = grp["cy"].values
-        jumps = (
-            np.sqrt(np.diff(cx) ** 2 + np.diff(cy) ** 2)
-            if len(grp) > 1
-            else np.array([])
-        )
+        jumps = np.sqrt(np.diff(cx) ** 2 + np.diff(cy) ** 2) if len(grp) > 1 else np.array([])
         max_gap = int(np.diff(frames).max()) if len(grp) > 1 else 0
         cls_counts = grp["class_name"].value_counts()
         main_cls = cls_counts.index[0] if len(cls_counts) else "unknown"
@@ -780,8 +769,9 @@ def main():
         for j in range(len(tids)):
             if i == j:
                 continue
-  
-... (truncated)
+
+
+...(truncated)
 ```
 
 ### scripts/diagnose_tracking.py
@@ -852,9 +842,7 @@ def analyze_track(group):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--csv", default="outputs/petevents_bev_300_split_detections.csv"
-    )
+    parser.add_argument("--csv", default="outputs/petevents_bev_300_split_detections.csv")
     parser.add_argument("--report", default="outputs/tracking_diagnosis.csv")
     args = parser.parse_args()
 
@@ -889,7 +877,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 ```
 
 ## 7. Debug Tracking Video Script
@@ -961,7 +948,9 @@ def main():
         for _, det in frame_dets.iterrows():
             if det.get("conf", 1.0) < args.conf:
                 continu
-... (truncated)
+
+
+...(truncated)
 ```
 
 ## 8. Tracking Output Sample

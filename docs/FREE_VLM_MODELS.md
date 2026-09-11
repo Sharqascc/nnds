@@ -31,14 +31,13 @@ pip install ollama
 from vlm import VLMAnalyzer, VLMConfig
 
 config = VLMConfig(
-    api_provider="ollama",
-    api_base="http://localhost:11434",
-    local_model="qwen2.5-vl:7b"
+    api_provider="ollama", api_base="http://localhost:11434", local_model="qwen2.5-vl:7b"
 )
 analyzer = VLMAnalyzer(config=config)
 
 # Test it
 import pandas as pd
+
 pet_df = pd.read_csv("outputs/petevents_recovered.csv")
 results = analyzer.analyze_pet_events(pet_df.head(5))
 print(f"Analyzed {len(results)} events")
@@ -64,16 +63,12 @@ from vlm import VLMAnalyzer, VLMConfig
 
 # Option A: Qwen2-VL-2B (smallest, fastest)
 config = VLMConfig(
-    api_provider="huggingface",
-    model_name="Qwen/Qwen2-VL-2B-Instruct",
-    api_key="hf_xxx"
+    api_provider="huggingface", model_name="Qwen/Qwen2-VL-2B-Instruct", api_key="hf_xxx"
 )
 
 # Option B: Qwen2-VL-7B (better quality, may need Pro)
 config = VLMConfig(
-    api_provider="huggingface",
-    model_name="Qwen/Qwen2-VL-7B-Instruct",
-    api_key="hf_xxx"
+    api_provider="huggingface", model_name="Qwen/Qwen2-VL-7B-Instruct", api_key="hf_xxx"
 )
 
 analyzer = VLMAnalyzer(config=config)
@@ -100,7 +95,7 @@ from vlm import VLMAnalyzer, VLMConfig
 config = VLMConfig(
     api_provider="groq",
     model_name="llama-3.2-11b-vision-preview",
-    api_key="gsk_xxx"  # Your free key from console.groq.com
+    api_key="gsk_xxx",  # Your free key from console.groq.com
 )
 analyzer = VLMAnalyzer(config=config)
 ```

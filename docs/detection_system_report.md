@@ -546,9 +546,7 @@ def run_video_to_pet(
                 run_yolo_cpu_grid_pet,
             )
         except ModuleNotFoundError as exc:
-            raise ModuleNotFoundError(
-                "Missing dependency for YOLO CPU pipeline."
-            ) from exc
+            raise ModuleNotFoundError("Missing dependency for YOLO CPU pipeline.") from exc
 
         result = run_yolo_cpu_grid_pet(
             video_path=str(video_path),
@@ -559,18 +557,14 @@ def run_video_to_pet(
             conf=0.25,
         )
         pet_events = (
-            result["pet_events"]
-            if isinstance(result, dict) and "pet_events" in result
-            else []
+            result["pet_events"] if isinstance(result, dict) and "pet_events" in result else []
         )
 
     elif detector == "uvh-coco-fused":
         if not uvh_model_path.exists():
             raise FileNotFoundError(f"UVH model not found: {uvh_model_path}")
         if not coco_person_model_path.exists():
-            raise FileNotFoundError(
-                f"COCO person model not found: {coco_person_model_path}"
-            )
+            raise FileNotFoundError(f"COCO person model not found: {coco_person_model_path}")
 
         try:
             from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
@@ -600,9 +594,7 @@ def run_video_to_pet(
             backend=backend,
         )
         pet_events = (
-            result["pet_events"]
-            if isinstance(result, dict) and "pet_events" in result
-            else []
+            result["pet_events"] if isinstance(result, dict) and "pet_events" in result else []
         )
 
     else:
@@ -671,22 +663,14 @@ def run_video_to_pet(
             val = _get(keys)
             if val is None or val == -1:
                 return -1
-            if isinstance(val, (int, float)) and not (
-                isinstance(val, float) and np.isnan(val)
-            ):
+            if isinstance(val, (int, float)) and not (isinstance(val, float) and np.isnan(val)):
                 return int(val)
             m = re.search(r"\d+", str(val))
             return int(m.group()) if m else -1
 
-        track_a_val = _parse_track_id(
-            ["track_a", "obj_i", "track_i", "traj_i_id", "world_traj_i"]
-        )
-        track_b_val = _parse_track_id(
-            ["track_b", "obj_j", "track_j", "traj_j_id", "world_traj_j"]
-        )
-        frame_val = _get(
-            ["frame", "conflict_frame", "start_frame", "frame_idx", "t_conflict"]
-        )
+        track_a_val = _parse_track_id(["track_a", "obj_i", "track_i", "traj_i_id", "world_traj_i"])
+        track_b_val = _parse_track_id(["track_b", "obj_j", "track_j", "traj_j_id", "world_traj_j"])
+        frame_val = _get(["frame", "conflict_frame", "start_frame", "frame_idx", "t_conflict"])
         pet_val = _get(["PET", "pet"], float("inf"))
         conflict_type_val = _get(["conflict_type", "cell_id"], "UNKNOWN")
         grid_cell_val = _get(["grid_cell", "cell_id"], "UNKNOWN")
@@ -756,9 +740,6 @@ def run_video_to_pet(
     df.to_csv(out_csv_path, index=False)
     logger.info("✅ Saved %d PET events to %s", len(df), out_csv_path)
     return df
-
-
-
 ```
 
 ## 5. Tracker Configuration
