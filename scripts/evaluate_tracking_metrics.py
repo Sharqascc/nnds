@@ -7,6 +7,7 @@ CSV format: frame, track_id, x, y, w, h (for both tracked and ground-truth)
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -41,7 +42,6 @@ def _to_tracks(df: pd.DataFrame) -> list[Track]:
 
 
 def _fragmentation(tracked: list[Track], ground_truth: list[Track]) -> int:
-    """Number of times a GT track is split across multiple predicted tracks."""
     gt_ids = sorted({t.track_id for t in ground_truth})
     pred_ids = sorted({t.track_id for t in tracked})
     frag = 0
@@ -61,6 +61,7 @@ def main() -> None:
     parser.add_argument("--tracked", required=True)
     parser.add_argument("--ground-truth", required=True)
     parser.add_argument("--iou-threshold", type=float, default=0.5)
+    parser.add_argument("--out-json", default=None)
     args = parser.parse_args()
 
     trk = _to_tracks(pd.read_csv(args.tracked))
@@ -80,6 +81,13 @@ def main() -> None:
     print(f"  Fragmentation: {frag}")
     print(f"  GT tracks: {len({t.track_id for t in gt})}")
     print(f"  Predicted tracks: {len({t.track_id for t in trk})}")
+
+    out_json = {"hota": h, "idf1": i, "mota": m}
+    if args.out_json:
+        out = Path(args.out_json)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(out_json, indent=2, default=float))
+        print(f"Wrote {out}")
 
 
 if __name__ == "__main__":

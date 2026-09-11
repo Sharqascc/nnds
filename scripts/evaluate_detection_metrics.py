@@ -1,18 +1,14 @@
 #!/usr/bin/env python3
 """Detection metrics: mAP@50, mAP@75, mAP@50:95, per-class recall, APs/APm/APl.
 
-Ground truth CSV must have columns: frame, x1, y1, x2, y2, class_name
-Detection CSV must have columns: frame, x1, y1, x2, y2, class_name, conf
-
-Usage:
-    python scripts/evaluate_detection_metrics.py \
-        --detections outputs/det.csv \
-        --ground-truth tests/fixtures/ground_truth_sample.csv
+Ground truth CSV columns: frame, x1, y1, x2, y2, class_name
+Detection CSV columns:    frame, x1, y1, x2, y2, class_name, conf
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -70,6 +66,7 @@ def main() -> None:
     parser.add_argument("--detections", required=True)
     parser.add_argument("--ground-truth", required=True)
     parser.add_argument("--iou-threshold", type=float, default=0.5)
+    parser.add_argument("--out-json", default=None)
     args = parser.parse_args()
 
     det_df = pd.read_csv(args.detections)
@@ -82,6 +79,7 @@ def main() -> None:
     recalls = per_class_recall(dets, gts, iou_thr=args.iou_threshold)
     size_ap = ap_by_size(dets, gts, iou_thr=args.iou_threshold)
 
+    mean_recall = float(sum(recalls.values()) / len(recalls)) if recalls else 0.0
     print("Detection Metrics:")
     print(f"mAP@50:   {map_scores['mAP50']:.4f}")
     print(f"mAP@75:   {map_scores['mAP75']:.4f}")
@@ -90,6 +88,20 @@ def main() -> None:
     for cls, r in recalls.items():
         print(f"  {cls}: {r:.3f}")
     print(f"APs/APm/APl: {size_ap['APs']:.4f} / {size_ap['APm']:.4f} / {size_ap['APl']:.4f}")
+
+    out_json = {
+        "precision": 0.0,
+        "recall": mean_recall,
+        "f1": 0.0,
+        "map50": map_scores["mAP50"],
+        "map50_95": map_scores["mAP50:95"],
+        "ap75": map_scores["mAP75"],
+    }
+    if args.out_json:
+        out = Path(args.out_json)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(out_json, indent=2, default=float))
+        print(f"Wrote {out}")
 
 
 if __name__ == "__main__":
