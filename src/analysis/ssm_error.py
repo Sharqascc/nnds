@@ -85,3 +85,76 @@ def ssm_value_metrics(
         "pet": pet_value_metrics(pred_events, gt_events),
         "ttc": ttc_value_metrics(pred_events, gt_events),
     }
+
+
+def _pair_set(events: Sequence[SsmEvent], field: str) -> set[tuple[int, int]]:
+    out: set[tuple[int, int]] = set()
+    for e in events:
+        v = getattr(e, field)
+        if v is None or not np.isfinite(v):
+            continue
+        out.add(pair_key(e.track_a, e.track_b))
+    return out
+
+
+def conflict_counts(
+    pred_events: Sequence[SsmEvent],
+    gt_events: Sequence[SsmEvent],
+    field: str = "pet",
+) -> dict[str, int]:
+    """TP / FP / FN at the pair level for events carrying a numeric value."""
+    pred = _pair_set(pred_events, field)
+    gt = _pair_set(gt_events, field)
+    tp = len(pred & gt)
+    fp = len(pred - gt)
+    fn = len(gt - pred)
+    return {"tp": tp, "fp": fp, "fn": fn}
+
+
+def _prf(tp: int, fp: int, fn: int) -> tuple[float, float, float]:
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+    return precision, recall, f1
+
+
+def conflict_prf(
+    pred_events: Sequence[SsmEvent],
+    gt_events: Sequence[SsmEvent],
+    field: str = "pet",
+) -> dict[str, float]:
+    c = conflict_counts(pred_events, gt_events, field=field)
+    p, r, f = _prf(c["tp"], c["fp"], c["fn"])
+    return {
+        "precision": p,
+        "recall": r,
+        "f1": f,
+        "tp": c["tp"],
+        "fp": c["fp"],
+        "fn": c["fn"],
+    }
+
+
+def critical_conflict_recall(
+    pred_events: Sequence[SsmEvent],
+    gt_events: Sequence[SsmEvent],
+    field: str = "pet",
+    threshold: float = 1.5,
+) -> dict[str, float]:
+    """Recall restricted to GT events whose SSM value is below `threshold` seconds."""
+    gt_critical = {
+        pair_key(e.track_a, e.track_b)
+        for e in gt_events
+        if getattr(e, field) is not None
+        and np.isfinite(getattr(e, field))
+        and float(getattr(e, field)) < threshold
+    }
+    if not gt_critical:
+        return {"recall": 0.0, "n_critical_gt": 0, "n_hit": 0}
+    pred = _pair_set(pred_events, field)
+    hit = len(gt_critical & pred)
+    return {
+        "recall": hit / len(gt_critical),
+        "n_critical_gt": len(gt_critical),
+        "n_hit": hit,
+    }
