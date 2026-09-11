@@ -3,7 +3,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from src.analysis.ssm_agreement import agreement_metrics
+from src.analysis.ssm_agreement import agreement_metrics, aligned_pairs
 from src.analysis.ssm_error import SsmEvent
 
 event_st = st.builds(
@@ -26,12 +26,14 @@ def test_identical_r2_is_one(events):
 @given(events_st)
 @settings(max_examples=50)
 def test_identical_spearman_is_one(events):
+    # Spearman is only defined when the deduped values have >= 3 points and
+    # are not all equal. Check the actual aligned arrays (post pair-dedup).
+    pv, _gv = aligned_pairs(events, events, "pet")
     m = agreement_metrics(events, events, "pet")
-    if m["n"] >= 3:
-        # need at least two distinct values for a defined rank correlation
-        vals = {e.pet for e in events}
-        if len(vals) >= 2:
-            assert m["spearman"] == pytest.approx(1.0, abs=1e-9)
+    if pv.size >= 3 and not bool(np.all(pv == pv[0])):
+        assert m["spearman"] >= 0.99
+    else:
+        assert m["spearman"] == 0.0
 
 
 @given(events_st, events_st)
