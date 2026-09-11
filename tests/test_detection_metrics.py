@@ -10,6 +10,7 @@ from src.analysis.detection_metrics import (
     iou,
     map_at_iou_range,
     per_class_recall,
+    precision_recall_f1,
 )
 
 
@@ -141,3 +142,42 @@ def test_ap_by_size_missing_bucket_zero():
     assert ap["APs"] == pytest.approx(1.0)
     assert ap["APm"] == 0.0
     assert ap["APl"] == 0.0
+
+
+def test_precision_recall_f1_perfect():
+    dets = [_det(0, (0, 0, 10, 10))]
+    gts = [_gt(0, (0, 0, 10, 10))]
+    m = precision_recall_f1(dets, gts)
+    assert m["precision"] == pytest.approx(1.0)
+    assert m["recall"] == pytest.approx(1.0)
+    assert m["f1"] == pytest.approx(1.0)
+    assert m["tp"] == 1
+    assert m["fp"] == 0
+    assert m["fn"] == 0
+
+
+def test_precision_recall_f1_half():
+    dets = [_det(0, (0, 0, 10, 10)), _det(0, (100, 100, 110, 110))]
+    gts = [_gt(0, (0, 0, 10, 10))]
+    m = precision_recall_f1(dets, gts)
+    assert m["precision"] == pytest.approx(0.5)
+    assert m["recall"] == pytest.approx(1.0)
+    assert m["tp"] == 1
+    assert m["fp"] == 1
+    assert m["fn"] == 0
+
+
+def test_precision_recall_f1_empty():
+    m = precision_recall_f1([], [])
+    assert m["precision"] == 0.0
+    assert m["recall"] == 0.0
+    assert m["f1"] == 0.0
+
+
+def test_precision_recall_f1_all_missed():
+    dets = [_det(0, (100, 100, 110, 110))]
+    gts = [_gt(0, (0, 0, 10, 10))]
+    m = precision_recall_f1(dets, gts)
+    assert m["precision"] == 0.0
+    assert m["recall"] == 0.0
+    assert m["tp"] == 0
