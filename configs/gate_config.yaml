@@ -1,8 +1,6 @@
-description: Scale-corrected gate for realistic velocity
-end:
-- 2.04
-- 500.0
-start:
-- 0.0
-- 500.0
-units: meters
+gates:
+  - name: default_gate
+    description: Scale-corrected gate for realistic velocity
+    start: [0.0, 500.0]
+    end: [2.04, 500.0]
+    units: meters

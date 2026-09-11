@@ -208,7 +208,7 @@ def run_video_to_pet(
         if not Path(rtdetr_weights_path).exists():
             raise FileNotFoundError(rtdetr_weights_path)
 
-        raise NotImplementedError("RT-DETR backend is not implemented")
+        raise NotImplementedError("RT-DETR video pipeline is not implemented")
 
     else:
         raise ValueError(f"Unsupported detector policy: {detector}")
