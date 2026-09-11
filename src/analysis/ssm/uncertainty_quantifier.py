@@ -394,6 +394,19 @@ class UncertaintyQuantifier:
             g2 = np.asarray(group2)[np.isfinite(group2)]
             n1, n2 = len(g1), len(g2)
 
+            # Identical samples have exactly zero effect; avoid costly
+            # bootstrap resampling and return the normal result schema.
+            if n1 == n2 and np.array_equal(g1, g2):
+                d = 0.0
+                ci = np.array([0.0, 0.0])
+                return {
+                    "estimate": d,
+                    "ci_lower": float(ci[0]),
+                    "ci_upper": float(ci[1]),
+                    "interpretation": self._interpret_effect_size(d),
+                    "estimator": estimator,
+                }
+
             if estimator == "cohens_d":
                 # Pooled standard deviation
                 pooled_var = ((n1 - 1) * np.var(g1, ddof=1) + (n2 - 1) * np.var(g2, ddof=1)) / (
