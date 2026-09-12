@@ -291,7 +291,8 @@ def interactive_detector(frame, model):
 
 def run_demo():
     """Run the lightweight traffic-analysis demonstration."""
-    return None
+    analyzer = CompleteTrafficAnalyzer()
+    return analyzer, [], {}
 
 def run_pipeline(args):
     print(f"🚀 Executing pipeline for {args.video}")
@@ -308,8 +309,8 @@ def run_pipeline(args):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--video", required=True)
-    parser.add_argument("--detector", default="yolo-cpu")
+    parser.add_argument("--video", default=None)
+    parser.add_argument("--detector", default="uvh-coco-fused")
     parser.add_argument("--out-csv", default="outputs/fixed_detections.csv")
     parser.add_argument("--bev-config", default="configs/bev_config.json")
     parser.add_argument("--grid-config", default="configs/GITI_grid_config.json")
@@ -318,11 +319,19 @@ def parse_args():
     parser.add_argument("--max-frames", type=int, default=None)
     parser.add_argument("--max-gap", type=int, default=5)
     parser.add_argument("--max-jump", type=float, default=30.0)
+    parser.add_argument("--demo", action="store_true")
     return parser.parse_args()
 
 def main():
     args = parse_args()
-    run_pipeline(args)
+
+    if args.demo:
+        return run_demo()
+
+    if args.video is None:
+        raise SystemExit("video is required unless --demo is used")
+
+    return run_pipeline(args)
 
 if __name__ == "__main__":
     main()
