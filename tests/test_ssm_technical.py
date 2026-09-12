@@ -28,7 +28,7 @@ def test_pet_non_negativity_invariant(values):
         quality = verifier.check_data_quality(np.array(values), "PET", expected_range=(0.0, 100.0))
         # It should either mark as passed=False or put them in warnings/errors
         # If it's strict_mode, it should be an error.
-        assert quality["passed"] == False or len(quality["warnings"]) > 0
+        assert not quality["passed"] or len(quality["warnings"]) > 0
 
 @given(st.lists(st.floats(min_value=0.0, max_value=1e6), min_size=10, max_size=100))
 def test_ttc_distribution_stability(values):
@@ -71,13 +71,13 @@ def test_empty_or_nan_data():
     # Case 1: Pure NaNs
     nan_data = np.array([np.nan, np.nan])
     res_nan = verifier.verify_pet_calculation(nan_data)
-    assert res_nan["passed"] == False
+    assert not res_nan["passed"]
     assert "no valid data" in res_nan["summary"]
     
     # Case 2: Empty array
     empty_data = np.array([])
     res_empty = verifier.verify_pet_calculation(empty_data)
-    assert res_empty["passed"] == False
+    assert not res_empty["passed"]
     assert "no valid data" in res_empty["summary"]
 
 # ------------------------------------------------------------------
@@ -92,7 +92,7 @@ def test_statistical_comparison_identical():
     data = np.random.normal(1.5, 0.2, 100)
     results = compare_with_reference(data, data, "TTC")
     
-    assert results["passed"] == True
+    assert results["passed"]
     assert results["tests"]["t_test"]["p_value"] > 0.05
     assert abs(results["effect_size"]["cohens_d"]) < 1e-7
 
@@ -105,6 +105,6 @@ def test_statistical_comparison_wildly_different():
     reference = np.random.normal(5.0, 0.1, 100)
     results = compare_with_reference(observed, reference, "TTC")
     
-    assert results["passed"] == False
+    assert not results["passed"]
     assert results["tests"]["t_test"]["p_value"] < 0.05
     assert abs(results["effect_size"]["cohens_d"]) > 1.0

@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 UVH_PATH = Path(
     "src/analysis/grid_trajectory/uvh_coco_fused_grid_pet.py"
 )

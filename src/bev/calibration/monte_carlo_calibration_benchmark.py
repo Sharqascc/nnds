@@ -29,9 +29,9 @@ Refinements:
 import argparse
 import json
 import logging
+import math
 from pathlib import Path
 
-import math
 import cv2
 import numpy as np
 

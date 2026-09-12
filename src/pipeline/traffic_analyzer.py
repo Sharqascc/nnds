@@ -43,7 +43,8 @@ class CompleteTrafficAnalyzer:
         self.pixel_points = np.array(pixel_points, dtype=np.float32)
         self.world_points_approx = np.array(world_points_approx, dtype=np.float32)
         H, mask = cv2.findHomography(self.pixel_points, self.world_points_approx[:, :2], cv2.RANSAC, ransacReprojThreshold=ransac_threshold, confidence=ransac_confidence, maxIters=ransac_max_iters)
-        if H is None: raise RuntimeError("Homography estimation failed")
+        if H is None:
+            raise RuntimeError("Homography estimation failed")
         self.homography = H
         self.inv_homography = np.linalg.inv(self.homography)
         if mask is not None:
@@ -69,15 +70,17 @@ class CompleteTrafficAnalyzer:
         self.meters_per_pixel_y = (self.bev_y_max - self.bev_y_min) / self.bev_height
 
     def pixel_to_world(self, pixel_point):
-        if self.homography is None: raise RuntimeError("Homography not initialized")
+        if self.homography is None:
+            raise RuntimeError("Homography not initialized")
         pixel_h = np.append(np.array(pixel_point, dtype=np.float32), 1).reshape(3, 1)
         world_h = self.homography @ pixel_h
         return (world_h[:2] / world_h[2]).flatten()
 
     def validate_bev(self):
-        if self.pixel_points is None or self.world_points_approx is None: raise RuntimeError("Calibration must be run before BEV validation")
+        if self.pixel_points is None or self.world_points_approx is None:
+            raise RuntimeError("Calibration must be run before BEV validation")
         validation_results = []
-        for i, (pix, world) in enumerate(zip(self.pixel_points, self.world_points_approx)):
+        for i, (pix, world) in enumerate(zip(self.pixel_points, self.world_points_approx, strict=True)):
             world_computed = self.pixel_to_world(pix)
             error = float(np.linalg.norm(world_computed - world[:2]))
             validation_results.append({"point": i + 1, "error": error, "inlier": bool(self.inlier_mask[i])})
@@ -407,7 +410,7 @@ def interactive_detector(frame, model):
         conf = boxes.conf.cpu().numpy()
         classes = boxes.cls.cpu().numpy()
 
-        for coordinates, confidence, class_id in zip(xyxy, conf, classes):
+        for coordinates, confidence, class_id in zip(xyxy, conf, classes, strict=True):
             class_id = int(class_id)
 
             if isinstance(names, dict):
