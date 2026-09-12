@@ -94,6 +94,31 @@ class CompleteTrafficAnalyzer:
             "rmse": rmse,
         }
 
+
+    def save_calibration(self, path):
+        """Save homography and BEV calibration parameters as JSON."""
+        if self.homography is None:
+            raise RuntimeError("Calibration must be run before saving")
+
+        output_path = Path(path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        payload = {
+            "homography": np.asarray(self.homography).tolist(),
+            "bev_x_min": self.bev_x_min,
+            "bev_x_max": self.bev_x_max,
+            "bev_y_min": self.bev_y_min,
+            "bev_y_max": self.bev_y_max,
+            "meters_per_pixel_x": self.meters_per_pixel_x,
+            "meters_per_pixel_y": self.meters_per_pixel_y,
+            "calibration_metrics": self.calibration_metrics,
+        }
+
+        output_path.write_text(
+            json.dumps(payload, indent=2),
+            encoding="utf-8",
+        )
+
     def estimate_speed(self, pixel_positions, frame_times, fps=30.0):
         if self.homography is None:
             raise RuntimeError("Homography not initialized")
