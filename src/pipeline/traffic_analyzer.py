@@ -56,6 +56,9 @@ class CompleteTrafficAnalyzer:
         return self.homography, self.inlier_mask
 
     def _calculate_bev_scale(self, safety_margin=0.2):
+        if self.world_points_approx is None:
+            return
+
         all_points = self.world_points_approx[:, :2]
         x_min, y_min = all_points.min(axis=0)
         x_max, y_max = all_points.max(axis=0)
