@@ -1,42 +1,109 @@
-# scripts/agentic_fix_ollama.py
+"""Utilities for the local Ollama agentic fixer."""
 
-OLLAMA_MODELS = ["model1", "model2", "model3"]  # Example value
+import re
+import subprocess
+import time
+from typing import Any
 
-def test_max_file_limits_positive():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
+import requests
 
-def test_models_list_nonempty():
-    assert isinstance(agentic_fix_ollama.OLLAMA_MODELS, list)
+OLLAMA_MODELS = ["model1", "model2", "model3"]
+MAX_FILE_LINES = 400
+MAX_FILE_CHARS = 16000
+OLLAMA_URL = "http://localhost:11434/api/chat"
+REQUEST_TIMEOUT = 120
 
-def test_max_file_limits_positive():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
 
-def test_run_cmd_returns_completed_process():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
+def run_cmd(
+    cmd: list[str],
+    timeout: int = 120,
+    **kwargs: Any,
+) -> subprocess.CompletedProcess[str]:
+    try:
+        return subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            **kwargs,
+        )
+    except subprocess.TimeoutExpired as exc:
+        return subprocess.CompletedProcess(
+            cmd,
+            returncode=124,
+            stdout=exc.stdout or "",
+            stderr=exc.stderr or "timeout",
+        )
 
-def test_call_with_fallback_success_first_model():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
 
-def test_call_with_fallback_rate_limit_then_success():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
+def extract_patch(raw: str) -> str:
+    if not raw:
+        return ""
 
-def test_call_with_fallback_all_models_fail_raises():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
+    text = str(raw).strip()
 
-def test_run_cmd_timeout_returns_completed_process():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
+    if text.upper() == "NO_CHANGES":
+        return ""
 
-def test_call_github_models_success():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
+    if "<<<PATCH_START>>>" in text:
+        text = text.split("<<<PATCH_START>>>", 1)[1]
+        if "<<<PATCH_END>>>" in text:
+            text = text.split("<<<PATCH_END>>>", 1)[0]
 
-def test_call_github_models_no_token_raises():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
+    match = re.search(
+        r"```(?:diff|patch)?\s*(.*?)```",
+        text,
+        flags=re.DOTALL | re.IGNORECASE,
+    )
+    if match:
+        text = match.group(1)
 
-def test_call_with_github_fallback_uses_github_when_groq_fails():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
+    start = text.find("diff --git ")
+    if start >= 0:
+        text = text[start:]
+    else:
+        start = text.find("--- ")
+        if start >= 0:
+            text = text[start:]
 
-def test_call_with_fallback_always_returns_success_when_one_model_works():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
+    return text.strip()
 
-def test_extract_patch_strips_markdown():
-    assert hasattr(agentic_fix_ollama, 'MAX_FILE_LINES') and agentic_fix_ollama.MAX_FILE_LINES > 0
+
+def call_ollama(messages: list[dict[str, str]]) -> str:
+    last_error: Exception | None = None
+
+    for model in OLLAMA_MODELS:
+        payload = {
+            "model": model,
+            "messages": messages,
+            "stream": False,
+        }
+
+        try:
+            response = requests.post(
+                OLLAMA_URL,
+                json=payload,
+                timeout=REQUEST_TIMEOUT,
+            )
+
+            if response.status_code != 200:
+                raise RuntimeError(
+                    f"Ollama model {model} returned HTTP "
+                    f"{response.status_code}"
+                )
+
+            content = response.json().get("message", {}).get("content", "")
+            if content is not None:
+                return str(content)
+
+            raise RuntimeError(f"Ollama model {model} returned no content")
+
+        except requests.exceptions.RequestException as exc:
+            last_error = exc
+            time.sleep(1)
+
+        except Exception as exc:
+            last_error = exc
+            time.sleep(1)
+
+    raise RuntimeError("All Ollama models failed") from last_error
