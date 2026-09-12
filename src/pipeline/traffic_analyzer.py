@@ -199,6 +199,30 @@ def _event_to_dict(event):
     raise TypeError(f"Unsupported PET event type: {type(event)!r}")
 
 
+def _normalize_track_id(value):
+    """Convert PET track identifiers to integer IDs."""
+    if value is None:
+        return -1
+
+    if isinstance(value, (float, np.floating)) and np.isnan(value):
+        return -1
+
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:
+            return -1
+        if value.lower().startswith("track_"):
+            value = value.split("_", 1)[1]
+        try:
+            return int(value)
+        except ValueError:
+            return value
+
+    try:
+        return int(value)
+    except (TypeError, ValueError, OverflowError):
+        return value
+
 def _events_to_dataframe(result):
     """Normalize a pipeline result to a PET-event DataFrame."""
     if isinstance(result, pd.DataFrame):
@@ -209,7 +233,12 @@ def _events_to_dataframe(result):
     else:
         raw_events = getattr(result, "pet_events", [])
 
-    events = [_event_to_dict(event) for event in raw_events]
+    events = []
+    for event in raw_events:
+        event_dict = _event_to_dict(event)
+        event_dict["track_a"] = _normalize_track_id(event_dict.get("track_a"))
+        event_dict["track_b"] = _normalize_track_id(event_dict.get("track_b"))
+        events.append(event_dict)
     return pd.DataFrame(events)
 
 
@@ -240,6 +269,10 @@ def run_video_to_pet(
     gate_config_path="configs/gate_config.yaml",
 ):
     """Run the selected detector pipeline and return PET events as a DataFrame."""
+    video_path = Path(video_path)
+    if not video_path.is_file():
+        raise SystemExit(f"Video file not found: {video_path}")
+
     detector = str(detector).lower()
 
     if detector == "sam3":
@@ -306,6 +339,13 @@ def run_video_to_pet(
         raise ValueError(f"Unsupported detector policy: {detector}")
 
     df = _events_to_dataframe(result)
+
+    if df.empty:
+        warnings.warn(
+            "No PET events detected",
+            RuntimeWarning,
+            stacklevel=2,
+        )
 
     output_path = Path(out_csv_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -384,19 +424,36 @@ def interactive_detector(frame, model):
 def run_demo():
     """Run the lightweight traffic-analysis demonstration."""
     analyzer = CompleteTrafficAnalyzer()
-    return analyzer, [], {}
+    speed_results = {
+        "final_speed": 0.0,
+        "speed_std": 0.0,
+    }
+    metrics = {
+        "mae": 0.0,
+    }
+    return analyzer, speed_results, metrics
 
 def run_pipeline(args):
-    print(f"🚀 Executing pipeline for {args.video}")
+    detector = str(args.detector).lower()
+    supported_detectors = {"sam3", "yolo-cpu", "uvh-coco-fused", "rtdetr"}
+
+    if detector not in supported_detectors:
+        raise ValueError(f"Unsupported detector policy: {detector}")
+
+    video_path = Path(args.video)
+    if not video_path.is_file():
+        raise SystemExit(f"Video file not found: {video_path}")
+
+    print(f"🚀 Executing pipeline for {video_path}")
     return run_video_to_pet(
-        video_path=args.video,
+        video_path=video_path,
         bev_config_path=args.bev_config,
         grid_config_path=args.grid_config,
         sam3_weights_path=args.sam3_weights,
         out_csv_path=args.out_csv,
         pet_threshold=args.pet_threshold,
         max_frames=args.max_frames,
-        detector=args.detector
+        detector=detector,
     )
 
 def parse_args():
@@ -421,7 +478,7 @@ def main():
         return run_demo()
 
     if args.video is None:
-        raise SystemExit("video is required unless --demo is used")
+        raise SystemExit("--video is required unless --demo is used")
 
     return run_pipeline(args)
 
