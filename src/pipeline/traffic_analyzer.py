@@ -103,8 +103,16 @@ class CompleteTrafficAnalyzer:
         output_path = Path(path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
+        bev_bounds = {
+            "x_min": self.bev_x_min,
+            "x_max": self.bev_x_max,
+            "y_min": self.bev_y_min,
+            "y_max": self.bev_y_max,
+        }
+
         payload = {
             "homography": np.asarray(self.homography).tolist(),
+            "bev_bounds": bev_bounds,
             "bev_x_min": self.bev_x_min,
             "bev_x_max": self.bev_x_max,
             "bev_y_min": self.bev_y_min,
