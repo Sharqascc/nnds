@@ -75,7 +75,7 @@ class CompleteTrafficAnalyzer:
         return (world_h[:2] / world_h[2]).flatten()
 
     def validate_bev(self):
-        if self.pixel_points is None or self.world_points_approx is None: raise RuntimeError("Calibration required")
+        if self.pixel_points is None or self.world_points_approx is None: raise RuntimeError("Calibration must be run before BEV validation")
         validation_results = []
         for i, (pix, world) in enumerate(zip(self.pixel_points, self.world_points_approx)):
             world_computed = self.pixel_to_world(pix)
