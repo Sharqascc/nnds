@@ -81,7 +81,18 @@ class CompleteTrafficAnalyzer:
             world_computed = self.pixel_to_world(pix)
             error = float(np.linalg.norm(world_computed - world[:2]))
             validation_results.append({"point": i + 1, "error": error, "inlier": bool(self.inlier_mask[i])})
-        return {"mean_error": float(np.mean([r["error"] for r in validation_results]))}
+        errors = np.asarray(
+            [result["error"] for result in validation_results],
+            dtype=float,
+        )
+        mean_error = float(np.mean(errors))
+        rmse = float(np.sqrt(np.mean(errors ** 2)))
+
+        return {
+            "mean_error": mean_error,
+            "mean_error_all": mean_error,
+            "rmse": rmse,
+        }
 
     def estimate_speed(self, pixel_positions, frame_times, fps=30.0):
         if self.homography is None:
