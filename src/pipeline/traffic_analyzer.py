@@ -81,17 +81,55 @@ class CompleteTrafficAnalyzer:
         return {"mean_error": float(np.mean([r["error"] for r in validation_results]))}
 
     def estimate_speed(self, pixel_positions, frame_times, fps=30.0):
-        if self.homography is None: raise RuntimeError("Homography not initialized")
-        world_positions = [self.pixel_to_world(pos) for pos in pixel_positions if np.all(np.isfinite(pos))]
-        if len(world_positions) < 5: return {"final_speed": 15.0, "speed_std": 2.0}
-        world_positions_arr = np.vstack(world_positions)
+        if self.homography is None:
+            raise RuntimeError("Homography not initialized")
+
+        pixel_positions = np.asarray(pixel_positions)
+        frame_times = np.asarray(frame_times)
+
+        if len(pixel_positions) != len(frame_times):
+            raise ValueError(
+                "pixel_positions and frame_times must have the same length"
+            )
+
+        valid_positions = np.isfinite(pixel_positions).all(axis=1)
+        valid_times = np.isfinite(frame_times)
+        valid_mask = valid_positions & valid_times
+
+        if valid_mask.sum() < 5:
+            return {"final_speed": 15.0, "speed_std": 2.0}
+
+        filtered_positions = pixel_positions[valid_mask]
+        filtered_times = frame_times[valid_mask]
+
+        world_positions = np.vstack(
+            [self.pixel_to_world(pos) for pos in filtered_positions]
+        )
+
         speeds = []
-        for i in range(1, len(world_positions_arr)):
-            dist = float(np.linalg.norm(world_positions_arr[i] - world_positions_arr[i - 1]))
-            time_diff = float(frame_times[i] - frame_times[i - 1])
-            if time_diff > 0: speeds.append((dist / time_diff) * 3.6)
-        if len(speeds) < 3: return {"final_speed": 15.0, "speed_std": 2.0}
-        return {"final_speed": float(np.median(speeds)), "speed_std": float(np.std(speeds))}
+
+        for i in range(1, len(world_positions)):
+            time_diff = float(filtered_times[i] - filtered_times[i - 1])
+
+            if time_diff <= 0:
+                continue
+
+            distance = float(
+                np.linalg.norm(world_positions[i] - world_positions[i - 1])
+            )
+            speed_kmh = (distance / time_diff) * 3.6
+
+            if 0.0 < speed_kmh <= 50.0:
+                speeds.append(speed_kmh)
+
+        if len(speeds) < 3:
+            return {"final_speed": 15.0, "speed_std": 2.0}
+
+        return {
+            "final_speed": float(np.median(speeds)),
+            "speed_std": float(np.std(speeds)),
+        }
+
 
 def _event_to_dict(event):
     """Convert dictionary-like or object-like events to dictionaries."""
