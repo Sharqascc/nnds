@@ -45,3 +45,10 @@ htmlcov/
 .hypothesis/
 
 outputs/logs/
+
+# Keep ground-truth annotation packs tracked
+!data/annotations/
+!data/annotations/**
+!data/annotations/**/*.csv
+!data/annotations/**/*.jpg
+!data/annotations/**/*.md
