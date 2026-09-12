@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """End-to-end smoke test for the metric pipeline using synthetic data.
 
-Generates fake ground truth and fake predictions, runs every metric script
-with --out-json, and assembles the 15-row gold-standard table.
+Generates fake ground truth and fake pipeline output, runs the converter to
+produce PRED CSVs in the metric schemas, runs every metric script with
+--out-json, and assembles the 15-row gold-standard table.
 
-This is a plumbing test: it proves the pipeline runs end-to-end. It does NOT
-say anything about NNDS accuracy -- the "predictions" here are synthetic.
+This is a plumbing test: it proves the pipeline runs end-to-end, including
+the run_pipeline.py -> metric-schema conversion step. It does NOT say
+anything about NNDS accuracy -- the "predictions" here are synthetic.
 """
 
 from __future__ import annotations
@@ -41,15 +43,34 @@ def _write_gt_detection(path: Path, n_frames: int = 10) -> None:
     pd.DataFrame(rows).to_csv(path, index=False)
 
 
-def _write_pred_detection(path: Path, gt: Path, jitter: float = 2.0) -> None:
-    gt_df = pd.read_csv(gt)
+def _write_pipeline_detections(path: Path, n_frames: int = 10, jitter: float = 2.0) -> None:
+    """Write a CSV in run_pipeline.py's detection schema."""
     rng = np.random.default_rng(0)
-    gt_df["x1"] += rng.normal(0, jitter, len(gt_df))
-    gt_df["y1"] += rng.normal(0, jitter, len(gt_df))
-    gt_df["x2"] += rng.normal(0, jitter, len(gt_df))
-    gt_df["y2"] += rng.normal(0, jitter, len(gt_df))
-    gt_df["conf"] = 0.9
-    gt_df.to_csv(path, index=False)
+    rows = []
+    for f in range(n_frames):
+        for tid, base in ((1, (10 + f, 20)), (2, (100, 100 + f))):
+            x1 = base[0] + float(rng.normal(0, jitter))
+            y1 = base[1] + float(rng.normal(0, jitter))
+            x2 = x1 + (50 if tid == 1 else 20)
+            y2 = y1 + (60 if tid == 1 else 40)
+            cls = "car" if tid == 1 else "pedestrian"
+            rows.append(
+                {
+                    "frame": f,
+                    "track_id": tid,
+                    "class_id": 0 if tid == 1 else 1,
+                    "class_name": cls,
+                    "conf": 0.9,
+                    "x1": x1,
+                    "y1": y1,
+                    "x2": x2,
+                    "y2": y2,
+                    "cx": (x1 + x2) / 2.0,
+                    "cy": (y1 + y2) / 2.0,
+                    "source": "uvh26",
+                }
+            )
+    pd.DataFrame(rows).to_csv(path, index=False)
 
 
 def _write_gt_tracking(path: Path, n_frames: int = 10) -> None:
@@ -71,12 +92,28 @@ def _write_gt_trajectory(path: Path, n_frames: int = 10, fps: float = 30.0) -> N
     pd.DataFrame(rows).to_csv(path, index=False)
 
 
-def _write_pred_trajectory(path: Path, gt: Path, jitter: float = 0.05) -> None:
-    gt_df = pd.read_csv(gt)
-    rng = np.random.default_rng(1)
-    gt_df["x"] += rng.normal(0, jitter, len(gt_df))
-    gt_df["y"] += rng.normal(0, jitter, len(gt_df))
-    gt_df.to_csv(path, index=False)
+def _write_pipeline_pet(path: Path) -> None:
+    rows = [
+        {
+            "event_id": 0,
+            "site": "GITI",
+            "pet": 1.2,
+            "conflict_type": "crossing",
+            "grid_cell": "A1",
+            "orig_track_a": 1,
+            "orig_track_b": 2,
+        },
+        {
+            "event_id": 1,
+            "site": "GITI",
+            "pet": 2.5,
+            "conflict_type": "rear_end",
+            "grid_cell": "B2",
+            "orig_track_a": 3,
+            "orig_track_b": 4,
+        },
+    ]
+    pd.DataFrame(rows).to_csv(path, index=False)
 
 
 def _write_gt_ssm(path: Path) -> None:
@@ -87,12 +124,9 @@ def _write_gt_ssm(path: Path) -> None:
     pd.DataFrame(rows).to_csv(path, index=False)
 
 
-def _write_pred_ssm(path: Path, gt: Path, jitter: float = 0.1) -> None:
-    gt_df = pd.read_csv(gt)
-    rng = np.random.default_rng(2)
-    gt_df["pet"] += rng.normal(0, jitter, len(gt_df))
-    gt_df["ttc"] += rng.normal(0, jitter, len(gt_df))
-    gt_df.to_csv(path, index=False)
+def _write_bev_config(path: Path, scale: float = 0.05) -> None:
+    H = [[scale, 0.0, -1.0], [0.0, scale, -1.0], [0.0, 0.0, 1.0]]
+    path.write_text(json.dumps({"H_pixel_to_world": H}))
 
 
 def _run(cmd: list[str]) -> None:
@@ -113,20 +147,21 @@ def main() -> None:
     out.mkdir(parents=True, exist_ok=True)
 
     gt_det = out / "gt_detection.csv"
-    pred_det = out / "pred_detection.csv"
     gt_trk = out / "gt_tracking.csv"
     gt_traj = out / "gt_trajectory.csv"
-    pred_traj = out / "pred_trajectory.csv"
     gt_ssm = out / "gt_ssm.csv"
-    pred_ssm = out / "pred_ssm.csv"
+    pipeline_det = out / "pipeline_detections.csv"
+    pipeline_pet = out / "pipeline_pet.csv"
+    bev_cfg = out / "bev_config.json"
+    schemas = out / "schemas"
 
     _write_gt_detection(gt_det)
-    _write_pred_detection(pred_det, gt_det)
     _write_gt_tracking(gt_trk)
     _write_gt_trajectory(gt_traj)
-    _write_pred_trajectory(pred_traj, gt_traj)
     _write_gt_ssm(gt_ssm)
-    _write_pred_ssm(pred_ssm, gt_ssm)
+    _write_pipeline_detections(pipeline_det)
+    _write_pipeline_pet(pipeline_pet)
+    _write_bev_config(bev_cfg)
 
     det_json = out / "detection.json"
     trk_json = out / "tracking.json"
@@ -153,6 +188,26 @@ def main() -> None:
     _run(
         [
             py,
+            "scripts/pipeline_to_metric_schemas.py",
+            "--detections-csv",
+            str(pipeline_det),
+            "--pet-csv",
+            str(pipeline_pet),
+            "--bev-config",
+            str(bev_cfg),
+            "--out-dir",
+            str(schemas),
+        ]
+    )
+
+    pred_det = schemas / "pred_detection.csv"
+    pred_trk = schemas / "pred_tracking.csv"
+    pred_traj = schemas / "pred_trajectory.csv"
+    pred_ssm = schemas / "pred_ssm.csv"
+
+    _run(
+        [
+            py,
             "scripts/evaluate_detection_metrics.py",
             "--detections",
             str(pred_det),
@@ -163,14 +218,12 @@ def main() -> None:
         ]
     )
 
-    # Tracking metrics need ID-labelled predictions. Reuse GT as a perfect
-    # prediction here -- the point is to prove the plumbing runs.
     _run(
         [
             py,
             "scripts/evaluate_tracking_metrics.py",
             "--tracked",
-            str(gt_trk),
+            str(pred_trk),
             "--ground-truth",
             str(gt_trk),
             "--out-json",

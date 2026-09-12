@@ -81,3 +81,18 @@ Rules:
     python scripts/evaluate_trajectory_metrics.py --predicted  pred_traj.csv --ground-truth gt_trajectory.csv --fps 30
     python scripts/evaluate_ssm_metrics.py        --predicted  pred_ssm.csv  --ground-truth gt_ssm.csv
     python scripts/pet_agreement_report.py        --predicted  pred_ssm.csv  --ground-truth gt_ssm.csv
+
+## Converting pipeline output
+
+Before running the metric scripts, convert raw pipeline output to the metric
+schemas:
+
+    python scripts/pipeline_to_metric_schemas.py \
+        --detections-csv outputs/run_detections.csv \
+        --pet-csv        outputs/run_pet.csv \
+        --bev-config     configs/bev_config.json \
+        --out-dir        outputs/schemas
+
+Then use the `pred_*.csv` files produced in `outputs/schemas/` as the
+`--detections`, `--tracked`, `--predicted` arguments below.
+

@@ -86,3 +86,24 @@ The test suite (unit + Hypothesis property tests) verifies that every metric
 function is implemented correctly: bounded, monotone where it should be,
 correct on controlled inputs. It does not verify that NNDS outputs are
 accurate. That requires real ground truth.
+
+## Converting pipeline output to metric schemas
+
+`scripts/pipeline_to_metric_schemas.py` converts `run_pipeline.py` output into
+the four PRED CSVs the metric scripts consume:
+
+    python scripts/pipeline_to_metric_schemas.py \
+        --detections-csv outputs/run_detections.csv \
+        --pet-csv        outputs/run_pet.csv \
+        --bev-config     configs/bev_config.json \
+        --out-dir        outputs/schemas
+
+Writes:
+- `pred_detection.csv`  (frame, x1, y1, x2, y2, class_name, conf)
+- `pred_tracking.csv`   (frame, track_id, x, y, w, h)
+- `pred_trajectory.csv` (frame, track_id, x, y) -- world coords in meters
+- `pred_ssm.csv`        (track_a, track_b, pet)
+
+The trajectory conversion projects each detection's box center through
+`H_pixel_to_world` from the BEV config.
+
