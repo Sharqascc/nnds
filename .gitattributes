@@ -3,6 +3,6 @@ checkpoints/*.pt filter=lfs diff=lfs merge=lfs -text
 uvh26_data/** filter=lfs diff=lfs merge=lfs -text
 *.pt filter=lfs diff=lfs merge=lfs -text
 *.mp4 filter=lfs diff=lfs merge=lfs -text
-
 # Override LFS for small config and demo files
 docs/data_samples/petevents_bev_demo.csv -filter -diff -merge -text
+data/sample_data/GITI_traffic_video.mp4 filter=lfs diff=lfs merge=lfs -text
