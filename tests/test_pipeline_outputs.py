@@ -135,3 +135,34 @@ def test_traj_points_to_rows_round_trip():
     pts = [TrajPoint(frame=0, track_id=1, x=1.5, y=2.5)]
     rows = traj_points_to_rows(pts)
     assert rows == [{"frame": 0, "track_id": 1, "x": 1.5, "y": 2.5}]
+
+
+def test_ssm_alternate_track_pair_schema():
+    """Real pipeline PET CSV uses track_a/track_b, not orig_track_a/b."""
+    row = {
+        "event_id": 0,
+        "site": "GITI",
+        "pet": 0.7,
+        "conflict_type": "other",
+        "grid_cell": "A1",
+        "track_a": 44000,
+        "track_b": 2000,
+    }
+    evs = ssm_events_from_pet_rows([row])
+    assert len(evs) == 1
+    assert evs[0].track_a == 44000
+    assert evs[0].track_b == 2000
+    assert evs[0].pet == pytest.approx(0.7)
+
+
+def test_ssm_no_track_pair_raises():
+    with pytest.raises(ValueError):
+        ssm_events_from_pet_rows([{"pet": 0.7}])
+
+
+def test_ssm_both_schemas_same_result():
+    row_a = {"pet": 1.2, "orig_track_a": 1, "orig_track_b": 2}
+    row_b = {"pet": 1.2, "track_a": 1, "track_b": 2}
+    ev_a = ssm_events_from_pet_rows([row_a])[0]
+    ev_b = ssm_events_from_pet_rows([row_b])[0]
+    assert ev_a == ev_b

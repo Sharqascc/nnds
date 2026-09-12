@@ -18,7 +18,11 @@ from src.analysis.tracking_metrics import Track
 _PIPELINE_DET_COLS: frozenset[str] = frozenset(
     {"frame", "track_id", "class_name", "conf", "x1", "y1", "x2", "y2", "cx", "cy"}
 )
-_PIPELINE_PET_COLS: frozenset[str] = frozenset({"orig_track_a", "orig_track_b", "pet"})
+_PIPELINE_PET_REQUIRED: frozenset[str] = frozenset({"pet"})
+_PIPELINE_PET_TRACK_PAIRS: tuple[tuple[str, str], ...] = (
+    ("orig_track_a", "orig_track_b"),  # fixture CSVs / legacy
+    ("track_a", "track_b"),  # real pipeline output
+)
 
 
 @dataclass(frozen=True)
@@ -119,11 +123,27 @@ def trajectories_from_pipeline_rows(rows: Sequence[dict], H: np.ndarray) -> list
     return out
 
 
+def _pick_track_pair(row: dict) -> tuple[str, str]:
+    """Return the (track_a, track_b) key names present in this row."""
+    for a, b in _PIPELINE_PET_TRACK_PAIRS:
+        if a in row and b in row:
+            return a, b
+    raise ValueError(
+        f"pipeline PET row has no track pair: expected one of {_PIPELINE_PET_TRACK_PAIRS}"
+    )
+
+
 def ssm_events_from_pet_rows(rows: Sequence[dict]) -> list[SsmEvent]:
-    """Convert pipeline PET event rows to SsmEvent objects."""
+    """Convert pipeline PET event rows to SsmEvent objects.
+
+    Accepts either (orig_track_a, orig_track_b) -- the fixture CSV schema --
+    or (track_a, track_b) -- the schema emitted by the real run_pipeline.py
+    UVH-COCO PET CSV.
+    """
     events: list[SsmEvent] = []
     for r in rows:
-        _check_columns(r, _PIPELINE_PET_COLS)
+        _check_columns(r, _PIPELINE_PET_REQUIRED)
+        key_a, key_b = _pick_track_pair(r)
         pet = r.get("pet")
         pet_f: float | None = None
         if pet is not None:
@@ -136,8 +156,8 @@ def ssm_events_from_pet_rows(rows: Sequence[dict]) -> list[SsmEvent]:
             ttc_f = None if f != f else f
         events.append(
             SsmEvent(
-                track_a=_to_int(r["orig_track_a"]),
-                track_b=_to_int(r["orig_track_b"]),
+                track_a=_to_int(r[key_a]),
+                track_b=_to_int(r[key_b]),
                 pet=pet_f,
                 ttc=ttc_f,
             )
