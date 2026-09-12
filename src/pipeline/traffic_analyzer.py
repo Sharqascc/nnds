@@ -357,6 +357,8 @@ def run_video_to_pet(
 
         result = uvh_mod.run_uvh_coco_fused_grid_pet(
             video_path=str(video_path),
+            bev_config_path=str(bev_config_path),
+            grid_config_path=str(grid_config_path),
             output_csv_path=str(out_csv_path),
             pet_threshold=pet_threshold,
             max_frames=max_frames,
