@@ -127,6 +127,13 @@ class CompleteTrafficAnalyzer:
             encoding="utf-8",
         )
 
+
+    def generate_report(self, speed_results):
+        """Generate a report from speed-analysis results."""
+        return {
+            "speed_results": dict(speed_results or {}),
+        }
+
     def estimate_speed(self, pixel_positions, frame_times, fps=30.0):
         if self.homography is None:
             raise RuntimeError("Homography not initialized")
