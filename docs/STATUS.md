@@ -37,6 +37,11 @@ See `MODULE_MANIFEST.md` for the exact path from video to PET events.
 - `calibration_provenance.md` — Calibration details
 - `DEPRECATED_CONFIGS.md` — Deprecated configs
 
+## GITI evaluation status
+
+See `GITI_EVAL_STATUS.md` for the current state of the real-data
+evaluation on the GITI clip, including known issues and next steps.
+
 ## Evaluation Framework
 
 A full SSM evaluation framework lives alongside the pipeline. It is
