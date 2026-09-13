@@ -578,11 +578,14 @@ def run_uvh_coco_fused_grid_pet(
                 }
             )
 
+            # Trajectory points are stored at the box bottom-center, not the
+            # box center. The bottom edge is the ground-contact line and is
+            # what BEV projection / PET / grid-cell assignment should use.
             tracks.setdefault(track_id, []).append(
                 TrackPoint(
                     frame=det.frame,
                     x=det.cx,
-                    y=det.cy,
+                    y=det.y2,
                     cls_id=det.cls_id,
                     cls_name=det.cls_name,
                     conf=det.conf,
@@ -892,7 +895,11 @@ def run_uvh_coco_fused_grid_pet(
 
 
 def _track_to_json(points: list[TrackPoint], bev_mapper=None) -> str:
-    """Convert a list of TrackPoint to a JSON string with pixel and world coords."""
+    """Convert a list of TrackPoint to a JSON string with pixel and world coords.
+
+    pt.x / pt.y are already the box bottom-center (ground contact), so no
+    change is needed here — the JSON carries whatever the pipeline stored.
+    """
     rows = []
     for pt in points:
         row = {
