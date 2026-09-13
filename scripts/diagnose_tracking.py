@@ -1,99 +1,56 @@
 #!/usr/bin/env python3
-"""
-Diagnose tracking instability by analyzing detections CSV.
+"""Print track stability diagnostics from a detection CSV."""
 
-For each track, computes:
-  - frame span and number of detections
-  - max frame gap between consecutive detections
-  - max spatial jump (in pixels) between consecutive detections
-  - average jump
-
-Flags suspicious tracks: max_gap > 10 frames OR max_jump > 50 pixels.
-
-Usage:
-    python scripts/diagnose_tracking.py --csv outputs/petevents_bev_300_split_detections.csv
-"""
+from __future__ import annotations
 
 import argparse
+import json
+import sys
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-def analyze_track(group):
-    """Analyze a single track group."""
-    group = group.sort_values("frame")
-    frames = group["frame"].values
-    x = group["cx"].values
-    y = group["cy"].values
-
-    if len(group) < 2:
-        return {
-            "num_detections": len(group),
-            "start_frame": frames[0] if len(group) else None,
-            "end_frame": frames[-1] if len(group) else None,
-            "max_gap": 0,
-            "max_jump": 0.0,
-            "avg_jump": 0.0,
-            "flag": False,
-        }
-
-    gaps = np.diff(frames)
-    max_gap = int(gaps.max()) if len(gaps) > 0 else 0
-
-    dx = np.diff(x)
-    dy = np.diff(y)
-    jumps = np.sqrt(dx**2 + dy**2)
-    max_jump = float(jumps.max()) if len(jumps) > 0 else 0.0
-    avg_jump = float(jumps.mean()) if len(jumps) > 0 else 0.0
-
-    flag = bool(max_gap > 10 or max_jump > 50.0)
-
-    return {
-        "num_detections": len(group),
-        "start_frame": int(frames[0]),
-        "end_frame": int(frames[-1]),
-        "max_gap": max_gap,
-        "max_jump": max_jump,
-        "avg_jump": avg_jump,
-        "flag": flag,
-    }
+from src.analysis.track_stability import full_report, tracks_from_rows
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--csv", default="outputs/petevents_bev_300_split_detections.csv")
-    parser.add_argument("--report", default="outputs/tracking_diagnosis.csv")
-    args = parser.parse_args()
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--detections-csv", required=True)
+    ap.add_argument("--out-json", default=None)
+    args = ap.parse_args()
 
-    csv_path = Path(args.csv)
-    if not csv_path.exists():
-        raise FileNotFoundError(f"CSV not found: {csv_path}")
+    df = pd.read_csv(args.detections_csv)
+    required = {"frame", "track_id", "x1", "y1", "x2", "y2"}
+    missing = required - set(df.columns)
+    if missing:
+        raise SystemExit(f"missing columns: {sorted(missing)}")
 
-    df = pd.read_csv(csv_path)
-    if "track_id" not in df.columns or "frame" not in df.columns:
-        raise ValueError("CSV must contain 'track_id' and 'frame' columns")
+    df["w"] = df["x2"] - df["x1"]
+    df["h"] = df["y2"] - df["y1"]
+    if "cx" not in df.columns:
+        df["cx"] = (df["x1"] + df["x2"]) / 2.0
+    if "cy" not in df.columns:
+        df["cy"] = (df["y1"] + df["y2"]) / 2.0
 
-    rows = []
-    for track_id, group in df.groupby("track_id"):
-        info = analyze_track(group)
-        info["track_id"] = track_id
-        rows.append(info)
+    tracks = tracks_from_rows(df.to_dict(orient="records"))
+    report = full_report(tracks)
 
-    report_df = pd.DataFrame(rows).sort_values("track_id")
-    report_df.to_csv(args.report, index=False)
+    for section, values in report.items():
+        print(f"=== {section} ===")
+        for k, v in values.items():
+            if isinstance(v, float):
+                print(f"  {k}: {v:.4f}")
+            else:
+                print(f"  {k}: {v}")
+        print()
 
-    flagged = report_df[report_df["flag"]]
-    print(f"Total tracks analyzed: {len(report_df)}")
-    print(f"Suspicious tracks flagged: {len(flagged)}")
-    print(f"Report saved to {args.report}")
-
-    if not flagged.empty:
-        print("\nSuspicious track list (top 20):")
-        print(flagged.head(20).to_string(index=False))
-    else:
-        print("No suspicious tracks found.")
+    if args.out_json:
+        out = Path(args.out_json)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(report, indent=2, default=float))
+        print(f"Wrote {out}")
 
 
 if __name__ == "__main__":

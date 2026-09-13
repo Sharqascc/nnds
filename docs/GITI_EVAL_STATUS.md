@@ -126,21 +126,126 @@ should be preserved as an extra column.
 - [ ] Trajectory GT
 - [ ] Gold-standard 15-row table with real values
 
-## Next session
+## Session log
 
-1. Resolve Known Issue 1 (trajectory anchor). Then re-run.
-2. Do the 30-minute SSM review of the 41 likely_real strips.
-   Fill `verdict` (real / false) and, for real events, `actual_pet`.
-   Save as `gt_ssm.csv`.
-3. Run:
+### 2026-09-13 (last)
 
-       python scripts/validate_gt.py --ssm gt_ssm.csv
-       python scripts/evaluate_ssm_metrics.py \
-           --predicted outputs/giti_eval_300/schemas/pred_ssm.csv \
-           --ground-truth gt_ssm.csv \
-           --out-json outputs/ssm.json
-       python scripts/gold_standard_report.py \
-           --ssm-metrics outputs/ssm.json \
-           --out-md outputs/validation_report.md
+Done this session:
+- Grid overlay module + regression test pinning it to the pipeline grid
+- Grid cells reduced 50 -> 25 px on GITI configs
+- Review strips: trails at box bottom, header shows A exit / B enter / PET
+- Pipeline anchor patch verified: traj y_pixel == det.y2 (bottom-center)
+- Motion-consistency term in tracker Stage 1 (Kalman-predicted center)
+- Track stability diagnostics module + script + tests
+- Baseline diagnostic on the current output (see below)
 
-4. Read `outputs/validation_report.md` - first real PET numbers.
+### Baseline diagnostic (300 frames, before Stage 2 gate)
+
+    n_tracks:                131
+    n_short (<10 frames):     21  (16%)
+    n_gaps:                  725
+    frac tracks with large gap: 60.3%
+    mean_jump_px:            2.00
+    p95_jump_px:             5.11
+    max_jump_px:           118.72
+    n_large_jumps (>30 px):   53
+    max_accel_px:          231.34
+    n_box_changes (>50%):     46
+
+Interpretation: broadly stable (mean/p95 fine), but a large failure tail
+-- 53 teleports and 46 sudden box-size changes -- explains the zig-zag
+that was visible around frame 98 in the review strips.
+
+## Next session (resume here)
+
+**Order: B -> A -> C** (decided this session, reason below).
+
+### B. Stage 2 gate (one predeclared patch, one rerun)
+
+Before writing the gate, run the pre-B check: classify each gap as
+edge-of-frame (genuine exit/re-entry) vs mid-frame (occlusion / dropout /
+ID switch). If most gaps are mid-frame, a *stricter* gate is the wrong
+fix -- we'd need to loosen Stage 2 or increase `max_age` instead.
+
+The predeclared Stage 2 gate is in Cell 3 of this session's plan:
+- size ratio (det_area / track_predicted_area) rejected if outside [0.67, 1.5]
+- adaptive per-track jump limit = max(3 * median(recent jumps), 30 px)
+- every rejection logged to `CustomTracker.rejections` and dumped to JSON
+
+Success criteria (predeclared):
+- `n_large_jumps` and `n_box_changes` drop materially
+- `gap_rate` must NOT rise materially (>5 pp increase = revert)
+
+Do not tune. One patch, one rerun, then freeze.
+
+### A. Pilot annotation (5 stratified frames)
+
+Frames to annotate (start / early-mid / failure-tail / late-mid / end):
+
+    frame_00000, frame_00080, frame_00098, frame_00200, frame_00290
+
+For each of the 5:
+- Fill `class_name` in `gt_detection_template.csv` (verify box, delete FP, add missed)
+- Assign consistent `track_id` in `gt_tracking_template.csv`
+
+Then:
+
+    python scripts/validate_gt.py --detection gt_detection.csv --tracking gt_tracking.csv
+    python scripts/evaluate_detection_metrics.py \
+        --detections outputs/giti_eval_300/schemas/pred_detection.csv \
+        --ground-truth gt_detection.csv \
+        --out-json outputs/detection_5f.json
+    python scripts/evaluate_tracking_metrics.py \
+        --tracked outputs/giti_eval_300/schemas/pred_tracking.csv \
+        --ground-truth gt_tracking.csv \
+        --out-json outputs/tracking_5f.json
+
+Report these as pilot numbers, not publication numbers.
+
+### C. SSM review of the PET candidates
+
+Current run produced 118 PET events:
+- 45 likely_real (need eyes-on review)
+- 72 ambiguous (overlaps; A does not exit before B enters)
+- 1 likely_false (track too short)
+
+Workflow:
+1. Open `outputs/giti_eval_300/ssm_review/gt_ssm_prelabel.csv`
+2. Bulk-fill all `ambiguous` + `likely_false` rows with `verdict=false`
+3. Review the 45 likely_real strips; fill `verdict` and `actual_pet`
+4. Save as `gt_ssm.csv`
+
+Then:
+
+    python scripts/validate_gt.py --ssm gt_ssm.csv
+    python scripts/evaluate_ssm_metrics.py \
+        --predicted outputs/giti_eval_300/schemas/pred_ssm.csv \
+        --ground-truth gt_ssm.csv \
+        --out-json outputs/ssm.json
+    python scripts/gold_standard_report.py \
+        --ssm-metrics outputs/ssm.json \
+        --out-md outputs/validation_report.md
+
+### Post-C: audit linkage
+
+Join the SSM audit table with `track_stability_after.json`:
+for each PET event, did either involved track cross a large-jump or
+large-scale-change flag near the event frame? This quantifies whether
+tracking instability is actually driving questionable PET events.
+
+## Files touched this session
+
+- `src/analysis/grid_overlay.py` (new)
+- `src/analysis/track_stability.py` (new)
+- `src/pipeline/custom_tracker.py` (motion term in Stage 1)
+- `src/analysis/grid_trajectory/uvh_coco_fused_grid_pet.py` (TrackPoint y=det.y2)
+- `scripts/ssm_review_pack.py` (bottom-anchored trails, header times)
+- `scripts/diagnose_tracking.py` (new)
+- `configs/GITI_grid_config.json`, `configs/sites/giti/grid_config.json` (cell_size 25)
+- `tests/test_grid_overlay*.py`, `tests/test_grid_trajectory_point_anchor.py`,
+  `tests/test_track_stability*.py`, `tests/test_tracker_motion_consistency.py` (new)
+
+## Reproducing from scratch
+
+See the top of this file. The 2026-09-13 rerun produced 118 PET events
+(45 likely_real / 72 ambiguous / 1 likely_false).

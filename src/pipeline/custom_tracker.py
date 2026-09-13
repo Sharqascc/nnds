@@ -124,6 +124,13 @@ class CustomTracker:
         self.max_age = max_age
         self.min_hits = min_hits
         self.iou_threshold = iou_threshold
+        # Motion-consistency weight for Stage 1 (IoU + motion). Higher values
+        # favor smooth continuous motion over IoU alone, which reduces ID
+        # switches in crowds and at crossings.
+        self.w_motion = 0.7
+        # Gate: reject a Stage 1 match if the detection is more than this many
+        # box-widths away from the Kalman-predicted center.
+        self.motion_max = 1.5
         self.log_overlaps = log_overlaps
         self.reid_encoder = reid_encoder
         if log_overlaps and overlap_log_path:
@@ -171,6 +178,23 @@ class CustomTracker:
             )
         return 0.0
 
+    def _motion_cost(self, tid, det) -> float:
+        """Normalized distance from the track's Kalman-predicted center to the
+        detection center.
+
+        0.0 = detection sits exactly where the track was heading
+        1.0 = detection is one box-size away
+        Used in Stage 1 to prevent ID switches when two boxes overlap.
+        """
+        s = np.asarray(self.tracks[tid].kf.statePost).reshape(-1)
+        px, py = float(s[0]), float(s[1])
+        w = max(float(s[2]), 1.0)
+        h = max(float(s[3]), 1.0)
+        norm = max(w, h, 1.0)
+        dx = px - det.cx
+        dy = py - det.cy
+        return float(np.sqrt(dx * dx + dy * dy) / norm)
+
     def update(self, detections, frame_img=None, frame=None):
         """Update tracks with new detections; returns dict det_index -> track_id."""
         for t in self.tracks.values():
@@ -200,14 +224,23 @@ class CustomTracker:
 
         active_ids = list(self.tracks.keys())
 
-        # Stage 1: IoU matching with predicted boxes
-        cost = np.zeros((len(active_ids), len(detections)), dtype=np.float32)
+        # Stage 1: IoU + motion-consistency matching.
+        # Pure IoU can swap two tracks when their predicted boxes both
+        # overlap a detection (typical at crossings / overtakes). Adding a
+        # Kalman-prediction distance term breaks the tie in favor of the
+        # track that was already heading toward the detection.
+        n_a = len(active_ids)
+        n_d = len(detections)
+        cost = np.zeros((n_a, n_d), dtype=np.float32)
+        motion = np.zeros((n_a, n_d), dtype=np.float32)
         for i, tid in enumerate(active_ids):
             pred_box = self.tracks[tid].box
             for j, det in enumerate(detections):
                 det_box = (det.x1, det.y1, det.x2, det.y2)
                 iou = self._iou(pred_box, det_box)
-                cost[i, j] = 1.0 - iou
+                m = self._motion_cost(tid, det)
+                motion[i, j] = m
+                cost[i, j] = (1.0 - iou) + self.w_motion * m
 
         row_ind, col_ind = linear_sum_assignment(cost)
         matched = {}
@@ -215,7 +248,9 @@ class CustomTracker:
         unmatched_dets = set(range(len(detections)))
 
         for i, j in zip(row_ind, col_ind, strict=False):
-            if cost[i, j] < 1.0 - self.iou_threshold:  # IoU > threshold
+            iou_ok = (cost[i, j] - self.w_motion * motion[i, j]) < (1.0 - self.iou_threshold)
+            motion_ok = motion[i, j] < self.motion_max
+            if iou_ok and motion_ok:
                 tid = active_ids[i]
                 self.tracks[tid].update(detections[j])
                 matched[j] = tid
@@ -252,7 +287,10 @@ class CustomTracker:
                     app_cost = self._appearance_cost(
                         track_hist, det.hist, track_emb, det_embeddings[det_idx]
                     )
-                    cost2[i, j] = dist + app_cost
+                    # Motion-normalized distance helps break ties the same way
+                    # it does in Stage 1.
+                    motion_term = self._motion_cost(tid, det) * 50.0
+                    cost2[i, j] = dist + app_cost + motion_term
 
             row_ind2, col_ind2 = linear_sum_assignment(cost2)
             for i, j in zip(row_ind2, col_ind2, strict=False):
