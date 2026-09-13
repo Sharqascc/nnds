@@ -72,6 +72,12 @@ class KalmanTrack:
         self.kf.measurementNoiseCov = np.eye(4, dtype=np.float32) * 10.0
         self.kf.errorCovPost = np.eye(6, dtype=np.float32)
         self.kf.statePost = np.array([det.cx, det.cy, w, h, 0, 0], dtype=np.float32).reshape(-1, 1)
+        # Last observed geometry (used as the re-association anchor
+        # when the Kalman prediction has drifted across a long gap)
+        self.last_cx: float = float(det.cx)
+        self.last_cy: float = float(det.cy)
+        self.last_w: float = float(w)
+        self.last_h: float = float(h)
 
     def predict(self):
         self.kf.predict()
@@ -128,6 +134,10 @@ class CustomTracker:
         # favor smooth continuous motion over IoU alone, which reduces ID
         # switches in crowds and at crossings.
         self.w_motion = 0.7
+        # If a track has been unobserved for this many frames, its
+        # Kalman prediction has likely drifted; use last observed
+        # geometry for the size and center references.
+        self.long_gap_frames = 5
         # Class-aware matching: never let a track absorb a detection
         # of a different class.
         self.enforce_class_match = True
