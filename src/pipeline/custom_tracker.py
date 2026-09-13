@@ -128,6 +128,9 @@ class CustomTracker:
         # favor smooth continuous motion over IoU alone, which reduces ID
         # switches in crowds and at crossings.
         self.w_motion = 0.7
+        # Class-aware matching: never let a track absorb a detection
+        # of a different class.
+        self.enforce_class_match = True
         # Gate: reject a Stage 1 match if the detection is more than this many
         # box-widths away from the Kalman-predicted center.
         self.motion_max = 1.5
@@ -236,6 +239,10 @@ class CustomTracker:
         for i, tid in enumerate(active_ids):
             pred_box = self.tracks[tid].box
             for j, det in enumerate(detections):
+                if self.enforce_class_match and det.cls_id != self.tracks[tid].cls_id:
+                    cost[i, j] = 1.0e6
+                    motion[i, j] = 1.0e6
+                    continue
                 det_box = (det.x1, det.y1, det.x2, det.y2)
                 iou = self._iou(pred_box, det_box)
                 m = self._motion_cost(tid, det)
@@ -281,8 +288,12 @@ class CustomTracker:
                 pred_center = self.tracks[tid].center
                 track_hist = self.tracks[tid].hist
                 track_emb = self.tracks[tid].embedding
+                trk_cls = self.tracks[tid].cls_id
                 for j, det_idx in enumerate(remaining_dets):
                     det = detections[det_idx]
+                    if self.enforce_class_match and det.cls_id != trk_cls:
+                        cost2[i, j] = 1.0e6
+                        continue
                     dist = np.sqrt((pred_center[0] - det.cx) ** 2 + (pred_center[1] - det.cy) ** 2)
                     app_cost = self._appearance_cost(
                         track_hist, det.hist, track_emb, det_embeddings[det_idx]

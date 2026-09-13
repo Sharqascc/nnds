@@ -21,6 +21,14 @@ from src.bev.bev_mapper import BEVMapper
 from src.pipeline.custom_tracker import CustomTracker, Detection
 from src.pipeline.reid_encoder import ReIDEncoder
 
+# ---------------------------------------------------------------------
+# Tracker ablation knobs. Change one at a time, rerun, measure.
+# Frozen after the ablation completes.
+# ---------------------------------------------------------------------
+TRACKER_MAX_AGE = 60  # original; 120 ablation had zero effect
+TRACKER_IOU_THRESHOLD = 0.20  # original; 0.15 not run
+TRACKER_REID_STAGE1 = False  # not wired in; reserved
+
 
 def _compute_histogram(frame, x1, y1, x2, y2):
     """Compute normalized HSV histogram for a crop."""
@@ -446,9 +454,9 @@ def run_uvh_coco_fused_grid_pet(
 
     reid_encoder = ReIDEncoder(device=device) if device != "cpu" else ReIDEncoder(device="cpu")
     custom_tracker = CustomTracker(
-        max_age=60,
+        max_age=TRACKER_MAX_AGE,
         min_hits=1,
-        iou_threshold=0.2,
+        iou_threshold=TRACKER_IOU_THRESHOLD,
         log_overlaps=True,
         overlap_log_path="outputs/tracking_overlap_debug.log",
         reid_encoder=reid_encoder,

@@ -249,3 +249,53 @@ tracking instability is actually driving questionable PET events.
 
 See the top of this file. The 2026-09-13 rerun produced 118 PET events
 (45 likely_real / 72 ambiguous / 1 likely_false).
+
+## Session update: class-aware tracker (2026-09-13)
+
+Root cause of the 30% mixed-class tracks (51/167) was that the tracker never
+compared `cls_id` during matching. Bicycles were absorbed into pedestrian
+tracks and vice versa.
+
+Fix: `CustomTracker.enforce_class_match = True` makes cross-class pairs
+prohibitively expensive in both Stage 1 and Stage 2 Hungarian matching.
+Ablation constants (`TRACKER_MAX_AGE`, `TRACKER_IOU_THRESHOLD`,
+`TRACKER_REID_STAGE1`) live at the top of `uvh_coco_fused_grid_pet.py`.
+
+Before / after (300 frames, CUDA, seeded):
+
+    metric              baseline   class-gate   delta
+    mixed_class_tracks       51           0      -51
+    n_tracks                167         139      -28
+    mid_gaps                644         703      +59
+    mid_gap_fraction      0.867       0.876   +0.009
+    n_pet                    78          87       +9
+
+### Ablations run
+
+1. `max_age 60 -> 120`                -- zero measurable change
+2. `Stage 2 last-observed anchor`     -- zero measurable change
+3. `Stage 2 cap 150 -> 400`           -- zero measurable change
+4. `enforce_class_match = True`       -- correctness fix
+
+Tracker is now frozen. The 703 remaining mid-frame gaps are either genuine
+occlusions or fragmentation; distinguishing them requires ground truth.
+
+### Frozen pipeline config
+
+    max_age=60
+    iou_threshold=0.20
+    enforce_class_match=True
+    TRACKER_REID_STAGE1=False
+
+### Reproducing the frozen pipeline
+
+    python -m src.pipeline.traffic_analyzer \
+        --video data/sample_data/GITI_traffic_video.mp4 \
+        --detector uvh-coco-fused \
+        --bev-config configs/bev_config.json \
+        --grid-config configs/GITI_grid_config.json \
+        --out-csv outputs/giti_eval_300/pet.csv \
+        --max-frames 300
+
+Expected: 18077 det_rows, 139 tracks, 87 PET events, 0 mixed-class tracks.
+
