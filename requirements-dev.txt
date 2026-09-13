@@ -1,0 +1,20 @@
+-r requirements.txt
+
+# Testing
+pytest>=8.0.0
+pytest-cov>=5.0.0
+pytest-timeout>=2.2.0
+pytest-mock
+hypothesis>=6.100.0
+syrupy>=4.0.0
+
+# Lint / types
+ruff>=0.6.0
+mypy>=1.10.0
+
+# Optional runtime deps used by agentic auto-fix scripts
+groq>=0.30.0
+
+# Used by a handful of tests and notebooks
+pydantic
+ipython
