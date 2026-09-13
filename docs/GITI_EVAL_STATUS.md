@@ -299,3 +299,63 @@ occlusions or fragmentation; distinguishing them requires ground truth.
 
 Expected: 18077 det_rows, 139 tracks, 87 PET events, 0 mixed-class tracks.
 
+## Size-gate fix for stale Kalman size during long gaps (2026-09-13)
+
+Confirmed visually: track 25 combined two different objects across a
+15-frame gap (frames 48-63). Pre-fix size range w=15..48 px (3x span).
+Post-fix w=15..24 px. The larger object now gets its own ID (track 47).
+
+Fix: in Stage 2 of `custom_tracker.py`, the size-gate reference uses
+`trk.last_w * trk.last_h` (last observed box) rather than the drifted
+Kalman prediction `kf.statePost[2:4]` when
+`time_since_update >= long_gap_frames` (5 frames).
+
+Verified on 100 frames:
+- track 25: single consistent object, w range collapsed from 48 to 24
+- big bike after f60 now has its own ID (47)
+- 32 tests pass
+- commit c309e46
+
+## Session end state (2026-09-13)
+
+Pushed to origin/feature/pipeline-to-metric-schemas:
+- 000d706 runtime vs dev requirements split
+- 3f06b80 class-aware tracker matching + frozen config
+- c309e46 size-gate fix for long gaps
+- (this commit) status doc updates
+
+Frozen tracker config:
+    max_age=60
+    iou_threshold=0.20
+    enforce_class_match=True
+    long_gap_frames=5
+    TRACKER_REID_STAGE1=False
+
+## Resume plan for next session
+
+1. Full 300-frame rerun with the size-gate fix (7 min CPU / 45 s CUDA):
+   python -m src.pipeline.traffic_analyzer \
+       --video data/sample_data/GITI_traffic_video.mp4 \
+       --detector uvh-coco-fused \
+       --bev-config configs/bev_config.json \
+       --grid-config configs/GITI_grid_config.json \
+       --out-csv outputs/giti_eval_300/pet.csv \
+       --max-frames 300
+
+   Compare against the pre-fix run:
+   pre-fix: 207 tracks, 70 PET, mid_gaps 703
+   post-fix: expect similar or slightly more tracks (some big/small
+             pairs now correctly separated), fewer mid_gaps if any of
+             them were caused by size-gate failures.
+
+2. Re-render the review strips and spot-check 3-5 long tracks for
+   visual identity consistency. The track-25 example is the template:
+   same object in every panel = good, different objects = still a bug.
+
+3. Do the 45-row review on
+   `data/annotations/giti_300/selfconsistency_run/gt_detection_5f_review.csv`
+   to convert the 0.918 upper bound into a real pilot mAP.
+
+4. (Optional, later) 30-row spot check of the 244 trusted bucket for a
+   paper-grade number.
+
