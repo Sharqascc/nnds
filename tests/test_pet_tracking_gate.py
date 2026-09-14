@@ -1,4 +1,3 @@
-
 import pytest
 
 from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import _track_missing_ratio
