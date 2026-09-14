@@ -414,34 +414,39 @@ Before / after (300 frames, CUDA, seeded):
     PET events               70      53     -17
     mixed_class               0       0       0
 
-The 17 PET-event drop (70 -> 53) was initially attributed to duplicate
-tracks producing spurious pairs. That mechanism was NOT confirmed by
-inspection: 0 of the 53 current PET events touch any of the 20 track
-IDs that were flagged as duplicates pre-fix, and track IDs were
-renumbered after dedup, so a direct pre/post ID comparison is not
-meaningful.
+### PET-drop mechanism: two competing unverified hypotheses
 
-The simplest consistent explanation: dedup removed 1,097 detection
-rows and 18 tracks (207 -> 189). PET events scale roughly with the
-number of track pairs, so fewer tracks -> fewer possible events. This
-is an arithmetic consequence of the smaller track set, not a targeted
-removal of spurious pairs.
+The 70 -> 53 PET drop after the dedup fix has two candidate explanations.
+Neither is verified. Do NOT let either graduate to "confirmed" between now
+and the next session without the same scrutiny the original claim received.
 
-We state this as the explanation that fits the evidence, not as a
-verified mechanism. A full mechanism check would require re-running
-the pre-dedup pipeline and matching PET events by physical location
-rather than by track ID.
+**Hypothesis A (arithmetic / geometric):**
+Dedup removed 1097 detections and 18 tracks (207 -> 189). PET events scale
+with the number of co-existing track pairs, so fewer tracks -> fewer pairs
+-> fewer events. This is pure counting, no mechanism.
 
-The 1 remaining duplicate pair is a near-threshold IoU case; not worth
-chasing.
+**Hypothesis B (spurious-pair removal):**
+Duplicate tracks (the same physical object under a second ID) were pairing
+with each other and with real tracks, producing spurious PET events. After
+dedup those objects still exist but under a single ID, so the spurious
+pairs disappear. This is a targeted mechanism.
 
-Frozen tracker config (unchanged):
-    max_age=60
-    iou_threshold=0.20
-    enforce_class_match=True
-    long_gap_frames=5
-    dedup_iou_threshold=0.9
-    TRACKER_REID_STAGE1=False
+**Why we currently cannot distinguish them:**
+The check we ran ("do any current PET events touch a formerly-duplicate
+track ID?") returned 0/53 -- but track IDs were renumbered after dedup,
+so an ID-based check cannot see the mechanism even if it is true. The 0/53
+result falsifies the specific "same IDs survived" version of B, and is
+equally compatible with both A and a renumbered version of B.
+
+**Tests that would help, and their limits:**
+- Random-18-track removal control: weaker than it looks, because
+  duplicate tracks sit on top of real tracks and random removal is not
+  exchangeable with duplicate removal.
+- Fully clean test: rerun pre-dedup, tag every PET event as
+  "involves a duplicate-flagged track" or not, compare. ~7 min rerun.
+  This is the one to do next session if the number matters.
+
+**Status:** unverified. Recorded as a fit to evidence, not as a mechanism.
 
 ## Verification notes for 2026-09-14 session
 
@@ -488,4 +493,28 @@ Specifically:
 
 Expected: 16980 det_rows, 189 tracks, 53 PET, 0 mixed-class tracks,
 1 near-threshold duplicate pair.
+
+## Flagged for the 45-row review
+
+These are specific cases the human annotator should look at knowingly,
+not rediscover cold.
+
+### Frame 200: `auto#23` vs `truck#129` -- class disagreement
+
+Two detections at the same physical location (IoU 0.922), labelled with
+different classes: `auto` (conf 0.39) and `truck` (conf 0.33). The dedup
+rule correctly does NOT collapse them, because it only merges same-class
+pairs. This is a **detector class-confusion case surfaced by the dedup
+diagnostic** -- not a tracker or dedup bug.
+
+When annotating frame 200, decide the correct class for this object and
+mark `correct_class` accordingly. The pipeline is uncertain (both conf
+scores < 0.4) and the two heads disagree.
+
+### Track 25 (frames 48-63): 15-frame gap
+
+The gap is real (a small distant bike occluded for 0.5 s), not an ID
+switch. Verified: size range collapsed from w=15..48 to w=15..24 after
+the size-gate fix; the larger object moved to a new ID (track 47).
+No action needed during review.
 
