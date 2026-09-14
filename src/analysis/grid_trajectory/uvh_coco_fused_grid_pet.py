@@ -132,6 +132,49 @@ def _track_missing_ratio(meta: dict[str, Any], n_points: int) -> float:
     return max(0.0, (span - n_points) / span)
 
 
+def _heading_near_point(
+    points: list[TrackPoint],
+    cx: float,
+    cy: float,
+    half_window: int = 15,
+    min_points: int = 3,
+) -> float | None:
+    """Direction of travel (degrees, 0-360) in pixel space near (cx, cy).
+
+    Finds the point in `points` closest to (cx, cy), then measures the
+    direction over a window of +/- half_window frames around it.
+    Returns None if fewer than `min_points` lie in the window, or if
+    the track is effectively stationary there.
+    """
+    if not points:
+        return None
+    idx = min(
+        range(len(points)),
+        key=lambda i: (points[i].x - cx) ** 2 + (points[i].y - cy) ** 2,
+    )
+    lo = max(0, idx - half_window)
+    hi = min(len(points), idx + half_window + 1)
+    seg = points[lo:hi]
+    if len(seg) < min_points:
+        return None
+    f0, f1 = seg[0].frame, seg[-1].frame
+    if f1 == f0:
+        return None
+    dx = seg[-1].x - seg[0].x
+    dy = seg[-1].y - seg[0].y
+    if abs(dx) + abs(dy) < 0.5:
+        return None
+    return float(np.degrees(np.arctan2(dy, dx)) % 360)
+
+
+def _angle_diff_deg(a: float | None, b: float | None) -> float | None:
+    """Smallest angular difference between two headings, in degrees (0-180)."""
+    if a is None or b is None:
+        return None
+    d = abs(a - b) % 360
+    return min(d, 360 - d)
+
+
 def _entry_exit_frames(points: list[TrackPoint], cx: float, cy: float, half_size: float):
     inside_frames = [pt.frame for pt in points if _point_in_square(pt.x, pt.y, cx, cy, half_size)]
     if not inside_frames:
@@ -349,6 +392,7 @@ def run_uvh_coco_fused_grid_pet(
     output_csv_path: str,
     pet_threshold: float = 2.0,
     max_missing_ratio: float = 0.10,
+    max_sequential_angle_deg: float = 55.0,
     max_frames: int | None = None,
     imgsz: int = 1280,
     uvh_conf: float = 0.20,
@@ -762,6 +806,19 @@ def run_uvh_coco_fused_grid_pet(
                 continue
 
             cx, cy = inter
+
+            # Sequential-angle gate: reject pairs whose travel
+            # directions at the conflict point are far apart, or
+            # cannot be measured. Default threshold 55 deg: Y
+            # events max out at ~54 deg on the 300-frame pilot,
+            # rejected N events start at ~78 deg. See
+            # docs/pet_gate_v1.md.
+            _ha = _heading_near_point(pts_a, cx, cy)
+            _hb = _heading_near_point(pts_b, cx, cy)
+            _ad = _angle_diff_deg(_ha, _hb)
+            if _ad is None or _ad > max_sequential_angle_deg:
+                continue
+
             a_window = _entry_exit_frames(pts_a, cx, cy, conflict_half_size)
             b_window = _entry_exit_frames(pts_b, cx, cy, conflict_half_size)
             if a_window is None or b_window is None:
