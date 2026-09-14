@@ -98,3 +98,56 @@ split-track fragments. Checked against the human labels:
 
 The gate would kill 4 real events to reject 1 false one.
 Discarded.
+
+## Second gate: sequential-angle rejection (v2)
+
+Added `_heading_near_point()` and `_angle_diff_deg()` and a
+`max_sequential_angle_deg` knob (default `55.0`). Pairs whose travel
+directions at the conflict point differ by more than the threshold,
+or whose headings cannot be measured, are rejected.
+
+### Why an angle gate
+
+On the 13 clean-track N survivors of the missing-ratio gate,
+`missing_ratio` was 0.000-0.083 on both sides -- no tracking-quality
+threshold separates them from real events. But six of them have
+heading difference 78-166 deg at the conflict point: two vehicles
+travelling in substantially different directions cannot be a
+sequential near-miss, because timing alone cannot make them collide.
+
+### Measurement (same 300-frame eval, same 53-event review)
+
+    gate                    events  Y   N   precision  recall
+    baseline (no gate)         53  14  39   0.264     1.000
+    missing_ratio 0.10         26  13  13   0.500     0.929
+    + angle 30 deg             19  12   7   0.632     0.857
+    + angle 55 deg             20  13   7   0.650     0.929
+
+### Why 55 deg and not 30 deg
+
+30 deg was an initial guess from an offline simulation that used
+cross-track closest approach to approximate the conflict point.
+The pipeline's `_pair_conflict_point` uses segment intersection and
+returns a different point; one real event `(134000, 171000)`
+measured 54 deg at the pipeline's conflict point while the
+simulation put it at 14 deg. The threshold was recalibrated to
+55 deg after seeing the divergence.
+
+Real events max at 54 deg on this eval. Rejected events start at
+78 deg. Any threshold in (24, 78) produces identical decisions.
+55 deg was chosen inside that band with margin on both sides.
+
+### Preserved
+
+- 6 clearly-wrong N events with 78-166 deg heading: rejected.
+- `(24000, 32000)` -- real Y, missing_ratio 0.127 -- still
+  rejected by the missing-ratio gate; the angle threshold was
+  not widened to recover it.
+
+### Not resolved
+
+7 N events survive both gates. All have heading difference
+<= 24 deg at the conflict point, indistinguishable from real
+events by tracking quality or by heading. Next step is a
+reviewer reason column rather than another numeric threshold.
+
