@@ -63,3 +63,45 @@ def test_dedup_creates_single_track_from_duplicates():
     matched = trk.update([a, b], frame=0)
     # one detection kept -> one track
     assert len(trk.tracks) == 1
+
+
+def test_dedup_remaps_indices_correctly_with_middle_drop():
+    """Middle-drop case: exercises the index-remap bug class directly.
+
+    Pre-fix behavior: dedup returned a re-indexed list, so a match at
+    position 1 in the deduped list got attributed to the wrong detection
+    row in the caller. With 3 detections where #1 is dropped, the caller
+    must receive indices [0, 2], not [0, 1].
+    """
+    trk = CustomTracker(max_age=10, min_hits=1, iou_threshold=0.2)
+    a = _det(100, 100, conf=0.9, frame=0)  # index 0, keep
+    b = _det(101, 101, conf=0.5, frame=0)  # index 1, dup of a, drop
+    c = _det(500, 500, conf=0.8, frame=0)  # index 2, keep
+    kept_idx, kept_dets = trk._dedup_detections([a, b, c], iou_thr=0.9)
+    assert kept_idx == [0, 2], f"expected [0,2], got {kept_idx}"
+    assert len(kept_dets) == 2
+    assert kept_dets[0].conf == 0.9
+    assert kept_dets[1].conf == 0.8
+
+
+def test_dedup_remap_preserves_track_assignment():
+    """End-to-end: a duplicate must not shift which detection gets which track."""
+    trk = CustomTracker(max_age=10, min_hits=1, iou_threshold=0.2)
+    # Frame 0: two real objects (car A at 100, car B at 500)
+    a0 = _det(100, 100, conf=0.9, frame=0)
+    b0 = _det(500, 500, conf=0.9, frame=0)
+    m0 = trk.update([a0, b0], frame=0)
+    assert set(m0.keys()) == {0, 1}  # both detections matched
+    id_a = m0[0]
+    id_b = m0[1]
+    assert id_a != id_b
+
+    # Frame 1: car A now emitted TWICE (duplicate), car B once
+    a1 = _det(102, 102, conf=0.9, frame=1)  # index 0, real
+    a1_dup = _det(103, 103, conf=0.6, frame=1)  # index 1, dup
+    b1 = _det(502, 502, conf=0.9, frame=1)  # index 2, real
+    m1 = trk.update([a1, a1_dup, b1], frame=1)
+    # Detections 0 and 2 must map to the existing tracks; 1 must not be returned
+    assert 1 not in m1, "duplicate detection should not be matched"
+    assert m1[0] == id_a, "car A's real detection should keep its track ID"
+    assert m1[2] == id_b, "car B's detection should keep its track ID"

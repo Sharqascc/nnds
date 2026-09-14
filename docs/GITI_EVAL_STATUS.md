@@ -414,9 +414,23 @@ Before / after (300 frames, CUDA, seeded):
     PET events               70      53     -17
     mixed_class               0       0       0
 
-The 17 PET-event drop is expected: duplicate tracks were pairing with
-each other and with real tracks, producing spurious events. The 464
-mid_gaps and 53 PET are now measured against a cleaner detection set.
+The 17 PET-event drop (70 -> 53) was initially attributed to duplicate
+tracks producing spurious pairs. That mechanism was NOT confirmed by
+inspection: 0 of the 53 current PET events touch any of the 20 track
+IDs that were flagged as duplicates pre-fix, and track IDs were
+renumbered after dedup, so a direct pre/post ID comparison is not
+meaningful.
+
+The simplest consistent explanation: dedup removed 1,097 detection
+rows and 18 tracks (207 -> 189). PET events scale roughly with the
+number of track pairs, so fewer tracks -> fewer possible events. This
+is an arithmetic consequence of the smaller track set, not a targeted
+removal of spurious pairs.
+
+We state this as the explanation that fits the evidence, not as a
+verified mechanism. A full mechanism check would require re-running
+the pre-dedup pipeline and matching PET events by physical location
+rather than by track ID.
 
 The 1 remaining duplicate pair is a near-threshold IoU case; not worth
 chasing.
@@ -428,4 +442,50 @@ Frozen tracker config (unchanged):
     long_gap_frames=5
     dedup_iou_threshold=0.9
     TRACKER_REID_STAGE1=False
+
+## Verification notes for 2026-09-14 session
+
+### Duplicate fix verification
+
+1. Added `test_dedup_remaps_indices_correctly_with_middle_drop` and
+   `test_dedup_remap_preserves_track_assignment` — the second exercises
+   the exact end-to-end index-remap path with a duplicate in the middle
+   of a 3-element detection list.
+
+2. Left-over duplicate pair (1 remaining post-fix) — see the pair scan
+   in this session's cell. (Fill in IoU after running.)
+
+3. PET drop 70 -> 53 — the mechanism story ("duplicates were pairing
+   with each other and with real tracks") is verified by the pair scan
+   above. If the scan shows the dropped events' tracks were in the
+   duplicate-flagged set, the mechanism is confirmed; if not, this
+   remains a hypothesis.
+
+### STALE ARTEFACT WARNING
+
+Any review work done against `gt_detection_5f_review.csv` **before**
+commit `2b71a01` is void. Predictions changed (det_rows 18077 -> 16980,
+track count 207 -> 189) because the dedup pass removed duplicate
+detections. Re-generate the review kit from the current pipeline output
+before doing the 45-row review.
+
+Specifically:
+- `outputs/annotation_kit_5f_v2/gt_detection_5f_review.csv` — needs
+  regeneration
+- Any manual annotation of the old file (e.g. the frame-0 review work
+  described earlier in this session) does not transfer
+- The old Gemini hints also apply to stale boxes
+
+### Reproduce the current state
+
+    python -m src.pipeline.traffic_analyzer \
+        --video data/sample_data/GITI_traffic_video.mp4 \
+        --detector uvh-coco-fused \
+        --bev-config configs/bev_config.json \
+        --grid-config configs/GITI_grid_config.json \
+        --out-csv outputs/giti_eval_300/pet.csv \
+        --max-frames 300
+
+Expected: 16980 det_rows, 189 tracks, 53 PET, 0 mixed-class tracks,
+1 near-threshold duplicate pair.
 
