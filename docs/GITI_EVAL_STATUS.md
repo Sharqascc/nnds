@@ -518,3 +518,82 @@ switch. Verified: size range collapsed from w=15..48 to w=15..24 after
 the size-gate fix; the larger object moved to a new ID (track 47).
 No action needed during review.
 
+## First real pilot metric (2026-09-14)
+
+This is the first human-reviewed accuracy signal on the pipeline. Every
+prior number in this document was self-consistency (GT built from the
+pipeline's own output). This one has human labels.
+
+### Setup
+
+- 5 stratified frames from the GITI clip: 0, 80, 98, 200, 290
+- Review kit: `data/annotations/giti_300/first_real_metric/gt_detection_5f_review_MODIFIED.csv`
+- Predictions: `outputs/giti_eval_300/schemas/pred_detection.csv` filtered to those 5 frames (279 rows)
+- Run config: frozen tracker, 300 frames, CPU (device nondeterminism still unresolved but irrelevant here since GT is human)
+
+### Verdicts on 279 predictions
+
+    Y (real)              243
+    N (false)              19
+    blank (unsure)         16
+    invalid ("AUTO")        1
+
+### Numbers
+
+Two precision variants, both defensible:
+
+    Conservative (all 279 in denominator):
+        precision = 243 / 279 = 0.871
+
+    Resolved-only (excludes 17 undecided):
+        precision = 243 / 262 = 0.928
+
+The conservative number is the honest headline. The second is only
+valid if the exclusion rate is reported alongside it.
+
+### Reported by the metric script
+
+    Precision        0.8710
+    Recall           1.0000   (by construction, GT is a subset of predictions)
+    F1               0.9310
+    mAP@50:95        0.9439   (inflated; every GT row matches itself at IoU=1)
+    mAP@50           0.9497
+    mAP@75           0.9414
+    APs/APm/APl      0.3202 / 0.6485 / 0.7765
+
+### Honest interpretation
+
+- **Precision 0.871 is real.** First non-circular number this project has.
+- **Recall cannot be computed from this review.** The review verified the
+  pipeline's boxes, not the scene. Every GT row is a pipeline prediction
+  by construction. To get real recall, annotate from scratch including
+  missed objects.
+- **mAP is inflated** for the same reason. Report precision, not mAP,
+  from this run.
+- **Small-object AP = 0.32** is the one degradation signal worth
+  following up. It matches the 16 "unsure" rows, which are mostly
+  small/distant objects.
+
+### What this licenses as a claim
+
+    "On 5 stratified frames of the GITI clip (279 predictions), human
+     review confirmed a detection precision of 0.87. Small-object AP
+     is approximately 0.32. Recall was not measured; the review
+     verified the pipeline's own boxes, not the scene."
+
+Pilot number. One annotator, five frames, no inter-rater agreement.
+Not a paper number, but the first legitimate accuracy signal.
+
+### Caveats for whoever writes this up
+
+- The GT set was built by accepting/rejecting pipeline predictions, not
+  by annotating from scratch. This is standard for a review-of-predictions
+  workflow but biases against discovering false negatives.
+- One row (frame 200, track 129) has an invalid `keep` value ("AUTO")
+  and is currently excluded from both numerator and denominator. If it
+  is resolved either way, precision shifts slightly:
+      - If Y:  244 / 279 = 0.874, or 244 / 262 = 0.931
+      - If N:  243 / 279 = 0.871, or 243 / 262 = 0.928 (unchanged, since
+               the row was already counted as not-Y in the resolved-only
+               denominator)
+
