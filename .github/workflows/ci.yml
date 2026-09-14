@@ -45,11 +45,13 @@ jobs:
         run: mypy --config-file mypy.ini src/analysis
 
       - name: Run property tests
-        run: pytest tests/ -m property -q \
-          --ignore=tests/test_snapshot_bev_mapper.py \
-          --ignore=tests/test_snapshot_pet_summary.py
+        run: |
+          pytest tests/ -m property -q \
+            --ignore=tests/test_snapshot_bev_mapper.py \
+            --ignore=tests/test_snapshot_pet_summary.py
 
       - name: Run smoke tests (integration)
-        run: pytest tests/ -m "integration or smoke" -q \
-          --ignore=tests/test_snapshot_bev_mapper.py \
-          --ignore=tests/test_snapshot_pet_summary.py
+        run: |
+          pytest tests/ -m "integration or smoke" -q \
+            --ignore=tests/test_snapshot_bev_mapper.py \
+            --ignore=tests/test_snapshot_pet_summary.py
