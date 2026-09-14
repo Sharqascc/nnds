@@ -48,7 +48,7 @@ def _match_frame(
 ) -> list[tuple[int, int]]:
     if not gt_frame or not pred_frame:
         return []
-    ious = np.zeros((len(gt_frame), len(pred_frame)), dtype=float)
+    ious: np.ndarray = np.zeros((len(gt_frame), len(pred_frame)), dtype=float)
     for gi, g in enumerate(gt_frame):
         for pi, p in enumerate(pred_frame):
             ious[gi, pi] = _iou(g.box, p.box)
@@ -125,7 +125,7 @@ def _association(
         return 0.0, 0, tp if not gt_ids else 0, fn
     gt_idx = {tid: i for i, tid in enumerate(gt_ids)}
     pred_idx = {tid: i for i, tid in enumerate(pred_ids)}
-    overlap = np.zeros((len(gt_ids), len(pred_ids)), dtype=float)
+    overlap: np.ndarray = np.zeros((len(gt_ids), len(pred_ids)), dtype=float)
     tp = fp = fn = 0
     for frame in sorted(set(gt_by_frame) | set(pred_by_frame)):
         g = gt_by_frame.get(frame, [])
@@ -163,7 +163,7 @@ def idf1(
     pred_ids = sorted({t.track_id for t in tracked})
     gt_idx = {tid: i for i, tid in enumerate(gt_ids)}
     pred_idx = {tid: i for i, tid in enumerate(pred_ids)}
-    overlap = np.zeros((len(gt_ids), len(pred_ids)), dtype=float)
+    overlap: np.ndarray = np.zeros((len(gt_ids), len(pred_ids)), dtype=float)
     for frame in sorted(set(gt_by_frame) | set(pred_by_frame)):
         g = gt_by_frame.get(frame, [])
         p = pred_by_frame.get(frame, [])
