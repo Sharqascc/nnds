@@ -376,7 +376,7 @@ def compute_pet_batch(
             f"(got {n_pairs} vs {len(times_b_list)})"
         )
 
-    pets = np.full(n_pairs, np.inf, dtype=float)
+    pets: np.ndarray = np.full(n_pairs, np.inf, dtype=float)
 
     for i in range(n_pairs):
         try:

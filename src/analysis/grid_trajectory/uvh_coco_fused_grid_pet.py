@@ -120,6 +120,18 @@ def _point_in_square(px, py, cx, cy, half_size):
     return (cx - half_size) <= px <= (cx + half_size) and (cy - half_size) <= py <= (cy + half_size)
 
 
+def _track_missing_ratio(meta: dict[str, Any], n_points: int) -> float:
+    """Fraction of frames in a track's lifespan with no detection.
+
+    0.0 = perfectly continuous track.
+    1.0 = single detection, empty track, or malformed meta.
+    """
+    span = int(meta["max_frame"]) - int(meta["min_frame"]) + 1
+    if span <= 0 or n_points <= 0:
+        return 1.0
+    return max(0.0, (span - n_points) / span)
+
+
 def _entry_exit_frames(points: list[TrackPoint], cx: float, cy: float, half_size: float):
     inside_frames = [pt.frame for pt in points if _point_in_square(pt.x, pt.y, cx, cy, half_size)]
     if not inside_frames:
@@ -336,6 +348,7 @@ def run_uvh_coco_fused_grid_pet(
     coco_person_model_path: str,
     output_csv_path: str,
     pet_threshold: float = 2.0,
+    max_missing_ratio: float = 0.10,
     max_frames: int | None = None,
     imgsz: int = 1280,
     uvh_conf: float = 0.20,
@@ -733,6 +746,15 @@ def run_uvh_coco_fused_grid_pet(
                 or meta_a["max_y"] < meta_b["min_y"] - spatial_pad
                 or meta_a["min_y"] > meta_b["max_y"] + spatial_pad
             ):
+                continue
+
+            # Tracking-quality gate: reject pairs where either track is
+            # too fragmented (see tests/test_pet_tracking_gate.py and the
+            # 300-frame pilot: missing_ratio<0.10 keeps 13/14 real events,
+            # drops 26/39 false; precision 0.264 -> 0.500).
+            if _track_missing_ratio(meta_a, len(pts_a)) > max_missing_ratio:
+                continue
+            if _track_missing_ratio(meta_b, len(pts_b)) > max_missing_ratio:
                 continue
 
             inter = _pair_conflict_point(pts_a, pts_b)

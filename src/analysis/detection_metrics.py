@@ -104,8 +104,8 @@ def _evaluate_class(
 def _ap_from_flags(tp: list[int], fp: list[int], n_gt: int) -> float:
     if n_gt <= 0 or not tp:
         return 0.0
-    tp_cum = np.cumsum(tp)
-    fp_cum = np.cumsum(fp)
+    tp_cum: np.ndarray = np.cumsum(tp)
+    fp_cum: np.ndarray = np.cumsum(fp)
     recalls = tp_cum / float(n_gt)
     precisions = tp_cum / (tp_cum + fp_cum + 1e-9)
     return average_precision_voc(recalls, precisions)
