@@ -208,8 +208,43 @@ class CustomTracker:
         dy = py - det.cy
         return float(np.sqrt(dx * dx + dy * dy) / norm)
 
+    def _dedup_detections(self, detections, iou_thr: float = 0.9):
+        """Drop duplicate detections: same class, IoU >= thr, keep higher conf.
+
+        Returns (kept_indices, kept_detections). kept_indices refer to the
+        ORIGINAL detections list so the caller can map match results back to
+        the correct row. Without this, dedup shifts the index space and track
+        IDs get attached to the wrong detections.
+        """
+        if len(detections) < 2:
+            return list(range(len(detections))), list(detections)
+        order = sorted(range(len(detections)), key=lambda i: -detections[i].conf)
+        kept_indices: list[int] = []
+        for i in order:
+            d = detections[i]
+            dup = False
+            for j in kept_indices:
+                k = detections[j]
+                if d.cls_id != k.cls_id:
+                    continue
+                if self._iou((d.x1, d.y1, d.x2, d.y2), (k.x1, k.y1, k.x2, k.y2)) >= iou_thr:
+                    dup = True
+                    break
+            if not dup:
+                kept_indices.append(i)
+        kept_indices.sort()
+        kept_detections = [detections[i] for i in kept_indices]
+        return kept_indices, kept_detections
+
     def update(self, detections, frame_img=None, frame=None):
-        """Update tracks with new detections; returns dict det_index -> track_id."""
+        """Update tracks with new detections; returns dict det_index -> track_id.
+
+        det_index refers to the ORIGINAL `detections` list passed in. Internally
+        we may drop duplicates, but the returned keys always point at valid
+        positions of the original list.
+        """
+        kept_indices, kept_dets = self._dedup_detections(detections)
+        detections = kept_dets
         for t in self.tracks.values():
             t.predict()
 
@@ -335,4 +370,6 @@ class CustomTracker:
             tid: t for tid, t in self.tracks.items() if t.time_since_update < self.max_age
         }
 
-        return matched
+        # Remap from deduped index space back to the original detections list
+        remapped = {kept_indices[k]: v for k, v in matched.items()}
+        return remapped

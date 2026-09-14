@@ -359,3 +359,73 @@ Frozen tracker config:
 4. (Optional, later) 30-row spot check of the 244 trusted bucket for a
    paper-grade number.
 
+## Detector duplicate-box bug (2026-09-14)
+
+IoU scan across the 5 review frames found 19 duplicate-box pairs
+(IoU >= 0.85, different track_ids). 18 are same-class (all cars),
+1 is cross-class (`auto#23` vs `truck#143` at IoU 0.922 on frame 200).
+
+Same-class duplicates mean the detector emitted two overlapping boxes
+on one physical car, and the tracker assigned separate IDs. That
+inflates detection counts and creates false co-existing tracks.
+
+Examples:
+    frame 98:   track 40 (car)  vs track 77  (car)  IoU 0.994
+    frame 200:  track 98 (car)  vs track 107 (car)  IoU 0.989
+    frame 0:    track 38 (car)  vs track 43  (car)  IoU 0.988
+    frame 200:  track 23 (auto) vs track 143 (truck) IoU 0.922  <-- cross-class
+
+Likely cause: NMS on the detector side is not suppressing overlapping
+boxes on the same car, or two detectors in the UVH-COCO fused pipeline
+both fire on the same object.
+
+Fix options (not yet applied):
+  1) Tighten NMS in the UVH / COCO detector configs
+  2) Add a dedup pass after tracking: for each frame, if two tracks
+     have IoU >= 0.9 and same class, drop the lower-confidence one
+  3) Both
+
+Impact on prior metrics: any detection-count or co-existing-track
+statistic is inflated. The PET count may also be inflated because
+two tracks at the same location can generate spurious pairs.
+
+Reproduce:
+  See the IoU scan script in this session's cell. Detections CSV:
+  outputs/giti_eval_300/pet_detections.csv, frames [0, 80, 98, 200, 290].
+
+## Detector duplicate-box fix (2026-09-14 cont.)
+
+Two-stage fix:
+1. Added `_dedup_detections` to `CustomTracker`: same-class pairs at
+   IoU >= 0.9 are collapsed before tracking (higher-confidence box wins).
+2. First implementation returned a re-indexed list, which silently
+   re-associated track IDs to the wrong detection rows. Fixed by
+   returning `(kept_indices, kept_detections)` and remapping matched
+   keys back to the original detection positions on return.
+
+Before / after (300 frames, CUDA, seeded):
+
+    metric              before   after   delta
+    duplicate pairs          19       1     -18
+    det_rows              18077   16980   -1097
+    tracks                  207     189     -18
+    split tracks            242     221     -21
+    mid_gaps                676     464    -212
+    PET events               70      53     -17
+    mixed_class               0       0       0
+
+The 17 PET-event drop is expected: duplicate tracks were pairing with
+each other and with real tracks, producing spurious events. The 464
+mid_gaps and 53 PET are now measured against a cleaner detection set.
+
+The 1 remaining duplicate pair is a near-threshold IoU case; not worth
+chasing.
+
+Frozen tracker config (unchanged):
+    max_age=60
+    iou_threshold=0.20
+    enforce_class_match=True
+    long_gap_frames=5
+    dedup_iou_threshold=0.9
+    TRACKER_REID_STAGE1=False
+
