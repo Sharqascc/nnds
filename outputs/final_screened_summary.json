@@ -1,3 +1,34 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:6b5df1126e1f80d168443551808c8bf875dc8eb775a2f42b2a2277ee4460c74c
-size 778
+{
+  "GITI": {
+    "raw_events": 164,
+    "screened_events": 153,
+    "median_pet_s": 1.5662735075303935,
+    "mean_pet_s": 1.5638775947807295,
+    "std_pet_s": 0.8310089333627253,
+    "min_pet_s": 0.1666248412266376,
+    "max_pet_s": 2.999247142079477,
+    "conflict_types": {
+      "other": 53,
+      "side_swipe": 34,
+      "head_on": 32,
+      "crossing": 30,
+      "rear_end": 4
+    }
+  },
+  "MRC": {
+    "raw_events": 35,
+    "screened_events": 34,
+    "median_pet_s": 1.599598664612224,
+    "mean_pet_s": 1.7044743123533441,
+    "std_pet_s": 0.9188574422177093,
+    "min_pet_s": 0.1332998887176853,
+    "max_pet_s": 2.99924749614792,
+    "conflict_types": {
+      "other": 25,
+      "side_swipe": 4,
+      "rear_end": 3,
+      "head_on": 1,
+      "crossing": 1
+    }
+  }
+}

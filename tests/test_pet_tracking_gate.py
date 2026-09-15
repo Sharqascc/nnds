@@ -4,6 +4,7 @@ from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
     TrackPoint,
     _angle_diff_deg,
     _heading_near_point,
+    _max_gap_in_window,
     _track_missing_ratio,
 )
 
@@ -122,3 +123,40 @@ def test_angle_diff_deg(a, b, expected):
 )
 def test_angle_diff_deg_none(a, b):
     assert _angle_diff_deg(a, b) is None
+
+
+def _frames(*ranges):
+    """Build a sorted list of frames from (lo, hi) inclusive ranges."""
+    out = []
+    for lo, hi in ranges:
+        out.extend(range(lo, hi + 1))
+    return sorted(out)
+
+
+def _pts(frames):
+    return [
+        TrackPoint(frame=f, x=float(f), y=0.0, cls_id=0, cls_name="t", conf=1.0) for f in frames
+    ]
+
+
+@pytest.mark.parametrize(
+    "frames, center, half, expected",
+    [
+        ([], 100, 20, 41),  # empty
+        (_frames((80, 120)), 100, 20, 0),  # fully covered
+        (_frames((80, 84), (90, 120)), 100, 20, 5),  # interior gap 5
+        (_frames((87, 120)), 100, 20, 7),  # leading gap 7
+        (_frames((80, 115)), 100, 20, 5),  # trailing gap 5
+        (_frames((50, 52)), 100, 20, 41),  # nothing in window
+        (_frames((80, 81), (95, 96), (110, 120)), 100, 20, 13),  # largest interior
+        (_frames((100, 100)), 100, 20, 20),  # single frame in window
+    ],
+)
+def test_max_gap_in_window(frames, center, half, expected):
+    assert _max_gap_in_window(_pts(frames), center, half) == expected
+
+
+def test_max_gap_in_window_window_size_scaling():
+    # half=10 => full window is 21
+    assert _max_gap_in_window([], 100, 10) == 21
+    assert _max_gap_in_window(_pts(_frames((95, 105))), 100, 10) == 5
