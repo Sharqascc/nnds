@@ -151,3 +151,90 @@ Real events max at 54 deg on this eval. Rejected events start at
 events by tracking quality or by heading. Next step is a
 reviewer reason column rather than another numeric threshold.
 
+
+## Third gate: conflict-window coverage (v3)
+
+Added `_max_gap_in_window()` and two config knobs:
+
+  min_conflict_gap_frames: int = 10
+  conflict_gap_window_frames: int = 20
+
+Rejects PET pairs where either track has a run of at least
+`min_conflict_gap_frames` consecutive frames with no detection
+inside +/- `conflict_gap_window_frames` of the conflict frame.
+
+### Why a coverage gate
+
+Visual review of the 7 surviving N events (strips rendered from
+the 20-event gated output, human-labeled one word each)
+revealed two distinct failure modes:
+
+  - following (3 events): two vehicles in the same lane, one
+    behind the other, constant gap. Benign traffic.
+  - detection gaps (4 events): the pipeline claimed both
+    vehicles passed through the conflict point, but only one
+    was actually detected there. The other was absent from
+    the tracker output for a long stretch around the conflict.
+
+The first two gates operate on whole-track statistics and
+geometry. Neither sees a locally missing track. The coverage
+gate closes that hole.
+
+### Diagnostic table
+
+    pair              verdict   max_gap_in_window
+    (15000, 17000)      N            0
+    (26000, 95000)      N            3
+    (15000, 95000)      N           20
+    (96001, 112000)     N           20
+    (26000, 32000)      N           39
+    (26000, 85000)      N           41
+    (33000, 38000)      N           41
+    (2000, 22000)       Y            0
+    (7000, 22000)       Y            0
+    (28000, 33000)      Y            0
+    (28000, 96001)      Y            0
+    (40000, 82000)      Y            0
+    (82000, 122000)     Y            0
+    (112000, 141000)    Y            0
+    (15000, 44000)      Y            1
+    (96001, 117000)     Y            2
+    (80002, 100001)     Y            4
+    (99000, 100001)     Y            8
+    (137000, 149000)    Y            9
+    (134000, 171000)    Y           20   <- dropped
+
+### Threshold choice
+
+Y events cluster in 0-9 (twelve events); N events cluster in
+20-41 (five events). There is a wide empty band between 9 and
+20. Any threshold in [10, 19] produces identical decisions on
+this eval; default 10 was chosen.
+
+The Y event (134000, 171000) sits at exactly 20 because its
+track_b only has 52 frames total and starts at the conflict
+frame -- a late pickup, not a track traversing the window.
+Rejecting it is the conservative choice: the pipeline should
+not claim a conflict from a track it cannot see there.
+
+### Measurement (same 300-frame eval, same 53-event review)
+
+    gate                   events  Y   N   precision  recall
+    baseline (no gate)        53  14  39   0.264     1.000
+    + missing_ratio 0.10      26  13  13   0.500     0.929
+    + angle 55 deg            20  13   7   0.650     0.929
+    + gap 10                  14  12   2   0.857     0.857
+
+### Not resolved
+
+Two N events survive all three gates:
+
+    (15000, 17000)  max_gap 0
+    (26000, 95000)  max_gap 3
+
+Both are same-lane following: two vehicles in the same lane,
+one behind the other, sustained over many frames. Separating
+them from real Y events requires detecting "two vehicles on
+the same lane, moving at the same speed, sustained over a
+window" -- a car-following detector. That is a new model,
+not a threshold, and is out of scope.

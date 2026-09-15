@@ -1,3 +1,80 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:cba85052545bf89caf027802aa71484b8b68ad6789c9672684f6eab159c9e5d1
-size 15645
+{
+  "git_commit": "bb3ee687fca2871f6e5cf07ec1258977bfd18ae4",
+  "python_version": "3.13.15 (main, Aug  6 2026, 11:06:23) [GCC 11.4.0]",
+  "pip_freeze": "absl-py==1.4.0\naccelerate==1.14.0\naccess==1.1.10.post3\naffine==3.0.0\naiofiles==25.1.0\naiohappyeyeballs==2.7.1\naiohttp==3.14.3\naiosignal==1.4.0\naiosqlite==0.22.1\nalabaster==1.0.0\nalbucore==0.0.24\nalbumentations==2.0.8\nale-py==0.12.1\naltair==5.5.0\nannotated-doc==0.0.5\nannotated-types==0.8.0\nantlr4-python3-runtime==4.9.3\nanyio==4.14.2\nanywidget==0.9.21\napsw==3.53.4.0\nargon2-cffi==25.1.0\nargon2-cffi-bindings==26.1.0\narray_record==0.8.3\narrow==1.4.0\narviz==0.22.0\nastropy==7.2.2\nastropy-iers-data==0.2026.8.24.0.24.29\nastunparse==1.6.3\natpublic==5.1\nattrs==26.1.0\naudioop-lts==0.2.2\naudioread==3.1.0\nAuthlib==1.7.2\nautograd==1.9.1\nbabel==2.18.0\nbackcall==0.2.0\nbeartype==0.22.9\nbeautifulsoup4==4.13.5\nbetterproto==2.0.0b7\nbigframes==2.42.0\nbigquery-magics==0.14.0\nbleach==6.4.0\nblinker==1.9.0\nblis==1.3.3\nblobfile==3.3.0\nblosc2==4.11.0\nbokeh==3.8.2\nBottleneck==1.4.2\nbqplot==0.12.47\nbranca==0.8.2\nbrotli==1.2.0\nCacheControl==0.14.4\ncachetools==6.2.6\ncatalogue==2.0.10\ncertifi==2026.7.22\ncffi==2.1.1\nchardet==5.2.0\ncharset-normalizer==3.4.9\nclarabel==0.11.1\nclick==8.4.2\ncligj==0.7.2\ncloudpathlib==0.25.0\ncloudpickle==3.1.2\ncmake==3.31.10\ncmdstanpy==1.3.0\ncolorcet==3.2.1\ncolorlover==0.3.0\ncommunity==1.0.0b1\nconfection==1.3.3\ncons==0.4.7\ncontourpy==1.3.3\ncramjam==2.12.0\ncryptography==50.0.0\ncufflinks==0.17.3\ncurl_cffi==0.16.1\ncvxopt==1.3.2\ncvxpy==1.6.7\ncycler==0.12.1\ncyipopt==1.5.0\ncymem==2.0.13\nCython==3.0.12\ndask==2026.8.0\ndataproc-spark-connect==1.1.0\ndatasets==4.0.0\ndb-dtypes==1.7.1\ndbus-python==1.2.18\ndebugpy==1.8.15\ndecorator==4.4.2\ndefusedxml==0.7.1\ndeprecation==2.1.0\ndiffusers==0.40.0\ndill==0.3.8\ndistro==1.9.0\ndlib==19.24.6\ndm-tree==0.1.10\ndocstring_parser==0.18.0\ndocutils==0.21.2\ndopamine_rl==4.1.2\nduckdb==1.3.2\nearthengine-api==1.7.39\neasydict==1.13\neditdistance==0.8.1\neerepr==0.1.2\neinops==0.8.2\nen_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl#sha256=1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85\nentrypoints==0.4\nesda==2.9.0\net_xmlfile==2.0.0\netils==1.14.0\netuples==0.3.10\nFarama-Notifications==0.0.6\nfastai==2.8.8\nfastapi==0.141.1\nfastcore==2.2.14\nfastdownload==0.0.7\nfastjsonschema==2.22.2\nfastprogress==1.1.6\nfasttransform==0.0.2\nfilelock==3.32.4\nfirebase-admin==6.9.0\nFlask==3.1.3\nflatbuffers==25.12.19\nflax==0.11.2\nfolium==0.20.0\nfonttools==4.63.0\nfqdn==1.5.1\nfrozendict==2.4.7\nfrozenlist==1.8.0\nfsspec==2025.3.0\nfuture==1.0.0\ngast==0.7.0\ngcsfs==2025.3.0\nGDAL==3.8.4\ngdown==5.2.2\ngeemap==0.38.3\ngeocoder==1.38.1\ngeographiclib==2.1\ngeopandas==1.1.4\ngeopy==2.4.1\ngiddy==2.3.9\ngin-config==0.5.0\nglob2==0.7\ngoogle==3.0.0\ngoogle-adk==2.7.1\ngoogle-ai-generativelanguage==0.6.15\ngoogle-api-core==2.30.3\ngoogle-api-python-client==2.199.0\ngoogle-auth==2.49.0\ngoogle-auth-httplib2==0.4.2\ngoogle-auth-oauthlib==1.4.1\ngoogle-cloud-bigquery==3.44.0\ngoogle-cloud-bigquery-connection==1.22.0\ngoogle-cloud-bigquery-storage==2.39.0\ngoogle-cloud-core==2.7.0\ngoogle-cloud-dataproc==5.28.0\ngoogle-cloud-datastore==2.25.0\ngoogle-cloud-firestore==2.27.0\ngoogle-cloud-functions==1.24.0\ngoogle-cloud-language==2.21.0\ngoogle-cloud-monitoring==2.31.0\ngoogle-cloud-resource-manager==1.18.0\ngoogle-cloud-spanner==3.68.0\ngoogle-cloud-storage==3.13.1\ngoogle-cloud-translate==3.27.0\ngoogle-colab @ file:///colabtools/dist/google_colab-1.0.0.tar.gz\ngoogle-crc32c==1.8.0\ngoogle-genai==2.12.1\ngoogle-generativeai==0.8.6\ngoogle-pasta==0.2.0\ngoogle-resumable-media==2.10.1\ngoogleapis-common-protos==1.75.0\ngoogledrivedownloader==1.1.0\ngradio==6.26.0\ngradio_client==2.6.1\ngrain==0.2.18\ngraphviz==0.21\ngreenlet==3.5.5\ngroovy==0.1.2\ngrpc-google-iam-v1==0.14.4\ngrpc-interceptor==0.15.4\ngrpcio==1.83.0\ngrpcio-status==1.71.2\ngrpclib==0.4.9\ngspread==6.2.1\ngspread-dataframe==4.0.0\ngym==0.25.2\ngym-notices==0.1.0\ngymnasium==1.3.0\nh11==0.16.0\nh2==4.4.1\nh5netcdf==1.8.1\nh5py==3.16.0\nhdbscan==0.8.44\nhf-gradio==0.4.1\nhf-xet==1.6.0\nhighspy==1.15.1\nholidays==0.103\nholoviews==1.23.2\nhpack==4.2.0\nhtml5lib==1.1\nhttpcore==1.0.9\nhttpcore2==2.12.0\nhttpimport==1.4.1\nhttplib2==0.32.0\nhttptools==0.8.0\nhttpx==0.28.1\nhttpx2==2.12.0\nhuggingface_hub==1.28.0\nhumanize==4.16.0\nhyperframe==6.1.0\nhyperopt==0.3.0\nibis-framework==9.5.0\nidna==3.19\nImageIO==2.37.4\nimageio-ffmpeg==0.6.0\nimagesize==2.0.1\nimbalanced-learn==0.14.2\nimmutabledict==4.3.1\nimportlib_metadata==9.0.0\nimutils==0.5.4\ninequality==1.1.2\ninflect==7.5.0\niniconfig==2.3.0\nintel-cmplr-lib-ur==2025.3.3\nintel-openmp==2025.3.3\nipyevents==2.0.4\nipyfilechooser==0.6.0\nipykernel==6.17.1\nipyleaflet==0.20.0\nipyparallel==8.8.0\nipython==7.34.0\nipython-genutils==0.2.0\nipython-sql==0.5.0\nipywidgets==7.7.1\nisoduration==20.11.0\nitsdangerous==2.2.0\njaraco.classes==3.4.0\njaraco.context==6.1.2\njaraco.functools==4.6.0\njax==0.11.1\njaxlib==0.11.1\njeepney==0.9.0\njieba==0.42.1\nJinja2==3.1.6\njiter==0.16.0\njoblib==1.5.3\njoserfc==1.7.4\njsonpatch==1.33\njsonpickle==4.1.2\njsonpointer==3.1.1\njsonschema==4.26.0\njsonschema-specifications==2025.9.1\njupyter-console==6.6.3\njupyter-events==0.12.1\njupyter-leaflet==0.20.0\njupyter_client==7.4.9\njupyter_core==5.9.1\njupyter_kernel_gateway @ git+https://github.com/googlecolab/kernel_gateway@b134e9945df25c2dcb98ade9129399be10788671\njupyter_server==2.20.0\njupyter_server_terminals==0.5.4\njupyterlab_pygments==0.3.0\njupyterlab_widgets==3.0.17\njupytext==1.19.5\nkaggle==2.0.2\nkagglehub==1.0.2\nkagglesdk==0.1.37\nkeras==3.13.2\nkeras-hub==0.26.0\nkeras-nlp==0.26.0\nkeyring==25.7.0\nkeyrings.google-artifactregistry-auth==1.1.2\nkiwisolver==1.5.0\nlangchain==1.3.16\nlangchain-core==1.6.0\nlangchain-protocol==0.0.18\nlanggraph==1.2.11\nlanggraph-checkpoint==4.2.0\nlanggraph-prebuilt==1.1.0\nlanggraph-sdk==0.4.3\nlangsmith==0.11.1\nlark==1.3.1\nlaunchpadlib==1.10.16\nlazr.restfulclient==0.14.4\nlazr.uri==1.0.6\nlazy-loader==0.5\nlibclang==18.1.1\nlibpysal==4.14.1\nlibrosa==0.11.0\nlightgbm==4.6.0\nlinkify-it-py==2.1.1\nllvmlite==0.44.0\nlocket==1.0.0\nlogical-unification==0.4.7\nlxml==6.1.2\nMako==1.1.3\nmapclassify==2.10.0\nMarkdown==3.10.3\nmarkdown-it-py==4.2.0\nMarkupSafe==3.0.3\nmatplotlib==3.10.0\nmatplotlib-inline==0.2.2\nmatplotlib-venn==1.1.2\nmdit-py-plugins==0.6.1\nmdurl==0.1.2\nmgwr==2.2.1\nminiKanren==1.0.5\nmissingno==0.5.2\nmistune==3.3.4\nmizani==0.13.5\nmkl==2025.3.1\nml_dtypes==0.6.0\nmlxtend==0.23.4\nmmh3==5.2.1\nmomepy==0.11.0\nmore-itertools==10.8.0\nmoviepy==1.0.3\nmpmath==1.3.0\nmsgpack==1.2.1\nmultidict==6.7.1\nmultipledispatch==1.0.0\nmultiprocess==0.70.16\nmultitasking==0.0.13\nmurmurhash==1.0.15\nmusic21==9.9.2\nnamex==0.1.0\nnarwhals==2.25.0\nnatsort==8.4.0\nnbclassic==1.3.3\nnbclient==0.10.4\nnbconvert==7.17.1\nnbformat==5.11.1\nndindex==1.10.1\nnest-asyncio==1.6.0\nnetworkx==3.6.1\nnh3==0.3.7\nnibabel==5.4.2\nnltk==3.9.1\nnotebook==6.5.7\nnotebook_shim==0.2.4\nnumba==0.61.2\nnumexpr==2.14.2\nnumpy==2.1.3\nnvidia-ml-py==13.610.43\nnvidia-nccl-cu13==2.31.2\noauth2client==4.1.3\noauthlib==3.3.1\nomegaconf==2.3.1\nonemkl-license==2025.3.1\nopenai==2.54.0\nopencv-contrib-python==4.14.0.94\nopencv-python==5.0.0.93\nopencv-python-headless==5.0.0.93\nopenpyxl==3.1.5\nopentelemetry-api==1.42.1\nopentelemetry-resourcedetector-gcp==1.14.0\nopentelemetry-sdk==1.42.1\nopentelemetry-semantic-conventions==0.63b1\nopt_einsum==3.4.0\noptax==0.2.8\noptree==0.20.0\norbax-checkpoint==0.12.4\norjson==3.12.0\normsgpack==1.12.2\nosqp==1.1.3\npackaging==26.3\npandas==2.2.3\npandas-datareader==0.11.1\npandas-gbq==0.30.0\npandas-stubs==2.2.3.250527\npandocfilters==1.5.1\npanel==1.9.4\npanel-material-ui==0.14.2\nparam==2.4.1\nparso==0.8.7\nparsy==2.2\npartd==1.4.2\npatsy==1.0.2\npeewee==4.4.0\npeft==0.20.0\npexpect==4.9.0\npickleshare==0.7.5\npillow==11.3.0\nplatformdirs==4.11.4\nplotly==5.24.1\nplotnine==0.14.5\npluggy==1.6.0\nplum-dispatch==2.9.0\npointpats==2.5.5\npolars==1.35.2\npolars-runtime-32==1.35.2\npooch==1.9.0\nportpicker==1.5.2\npreshed==3.0.13\nprettytable==3.18.0\nproglog==0.1.12\nprogressbar2==4.5.0\nprometheus_client==0.26.0\npromise==2.3\nprompt_toolkit==3.0.53\npropcache==0.5.2\nprophet==1.4.0\nproto-plus==1.28.2\nprotobuf==5.29.6\npsutil==5.9.5\npsycopg2==2.9.12\npsygnal==0.15.1\nptyprocess==0.7.0\nPuLP==3.3.2\npy-cpuinfo==9.0.0\npy4j==0.10.9.9\npyarrow==18.1.0\npyasn1==0.6.4\npyasn1_modules==0.4.2\npycairo==1.29.1\npycocotools==2.0.11\npycparser==3.0\npycryptodomex==3.23.0\npydantic==2.13.4\npydantic_core==2.46.4\npydata-google-auth==1.9.1\npydot==4.0.1\npydotplus==2.0.2\nPyDrive2==1.21.1\npydub==0.25.1\npyerfa==2.0.1.5\npygame==2.6.1\npygit2==1.20.0\nPygments==2.21.0\nPyGObject==3.48.2\npyiceberg==0.11.1\nPyJWT==2.13.0\npymc==5.28.5\npynndescent==0.6.0\npyogrio==0.13.0\npyomo==6.10.1\nPyOpenGL==3.1.10\npyOpenSSL==26.4.0\npyparsing==3.3.2\npyperclip==1.11.0\npyproj==3.7.2\npyroaring==1.1.0\npysal==25.7\npyshp==3.1.6\nPySocks==1.7.1\npyspark==4.0.4\npytensor==2.38.3\npytest==8.4.2\npython-apt==0.0.0\npython-box==7.4.1\npython-dateutil==2.9.0.post0\npython-dotenv==1.2.3\npython-fasthtml==0.14.12\npython-json-logger==4.2.0\npython-louvain==0.16\npython-multipart==0.0.32\npython-slugify==8.0.4\npython-snappy==0.7.3\npython-utils==4.0.0\npytz==2025.2\npyviz_comms==3.0.6\nPyWavelets==1.9.0\nPyYAML==6.0.3\npyzmq==26.2.1\nquantecon==0.11.4\nrasterio==1.5.1\nrasterstats==0.21.0\nratelim==0.1.6\nreferencing==0.37.0\nregex==2025.11.3\nrequests==2.32.4\nrequests-oauthlib==2.0.0\nrequests-toolbelt==1.0.0\nrequirements-parser==0.9.0\nrfc3339-validator==0.1.4\nrfc3986-validator==0.1.1\nrfc3987-syntax==1.1.0\nrich==13.9.4\nroman-numerals==4.1.0\nroman-numerals-py==4.1.0\nrpds-py==2026.6.3\nrpy2==3.5.17\nrsa==4.9.1\nrtree==1.4.1\nsafehttpx==0.1.7\nsafetensors==0.8.0\nscikit-image==0.25.2\nscikit-learn==1.6.1\nscipy==1.16.3\nscooby==0.11.2\nscs==3.2.11\nseaborn==0.13.2\nSecretStorage==3.5.0\nsegregation==2.5.4\nsemantic-version==2.10.0\nSend2Trash==2.1.0\nsentence-transformers==5.7.0\nsentencepiece==0.2.2\nsentry-sdk==2.68.1\nsetuptools==75.2.0\nshap==0.52.0\nshapely==2.1.2\nshellingham==1.5.4\nsimple-parsing==0.1.9\nsimplejson==4.1.1\nsimsimd==6.5.16\nsix==1.17.0\nsklearn-compat==0.1.6\nsklearn-pandas==2.2.0\nslicer==0.0.8\nsmart_open==8.0.1\nsniffio==1.3.1\nsnowballstemmer==3.1.1\nsoundfile==0.14.0\nsoupsieve==2.9.2\nsoxr==1.1.0\nspacy==3.8.16\nspacy-legacy==3.0.12\nspacy-loggers==1.0.5\nspaghetti==1.7.6\nspanner-graph-notebook==1.1.10\nspglm==1.1.0\nSphinx==8.2.3\nsphinxcontrib-applehelp==2.0.0\nsphinxcontrib-devhelp==2.0.0\nsphinxcontrib-htmlhelp==2.1.0\nsphinxcontrib-jsmath==1.0.1\nsphinxcontrib-qthelp==2.0.0\nsphinxcontrib-serializinghtml==2.0.0\nspint==1.1.0\nsplot==1.1.7\nspopt==0.7.0\nspreg==1.9.0\nSQLAlchemy==2.0.52\nsqlglot==25.20.2\nsqlparse==0.6.0\nsrsly==2.5.3\nstandard-aifc==3.13.0\nstandard-chunk==3.13.0\nstandard-sunau==3.13.0\nstanio==0.5.1\nstarlette==1.6.0\nstatsmodels==0.14.6\nstrictyaml==1.7.3\nstringzilla==5.1.2\nstumpy==1.14.1\nsympy==1.14.0\ntables==3.10.2\ntabulate==0.9.0\ntbb==2022.3.1\ntcmlib==1.5.0\ntenacity==9.1.4\ntensorboard==2.20.0\ntensorboard-data-server==0.7.2\ntensorflow==2.20.0\ntensorflow-datasets==4.9.10\ntensorflow-hub==0.16.1\ntensorflow-metadata==1.21.0\ntensorflow-probability==0.25.0\ntensorflow-text==2.20.1\ntensorstore==0.1.85\ntermcolor==3.3.0\nterminado==0.18.1\ntext-unidecode==1.3\ntextblob==0.19.0\ntf-slim==1.1.0\ntf_keras==2.20.1\nthinc==8.3.13\nthreadpoolctl==3.6.0\ntifffile==2026.8.23\ntiktoken==0.14.0\ntimm==1.0.28\ntinycss2==1.5.1\ntobler==0.14.0\ntokenizers==0.22.2\ntoml==0.10.2\ntomlkit==0.14.0\ntoolz==0.12.1\ntorch @ https://download.pytorch.org/whl/cpu/torch-2.11.0%2Bcpu-cp313-cp313-manylinux_2_28_x86_64.whl\ntorchao==0.10.0\ntorchaudio @ https://download.pytorch.org/whl/cpu/torchaudio-2.11.0%2Bcpu-cp313-cp313-manylinux_2_28_x86_64.whl\ntorchcodec @ https://download.pytorch.org/whl/cpu/torchcodec-0.11.0%2Bcpu-cp313-cp313-manylinux_2_28_x86_64.whl\ntorchdata==0.11.0\ntorchsummary==1.5.1\ntorchtune==0.6.1\ntorchvision @ https://download.pytorch.org/whl/cpu/torchvision-0.26.0%2Bcpu-cp313-cp313-manylinux_2_28_x86_64.whl\ntornado==6.5.7\ntqdm==4.67.3\ntraitlets==5.7.1\ntraittypes==0.2.3\ntransformers==5.15.1\ntreescope==0.1.10\ntruststore==0.10.4\ntsfresh==0.21.2\ntweepy==4.17.0\ntypeguard==4.6.0\ntyper==0.27.1\ntypes-pytz==2026.3.1.20260727\ntypes-setuptools==84.0.0.20260812\ntyping-inspection==0.4.4\ntyping_extensions==4.16.0\ntzdata==2026.3\ntzlocal==5.4.4\nuc-micro-py==2.0.0\nultralytics==8.4.135\nultralytics-platform==0.1.20\nultralytics-thop==2.1.6\numap-learn==0.5.12\numf==1.0.3\nuri-template==1.3.0\nuritemplate==4.2.0\nurllib3==2.5.0\nuuid_utils==0.17.0\nuvicorn==0.52.4\nuvloop==0.22.1\nvega-datasets==0.9.0\nwadllib==1.3.6\nwandb==0.28.1\nwasabi==1.1.3\nwatchdog==6.0.0\nwatchfiles==1.2.0\nwcwidth==0.8.2\nweasel==1.0.0\nwebcolors==25.10.0\nwebencodings==0.6.1\nwebsocket-client==1.9.0\nwebsockets==15.0.1\nWerkzeug==3.1.8\nwheel==0.48.0\nwidgetsnbextension==3.6.10\nwordcloud==1.9.6\nwrapt==2.3.0\nxarray==2025.12.0\nxarray-einstats==0.11.0\nxgboost==3.4.1\nxlrd==2.0.2\nxxhash==4.0.1\nxyzservices==2026.3.0\nyarl==1.24.5\nydf==0.15.0\nydf_tf==2.20.0\nyellowbrick==1.5\nyfinance==0.2.66\nzipp==4.1.0\nzstandard==0.25.0",
+  "config_hashes": [
+    {
+      "site": "giti",
+      "file": "calibration_points.json",
+      "sha256": "6ac8d91c289f37c6f79911cbc6cd3142cca1469924f332ee0073d2fd0ff5d083"
+    },
+    {
+      "site": "giti",
+      "file": "bev_config.json",
+      "sha256": "c4c31393505d3b4b0eaacd9f72cc2686239ca02107980a0784ad4cf5de52638d"
+    },
+    {
+      "site": "giti",
+      "file": "grid_config.json",
+      "sha256": "6b92fb685e50468222bf6f132625e74bad689ae92e602d3c7ab7421253eaca64"
+    },
+    {
+      "site": "giti",
+      "file": "gate_config.yaml",
+      "sha256": "4c204ac1b21dc00073c9fd780ffea8d5015011722308796097dbb156c5a2aae8"
+    },
+    {
+      "site": "mrc",
+      "file": "calibration_points.json",
+      "sha256": "f42625ed83296e88b4f6b572b19d35094e6f49d7eb00109b1cb7c4d6edd21d5c"
+    },
+    {
+      "site": "mrc",
+      "file": "bev_config.json",
+      "sha256": "e9f759551a5c8bc4fbacd44f633faab7b3fed1746de299e622e602ba0a382f24"
+    },
+    {
+      "site": "mrc",
+      "file": "grid_config.json",
+      "sha256": "afc72969dfe15202dab99b13db0053c9add35b8a94ae2a71fef3ded3a5cf288d"
+    },
+    {
+      "site": "mrc",
+      "file": "gate_config.yaml",
+      "sha256": "92aabbeeecd490fa35a6d74df62cb62c32cf26c3e11fe28111db94a7bf4d44d8"
+    }
+  ],
+  "model_hashes": [
+    {
+      "name": "yolo11n.pt",
+      "size_bytes": 5613764,
+      "sha256": "0ebbc80d4a7680d14987a577cd21342b65ecfd94632bd9a8da63ae6417644ee1"
+    },
+    {
+      "name": "uvh26.pt",
+      "size_bytes": 57142241,
+      "sha256": "12dbeb8f6fa207d19446fa652fc4313359fbec267027c8c01641004dcf1d0150"
+    }
+  ],
+  "video_hashes": [
+    {
+      "name": "mrc_intersection.mp4",
+      "size_bytes": 370415907,
+      "first_1mb_sha256": "3c135d05bb839bcd418dc38bc7dcc9628e57086ca735b2d1cc04a72b4776fd1d"
+    },
+    {
+      "name": "traffic_video.mp4",
+      "size_bytes": 100930282,
+      "first_1mb_sha256": "8272c6efd3b1a032a11c063ce14fe887e3cdd6f50a37a13c5a8e54b908b346f7"
+    }
+  ],
+  "run_parameters": {
+    "detector": "uvh-coco-fused",
+    "max_frames": 300,
+    "pet_threshold": 3.0,
+    "max_gap": 5,
+    "max_jump": 30,
+    "parallel_processes": 2,
+    "device": "cpu"
+  }
+}

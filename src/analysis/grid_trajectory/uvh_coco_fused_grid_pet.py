@@ -175,6 +175,40 @@ def _angle_diff_deg(a: float | None, b: float | None) -> float | None:
     return min(d, 360 - d)
 
 
+def _max_gap_in_window(
+    points: list[TrackPoint],
+    center_frame: int,
+    half_window: int = 20,
+) -> int:
+    """Longest run of consecutive frames with no detection inside
+    [center_frame - half_window, center_frame + half_window].
+
+    Counts the maximum of:
+      - interior gaps between consecutive in-window detections,
+      - the leading gap from window start to first detection,
+      - the trailing gap from last detection to window end.
+
+    Returns the full window length (2*half_window + 1) if the track
+    has no detection inside the window.
+    """
+    full = 2 * half_window + 1
+    if not points:
+        return full
+    lo = center_frame - half_window
+    hi = center_frame + half_window
+    in_win = sorted(p.frame for p in points if lo <= p.frame <= hi)
+    if not in_win:
+        return full
+    edge_lo = in_win[0] - lo
+    edge_hi = hi - in_win[-1]
+    interior = 0
+    for i in range(1, len(in_win)):
+        d = in_win[i] - in_win[i - 1] - 1
+        if d > interior:
+            interior = d
+    return max(interior, edge_lo, edge_hi)
+
+
 def _entry_exit_frames(points: list[TrackPoint], cx: float, cy: float, half_size: float):
     inside_frames = [pt.frame for pt in points if _point_in_square(pt.x, pt.y, cx, cy, half_size)]
     if not inside_frames:
@@ -393,6 +427,8 @@ def run_uvh_coco_fused_grid_pet(
     pet_threshold: float = 2.0,
     max_missing_ratio: float = 0.10,
     max_sequential_angle_deg: float = 55.0,
+    min_conflict_gap_frames: int = 10,
+    conflict_gap_window_frames: int = 20,
     max_frames: int | None = None,
     imgsz: int = 1280,
     uvh_conf: float = 0.20,
@@ -831,6 +867,18 @@ def run_uvh_coco_fused_grid_pet(
             if pet_result is None:
                 continue
             pet, first_placeholder, _second_placeholder, frame_ref = pet_result
+
+            # Conflict-window coverage gate: reject when either
+            # track has a run of at least min_conflict_gap_frames
+            # consecutive undetected frames inside
+            # +/- conflict_gap_window_frames of the conflict
+            # frame. A track absent for a third of that window
+            # cannot confirm the event. See docs/pet_gate_v1.md.
+            _cf = int(frame_ref)
+            _ga = _max_gap_in_window(pts_a, _cf, conflict_gap_window_frames)
+            _gb = _max_gap_in_window(pts_b, _cf, conflict_gap_window_frames)
+            if _ga >= min_conflict_gap_frames or _gb >= min_conflict_gap_frames:
+                continue
 
             structured_result = _compute_structured_pet_from_windows(
                 a_entry,

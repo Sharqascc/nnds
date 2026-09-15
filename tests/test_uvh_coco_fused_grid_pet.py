@@ -882,6 +882,10 @@ def test_run_uvh_coco_fused_grid_pet_with_conflict_mocked(tmp_path):
             return_value=0.0,
         ),
         patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._max_gap_in_window",
+            return_value=0,
+        ),
+        patch(
             "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._entry_exit_frames",
             side_effect=lambda pts, cx, cy, half: (0, 2),
         ),
@@ -1060,6 +1064,10 @@ def test_run_uvh_coco_fused_grid_pet_time_based_branch_mocked(tmp_path):
         patch(
             "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._heading_near_point",
             return_value=0.0,
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._max_gap_in_window",
+            return_value=0,
         ),
         patch(
             "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._entry_exit_frames",
@@ -3566,6 +3574,10 @@ def test_run_uvh_coco_fused_grid_pet_prune_entry_exit_none_mocked(tmp_path):
             return_value=0.0,
         ),
         patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._max_gap_in_window",
+            return_value=0,
+        ),
+        patch(
             "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._entry_exit_frames",
             return_value=None,
         ),
@@ -3707,6 +3719,10 @@ def test_run_uvh_coco_fused_grid_pet_prune_pet_none_mocked(tmp_path):
         patch(
             "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._heading_near_point",
             return_value=0.0,
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._max_gap_in_window",
+            return_value=0,
         ),
         patch(
             "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._entry_exit_frames",
@@ -3854,6 +3870,10 @@ def test_run_uvh_coco_fused_grid_pet_reversed_placeholder_mocked(tmp_path):
         patch(
             "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._heading_near_point",
             return_value=0.0,
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._max_gap_in_window",
+            return_value=0,
         ),
         patch(
             "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._entry_exit_frames",
@@ -4021,6 +4041,10 @@ def test_run_uvh_coco_fused_grid_pet_time_based_second_branch_mocked(tmp_path):
             return_value=0.0,
         ),
         patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._max_gap_in_window",
+            return_value=0,
+        ),
+        patch(
             "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._entry_exit_frames",
             side_effect=entry_exit_side_effect,
         ),
@@ -4178,6 +4202,10 @@ def test_run_uvh_coco_fused_grid_pet_orig_same_mocked(tmp_path):
         patch(
             "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._heading_near_point",
             return_value=0.0,
+        ),
+        patch(
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._max_gap_in_window",
+            return_value=0,
         ),
         patch(
             "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._entry_exit_frames",
