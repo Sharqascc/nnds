@@ -238,3 +238,54 @@ them from real Y events requires detecting "two vehicles on
 the same lane, moving at the same speed, sustained over a
 window" -- a car-following detector. That is a new model,
 not a threshold, and is out of scope.
+
+## Diagnostic artifact: pet_segments.csv
+
+The pipeline now writes `<pet>_segments.csv` alongside `pet.csv`
+on every run. One row per split segment, with these columns:
+
+  seg_id, orig_id, seg, n, first_frame, last_frame, span,
+  missing_ratio, max_gap, n_gaps_gt3, n_gaps_gt5, max_jump,
+  max_speed, mean_speed, straightness, conf_mean, conf_min,
+  class_name
+
+This is a **diagnostic**, not a gate. Tested as a gate, it fails:
+
+    flag criteria (any of):
+      n < 5, max_gap >= 10, missing_ratio >= 0.30,
+      max_jump >= 80, max_speed >= 30
+
+    cross-tab against the 20 events kept by gates v1-v3:
+
+                  no flag   flag
+      Y (real)       8        5
+      N (false)      6        1
+
+Six of the seven surviving false events have both participant
+segments clean by every criterion. Five of the thirteen real
+events have at least one flagged participant. Segment health is
+not correlated with event validity on this eval.
+
+### Why: different units, orthogonal measurements
+
+The three merged gates operate on PET events: whole-track
+statistics (missing_ratio), geometry at the conflict (angle),
+and local detection density near the conflict (coverage gap).
+
+Segment QA operates on individual tracks: fragmentation,
+speed spikes, short lifespans.
+
+A track can be internally irregular (flagged) while still
+contributing to a real PET event, and it can be perfectly
+smooth while participating in a false one.
+
+### What it is useful for
+
+- Every eval run leaves a durable record of tracker health
+  that can be diffed across runs and sites.
+- Downstream tooling can surface flagged segments without
+  changing PET output.
+- It costs ~10 ms per run and one extra CSV file.
+
+Ship the artifact, do not gate on it.
+

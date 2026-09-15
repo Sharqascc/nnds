@@ -1,109 +1,94 @@
-# NNDS Evaluation Metrics
+# Metric Status
 
-Every metric used by the gold-standard evaluation: name, where it is
-implemented, which script computes it, and the JSON key that script emits.
+Standing rule: **every commit must include a numerical verification for
+each core component it touches.** No PR merges without the report below
+being run and the deltas pasted into the PR description.
 
-## Detection
+## Core components and current verification status
 
-| Metric | Module | JSON key | Gold-standard row |
-|---|---|---|---|
-| Precision (micro) | src/analysis/detection_metrics.py::precision_recall_f1 | precision | precision |
-| Recall (micro) | same | recall | recall |
-| F1 (micro) | same | f1 | f1 |
-| mAP@50 | map_at_iou_range | map50 | mAP50 |
-| mAP@50:95 | same | map50_95 | mAP50:95 |
-| AP@75 | same | ap75 | AP75 |
-| Per-class recall | per_class_recall | printed only | - |
-| APs / APm / APl | ap_by_size | printed only | - |
+| component | metric | current value | GT source | status |
+|---|---|---|---|---|
+| Detection | precision | 0.871 | 5 frames, human (2026-09-14) | ✅ verified |
+| Detection | recall | 1.000 | same | ✅ verified |
+| Detection | mAP@50 | 0.950 | same | ✅ verified |
+| Detection | mAP@50:95 | 0.944 | same | ✅ verified |
+| Detection | AP@75 | 0.941 | same | ✅ verified |
+| Tracking | HOTA / MOTA / IDF1 | — | not annotated | ❌ blocked |
+| Tracking | ID switches | — | not annotated | ❌ blocked |
+| Tracking | fragmentation rate | 32/189 (17%) | auto from segments.csv | ⚠️ derived |
+| BEV | position MAE | — | no world GT | ❌ blocked |
+| BEV | homography reproj error | — | calibration points available | ⚠️ runnable via validate_bev.py |
+| Trajectory | velocity MAE | — | no world GT | ❌ blocked |
+| Trajectory | acceleration MAE | — | no world GT | ❌ blocked |
+| PET / SSM | precision | 0.857 | 53-event review (reconstructed) | ✅ verified |
+| PET / SSM | recall | 0.857 | same | ✅ verified |
+| PET / SSM | F1 | 0.857 | same | ✅ verified |
+| PET / SSM | PET MAE vs GT | 0.0 (circular) | GT PET = pipeline PET | ⚠️ meaningless |
+| PET / SSM | critical-conflict recall | 0.857 | 7 real events with PET<1.0s | ✅ verified |
 
-## Tracking
+## Reproduction commands
 
-| Metric | Module | JSON key | Gold-standard row |
-|---|---|---|---|
-| HOTA | src/analysis/tracking_metrics.py::hota | hota | HOTA |
-| IDF1 | idf1 | idf1 | IDF1 |
-| MOTA | mota | mota | MOTA |
-| ID switches | count_id_switches | printed only | - |
-| Fragmentation | local to evaluate_tracking_metrics.py | printed only | - |
+    # detection
+    python scripts/evaluate_detection_metrics.py \
+        --detections data/annotations/giti_300/first_real_metric/pred_detection_5f_only.csv \
+        --ground-truth data/annotations/giti_300/first_real_metric/gt_detection_5f_reviewed.csv \
+        --out-json outputs/detection_metrics.json
 
-## Trajectory / BEV
+    # PET / SSM
+    python scripts/evaluate_ssm_metrics.py \
+        --predicted outputs/pet_pred_14.csv \
+        --ground-truth outputs/pet_gt_20.csv \
+        --out-json outputs/ssm_metrics.json
 
-| Metric | Module | JSON key | Gold-standard row |
-|---|---|---|---|
-| Position RMSE (m) | scripts/evaluate_trajectory_metrics.py | position_rmse_m | position_RMSE |
-| Position MAE (m) | src/analysis/bev_error.py::position_metrics | mae | - |
-| Position p95 (m) | same | p95 | - |
-| Velocity MAE (m/s) | src/analysis/traj_error.py::velocity_metrics | velocity_mae_mps | velocity_MAE |
-| Acceleration MAE (m/s^2) | traj_error.py::acceleration_metrics | accel_mae_mps2 | accel_MAE |
+## What unblocks the blocked rows
 
-## SSM (PET / TTC / conflict)
+| blocked metric | needs | effort |
+|---|---|---|
+| Tracking HOTA/MOTA/IDF1 | 5 frames labeled with consistent track IDs | ~30 min |
+| BEV position MAE | 10 pixel clicks on ground-plane features + their world coords | ~20 min |
+| Trajectory MAE | same world-coord annotations | ~20 min |
+| PET MAE vs GT | ground-truth PET values for 20 events (currently only binary Y/N) | requires GT device or manual re-annotation |
 
-| Metric | Module | JSON key | Gold-standard row |
-|---|---|---|---|
-| PET MAE (s) | src/analysis/ssm_error.py::pet_value_metrics | pet_mae_s | PET_MAE |
-| TTC MAE (s) | ttc_value_metrics | ttc_mae_s | TTC_MAE |
-| Conflict P / R / F1 | conflict_prf | printed via evaluate_ssm_metrics.py | - |
-| Critical-conflict recall | critical_conflict_recall | critical_conflict_recall | critical_conflict_recall |
-| R^2 (SSM agreement) | src/analysis/ssm_agreement.py::agreement_metrics | pet_r2, ttc_r2 | - |
-| Spearman rho | same | pet_spearman, ttc_spearman | - |
+## Rule for future changes
 
-## Definitions and caveats
+Whenever a core component is modified:
+1. Run the relevant reproduction command above
+2. Paste the JSON output diff in the PR description
+3. Update the table in this file with the new value
 
-Detection.
-- IoU on axis-aligned boxes in pixel space.
-- Greedy 1-to-1 matching per frame per class, confidence-descending.
-- AP is VOC-style (monotone precision envelope).
-- mAP@50:95 is the mean AP over IoU 0.50, 0.55, ..., 0.95.
-- precision_recall_f1 is micro-averaged: TP/FP/FN summed over classes at IoU
-  0.5 with no confidence threshold, then ratios taken.
+If a component lacks GT, state that explicitly in the PR. Do not
+claim an improvement that cannot be measured.
 
-Tracking.
-- All metrics use bipartite matching (Hungarian on -IoU) per frame.
-- HOTA averages over IoU 0.05..0.95; score is sqrt(DetA * AssA).
-- MOTA counts IDFN + IDFP + IDSW over total GT.
-- IDF1 uses global Hungarian on the ID-level overlap matrix.
 
-BEV / trajectory.
-- Distances are in the world coordinate unit of the GT file. For NNDS
-  calibration that unit is meters (easting/northing).
-- Velocity and acceleration use central finite difference (forward/backward
-  at endpoints); units are m/s, m/s^2 only if x, y are meters and fps is
-  correct.
-- Acceleration MAE on noisy GT can be large - double differentiation
-  amplifies noise. Report alongside velocity MAE, never in isolation.
+## Caveats
 
-SSM.
-- PET_MAE and TTC_MAE are computed only over matched unordered pairs
-  (track_a, track_b) present in both GT and prediction.
-- Duplicate events on the same pair keep the minimum non-None value.
-- critical_conflict_recall counts only GT events below --critical-threshold
-  (default 1.5 s). If GT has zero critical events, recall is reported as
-  0.0, not 1.0 - "nothing to recall" is not evidence of good performance.
+- Detection numbers (0.871 precision, 0.944 mAP50:95) come from **5 frames**.
+  Small sample; treat as a pilot, not a validated metric.
+- PET/SSM precision, recall, and critical recall come from the
+  **53-event human review**. Solid, but single-site, single-clip.
+- **PET numeric accuracy is unmeasured.** The PET MAE we can compute
+  uses the pipeline's own PET values as GT. It is circular and
+  reports 0.0 for that reason. To get real PET MAE we need manually
+  measured PET for a subset of events: click the frame where A exits
+  the zone, click the frame where B enters it, compute the gap.
+- Tracking HOTA / MOTA / IDF1: no GT. Fragmentation rate (32 of 189
+  tracks split) is the only tracking number we can compute today,
+  and it is derived from the pipeline's own output, not external
+  truth.
+- BEV position and trajectory velocity/acceleration: no world GT.
+  Unmeasurable today.
 
-## What passing tests mean
+## Reproduction commands (verified)
 
-The test suite (unit + Hypothesis property tests) verifies that every metric
-function is implemented correctly: bounded, monotone where it should be,
-correct on controlled inputs. It does not verify that NNDS outputs are
-accurate. That requires real ground truth.
+    # detection (5-frame pilot)
+    python scripts/evaluate_detection_metrics.py \
+        --detections data/annotations/giti_300/first_real_metric/pred_detection_5f_only.csv \
+        --ground-truth data/annotations/giti_300/first_real_metric/gt_detection_5f_reviewed.csv \
+        --out-json outputs/detection_metrics.json
 
-## Converting pipeline output to metric schemas
-
-`scripts/pipeline_to_metric_schemas.py` converts `run_pipeline.py` output into
-the four PRED CSVs the metric scripts consume:
-
-    python scripts/pipeline_to_metric_schemas.py \
-        --detections-csv outputs/run_detections.csv \
-        --pet-csv        outputs/run_pet.csv \
-        --bev-config     configs/bev_config.json \
-        --out-dir        outputs/schemas
-
-Writes:
-- `pred_detection.csv`  (frame, x1, y1, x2, y2, class_name, conf)
-- `pred_tracking.csv`   (frame, track_id, x, y, w, h)
-- `pred_trajectory.csv` (frame, track_id, x, y) -- world coords in meters
-- `pred_ssm.csv`        (track_a, track_b, pet)
-
-The trajectory conversion projects each detection's box center through
-`H_pixel_to_world` from the BEV config.
-
+    # SSM / PET (53-event review, single-site)
+    python scripts/evaluate_ssm_metrics.py \
+        --predicted outputs/pet_pred_14.csv \
+        --ground-truth outputs/pet_gt_y_only.csv \
+        --critical-threshold 1.0 \
+        --out-json outputs/ssm_metrics.json

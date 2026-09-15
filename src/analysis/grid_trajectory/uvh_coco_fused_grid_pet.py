@@ -755,6 +755,60 @@ def run_uvh_coco_fused_grid_pet(
         f"[DEBUG_SPLIT_PARAMS] max_gap={max_frame_gap}, max_jump={max_spatial_jump}, tracks_after={len(tracks)}"
     )
 
+    # Debug: dump per-segment health metrics to <pet>_segments.csv
+    _seg_rows = []
+    for _sid, _pts in tracks.items():
+        if not _pts:
+            continue
+        _pts = sorted(_pts, key=lambda p: p.frame)
+        _frames = [p.frame for p in _pts]
+        _span = _frames[-1] - _frames[0] + 1 if _frames else 0
+        _gaps = [_frames[i] - _frames[i - 1] - 1 for i in range(1, len(_frames))]
+        _gaps = [g for g in _gaps if g > 0]
+        _jumps, _speeds = [], []
+        for i in range(1, len(_pts)):
+            _df = _pts[i].frame - _pts[i - 1].frame
+            if _df <= 0:
+                continue
+            _d = ((_pts[i].x - _pts[i - 1].x) ** 2 + (_pts[i].y - _pts[i - 1].y) ** 2) ** 0.5
+            _jumps.append(_d)
+            _speeds.append(_d / _df)
+        _n = len(_pts)
+        _mr = 1 - _n / _span if _span > 0 else 1.0
+        _net = 0.0
+        _path = 0.0
+        if _n >= 2:
+            _net = ((_pts[-1].x - _pts[0].x) ** 2 + (_pts[-1].y - _pts[0].y) ** 2) ** 0.5
+            _path = sum(_jumps)
+        _straight = _net / _path if _path > 0 else 1.0
+        _conf = [p.conf for p in _pts]
+        _seg_rows.append(
+            {
+                "seg_id": int(_sid),
+                "orig_id": int(_sid) // 1000 if _sid >= 1000 else int(_sid),
+                "seg": int(_sid) % 1000 if _sid >= 1000 else 0,
+                "n": _n,
+                "first_frame": int(_frames[0]),
+                "last_frame": int(_frames[-1]),
+                "span": int(_span),
+                "missing_ratio": round(_mr, 4),
+                "max_gap": max(_gaps) if _gaps else 0,
+                "n_gaps_gt3": sum(1 for g in _gaps if g > 3),
+                "n_gaps_gt5": sum(1 for g in _gaps if g > 5),
+                "max_jump": round(max(_jumps), 2) if _jumps else 0.0,
+                "max_speed": round(max(_speeds), 2) if _speeds else 0.0,
+                "mean_speed": round(sum(_speeds) / len(_speeds), 3) if _speeds else 0.0,
+                "straightness": round(_straight, 3),
+                "conf_mean": round(sum(_conf) / len(_conf), 3) if _conf else 0.0,
+                "conf_min": round(min(_conf), 3) if _conf else 0.0,
+                "class_name": _pts[0].cls_name,
+            }
+        )
+    _seg_df = pd.DataFrame(_seg_rows)
+    _seg_out = out_path.with_name(out_path.stem + "_segments.csv")
+    _seg_df.to_csv(_seg_out, index=False)
+    print(f"[UVH-COCO] segments_csv={_seg_out} rows={len(_seg_df)}", flush=True)
+
     valid_tracks = {tid: pts for tid, pts in tracks.items() if len(pts) >= 3}
 
     print(
