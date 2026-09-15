@@ -24,7 +24,7 @@ being run and the deltas pasted into the PR description.
 | Tracking | ID switches | — | not annotated | ❌ blocked |
 | Tracking | fragmentation rate | 32/189 (17%) | auto from segments.csv | ⚠️ derived |
 | BEV | position MAE | — | no world GT | ❌ blocked |
-| BEV | homography reproj error | — | calibration points available | ⚠️ runnable via validate_bev.py |
+| BEV | homography reproj error (6 calibration pts) | 0.000001 m max | configs/giti_calibration_points.json | ✅ verified (self-consistent) |
 | Trajectory | velocity MAE | — | no world GT | ❌ blocked |
 | Trajectory | acceleration MAE | — | no world GT | ❌ blocked |
 | PET / SSM | precision | 0.857 | 53-event review (reconstructed) | ✅ verified |
@@ -99,3 +99,50 @@ claim an improvement that cannot be measured.
         --ground-truth outputs/pet_gt_y_only.csv \
         --critical-threshold 1.0 \
         --out-json outputs/ssm_metrics.json
+
+
+## BEV calibration verification (2026-09-15)
+
+Reprojection of the 6 calibration points through `H_pixel_to_world`:
+
+    mean error: 0.000000 m
+    max error:  0.000001 m
+    n:          6
+
+### Coordinate-system convention
+
+The pipeline's world coordinates use absolute easting/northing
+(offset ~730900, ~222014). The calibration JSON uses local planar
+coordinates with origin at point P4. To compare, subtract the
+absolute offset of P4 and negate the y component (calibration
+stores +y upward, homography maps +y downward):
+
+    pred_local_x = wx - P4_x
+    pred_local_y = -(wy - P4_y)
+
+Without the y-flip, three points show a 32 m / 16 m error that
+looks like a homography failure but is purely a sign convention.
+
+### What this does and does not verify
+
+- The H matrix is self-consistent: the six points that defined it
+  reproject to themselves exactly.
+- Real BEV accuracy is not measured. Held-out validation requires
+  pixel clicks at known world positions not used in the fit.
+  ~20 min of human time.
+
+### Templates audit (2026-09-15)
+
+`data/annotations/giti_300/gt_tracking_template.csv` (1798 rows,
+30 frames, 58-65 boxes/frame) matches the pipeline's own detections
+within 0.43 px on every box. It is pipeline output, not human
+annotation. Not usable as detection or tracking GT.
+
+`gt_trajectory_template.csv` and `gt_detection_template.csv` were
+audited at the same time and are likewise pipeline output.
+
+`gt_ssm_template.csv` has 114 events with PET values but no
+verdicts. 20 of them overlap the 53-event review (which we
+reconstructed from docs after the reclone). 94 are unlabeled.
+Extending the review to all 114 is the highest-value remaining
+labeling task: it doubles the SSM sample size.
