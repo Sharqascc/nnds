@@ -782,6 +782,20 @@ def run_uvh_coco_fused_grid_pet(
             _path = sum(_jumps)
         _straight = _net / _path if _path > 0 else 1.0
         _conf = [p.conf for p in _pts]
+        _edge_touch = False
+        if _n >= 1:
+            _fx, _fy = _pts[0].x, _pts[0].y
+            _lx, _ly = _pts[-1].x, _pts[-1].y
+            _edge_touch = (
+                _fx < 10
+                or _fx > 1590
+                or _fy < 10
+                or _fy > 710
+                or _lx < 10
+                or _lx > 1590
+                or _ly < 10
+                or _ly > 710
+            )
         _seg_rows.append(
             {
                 "seg_id": int(_sid),
@@ -801,6 +815,8 @@ def run_uvh_coco_fused_grid_pet(
                 "straightness": round(_straight, 3),
                 "conf_mean": round(sum(_conf) / len(_conf), 3) if _conf else 0.0,
                 "conf_min": round(min(_conf), 3) if _conf else 0.0,
+                "net_disp": round(_net, 2),
+                "edge_touch": bool(_edge_touch),
                 "class_name": _pts[0].cls_name,
             }
         )
