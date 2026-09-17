@@ -1,0 +1,14 @@
+#!/bin/bash
+# Auto-configure git identity and hooks path after clone/checkout.
+# Solves the "fresh Colab session has no identity" problem.
+
+if [ -z "$(git config --global user.email)" ]; then
+    git config --global user.email "sharqascc@gmail.com"
+    git config --global user.name "sharqascc"
+    echo "[githooks] identity set: sharqascc <sharqascc@gmail.com>"
+fi
+
+if [ "$(git config core.hooksPath)" != ".githooks" ]; then
+    git config core.hooksPath .githooks
+    echo "[githooks] core.hooksPath set to .githooks"
+fi
