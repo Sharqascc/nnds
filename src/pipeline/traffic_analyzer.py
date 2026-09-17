@@ -111,6 +111,8 @@ class CompleteTrafficAnalyzer:
             raise RuntimeError("Homography not initialized")
         pixel_h = np.append(np.array(pixel_point, dtype=np.float32), 1.0).reshape(3, 1)
         world_h = self.homography @ pixel_h
+        if abs(world_h[2]) < 1e-9:
+            raise ValueError(f"pixel {pixel_point} maps to infinity (world_h[2]={world_h[2]})")
         return (world_h[:2] / world_h[2]).ravel()
 
     def validate_bev(self):
@@ -136,7 +138,7 @@ class CompleteTrafficAnalyzer:
             if np.all(np.isfinite(p)) and np.isfinite(t):
                 valid.append((p, float(t)))
         if len(valid) < 5:
-            return {"final_speed": 15.0, "speed_std": 2.0}
+            return {"final_speed": 15.0, "speed_std": 2.0, "fallback": True}
         world_pts = [self.pixel_to_world(p) for p, _ in valid]
         times = [t for _, t in valid]
         speeds = []
@@ -149,7 +151,7 @@ class CompleteTrafficAnalyzer:
             if 0.5 < spd_kmh < 150.0:
                 speeds.append(spd_kmh)
         if len(speeds) < 3:
-            return {"final_speed": 15.0, "speed_std": 2.0}
+            return {"final_speed": 15.0, "speed_std": 2.0, "fallback": True}
         return {
             "final_speed": float(np.median(speeds)),
             "speed_std": float(np.std(speeds)),
@@ -166,6 +168,7 @@ class CompleteTrafficAnalyzer:
             },
             "calibration_metrics": self.calibration_metrics,
         }
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
         Path(path).write_text(json.dumps(data, indent=2))
 
     def generate_report(self, speed_results):
@@ -311,6 +314,10 @@ def run_video_to_pet(
         raise SystemExit(f"Video file not found: {video_path}")
 
     detector = str(detector).lower()
+    if detector not in _SUPPORTED_DETECTORS:
+        raise ValueError(
+            f"Unsupported detector: {detector!r}. Supported: {sorted(_SUPPORTED_DETECTORS)}"
+        )
 
     if detector == "sam3":
         sam3_mod = __import__(

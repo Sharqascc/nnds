@@ -146,3 +146,23 @@ verdicts. 20 of them overlap the 53-event review (which we
 reconstructed from docs after the reclone). 94 are unlabeled.
 Extending the review to all 114 is the highest-value remaining
 labeling task: it doubles the SSM sample size.
+
+
+### Note on PET/SSM verification
+
+The PET/SSM precision, recall, F1, and critical-recall values (0.857)
+are computed by scripts/evaluate_ssm_metrics.py against files that
+have never been committed to this repository. Verified with
+`git log --all -- outputs/pet_pred_14.csv` (no commits), and same for
+`outputs/pet_gt_20.csv` and `outputs/pet_gt_y_only.csv`.
+
+The "verified" status is not supported. The numbers cannot be
+reproduced from what is in the repo.
+
+Two inconsistencies:
+1. The doc's text cites a "53-event review", but the command references
+   14-event files (pet_pred_14.csv). Counts do not match.
+2. Both input files, and the "review" they come from, exist only in
+   the original development environment. They were never committed.
+
+Recommend retagging as unverified.
