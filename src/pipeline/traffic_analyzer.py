@@ -7,7 +7,6 @@ import json
 import logging
 import math
 import re
-import sys
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
@@ -131,6 +130,8 @@ class CompleteTrafficAnalyzer:
         return {"mean_error_all": mean_all, "mean_error": mean_inliers, "rmse": rmse}
 
     def estimate_speed(self, pixel_positions, frame_times, fps: float = 30.0):
+        # fps is accepted for API compatibility; frame_times is expected
+        # to already be in seconds, so fps is not used in the calculation.
         if self.homography is None:
             raise RuntimeError("Homography not initialized")
         pixel_positions = np.asarray(pixel_positions, dtype=np.float32)
@@ -386,6 +387,7 @@ def run_video_to_pet(
             coco_person_model_path=str(coco_person_model_path),
             uvh_conf=uvh_conf,
             coco_person_conf=coco_person_conf,
+            person_suppress_overlap=person_suppress_overlap,
             imgsz=imgsz,
             device=device,
             backend=backend,
