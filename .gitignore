@@ -52,3 +52,7 @@ outputs/logs/
 !data/annotations/**/*.csv
 !data/annotations/**/*.jpg
 !data/annotations/**/*.md
+
+# build / cache artifacts
+*.egg-info/
+*.egg-info
