@@ -3,7 +3,7 @@ import pytest
 
 from src.analysis.verification.statistical_testing import (
     StatisticalTester,
-    TestResult,
+    StatTestResult,
     check_assumptions,
     chi_square_test,
     multiple_comparisons,
@@ -460,7 +460,7 @@ def test_statistical_tester_initialization():
 
 
 def test_test_result_dataclass():
-    """Test TestResult dataclass."""
-    result = TestResult(test_name="test", statistic=1.5, p_value=0.05, significant=True)
+    """Test StatTestResult dataclass."""
+    result = StatTestResult(test_name="test", statistic=1.5, p_value=0.05, significant=True)
     assert result.test_name == "test"
     assert result.p_value == 0.05

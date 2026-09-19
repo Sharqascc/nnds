@@ -36,7 +36,7 @@ __all__ = [
 
 
 @dataclass
-class TestResult:
+class StatTestResult:
     """Structured container for statistical test results."""
 
     test_name: str
