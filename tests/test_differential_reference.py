@@ -12,7 +12,7 @@ pytestmark = pytest.mark.differential
 
 
 def _naive_cell(px, py, x_min, x_max, y_min, y_max, cell_size):
-    if not (x_min <= px <= x_max and y_min <= py <= y_max):
+    if not (x_min <= px < x_max and y_min <= py < y_max):
         return "OUT_OF_BOUNDS"
     col = int((px - x_min) // cell_size)
     row = int((py - y_min) // cell_size)

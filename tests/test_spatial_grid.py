@@ -142,8 +142,8 @@ def test_get_cell_from_pixels_valid():
     assert grid.get_cell_from_pixels(10, 10) == "G_A_1"
     # At (30, 30) -> col 1, row 1 => G_B_2
     assert grid.get_cell_from_pixels(30, 30) == "G_B_2"
-    # Boundary x=100, y=100 (max) -> col 5, row 5 => G_F_6? x_max=100, cell_size=20 => (100-0)//20=5; same for row
-    assert grid.get_cell_from_pixels(100, 100) == "G_F_6"
+    # Max-bound points (x==x_max or y==y_max) are outside the grid. Columns are 0..4, rows are 1..5; (100,100) would be col=5, row=6, both out of range.
+    assert grid.get_cell_from_pixels(100, 100) == OUT_OF_BOUNDS_CELL
 
 
 def test_get_cell_center_cache_and_valid():
