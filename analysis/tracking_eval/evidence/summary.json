@@ -1,0 +1,54 @@
+{
+  "clip": "GITI_traffic_video.mp4, frames 100-199 (100 frames, 3.3s)",
+  "detector": "UVH-26 (iisc-aim) + COCO person fallback",
+  "tracker": "NNDS custom_tracker.py (ByteTrack-family, ReID, max_age=60)",
+  "class_breakdown": {
+    "detections": {
+      "auto": 1153,
+      "bike": 2583,
+      "bus": 23,
+      "car": 995,
+      "pedestrian": 731,
+      "truck": 18
+    },
+    "tracks": {
+      "auto": 14,
+      "bike": 45,
+      "bus": 3,
+      "car": 13,
+      "pedestrian": 27,
+      "truck": 3
+    }
+  },
+  "tracking": {
+    "tracks_produced": 105,
+    "tracks_after_fragment_stitching": 102,
+    "short_tracks_1_3_frames": 19,
+    "long_tracks_61_plus": 49,
+    "mean_track_length": 52.4,
+    "mean_missing_ratio": 0.137,
+    "confirmed_fragments": 3,
+    "fragment_rate": 0.0286
+  },
+  "cross_detector": {
+    "reference_tracker": "YOLO11n + ByteTrack (COCO classes)",
+    "yolo_tracks": 23,
+    "yolo_matched": 22,
+    "yolo_match_rate": 0.957,
+    "pipeline_tracks": 105,
+    "pipeline_matched": 20,
+    "pipeline_match_rate": 0.19,
+    "long_track_pairs_30plus": 13,
+    "perfect_long_pairs_95plus": 6
+  },
+  "config_evidence": {
+    "tracker_max_age": 60,
+    "tracker_max_age_ablation_comment": "120 ablation had zero effect",
+    "splitter_max_frame_gap_tested": [
+      5,
+      12
+    ],
+    "splitter_max_frame_gap_result": "byte-identical detection CSV",
+    "source": "src/analysis/grid_trajectory/uvh_coco_fused_grid_pet.py:28, 550"
+  }
+}
