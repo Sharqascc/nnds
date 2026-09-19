@@ -43,7 +43,6 @@ if __name__ == "__main__":
     from src.utils.seed import set_seed
 
     set_seed()
-    set_seed()
 
     ensure_models_if_needed()
 

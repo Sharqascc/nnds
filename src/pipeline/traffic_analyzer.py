@@ -121,8 +121,12 @@ class CompleteTrafficAnalyzer:
         ).reshape(-1, 2)
         errors = np.linalg.norm(projected - self.world_points_approx[:, :2], axis=1)
         mean_all = float(np.mean(errors))
+        if self.inlier_mask is not None and self.inlier_mask.any():
+            mean_inliers = float(np.mean(errors[self.inlier_mask]))
+        else:
+            mean_inliers = mean_all
         rmse = float(np.sqrt(np.mean(errors**2)))
-        return {"mean_error_all": mean_all, "mean_error": mean_all, "rmse": rmse}
+        return {"mean_error_all": mean_all, "mean_error": mean_inliers, "rmse": rmse}
 
     def estimate_speed(self, pixel_positions, frame_times, fps: float = 30.0):
         if self.homography is None:

@@ -94,6 +94,25 @@ def test_validate_bev_success():
     assert "rmse" in result
 
 
+def test_validate_bev_mean_error_is_inlier_only():
+    """Regression: validate_bev.mean_error must report the mean over inliers,
+    not duplicate mean_error_all. With 3 perfect inliers and 1 outlier of
+    error 10, mean_error_all = 2.5 but mean_error (inliers) must be ~0.
+    """
+    analyzer = CompleteTrafficAnalyzer()
+    analyzer.homography = np.eye(3, dtype=np.float32)
+    analyzer.pixel_points = np.array([[0, 0], [100, 0], [0, 100], [200, 200]], dtype=np.float32)
+    # First 3 points project exactly (identity H), 4th is off by 10 units
+    analyzer.world_points_approx = np.array(
+        [[0, 0], [100, 0], [0, 100], [210, 200]], dtype=np.float32
+    )
+    analyzer.inlier_mask = np.array([True, True, True, False])
+    result = analyzer.validate_bev()
+    assert result["mean_error_all"] == pytest.approx(2.5, abs=1e-5)
+    assert result["mean_error"] == pytest.approx(0.0, abs=1e-5)
+    assert result["mean_error"] < result["mean_error_all"]
+
+
 def test_validate_bev_requires_calibration():
     analyzer = CompleteTrafficAnalyzer()
     with pytest.raises(RuntimeError):
