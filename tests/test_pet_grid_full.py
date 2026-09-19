@@ -281,16 +281,38 @@ def test_compute_pet_case_B_exits_before_A_event():
     assert ev.severity == "moderate"
 
 
-def test_compute_pet_case2_degenerate():
-    """Cover B->A branch using a degenerate interval where exit < enter."""
+def test_malformed_interval_rejected_at_construction():
+    """Interval must satisfy t_exit >= t_enter; construction rejects bad input.
+
+    Previously compute_pet had a B->A branch that only fired when handed a
+    malformed Interval (t_exit < t_enter). With the invariant enforced at
+    construction, that branch is unreachable and was removed.
+    """
+    ws = []
+    with pytest.raises(ValueError, match="t_exit"):
+        Interval(obj_id=2, cell_id="G", t_enter=15.0, t_exit=5.0, world_samples=ws)
+
+
+def test_interval_rejects_non_finite_times():
+    ws = []
+    with pytest.raises(ValueError, match="finite"):
+        Interval(obj_id=1, cell_id="G", t_enter=float("nan"), t_exit=1.0, world_samples=ws)
+    with pytest.raises(ValueError, match="finite"):
+        Interval(obj_id=1, cell_id="G", t_enter=0.0, t_exit=float("inf"), world_samples=ws)
+
+
+def test_compute_pet_only_reports_forward_order_for_well_formed_inputs():
+    """Sorted-by-t_enter plus j>i means only the earlier-entering interval
+    can exit before the later one enters. The removed B->A branch was only
+    reachable via malformed intervals."""
     ws = []
     A = Interval(obj_id=1, cell_id="G", t_enter=10.0, t_exit=20.0, world_samples=ws)
-    B = Interval(obj_id=2, cell_id="G", t_enter=15.0, t_exit=5.0, world_samples=ws)  # degenerate
-    events = compute_pet([A, B], pet_threshold=10.0, critical_threshold=1.5, moderate_threshold=3.0)
+    B = Interval(obj_id=2, cell_id="G", t_enter=25.0, t_exit=30.0, world_samples=ws)
+    events = compute_pet([A, B], pet_threshold=10.0)
     assert len(events) == 1
     ev = events[0]
-    assert ev.obj_i == 2
-    assert ev.obj_j == 1
+    assert ev.obj_i == 1
+    assert ev.obj_j == 2
     assert ev.pet == 5.0
 
 

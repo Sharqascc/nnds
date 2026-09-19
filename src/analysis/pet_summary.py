@@ -49,9 +49,11 @@ class PETEventAnalyzer:
     # Default safety thresholds (seconds), inspired by traffic conflict literature.[web:37][web:39]
     DEFAULT_THRESHOLDS = {
         "critical": 1.0,  # <1s: high-risk conflict
-        "serious": 2.0,  # 1–2s: likely evasive action
-        "moderate": 3.0,  # 2–3s: potential conflict
-        "safe": 3.0,  # >3s: safe interaction
+        "serious": 2.0,  # 1-2s: likely evasive action
+        "moderate": 3.0,  # 2-3s: potential conflict
+        # risk_assessment() labels every event at or above `moderate` as
+        # "Safe"; there is no separate safe threshold. The previous
+        # "safe": 3.0 entry was dead config that appeared tunable.
     }
 
     def __init__(
