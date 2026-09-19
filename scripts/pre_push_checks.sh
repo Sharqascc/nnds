@@ -19,6 +19,9 @@ echo "=== ruff ==="
 ruff check src tests scripts
 ruff format --check src tests scripts
 
+echo "=== import guardrail ==="
+python scripts/check_imports.py
+
 echo "=== fast subset ==="
 pytest tests/ -q -o addopts="" -n auto \
     -m "not property and not integration and not slow and not differential and not metamorphic" \
