@@ -122,13 +122,18 @@ def test_run_demo_full():
 # ---------------- run_video_to_pet missing branches ----------------
 
 
-def test_run_video_to_pet_sam3_missing_weights_success(tmp_path, monkeypatch):
+def test_run_video_to_pet_sam3_success(tmp_path, monkeypatch):
+    """Happy path: sam3 backend called with valid paths, its events are
+    written to the output CSV. Renamed from
+    test_run_video_to_pet_sam3_missing_weights_success, which asserted
+    the old bug-compatible behavior of silently passing None when the
+    SAM3 weights file was missing.
+    """
     video = _dummy_file(tmp_path / "video.mp4")
     bev = _dummy_file(tmp_path / "bev.json")
     grid = _dummy_file(tmp_path / "grid.json")
+    sam3_weights = _dummy_file(tmp_path / "sam3.pt")
     out = tmp_path / "out.csv"
-    # sam3_weights_path does not exist -> will be set to None
-    missing_sam3 = tmp_path / "missing.pt"
 
     class FakeResult:
         pet_events = [
@@ -136,18 +141,42 @@ def test_run_video_to_pet_sam3_missing_weights_success(tmp_path, monkeypatch):
         ]
 
     with mock.patch(
-        "src.analysis.grid_trajectory.sam3_grid_pet.run_sam3_grid_pet", return_value=FakeResult()
+        "src.analysis.grid_trajectory.sam3_grid_pet.run_sam3_grid_pet",
+        return_value=FakeResult(),
     ):
         df = run_video_to_pet(
             video,
             bev_config_path=bev,
             grid_config_path=grid,
             detector="sam3",
-            sam3_weights_path=missing_sam3,
+            sam3_weights_path=sam3_weights,
             out_csv_path=out,
         )
     assert len(df) == 1
     assert df.iloc[0]["pet"] == 1.0
+
+
+def test_run_video_to_pet_sam3_missing_weights_raises(tmp_path, monkeypatch):
+    """Missing SAM3 weights must raise FileNotFoundError, matching
+    yolo-cpu and uvh-coco-fused. The old behavior silently passed None
+    through, masking the dispatch kwarg bug.
+    """
+    video = _dummy_file(tmp_path / "video.mp4")
+    bev = _dummy_file(tmp_path / "bev.json")
+    grid = _dummy_file(tmp_path / "grid.json")
+    missing_sam3 = tmp_path / "missing.pt"
+    out = tmp_path / "out.csv"
+
+    with mock.patch("src.analysis.grid_trajectory.sam3_grid_pet.run_sam3_grid_pet"):
+        with pytest.raises(FileNotFoundError, match="SAM3 weights not found"):
+            run_video_to_pet(
+                video,
+                bev_config_path=bev,
+                grid_config_path=grid,
+                detector="sam3",
+                sam3_weights_path=missing_sam3,
+                out_csv_path=out,
+            )
 
 
 def test_run_video_to_pet_yolo_cpu_success(tmp_path):

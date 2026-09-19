@@ -176,19 +176,52 @@ def test_run_video_to_pet_missing_video(tmp_path):
 
 
 def test_run_video_to_pet_sam3_missing_weights(tmp_path):
+    """Regression: missing SAM3 weights raise FileNotFoundError up front."""
     video, bev, grid = make_dummy_args(tmp_path)
     mock_module = MagicMock()
     mock_module.run_sam3_grid_pet = MagicMock(return_value=MagicMock(pet_events=[]))
     with patch.dict(sys.modules, {"src.analysis.grid_trajectory.sam3_grid_pet": mock_module}):
-        df = run_video_to_pet(
+        with pytest.raises(FileNotFoundError, match="SAM3 weights not found"):
+            run_video_to_pet(
+                video_path=video,
+                bev_config_path=bev,
+                grid_config_path=grid,
+                sam3_weights_path=tmp_path / "sam3.pt",
+                detector="sam3",
+                max_frames=1,
+            )
+
+
+def test_sam3_dispatch_uses_real_signature_kwargs(tmp_path):
+    """Regression: traffic_analyzer must call sam3.run_sam3_grid_pet with
+    the parameter names in its actual signature (project_root,
+    video_rel_path, sam3_rel_path, grid_rel_path, bev_rel_path).
+    """
+    video, bev, grid = make_dummy_args(tmp_path)
+    sam3_weights = tmp_path / "sam3.pt"
+    sam3_weights.write_text("dummy")
+    out_csv = tmp_path / "out.csv"
+
+    mock_module = MagicMock()
+    mock_module.run_sam3_grid_pet = MagicMock(return_value=MagicMock(pet_events=[]))
+    with patch.dict(sys.modules, {"src.analysis.grid_trajectory.sam3_grid_pet": mock_module}):
+        run_video_to_pet(
             video_path=video,
             bev_config_path=bev,
             grid_config_path=grid,
-            sam3_weights_path=tmp_path / "sam3.pt",
+            sam3_weights_path=sam3_weights,
             detector="sam3",
             max_frames=1,
+            out_csv_path=out_csv,
         )
-    assert isinstance(df, pd.DataFrame)
+    assert mock_module.run_sam3_grid_pet.called
+    kwargs = mock_module.run_sam3_grid_pet.call_args.kwargs
+    required = {"project_root", "video_rel_path", "sam3_rel_path", "grid_rel_path", "bev_rel_path"}
+    missing = required - set(kwargs)
+    assert not missing, f"sam3 called without required kwargs: {sorted(missing)}"
+    forbidden = {"video_path", "bev_config_path", "grid_config_path", "sam3_weights_path"}
+    stale = forbidden & set(kwargs)
+    assert not stale, f"sam3 called with old broken kwargs: {sorted(stale)}"
 
 
 def test_run_video_to_pet_yolo_cpu_missing_weights(tmp_path):
