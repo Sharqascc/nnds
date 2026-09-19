@@ -1,5 +1,10 @@
 # Metric Status
 
+> **Correction (this commit):** several PET/SSM "verified" labels were
+> based on files (`outputs/pet_pred_14.csv`, `outputs/pet_gt_y_only.csv`)
+> that were never committed to the repository. Marked as unverified below.
+> The doc's appendix already said this; the table now agrees with it.
+
 The current, measured values for each metric defined in
 `docs/METRICS.md`. Standing rule: every PR that touches a core
 component runs the reproduction commands below and pastes the
@@ -27,11 +32,11 @@ being run and the deltas pasted into the PR description.
 | BEV | homography reproj error (6 calibration pts) | 0.000001 m max | configs/giti_calibration_points.json | ✅ verified (self-consistent) |
 | Trajectory | velocity MAE | — | no world GT | ❌ blocked |
 | Trajectory | acceleration MAE | — | no world GT | ❌ blocked |
-| PET / SSM | precision | 0.857 | 53-event review (reconstructed) | ✅ verified |
-| PET / SSM | recall | 0.857 | same | ✅ verified |
-| PET / SSM | F1 | 0.857 | same | ✅ verified |
+| PET / SSM | precision | 0.857 | 53-event review (reconstructed) | ⚠️ unverified (source files not in repo) |
+| PET / SSM | recall | 0.857 | same | ⚠️ unverified (source files not in repo) |
+| PET / SSM | F1 | 0.857 | same | ⚠️ unverified (source files not in repo) |
 | PET / SSM | PET MAE vs GT | 0.0 (circular) | GT PET = pipeline PET | ⚠️ meaningless |
-| PET / SSM | critical-conflict recall | 0.857 | 7 real events with PET<1.0s | ✅ verified |
+| PET / SSM | critical-conflict recall | 0.857 | 7 real events with PET<1.0s | ⚠️ unverified (source files not in repo) |
 
 ## Reproduction commands
 

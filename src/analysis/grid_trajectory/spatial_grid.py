@@ -127,7 +127,7 @@ class SpatialGrid:
         Returns:
             Cell ID string or OUT_OF_BOUNDS_CELL if outside grid.
         """
-        if not (self.x_min <= px_x <= self.x_max and self.y_min <= px_y <= self.y_max):
+        if not (self.x_min <= px_x < self.x_max and self.y_min <= px_y < self.y_max):
             return OUT_OF_BOUNDS_CELL
 
         col_idx = int((px_x - self.x_min) // self.cell_size)

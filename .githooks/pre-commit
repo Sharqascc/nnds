@@ -12,6 +12,14 @@ echo "pre-commit on $(echo "$STAGED" | wc -l) file(s)"
 ruff check $STAGED
 ruff format --check $STAGED
 
+# import-layering guardrail: canonical pipeline must not import
+# experimental modules (src.diffusion, src.vlm); leaf layers must
+# not import higher layers. Fast: ~30 ms on a handful of files.
+SRC_STAGED=$(printf '%s\n' $STAGED | grep '^src/' || true)
+if [ -n "$SRC_STAGED" ]; then
+    python scripts/check_imports.py $SRC_STAGED
+fi
+
 python - "$STAGED" <<'PY'
 import ast, sys
 from collections import Counter
