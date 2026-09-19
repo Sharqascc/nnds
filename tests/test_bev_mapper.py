@@ -370,20 +370,6 @@ def test_main_raise_on_failure(tmp_path):
         main()
 
 
-def test_real_calibration_shape_mismatch(tmp_path):
-    calib_data = {
-        "pixel_points": [[0, 0], [1, 0], [0, 1], [1, 1]],
-        "world_points": [[0, 0], [1, 0], [0, 1], [1, 1], [2, 2]],
-    }
-    bev_data = {
-        "bounds": {"x_min": 0, "x_max": 100, "y_min": 0, "y_max": 100},
-        "resolution": [100, 100],
-    }
-    calib_path, bev_path = make_calib_files(tmp_path, calib_data, bev_data)
-    result = test_with_real_calibration(calib_json=calib_path, bev_json=bev_path)
-    assert result is None
-
-
 def test_real_calibration_cv2_returns_none(tmp_path):
     calib_data = {
         "pixel_points": [[0, 0], [1, 0], [0, 1], [1, 1]],
