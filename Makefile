@@ -71,7 +71,7 @@ reproduce-final:
 .PHONY: test-fast test-metamorphic test-differential test-determinism test-all
 
 test-fast:
-	pytest tests/ -q -o addopts="" -m "not property and not integration and not slow and not differential and not metamorphic"
+	pytest tests/ -q -o addopts="" -n auto -m "not property and not integration and not slow and not differential and not metamorphic"
 
 test-metamorphic:
 	pytest tests/ -q -o addopts="" -m metamorphic

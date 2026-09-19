@@ -20,7 +20,7 @@ ruff check src tests scripts
 ruff format --check src tests scripts
 
 echo "=== fast subset ==="
-pytest tests/ -q -o addopts="" \
+pytest tests/ -q -o addopts="" -n auto \
     -m "not property and not integration and not slow and not differential and not metamorphic" \
     --ignore=tests/test_snapshot_bev_mapper.py \
     --ignore=tests/test_snapshot_pet_summary.py \

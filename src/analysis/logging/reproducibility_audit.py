@@ -28,6 +28,113 @@ __all__ = [
 ]
 
 
+import functools
+
+
+@functools.lru_cache(maxsize=1)
+def _pip_freeze_cached() -> str:
+    """Run `pip freeze` once per process. The output cannot change during a
+    single test run, and shelling out is ~1-2 s per call. Multiple tests
+    instantiate ReproducibilityAuditor; without caching this dominates the
+    fast-test budget."""
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "freeze"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        return result.stdout.strip() if result.returncode == 0 else ""
+    except Exception:
+        return ""
+
+
+_PRIORITY_PACKAGES = (
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "pandas",
+    "scikit-learn",
+    "torch",
+    "torchvision",
+    "torchaudio",
+    "tensorflow",
+    "jax",
+    "flax",
+    "cv2",
+    "PIL",
+    "statsmodels",
+    "seaborn",
+    "transformers",
+    "diffusers",
+)
+
+# Import name -> distribution name as it appears in `pip freeze`.
+# Everything not listed here maps to itself.
+_FREEZE_NAME_FOR = {
+    "cv2": "opencv-python",
+    "PIL": "Pillow",
+}
+
+
+@functools.lru_cache(maxsize=1)
+def _freeze_dict_cached() -> dict[str, str]:
+    """Parse `pip freeze` output into {dist_name_lower: version}."""
+    freeze = _pip_freeze_cached()
+    out: dict[str, str] = {}
+    for line in freeze.splitlines():
+        if "==" not in line:
+            continue
+        name, _, ver = line.partition("==")
+        out[name.strip().lower()] = ver.strip()
+    return out
+
+
+def _get_package_versions_impl() -> dict[str, str]:
+    versions: dict[str, str] = {}
+    freeze = _freeze_dict_cached()
+
+    for pkg in _PRIORITY_PACKAGES:
+        dist = _FREEZE_NAME_FOR.get(pkg, pkg).lower()
+        if dist in freeze:
+            versions[pkg] = freeze[dist]
+            continue
+        # Fallback only: importing torch / transformers / diffusers costs
+        # seconds and is redundant when freeze already knows the version.
+        try:
+            if pkg == "cv2":
+                import cv2
+
+                versions[pkg] = cv2.__version__
+            elif pkg == "PIL":
+                import PIL
+
+                versions[pkg] = PIL.__version__
+            else:
+                mod = __import__(pkg.replace("-", "_"))
+                versions[pkg] = getattr(mod, "__version__", "unknown")
+        except ImportError:
+            pass
+
+    raw = _pip_freeze_cached()
+    if raw:
+        versions["_pip_freeze"] = raw
+    return versions
+
+
+@functools.lru_cache(maxsize=1)
+def _get_package_versions_cached() -> tuple[tuple[str, str], ...]:
+    """Cached, hashable form of _get_package_versions_impl()."""
+    return tuple(_get_package_versions_impl().items())
+
+
+def clear_package_version_cache() -> None:
+    """Test hook: forget cached pip freeze and package-version results."""
+    _pip_freeze_cached.cache_clear()
+    _freeze_dict_cached.cache_clear()
+    _get_package_versions_cached.cache_clear()
+
+
 class ReproducibilityAuditor:
     """
     Publication-grade reproducibility auditing.
@@ -338,65 +445,14 @@ class ReproducibilityAuditor:
     # ===================================================================
 
     def _get_package_versions(self) -> dict[str, str]:
-        """Get versions of all installed packages."""
-        versions = {}
+        """Versions of priority packages plus raw pip freeze output.
 
-        # Core scientific packages
-        priority_packages = [
-            "numpy",
-            "scipy",
-            "matplotlib",
-            "pandas",
-            "scikit-learn",
-            "torch",
-            "torchvision",
-            "torchaudio",
-            "tensorflow",
-            "jax",
-            "flax",
-            "cv2",
-            "PIL",
-            "statsmodels",
-            "seaborn",
-            "transformers",
-            "diffusers",
-        ]
-
-        for pkg in priority_packages:
-            try:
-                # Handle special cases
-                if pkg == "cv2":
-                    import cv2
-
-                    versions[pkg] = cv2.__version__
-                elif pkg == "PIL":
-                    import PIL
-
-                    versions[pkg] = PIL.__version__
-                else:
-                    mod = __import__(pkg.replace("-", "_"))
-                    versions[pkg] = getattr(mod, "__version__", "unknown")
-            except ImportError:
-                pass
-
-        # Try to get full pip freeze (more comprehensive)
-        try:
-            result = subprocess.run(
-                [sys.executable, "-m", "pip", "freeze"],
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-            if result.returncode == 0:
-                versions["_pip_freeze"] = result.stdout.strip()
-        except:
-            pass
-
-        return versions
-
-    # ===================================================================
-    # CODE VERSIONING
-    # ===================================================================
+        Delegates to a module-level lru_cache. Imports of torch /
+        transformers / diffusers are avoided when `pip freeze` already
+        carries the version; those imports cost ~10 s on a cold process
+        and dominated the auditor's construction time.
+        """
+        return dict(_get_package_versions_cached())
 
     def _get_git_info(self) -> dict[str, Any]:
         """Get Git repository state."""
