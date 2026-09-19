@@ -66,3 +66,21 @@ reproduce-final:
 		echo "Video or model files missing. Skipping full pipeline/validation. Generating results table from committed data."; \
 	fi
 	PYTHONPATH=. python scripts/generate_results_table.py
+
+
+.PHONY: test-fast test-metamorphic test-differential test-determinism test-all
+
+test-fast:
+	pytest tests/ -q -o addopts="" -m "not property and not integration and not slow and not differential and not metamorphic"
+
+test-metamorphic:
+	pytest tests/ -q -o addopts="" -m metamorphic
+
+test-differential:
+	pytest tests/ -q -o addopts="" -m differential
+
+test-determinism:
+	pytest tests/test_determinism.py -q -o addopts=""
+
+test-all:
+	pytest tests/ -q -o addopts=""

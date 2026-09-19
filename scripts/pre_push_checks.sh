@@ -1,28 +1,34 @@
-#!/bin/bash
-# Pre-push checks with caching to avoid duplicate Ruff/Pytest runs.
-# If a recent successful check exists (<= 600 seconds), skip rerun.
+#!/usr/bin/env bash
+# Curated pre-push. Fast subset + metamorphic + determinism.
+# Full property/differential suite lives in CI.
 set -e
+cd "$(git rev-parse --show-toplevel)"
 
 CACHE_FILE=".last_quality_checks"
-MAX_AGE_SECONDS=600
+MAX_AGE=300
 
-# Check if cache file exists and is recent
 if [ -f "$CACHE_FILE" ]; then
-    now=$(date +%s)
-    mtime=$(stat -c %Y "$CACHE_FILE" 2>/dev/null || echo 0)
-    age=$(( now - mtime ))
-    if [ "$age" -lt "$MAX_AGE_SECONDS" ]; then
-        echo "✅ Recent quality checks found ($age seconds old). Skipping rerun."
+    age=$(( $(date +%s) - $(stat -c %Y "$CACHE_FILE" 2>/dev/null || echo 0) ))
+    if [ "$age" -lt "$MAX_AGE" ]; then
+        echo "Recent checks (${age}s old). Skipping."
         exit 0
     fi
 fi
 
-echo "=== Running Ruff checks ==="
+echo "=== ruff ==="
 ruff check src tests scripts
+ruff format --check src tests scripts
 
-echo "=== Running Pytest ==="
-pytest -q --timeout=120 -o addopts=""   --ignore=tests/test_snapshot_bev_mapper.py   --ignore=tests/test_snapshot_pet_summary.py
+echo "=== fast subset ==="
+pytest tests/ -q -o addopts="" \
+    -m "not property and not integration and not slow and not differential and not metamorphic" \
+    --ignore=tests/test_snapshot_bev_mapper.py \
+    --ignore=tests/test_snapshot_pet_summary.py \
+    --timeout=60
 
-# Create/update cache file on success
+echo "=== metamorphic + determinism ==="
+pytest tests/test_metamorphic_ssm.py tests/test_determinism.py \
+    -q -o addopts="" --timeout=60
+
 touch "$CACHE_FILE"
-echo "✅ All pre-push checks passed."
+echo "pre-push OK"
