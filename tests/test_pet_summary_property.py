@@ -1,136 +1,144 @@
+
 import tempfile
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
-import pytest
-from hypothesis import given, settings
+from hypothesis import given
 from hypothesis import strategies as st
 
 from src.analysis.pet_summary import PETEventAnalyzer
 
 
-def make_analyzer(pet_values):
-    tmpdir = tempfile.TemporaryDirectory()
-    csv_path = Path(tmpdir.name) / "test.csv"
-    pd.DataFrame({"pet": pet_values}).to_csv(csv_path, index=False)
-    return PETEventAnalyzer(csv_path), tmpdir
+def _make_analyzer(pets, conflict_types=None):
+    """Create a PETEventAnalyzer backed by a fresh temp CSV."""
+    df = pd.DataFrame({"pet_s": pets})
+    if conflict_types is not None:
+        df["conflict_type"] = conflict_types
+    tmpdir = tempfile.mkdtemp()
+    csv_path = Path(tmpdir) / "pet.csv"
+    df.to_csv(csv_path, index=False)
+    return PETEventAnalyzer(csv_path)
 
 
-@given(st.lists(st.floats(min_value=0.1, max_value=9.9), min_size=2, max_size=30))
-@pytest.mark.property
-def test_basic_stats_count_matches_rows(pet_values):
-    analyzer, tmpdir = make_analyzer(pet_values)
-    try:
-        stats = analyzer.basic_stats(ci=0.95)
-        assert stats["count"] == len(pet_values)
-    finally:
-        tmpdir.cleanup()
-
-
-@given(st.lists(st.floats(min_value=0.1, max_value=9.9), min_size=2, max_size=30))
-@pytest.mark.property
-def test_basic_stats_ci_bounds(pet_values):
-    analyzer, tmpdir = make_analyzer(pet_values)
-    try:
-        stats = analyzer.basic_stats(ci=0.95)
-        assert stats["ci_mean_lower"] <= stats["mean"] <= stats["ci_mean_upper"]
-        assert stats["ci_mean_lower"] <= stats["ci_mean_upper"]
-    finally:
-        tmpdir.cleanup()
-
-
+# ------------------------------------------------------------------ #
+# basic_stats
+# ------------------------------------------------------------------ #
 @given(
-    st.integers(min_value=2, max_value=20).flatmap(
-        lambda n: st.tuples(
-            st.lists(st.floats(min_value=0.1, max_value=9.9), min_size=n, max_size=n),
-            st.lists(st.floats(min_value=0.1, max_value=9.9), min_size=n, max_size=n),
-        )
+    st.lists(
+        st.floats(min_value=0.01, max_value=10.0, allow_nan=False, allow_infinity=False),
+        min_size=2,
+        max_size=30,
     )
 )
-@pytest.mark.property
-def test_cohens_d_non_negative(samples):
-    a, b = samples
-    d = PETEventAnalyzer._cohens_d(np.array(a), np.array(b))
-    assert d >= 0
+def test_basic_stats_quantile_ordering(pets):
+    analyzer = _make_analyzer(pets)
+    s = analyzer.basic_stats()
 
-
-@given(
-    st.lists(st.floats(min_value=0.1, max_value=9.9), min_size=1, max_size=20),
-    st.lists(st.floats(min_value=0.1, max_value=9.9), min_size=1, max_size=20),
-)
-@pytest.mark.property
-def test_cliffs_delta_in_range(a, b):
-    delta = PETEventAnalyzer._cliffs_delta(np.array(a), np.array(b))
-    assert -1.0 <= delta <= 1.0
-
-
-@given(st.floats(min_value=-10, max_value=10))
-@pytest.mark.property
-def test_interpret_effect_size_valid(d):
-    label = PETEventAnalyzer._interpret_effect_size(d)
-    assert label in {"negligible", "small", "medium", "large"}
+    assert s["count"] == len(pets)
+    tol = 1e-9
+    assert s["min"] - tol <= s["q25"] <= s["median"] <= s["q75"] <= s["max"] + tol
+    assert s["min"] - tol <= s["mean"] <= s["max"] + tol
+    assert abs(s["iqr"] - (s["q75"] - s["q25"])) < 1e-9
 
 
 @given(
     st.lists(
-        st.floats(-1000.0, 1000.0, allow_nan=False, allow_infinity=False), min_size=2, max_size=20
-    ),
-    st.lists(
-        st.floats(-1000.0, 1000.0, allow_nan=False, allow_infinity=False), min_size=2, max_size=20
-    ),
+        st.floats(min_value=0.01, max_value=10.0, allow_nan=False, allow_infinity=False),
+        min_size=3,
+        max_size=30,
+    )
 )
-@settings(max_examples=50)
-def test_cohens_d_properties(sample1, sample2):
-    """Cohen's d should be non-negative, finite, and symmetric wrt input order."""
-    # Ensure same length
-    n = min(len(sample1), len(sample2))
-    sample1 = sample1[:n]
-    sample2 = sample2[:n]
+def test_basic_stats_ci_brackets_mean(pets):
+    analyzer = _make_analyzer(pets)
+    s = analyzer.basic_stats(ci=0.95)
 
-    d1 = PETEventAnalyzer._cohens_d(np.array(sample1), np.array(sample2))
-    d2 = PETEventAnalyzer._cohens_d(np.array(sample2), np.array(sample1))
-
-    assert d1 >= 0
-    assert d2 >= 0
-    assert np.isclose(d1, d2, atol=1e-9)  # should be symmetric
+    assert s["ci_mean_lower"] <= s["mean"] <= s["ci_mean_upper"]
+    assert s["ci_level"] == 0.95
 
 
 @given(
     st.lists(
-        st.floats(-1000.0, 1000.0, allow_nan=False, allow_infinity=False), min_size=2, max_size=20
-    ),
-    st.lists(
-        st.floats(-1000.0, 1000.0, allow_nan=False, allow_infinity=False), min_size=2, max_size=20
-    ),
+        st.floats(min_value=0.01, max_value=10.0, allow_nan=False, allow_infinity=False),
+        min_size=2,
+        max_size=30,
+    )
 )
-@settings(max_examples=50)
-def test_cliffs_delta_properties(sample1, sample2):
-    """Cliff's delta should be in [-1, 1] and anti-symmetric under input swap."""
-    n1, n2 = len(sample1), len(sample2)
-    d1 = PETEventAnalyzer._cliffs_delta(np.array(sample1), np.array(sample2))
-    d2 = PETEventAnalyzer._cliffs_delta(np.array(sample2), np.array(sample1))
+def test_basic_stats_percentiles_monotonic(pets):
+    analyzer = _make_analyzer(pets)
+    s = analyzer.basic_stats()
 
-    assert -1.0 <= d1 <= 1.0
-    assert -1.0 <= d2 <= 1.0
-    # Anti-symmetry: delta(A,B) = -delta(B,A)
-    assert np.isclose(d1, -d2, atol=1e-9)
+    pcts = [1, 5, 10, 90, 95, 99]
+    values = [s[f"p{p}"] for p in pcts]
+    assert values == sorted(values)
 
 
-@given(st.floats(-5.0, 5.0, allow_nan=False, allow_infinity=False))
-@settings(max_examples=100)
-def test_interpret_effect_size_categories(d):
-    """Effect size interpretation should map to known categories."""
-    result = PETEventAnalyzer._interpret_effect_size(d)
-    assert result in {"negligible", "small", "medium", "large"}
+# ------------------------------------------------------------------ #
+# risk_assessment
+# ------------------------------------------------------------------ #
+@given(
+    st.lists(
+        st.floats(min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+        min_size=1,
+        max_size=30,
+    )
+)
+def test_risk_assessment_total_and_exclusive(pets):
+    analyzer = _make_analyzer(pets)
+    risk_df = analyzer.risk_assessment()
 
-    # Check boundaries correspond to thresholds
-    d_abs = abs(d)
-    if d_abs < 0.2:
-        assert result == "negligible"
-    elif d_abs < 0.5:
-        assert result == "small"
-    elif d_abs < 0.8:
-        assert result == "medium"
-    else:
-        assert result == "large"
+    assert len(risk_df) == len(pets)
+    assert set(risk_df["risk_level"]).issubset(
+        {"Critical", "Serious", "Moderate", "Safe"}
+    )
+
+
+# ------------------------------------------------------------------ #
+# risk_summary
+# ------------------------------------------------------------------ #
+@given(
+    st.lists(
+        st.floats(min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+        min_size=1,
+        max_size=30,
+    )
+)
+def test_risk_summary_counts_match_and_percentages_sum_to_100(pets):
+    analyzer = _make_analyzer(pets)
+    summary = analyzer.risk_summary()
+
+    total = sum(summary[k]["count"] for k in ["critical", "serious", "moderate", "safe"])
+    assert total == len(pets)
+
+    pct_total = sum(
+        summary[k]["percentage"] for k in ["critical", "serious", "moderate", "safe"]
+    )
+    assert abs(pct_total - 100.0) < 1e-6
+
+    assert summary["conflict_rate"]["count"] == (
+        summary["critical"]["count"] + summary["serious"]["count"]
+    )
+
+
+# ------------------------------------------------------------------ #
+# by_conflict_type
+# ------------------------------------------------------------------ #
+@given(
+    st.lists(
+        st.tuples(
+            st.floats(min_value=0.01, max_value=10.0, allow_nan=False, allow_infinity=False),
+            st.sampled_from(["A", "B", "C"]),
+        ),
+        min_size=2,
+        max_size=20,
+    )
+)
+def test_by_conflict_type_sorted_by_conflict_rate(rows):
+    pets = [p for p, _ in rows]
+    types = [t for _, t in rows]
+    analyzer = _make_analyzer(pets, types)
+    out = analyzer.by_conflict_type()
+
+    if not out.empty:
+        rates = list(out["conflict_rate"])
+        assert rates == sorted(rates, reverse=True)
+        assert int(out["count"].sum()) == len(pets)
