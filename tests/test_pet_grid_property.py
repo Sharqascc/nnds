@@ -12,17 +12,35 @@ from src.analysis.grid_trajectory.pet_grid import (
 
 
 # Helper to build valid intervals
+def _make_interval(obj_id, cell_id, t1, t2, world_samples):
+    """Build an Interval whose t_enter <= t_exit by sorting the two draws.
+
+    The previous strategy used .filter(t_enter < t_exit), which cannot work
+    once Interval.__post_init__ rejects malformed input: Hypothesis calls
+    the filter AFTER construction, so bad draws raise instead of being
+    discarded.
+    """
+    t_enter, t_exit = (t1, t2) if t1 <= t2 else (t2, t1)
+    return Interval(
+        obj_id=obj_id,
+        cell_id=cell_id,
+        t_enter=t_enter,
+        t_exit=t_exit,
+        world_samples=world_samples,
+    )
+
+
 def interval_strategy():
     return st.builds(
-        Interval,
+        _make_interval,
         obj_id=st.integers(min_value=0, max_value=10),
         cell_id=st.text(min_size=1, max_size=5),
-        t_enter=st.floats(min_value=0, max_value=50, allow_nan=False, allow_infinity=False),
-        t_exit=st.floats(min_value=0.1, max_value=50, allow_nan=False, allow_infinity=False),
+        t1=st.floats(min_value=0.0, max_value=50.0, allow_nan=False, allow_infinity=False),
+        t2=st.floats(min_value=0.0, max_value=50.0, allow_nan=False, allow_infinity=False),
         world_samples=st.lists(
             st.builds(WorldSample, t=st.floats(), x=st.floats(), y=st.floats()), max_size=5
         ),
-    ).filter(lambda iv: iv.t_enter < iv.t_exit)
+    )
 
 
 @given(interval_strategy(), interval_strategy(), st.floats(min_value=0.1, max_value=10))

@@ -121,8 +121,12 @@ class CompleteTrafficAnalyzer:
         ).reshape(-1, 2)
         errors = np.linalg.norm(projected - self.world_points_approx[:, :2], axis=1)
         mean_all = float(np.mean(errors))
+        if self.inlier_mask is not None and self.inlier_mask.any():
+            mean_inliers = float(np.mean(errors[self.inlier_mask]))
+        else:
+            mean_inliers = mean_all
         rmse = float(np.sqrt(np.mean(errors**2)))
-        return {"mean_error_all": mean_all, "mean_error": mean_all, "rmse": rmse}
+        return {"mean_error_all": mean_all, "mean_error": mean_inliers, "rmse": rmse}
 
     def estimate_speed(self, pixel_positions, frame_times, fps: float = 30.0):
         if self.homography is None:
@@ -318,12 +322,21 @@ def run_video_to_pet(
             fromlist=["run_sam3_grid_pet"],
         )
 
-        sw = str(sam3_weights_path) if Path(str(sam3_weights_path)).exists() else None
+        # sam3_grid_pet has no `sam3_weights_path`/`video_path` kwargs; it
+        # takes a project_root plus paths resolved as `root / rel_path`.
+        # Require the weights up front (matching yolo-cpu and uvh-coco-fused)
+        # instead of silently passing None into a function that can't accept it.
+        if not Path(str(sam3_weights_path)).exists():
+            raise FileNotFoundError(f"SAM3 weights not found: {sam3_weights_path}")
+
+        # `Path("/root") / Path("/abs/path")` returns the absolute path, so
+        # passing absolute paths here is safe and avoids cwd assumptions.
         result = sam3_mod.run_sam3_grid_pet(
-            video_path=str(video_path),
-            bev_config_path=str(bev_config_path),
-            grid_config_path=str(grid_config_path),
-            sam3_weights_path=sw,
+            project_root=str(Path.cwd()),
+            video_rel_path=str(Path(video_path).resolve()),
+            sam3_rel_path=str(Path(sam3_weights_path).resolve()),
+            grid_rel_path=str(Path(grid_config_path).resolve()),
+            bev_rel_path=str(Path(bev_config_path).resolve()),
             pet_threshold=pet_threshold,
             max_frames=max_frames,
         )

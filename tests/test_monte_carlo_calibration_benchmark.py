@@ -142,6 +142,41 @@ def test_solve_pnp_world_error_failure():
     assert t is None
 
 
+def test_solve_pnp_world_error_respects_explicit_reference():
+    """Regression: MAE must use reference_world_pts when provided, not the
+    module-global world_points_true. Previously the parameter world_pts was
+    used only for the PnP solve; MAE always used the module global, hiding
+    the intent from the signature."""
+    import numpy as np
+
+    world = np.zeros((5, 3), dtype=np.float32)
+    img = np.zeros((5, 2), dtype=np.float32)
+    reference = np.ones((5, 3), dtype=np.float32)
+
+    captured = {}
+
+    def fake_mae(pred, gt):
+        captured["gt"] = np.asarray(gt).copy()
+        return 0.0
+
+    with (
+        patch("cv2.solvePnP", return_value=(True, np.zeros(3), np.zeros(3))),
+        patch("cv2.Rodrigues", return_value=(np.eye(3, dtype=np.float32), None)),
+        patch(
+            "src.bev.calibration.monte_carlo_calibration_benchmark.world_from_pnp",
+            return_value=world[:, :2],
+        ),
+        patch(
+            "src.bev.calibration.monte_carlo_calibration_benchmark.mae_world",
+            side_effect=fake_mae,
+        ),
+    ):
+        mae, _, _ = solve_pnp_world_error(world, img, 0, reference_world_pts=reference)
+    assert mae == 0.0
+    assert "gt" in captured, "mae_world was never called"
+    np.testing.assert_array_equal(captured["gt"], reference[:, :2])
+
+
 def test_solve_pnp_world_error_success():
     world = np.zeros((5, 3), dtype=np.float32)
     img = np.zeros((5, 2), dtype=np.float32)

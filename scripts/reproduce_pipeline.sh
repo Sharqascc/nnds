@@ -104,7 +104,7 @@ manifest = {
     "config_hashes": []
 }
 for site in ['giti', 'mrc']:
-    site_dir = repo/'configs/sites'/'site'
+    site_dir = repo/'configs/sites'/site
     for f in ['calibration_points.json', 'bev_config.json', 'grid_config.json']:
         path = site_dir/f
         if path.exists():

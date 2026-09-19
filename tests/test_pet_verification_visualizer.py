@@ -185,82 +185,18 @@ def test_smooth_points_small_window():
     assert len(pts) == 10
 
 
-def test_generate_video_no_trajectory(tmp_path):
-    csv_path = tmp_path / "events.csv"
-    pd.DataFrame(
-        {
-            "event_id": [1],
-            "pet": [2.0],
-            "frame": [50],
-            "track_a": [1],
-            "track_b": [2],
-            "grid_cell": ["G_A_1"],
-            "first_track_id": [1],
-            "second_track_id": [2],
-            "first_exit_frame": [40],
-            "first_exit_time_sec": [1.5],
-            "second_entry_frame": [60],
-            "second_entry_time_sec": [2.0],
-            "site": ["GITI"],
-            "traj_a_json": ["[]"],
-            "traj_b_json": ["[]"],
-        }
-    ).to_csv(csv_path, index=False)
-    viz = PETVerificationVisualizer(str(csv_path), str(tmp_path / "dummy.mp4"))
-    with pytest.raises(ValueError):
-        viz.generate_video(1, str(tmp_path / "out.mp4"))
-
-
-def test_generate_video_cannot_open_source(tmp_path, monkeypatch):
-    csv_path = tmp_path / "events.csv"
-    pd.DataFrame(
-        {
-            "event_id": [1],
-            "pet": [2.0],
-            "frame": [50],
-            "track_a": [1],
-            "track_b": [2],
-            "grid_cell": ["G_A_1"],
-            "first_track_id": [1],
-            "second_track_id": [2],
-            "first_exit_frame": [40],
-            "first_exit_time_sec": [1.5],
-            "second_entry_frame": [60],
-            "second_entry_time_sec": [2.0],
-            "site": ["GITI"],
-            "traj_a_json": [
-                '[{"frame":0,"x_pixel":10,"y_pixel":10},{"frame":1,"x_pixel":20,"y_pixel":20}]'
-            ],
-            "traj_b_json": [
-                '[{"frame":0,"x_pixel":30,"y_pixel":30},{"frame":1,"x_pixel":40,"y_pixel":40}]'
-            ],
-        }
-    ).to_csv(csv_path, index=False)
-    viz = PETVerificationVisualizer(str(csv_path), str(tmp_path / "dummy.mp4"))
-    monkeypatch.setattr("cv2.VideoCapture", lambda *a, **k: MagicMock(isOpened=lambda: False))
-    with pytest.raises(RuntimeError):
-        viz.generate_video(1, str(tmp_path / "out.mp4"))
-
-
 # We'll need MagicMock import; already imported? Add if missing.
 
 
-def test_parse_traj_list_input():
+def test_parse_traj_list_input_equality():
     viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
     traj = [{"frame": 1, "x_pixel": 2, "y_pixel": 3}]
     assert viz.parse_traj(traj) == traj
 
 
-def test_parse_traj_invalid_string():
+def test_parse_traj_invalid_string_with_spaces():
     viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
     assert viz.parse_traj("not a json") == []
-
-
-def test_smooth_points_small_window():
-    viz = PETVerificationVisualizer.__new__(PETVerificationVisualizer)
-    traj = [{"x_pixel": i * 10, "y_pixel": i * 10} for i in range(10)]
-    pts = viz._smooth_points(traj, window=5, polyorder=2)
-    assert len(pts) == 10
 
 
 def test_generate_video_no_trajectory(sample_event_df, tmp_path):

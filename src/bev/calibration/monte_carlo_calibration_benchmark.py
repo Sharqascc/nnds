@@ -238,22 +238,28 @@ def apply_homography(H: np.ndarray, img_pts: np.ndarray) -> np.ndarray:
 
 
 def solve_pnp_world_error(
-    world_pts: np.ndarray,
+    world_pts_for_pnp: np.ndarray,
     img_pts: np.ndarray,
     method_flag: int,
+    reference_world_pts: np.ndarray | None = None,
 ) -> tuple[float, np.ndarray | None, np.ndarray | None]:
+    """Solve PnP on world_pts_for_pnp, compute MAE against a reference plane.
+
+    The reference defaults to the module-level world_points_true (the
+    unbiased grid), which is what the Monte Carlo benchmark wants: solve
+    PnP on the *biased* world, measure error against the *true* world.
+    Pass `reference_world_pts` explicitly when that assumption does not
+    hold, rather than relying on the module global.
     """
-    Solve PnP and compute MAE in world (2D ground).
-    Returns (mae, R_est, tvec) or (inf, None, None) on failure.
-    """
-    obj = world_pts.reshape(-1, 1, 3).astype(np.float32)
+    ref = world_points_true if reference_world_pts is None else reference_world_pts
+    obj = world_pts_for_pnp.reshape(-1, 1, 3).astype(np.float32)
     img = img_pts.reshape(-1, 1, 2).astype(np.float32)
     ok, rvec, tvec = cv2.solvePnP(obj, img, K, dist_coeffs, flags=method_flag)
     if not ok:
         return float("inf"), None, None
     R_est, _ = cv2.Rodrigues(rvec)
     world_est = world_from_pnp(R_est, tvec, K, dist_coeffs, img_pts)
-    mae = mae_world(world_est, world_points_true[:, :2])
+    mae = mae_world(world_est, ref[:, :2])
     return mae, R_est, tvec
 
 

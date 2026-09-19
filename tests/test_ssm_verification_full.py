@@ -288,7 +288,7 @@ def test_verify_drac_calculation_basic():
     assert result is not None
 
 
-def test_compare_with_reference():
+def test_compare_with_reference_with_metric_name():
     """Test comparison with reference."""
     observed = np.array([1.0, 2.0, 3.0, 4.0])
     reference = np.array([1.1, 2.1, 3.1, 4.1])

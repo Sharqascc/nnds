@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Fast local checks on staged .py files only. Target: < 2 s.
+set -e
+REPO_ROOT=$(git rev-parse --show-toplevel)
+cd "$REPO_ROOT"
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.py$' || true)
+[ -z "$STAGED" ] && exit 0
+
+echo "pre-commit on $(echo "$STAGED" | wc -l) file(s)"
+
+ruff check $STAGED
+ruff format --check $STAGED
+
+python - "$STAGED" <<'PY'
+import ast, sys
+from collections import Counter
+from pathlib import Path
+bad = []
+for a in sys.argv[1:]:
+    p = Path(a)
+    if not (p.name.startswith("test_") and p.suffix == ".py"):
+        continue
+    try:
+        tree = ast.parse(p.read_text())
+    except (SyntaxError, OSError):
+        continue
+    names = [n.name for n in tree.body
+             if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    d = [n for n, c in Counter(names).items() if c > 1]
+    if d:
+        bad.append((p, d))
+if bad:
+    for p, d in bad:
+        print(f"  {p}: duplicate function names {d}")
+    sys.exit(1)
+PY
+
+if grep -nE '^\s*print\(' $STAGED 2>/dev/null | grep -q '^src/'; then
+    echo "print() in src/ (use a logger):"
+    grep -nE '^\s*print\(' $STAGED | grep '^src/'
+    exit 1
+fi
+
+echo "pre-commit OK"

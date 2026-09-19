@@ -48,6 +48,18 @@ class Interval:
     t_exit: float
     world_samples: list[WorldSample]
 
+    def __post_init__(self) -> None:
+        import math
+
+        if not (math.isfinite(self.t_enter) and math.isfinite(self.t_exit)):
+            raise ValueError(
+                f"Interval times must be finite (t_enter={self.t_enter}, t_exit={self.t_exit})"
+            )
+        if self.t_exit < self.t_enter:
+            raise ValueError(
+                f"Interval t_exit must be >= t_enter (got t_enter={self.t_enter}, t_exit={self.t_exit})"
+            )
+
 
 @dataclass
 class PETEvent:
@@ -332,8 +344,9 @@ def compute_pet(
     This version:
     - Validates pet_threshold.
     - Sorts intervals by t_enter per cell.
-    - Checks both A→B and B→A directions.
-    - Only considers pairs with j > i to avoid duplicates.
+    - Considers only pairs with j > i, i.e. the later-entering interval
+      is B. Together with the Interval invariant t_enter <= t_exit, this
+      makes only the A->B direction reachable.
     """
     if pet_threshold <= 0:
         raise ValueError(f"pet_threshold must be positive, got {pet_threshold}")
@@ -377,27 +390,11 @@ def compute_pet(
                             )
                         )
 
-                # Case 2: B exits before A enters (B -> A)
-                elif B.t_exit <= A.t_enter:  # pragma: no cover
-                    pet = A.t_enter - B.t_exit
-                    if 0.0 < pet <= pet_threshold:  # pragma: no cover
-                        severity = classify_pet(
-                            pet,
-                            critical_threshold=critical_threshold,
-                            moderate_threshold=moderate_threshold,
-                        )
-                        pet_events.append(
-                            PETEventType(
-                                obj_i=B.obj_id,
-                                obj_j=A.obj_id,
-                                cell_id=cell_id,
-                                t_exit_i=B.t_exit,
-                                t_enter_j=A.t_enter,
-                                pet=pet,
-                                world_traj_i=list(B.world_samples),
-                                world_traj_j=list(A.world_samples),
-                                severity=severity,
-                            )
-                        )
+                # No B->A case: sorted_intervals is sorted by t_enter, and
+                # the Interval invariant is t_enter <= t_exit, so
+                # B.t_exit <= A.t_enter is impossible for j > i.
+                # A previous B->A branch existed here and only fired on
+                # malformed Interval objects (t_exit < t_enter), which are
+                # now rejected at construction.
 
     return pet_events
