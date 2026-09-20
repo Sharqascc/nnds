@@ -216,12 +216,12 @@ def _hota_association_at(
     # Precompute presence and match sets for O(pairs + frames)
     gt_frames_by_id: dict[int, set[int]] = {}
     for frame, gl in gt_by_frame.items():
-        for g in gl:
-            gt_frames_by_id.setdefault(g.track_id, set()).add(frame)
+        for gt_track in gl:
+            gt_frames_by_id.setdefault(gt_track.track_id, set()).add(frame)
     pred_frames_by_id: dict[int, set[int]] = {}
     for frame, pl in pred_by_frame.items():
-        for p in pl:
-            pred_frames_by_id.setdefault(p.track_id, set()).add(frame)
+        for pred_track in pl:
+            pred_frames_by_id.setdefault(pred_track.track_id, set()).add(frame)
     matched_by_pair: dict[tuple[int, int], set[int]] = {}
     for frame, gid, pid in tps:
         matched_by_pair.setdefault((gid, pid), set()).add(frame)
