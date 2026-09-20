@@ -66,32 +66,29 @@ the two implementations together.
 
 ## Known issues
 
-### 1. Trajectory anchor mismatch (open)
+### 1. Trajectory anchor mismatch (RESOLVED)
 
-`src/analysis/grid_trajectory/uvh_coco_fused_grid_pet.py` was patched so
-TrackPoint uses `y=det.y2` (box bottom, ground contact) instead of
-`y=det.cy` (box center). The source file confirms the patch is present.
+`src/analysis/grid_trajectory/uvh_coco_fused_grid_pet.py` uses
+`TrackPoint(y=det.y2)` (box bottom, ground contact), not `det.cy`
+(box center). Verified at the current HEAD:
 
-However, after re-running the pipeline, `traj_a_json` entries still show
-`y_pixel` matching the box center, not the box bottom:
+- One construction site only: TrackPoint with x=det.cx and y=det.y2.
+- One _track_to_json writer: emits y_pixel = float(pt.y) verbatim.
+- One traj_a_json writer in the pipeline: calls _track_to_json.
+  traffic_analyzer.py passes the string through unchanged.
+- Synthetic round-trip: TrackPoint(x=100, y=250) -> y_pixel: 250.0.
+- Regression test tests/test_grid_trajectory_point_anchor.py asserts
+  y=det.y2 is present and y=det.cy is absent.
 
-    event 0, frame 0:
-      traj y_pixel = 173.5
-      nearest detection: cy = 176.1, y2 = 197.7
-      distance from cy = 2.6   (traj is at center)
-      distance from y2 = 24.2  (traj is not at bottom)
+The earlier observation (event 0, frame 0: traj y_pixel = 173.5 vs.
+detection y2 = 197.7) predates the anchor fix landing. The traj_a_json
+in that run came from output produced before commit 7ab1ca8 ("Fix grid
+anchor: 1-based rows, 25px cells, ground-contact review strips"), not
+from a runtime mismatch.
 
-Possible causes to investigate next:
-- A second code path building the trajectory JSON directly from
-  `det.cx, det.cy` rather than from the TrackPoint objects.
-- Stale module reference held by `traffic_analyzer.run_video_to_pet`
-  even after `sys.modules` purge.
-- Track splitting that rewrites points using the detection CSV rather
-  than the raw tracks dict.
-
-Note: the run DID produce different output (118 events, 159 valid tracks
-vs. 109/155 before), so the patch had some effect. The mismatch is
-specific to the JSON serialization path.
+Any reproduction attempt should re-run the pipeline and use a fresh
+pet_detections.csv from the same run. Do not compare a post-fix
+traj_a_json against a pre-fix detection CSV.
 
 ### 2. PET track IDs vs detection track IDs
 
@@ -118,7 +115,7 @@ should be preserved as an extra column.
 
 ## What is not done
 
-- [ ] Trajectory anchor JSON fix (see Known Issue 1)
+- [x] Trajectory anchor JSON fix (see Known Issue 1)
 - [ ] Human review of 41 likely_real PET strips → `gt_ssm.csv`
 - [ ] Real PET precision / MAE
 - [ ] Detection GT (box annotation)
