@@ -997,6 +997,11 @@ def run_uvh_coco_fused_grid_pet(
                 if orig_a == orig_b:
                     continue
 
+                # track_a / track_b use the raw tracker IDs (same namespace
+                # as pet_detections.csv). The composite split-form is
+                # preserved in orig_track_a + seg_a for traceability. Fixes
+                # the namespace collision where detections used 1..N and
+                # PET events used orig*1000+seg.
                 pet_events.append(
                     {
                         "event_id": event_id,
@@ -1009,8 +1014,8 @@ def run_uvh_coco_fused_grid_pet(
                         "second_actor": structured_result.second_actor,
                         "overlap_duration_s": structured_result.overlap_duration_s,
                         "frame": int(frame_ref),
-                        "track_a": int(first_id),
-                        "track_b": int(second_id),
+                        "track_a": int(orig_a),
+                        "track_b": int(orig_b),
                         "orig_track_a": int(orig_a),
                         "seg_a": int(seg_a),
                         "orig_track_b": int(orig_b),

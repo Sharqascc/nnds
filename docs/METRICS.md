@@ -86,3 +86,21 @@ The test suite (unit + Hypothesis property tests) verifies that every metric
 function is implemented correctly: bounded, monotone where it should be,
 correct on controlled inputs. It does not verify that NNDS outputs are
 accurate. That requires real ground truth.
+
+## Track-ID namespace
+
+`pet.csv` and `pet_detections.csv` share the same track-ID namespace:
+both use the raw tracker IDs (small integers). The internal
+`_split_tracks_by_gaps` helper still produces composite keys of the
+form `orig * 1000 + seg` for its own bookkeeping, but the PET emission
+layer unwraps them:
+
+    track_a      = orig_a    (raw tracker ID, joinable to detections)
+    orig_track_a = orig_a    (retained for backward compatibility)
+    seg_a        = seg_a     (which split segment, 0 if unsplit)
+
+Older versions of this file wrote the composite `orig * 1000 + seg`
+into `track_a`. A consumer that still expects that form should join
+on `orig_track_a` instead, or decode the composite via
+`orig = old_value // 1000`.
+
