@@ -16,15 +16,42 @@ Standing rule: **every commit must include a numerical verification for
 each core component it touches.** No PR merges without the report below
 being run and the deltas pasted into the PR description.
 
+## Annotation pack status
+
+An annotation kit is committed at `data/annotations/giti_300/`:
+
+- 30 PNG frames (every 10th frame of the first 300 of the GITI clip)
+- `gt_detection_template.csv` (1798 rows), `gt_tracking_template.csv`
+  (1798 rows), `gt_trajectory_template.csv` (1798 rows),
+  `gt_ssm_template.csv` (114 events)
+
+The templates are **unedited pipeline predictions**, not ground truth.
+Verified at commit `e054422`:
+
+- `gt_detection_template.csv`: `class_name` is NaN in 1798/1798 rows
+- `gt_tracking_template.csv`: `track_id == -1` in 1798/1798 rows
+- `gt_ssm_template.csv`: `verdict` and `actual_pet` empty in 114/114 rows
+
+The "blocked" statuses below are accurate for that reason: the pack
+exists, but no human has reviewed it. Finishing the labeling is a
+single-file-edit task per the workflow in
+`data/annotations/giti_300/README.md`.
+
+The 5-frame detection pilot **is** committed
+(`data/annotations/giti_300/first_real_metric/`), which is why its
+source files are listed explicitly in the detection rows below. That
+is the one metric in this table whose provenance is fully reproducible
+from the repository.
+
 ## Core components and current verification status
 
 | component | metric | current value | GT source | status |
 |---|---|---|---|---|
-| Detection | precision | 0.871 | 5 frames, human (2026-09-14) | ✅ verified |
-| Detection | recall | 1.000 | same | ✅ verified |
-| Detection | mAP@50 | 0.950 | same | ✅ verified |
-| Detection | mAP@50:95 | 0.944 | same | ✅ verified |
-| Detection | AP@75 | 0.941 | same | ✅ verified |
+| Detection | precision | 0.871 | 5 frames, human (first_real_metric/) | ✅ verified |
+| Detection | recall | 1.000 | same (first_real_metric/) | ✅ verified |
+| Detection | mAP@50 | 0.950 | same (first_real_metric/) | ✅ verified |
+| Detection | mAP@50:95 | 0.944 | same (first_real_metric/) | ✅ verified |
+| Detection | AP@75 | 0.941 | same (first_real_metric/) | ✅ verified |
 | Tracking | HOTA / MOTA / IDF1 | — | not annotated | ❌ blocked |
 | Tracking | ID switches | — | not annotated | ❌ blocked |
 | Tracking | fragmentation rate | 32/189 (17%) | auto from segments.csv | ⚠️ derived |
@@ -35,7 +62,7 @@ being run and the deltas pasted into the PR description.
 | PET / SSM | precision | 0.857 | 53-event review (reconstructed) | ⚠️ unverified (source files not in repo) |
 | PET / SSM | recall | 0.857 | same | ⚠️ unverified (source files not in repo) |
 | PET / SSM | F1 | 0.857 | same | ⚠️ unverified (source files not in repo) |
-| PET / SSM | PET MAE vs GT | 0.0 (circular) | GT PET = pipeline PET | ⚠️ meaningless |
+| PET / SSM | PET MAE vs GT | 0.0 (circular) | GT PET = pipeline PET | ⚠️ meaningless; see #15 (zero-gap divergence) |
 | PET / SSM | critical-conflict recall | 0.857 | 7 real events with PET<1.0s | ⚠️ unverified (source files not in repo) |
 
 ## Reproduction commands
@@ -54,12 +81,16 @@ being run and the deltas pasted into the PR description.
 
 ## What unblocks the blocked rows
 
-| blocked metric | needs | effort |
+| blocked metric | needs | where to start |
 |---|---|---|
-| Tracking HOTA/MOTA/IDF1 | 5 frames labeled with consistent track IDs | ~30 min |
-| BEV position MAE | 10 pixel clicks on ground-plane features + their world coords | ~20 min |
-| Trajectory MAE | same world-coord annotations | ~20 min |
-| PET MAE vs GT | ground-truth PET values for 20 events (currently only binary Y/N) | requires GT device or manual re-annotation |
+| Tracking HOTA/MOTA/IDF1 | fill `track_id` in `gt_tracking_template.csv` (1798 rows, currently -1) | `data/annotations/giti_300/README.md` workflow step 3 |
+| PET MAE vs GT | fill `verdict` + `actual_pet` in `gt_ssm_template.csv` (114 rows, currently empty) | workflow step 4 |
+| BEV position MAE | 10 pixel clicks on ground-plane features + their world coordinates, not used in the fit | `docs/ANNOTATION_GUIDE.md` section 3 |
+| Trajectory MAE | same world-coordinate annotations as BEV | same |
+| Detection (full set) | fill `class_name` in `gt_detection_template.csv` (1798 rows, currently NaN); 5-frame subset is already done | workflow step 2 |
+
+The pack exists; what is missing is a human labeling session. The 5-frame
+subset in `first_real_metric/` shows the expected output format.
 
 ## Rule for future changes
 
