@@ -966,6 +966,12 @@ def run_uvh_coco_fused_grid_pet(
                 first_id = track_b_id
                 second_id = track_a_id
 
+            # The `pet > 0` guard is stricter than docs/ANNOTATION_GUIDE.md
+            # (which permits PET = 0 for zero-gap sequential events). Kept
+            # here as a deliberate debounce against duplicate-frame
+            # detections. The two standalone PET implementations now agree
+            # on zero-gap per issue #15; see docs/pet_gate_v1.md for the
+            # reasoning behind tighter pipeline-side filters.
             if pet <= pet_threshold and pet > 0:
                 # Determine grid cell for conflict point
                 grid_cell = spatial_grid.get_cell_from_pixels(cx, cy) if spatial_grid else "UNKNOWN"
