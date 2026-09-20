@@ -45,7 +45,13 @@ def position_metrics(
     """Return MAE, RMSE, p95, max, n in world units (meters for NNDS)."""
     errs = position_errors(predicted, target)
     if errs.size == 0:
-        return {"mae": 0.0, "rmse": 0.0, "p95": 0.0, "max": 0.0, "n": 0}
+        return {
+            "mae": float("nan"),
+            "rmse": float("nan"),
+            "p95": float("nan"),
+            "max": float("nan"),
+            "n": 0,
+        }
     mae = float(np.mean(errs))
     rmse = float(np.sqrt(np.mean(errs**2)))
     p95 = float(np.percentile(errs, percentile))

@@ -182,21 +182,33 @@ def ap_by_size(
     small_max_area: float = COCO_SMALL_MAX_AREA,
     medium_max_area: float = COCO_MEDIUM_MAX_AREA,
 ) -> dict[str, float]:
-    """COCO-style APs / APm / APl at a single IoU threshold."""
+    """COCO-style APs / APm / APl at a single IoU threshold.
+
+    Buckets are evaluated independently: detections outside the bucket do
+    not count as false positives, matching pycocotools. When a bucket has
+    no GT, its AP is NaN rather than 0.0 -- an undefined metric should not
+    be reported as a perfect failure.
+    """
     labels = {"small": "APs", "medium": "APm", "large": "APl"}
     result: dict[str, float] = {}
     for name, label in labels.items():
-        subset = [
+        gt_subset = [
             g
             for g in ground_truths
             if _size_bucket(box_area(g.box), small_max_area, medium_max_area) == name
         ]
-        if not subset:
-            result[label] = 0.0
+        if not gt_subset:
+            result[label] = float("nan")
             continue
-        classes = sorted({g.cls for g in subset})
-        aps = [ap_at_iou(detections, subset, c, iou_thr) for c in classes]
-        result[label] = float(np.mean(aps)) if aps else 0.0
+        # Restrict detections to the same size bucket, per COCO convention.
+        det_subset = [
+            d
+            for d in detections
+            if _size_bucket(box_area(d.box), small_max_area, medium_max_area) == name
+        ]
+        classes = sorted({g.cls for g in gt_subset})
+        aps = [ap_at_iou(det_subset, gt_subset, c, iou_thr) for c in classes]
+        result[label] = float(np.mean(aps)) if aps else float("nan")
     return result
 
 

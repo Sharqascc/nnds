@@ -60,7 +60,15 @@ def speed(traj: Sequence[Point], fps: float) -> list[tuple[int, float]]:
 
 
 def acceleration(traj: Sequence[Point], fps: float) -> list[tuple[int, float, float]]:
-    """Central-difference acceleration (ax, ay) in m/s^2 at interior frames."""
+    """Central-difference acceleration (ax, ay) in m/s^2 at interior frames.
+
+    Uses the actual time deltas between consecutive samples rather than
+    assuming even spacing. On a track with a missing frame, the previous
+    implementation used (t_next - t_prev)/2 as the half-step and produced
+    spurious accelerations of several hundred m/s^2 on constant-velocity
+    data. On evenly spaced samples this reduces to the standard
+    (x_next - 2*x_cur + x_prev) / h^2.
+    """
     _require_fps(fps)
     pts = _sorted_by_frame(traj)
     if len(pts) < 3:
@@ -70,11 +78,17 @@ def acceleration(traj: Sequence[Point], fps: float) -> list[tuple[int, float, fl
         f_prev, x_prev, y_prev = pts[i - 1]
         f_cur, x_cur, y_cur = pts[i]
         f_next, x_next, y_next = pts[i + 1]
-        dt = (f_next - f_prev) / fps
-        if dt <= 0:
+        dt_left = (f_cur - f_prev) / fps
+        dt_right = (f_next - f_cur) / fps
+        if dt_left <= 0 or dt_right <= 0:
             continue
-        ax = (x_next - 2 * x_cur + x_prev) / ((dt / 2.0) ** 2)
-        ay = (y_next - 2 * y_cur + y_prev) / ((dt / 2.0) ** 2)
+        vx_left = (x_cur - x_prev) / dt_left
+        vy_left = (y_cur - y_prev) / dt_left
+        vx_right = (x_next - x_cur) / dt_right
+        vy_right = (y_next - y_cur) / dt_right
+        dt_mid = (dt_left + dt_right) / 2.0
+        ax = (vx_right - vx_left) / dt_mid
+        ay = (vy_right - vy_left) / dt_mid
         out.append((f_cur, ax, ay))
     return out
 
@@ -98,7 +112,7 @@ def velocity_metrics(
     """MAE and RMSE of scalar speed (m/s) on common frames."""
     p, g = _pair_on_common_frames(speed(pred_traj, fps), speed(gt_traj, fps))
     if p.size == 0:
-        return {"mae": 0.0, "rmse": 0.0, "n": 0}
+        return {"mae": float("nan"), "rmse": float("nan"), "n": 0}
     errs = np.abs(p - g)
     return {
         "mae": float(np.mean(errs)),
@@ -115,7 +129,7 @@ def acceleration_metrics(
     gt = [(f, float(np.hypot(ax, ay))) for f, ax, ay in acceleration(gt_traj, fps)]
     p, g = _pair_on_common_frames(pred, gt)
     if p.size == 0:
-        return {"mae": 0.0, "rmse": 0.0, "n": 0}
+        return {"mae": float("nan"), "rmse": float("nan"), "n": 0}
     errs = np.abs(p - g)
     return {
         "mae": float(np.mean(errs)),

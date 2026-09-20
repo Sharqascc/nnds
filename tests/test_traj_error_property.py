@@ -76,9 +76,11 @@ def test_velocity_error_triangle_inequality(vx1, vy1, vx2, vy2, n):
 @given(st.integers(3, 10))
 @settings(max_examples=30)
 def test_zero_length_both_empty(n):
+    import math
+
     m = velocity_metrics([], [], FPS)
     assert m["n"] == 0
-    assert m["mae"] == 0.0
+    assert math.isnan(m["mae"])
 
 
 @given(

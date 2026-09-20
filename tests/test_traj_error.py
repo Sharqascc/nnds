@@ -76,10 +76,14 @@ def test_acceleration_error_known_offset():
     assert am["mae"] == pytest.approx(1.0, abs=1e-6)
 
 
-def test_empty_trajectory_metrics():
+def test_empty_trajectory_metrics_returns_nan_not_zero():
+    """Empty input must not look like a perfect score. NaN, not 0.0."""
+    import math
+
     m = trajectory_metrics([], [], FPS)
-    assert m["velocity"] == {"mae": 0.0, "rmse": 0.0, "n": 0}
-    assert m["acceleration"] == {"mae": 0.0, "rmse": 0.0, "n": 0}
+    assert m["velocity"]["n"] == 0
+    assert math.isnan(m["velocity"]["mae"])
+    assert math.isnan(m["acceleration"]["mae"])
 
 
 def test_fps_invalid_raises():
@@ -96,3 +100,22 @@ def test_common_frames_only():
     # on common frames 5-9, values match -> 0 error
     assert m["mae"] == pytest.approx(0.0, abs=1e-9)
     assert m["n"] == 5
+
+
+def test_acceleration_with_missing_frame_is_near_zero():
+    """Constant-velocity track with one missing frame must not show a
+    spurious acceleration spike. The previous even-spacing assumption
+    produced ~400 m/s^2 on a v=30 m/s track."""
+    v = 30.0
+    traj = [
+        (0, v * 0 / FPS, 0.0),
+        (1, v * 1 / FPS, 0.0),
+        (3, v * 3 / FPS, 0.0),
+        (4, v * 4 / FPS, 0.0),
+        (5, v * 5 / FPS, 0.0),
+    ]
+    acc = acceleration(traj, FPS)
+    assert acc, "expected interior accelerations"
+    for _f, ax, ay in acc:
+        assert abs(ax) < 1e-6, f"spurious ax={ax} on constant-velocity track"
+        assert abs(ay) < 1e-6, f"spurious ay={ay} on constant-velocity track"

@@ -43,9 +43,17 @@ def test_position_errors_known_values():
     np.testing.assert_allclose(errs, [0.0, 5.0])
 
 
-def test_position_metrics_empty():
+def test_position_metrics_empty_returns_nan():
+    """Empty input must return NaN, not 0.0 -- 0.0 is indistinguishable
+    from a perfect score."""
+    import math
+
     m = position_metrics(np.zeros((0, 2)), np.zeros((0, 2)))
-    assert m == {"mae": 0.0, "rmse": 0.0, "p95": 0.0, "max": 0.0, "n": 0}
+    assert m["n"] == 0
+    assert math.isnan(m["mae"])
+    assert math.isnan(m["rmse"])
+    assert math.isnan(m["p95"])
+    assert math.isnan(m["max"])
 
 
 def test_position_metrics_simple():

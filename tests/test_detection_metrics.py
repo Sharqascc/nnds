@@ -135,13 +135,17 @@ def test_ap_by_size_mixed_set_bounded():
     assert 0.0 <= ap["APl"] <= 1.0
 
 
-def test_ap_by_size_missing_bucket_zero():
+def test_ap_by_size_missing_bucket_is_nan():
+    """Empty buckets are undefined, not 0.0. pycocotools uses -1; NaN is
+    the Python-idiomatic choice, and 0.0 would read like a perfect failure."""
+    import math
+
     dets = [_det(0, (0, 0, 10, 10))]
     gts = [_gt(0, (0, 0, 10, 10))]
     ap = ap_by_size(dets, gts)
     assert ap["APs"] == pytest.approx(1.0)
-    assert ap["APm"] == 0.0
-    assert ap["APl"] == 0.0
+    assert math.isnan(ap["APm"])
+    assert math.isnan(ap["APl"])
 
 
 def test_precision_recall_f1_perfect():
@@ -181,3 +185,38 @@ def test_precision_recall_f1_all_missed():
     assert m["precision"] == 0.0
     assert m["recall"] == 0.0
     assert m["tp"] == 0
+
+
+def test_ap_by_size_filters_detections_by_bucket():
+    """COCO convention: detections outside a bucket are ignored, not FPs.
+    A perfect detector on one object per size class should get APs=APm=APl=1.0."""
+    small_box = (0.0, 0.0, 20.0, 20.0)
+    medium_box = (100.0, 0.0, 150.0, 150.0)
+    large_box = (300.0, 0.0, 500.0, 500.0)
+    dets = [
+        _det(0, small_box),
+        _det(0, medium_box),
+        _det(0, large_box),
+    ]
+    gts = [
+        _gt(0, small_box),
+        _gt(0, medium_box),
+        _gt(0, large_box),
+    ]
+    sizes = ap_by_size(dets, gts, iou_thr=0.5)
+    assert sizes["APs"] == pytest.approx(1.0, abs=1e-6)
+    assert sizes["APm"] == pytest.approx(1.0, abs=1e-6)
+    assert sizes["APl"] == pytest.approx(1.0, abs=1e-6)
+
+
+def test_ap_by_size_empty_bucket_is_nan():
+    """A bucket with no GT is undefined, not 0.0."""
+    import math
+
+    small_box = (0.0, 0.0, 20.0, 20.0)
+    dets = [_det(0, small_box)]
+    gts = [_gt(0, small_box)]
+    sizes = ap_by_size(dets, gts, iou_thr=0.5)
+    assert sizes["APs"] == pytest.approx(1.0, abs=1e-6)
+    assert math.isnan(sizes["APm"])
+    assert math.isnan(sizes["APl"])
