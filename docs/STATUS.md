@@ -69,20 +69,11 @@ results.
 
 ## Deprecated Documents
 
-The following documents are historical and may contain outdated numbers.
-Do NOT use them for manuscript claims:
+Historical documents with stale numbers, deprecated paths, and
+superseded metrics have been moved to `docs/_archive/`. See
+`docs/_archive/README.md` for the list and why each is there.
 
-- `final_submission_summary.md` (mentions 156 events)
-- `final_assessment_report.md`
-- `comprehensive_assessment_report.md`
-- `detection_system_report.md`
-- `tracking_system_report.md`
-- `repository_assessment.md`
-- `repo_full_details.md`
-- `CLEANUP_SUMMARY.md`
-- `MIGRATION_GUIDE.md`
-- `PUBLICATION_READINESS.md` (70 bytes - incomplete)
-- `DEBUGGING.md` (debug log)
+Do NOT cite them. Start with this file (`STATUS.md`) for current state.
 
 ## Event Count Reconciliation (168 → 153)
 
