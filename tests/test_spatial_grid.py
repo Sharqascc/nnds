@@ -346,3 +346,39 @@ def test_draw_overlay_highlight_none():
     frame = np.zeros((100, 100, 3), dtype=np.uint8)
     result = grid.draw_overlay(frame, highlight_cells=["bad"])
     assert result.shape == frame.shape
+
+
+def test_draw_overlay_column_labels_match_cell_ids():
+    """Overlay column headers must use the same A..Z, AA, AB, ... scheme
+    as get_cell_from_pixels. Previously chr(65 + i%26) wrapped to "A" at
+    column 26+, so labels disagreed with cell IDs for wide grids."""
+    import json
+    import tempfile
+    from pathlib import Path
+
+    import numpy as np
+
+    from src.analysis.grid_trajectory.spatial_grid import SpatialGrid
+
+    # 32 columns of 25 px = 800 px wide, enough to reach AA/AB.
+    cfg = {
+        "corners": {
+            "top_left": [0, 0],
+            "top_right": [800, 0],
+            "bottom_left": [0, 200],
+            "bottom_right": [800, 200],
+        },
+        "configuration": {"cell_size": 25, "naming_style": "CELL_{col}_{row}"},
+    }
+    tmp = Path(tempfile.mkdtemp()) / "g.json"
+    tmp.write_text(json.dumps(cfg))
+    grid = SpatialGrid(tmp)
+
+    # cell ID for a point in column 26 must start with CELL_AA, not CELL_A
+    cell_aa = grid.get_cell_from_pixels(650.0, 100.0)  # (650//25) = 26
+    assert cell_aa.startswith("CELL_AA_"), cell_aa
+
+    # overlay must run without crashing and must label column 26 as AA
+    frame = np.zeros((200, 800, 3), dtype=np.uint8)
+    overlay = grid.draw_overlay(frame)
+    assert overlay.shape == frame.shape

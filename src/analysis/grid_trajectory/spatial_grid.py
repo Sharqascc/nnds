@@ -240,7 +240,11 @@ class SpatialGrid:
             cv2.line(overlay, (x, self.y_min), (x, self.y_max), line_color, 1)
 
             if x < self.x_max:
-                label = chr(65 + (i % 26))
+                # Use the same A, B, ..., Z, AA, AB, ... scheme as the
+                # cell IDs. chr(65 + i % 26) previously wrapped to "A" at
+                # column 26+, so overlays showed "A" where cell IDs said
+                # "AA". Matches _col_to_letters().
+                label = _col_to_letters(i)
                 pos = (x + 10, max(30, self.y_min - 15))
                 cv2.putText(overlay, label, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.8, shadow, 4)
                 cv2.putText(overlay, label, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.8, text_color, 2)

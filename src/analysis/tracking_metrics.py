@@ -177,6 +177,70 @@ def idf1(
     return (2 * idtp / denom) if denom > 0 else 0.0
 
 
+def _hota_association_at(
+    gt_by_frame: dict[int, list[Track]],
+    pred_by_frame: dict[int, list[Track]],
+    alpha: float,
+) -> tuple[float, int, int, int]:
+    """HOTA's AssA at one IoU threshold.
+
+    For each unique (gt_id, pred_id) pair that appears as a true positive,
+    AssA for that pair is TPA / (TPA + FNA + FPA), where:
+      TPA = frames where this exact pair was matched
+      FNA = frames where gt_id is present but not matched to pred_id
+      FPA = frames where pred_id is present but not matched to gt_id
+    The overall AssA is the mean over all TP pairs.
+
+    This is the HOTA paper's definition (Luiten et al., IJCV 2020). A global
+    Jaccard on the ID-overlap matrix (which was used previously) gives an
+    IDF1-style number, not HOTA.
+    """
+    tps: list[tuple[int, int, int]] = []
+    for frame in sorted(set(gt_by_frame) | set(pred_by_frame)):
+        g = gt_by_frame.get(frame, [])
+        p = pred_by_frame.get(frame, [])
+        for gi, pi in _match_frame(g, p, alpha):
+            tps.append((frame, g[gi].track_id, p[pi].track_id))
+
+    tp = len(tps)
+    n_gt = sum(len(v) for v in gt_by_frame.values())
+    n_pred = sum(len(v) for v in pred_by_frame.values())
+    fn = n_gt - tp
+    fp = n_pred - tp
+    det_denom = tp + fp + fn
+    det_a = tp / det_denom if det_denom > 0 else 1.0
+
+    if tp == 0:
+        return 0.0, tp, fp, fn
+
+    # Precompute presence and match sets for O(pairs + frames)
+    gt_frames_by_id: dict[int, set[int]] = {}
+    for frame, gl in gt_by_frame.items():
+        for gt_track in gl:
+            gt_frames_by_id.setdefault(gt_track.track_id, set()).add(frame)
+    pred_frames_by_id: dict[int, set[int]] = {}
+    for frame, pl in pred_by_frame.items():
+        for pred_track in pl:
+            pred_frames_by_id.setdefault(pred_track.track_id, set()).add(frame)
+    matched_by_pair: dict[tuple[int, int], set[int]] = {}
+    for frame, gid, pid in tps:
+        matched_by_pair.setdefault((gid, pid), set()).add(frame)
+
+    ass_list: list[float] = []
+    for (gid, pid), matched_frames in matched_by_pair.items():
+        gt_frames = gt_frames_by_id.get(gid, set())
+        pred_frames = pred_frames_by_id.get(pid, set())
+        tpa = len(matched_frames)
+        fna = len(gt_frames - matched_frames)
+        fpa = len(pred_frames - matched_frames)
+        denom = tpa + fna + fpa
+        if denom > 0:
+            ass_list.append(tpa / denom)
+
+    ass_a = float(np.mean(ass_list)) if ass_list else 0.0
+    return ass_a, tp, fp, fn
+
+
 def hota(
     tracked: Sequence[Track],
     ground_truth: Sequence[Track],
@@ -186,7 +250,7 @@ def hota(
     pred_by_frame = _group(tracked)
     scores: list[float] = []
     for alpha in thresholds:
-        ass_a, tp, fp, fn = _association(gt_by_frame, pred_by_frame, alpha)
+        ass_a, tp, fp, fn = _hota_association_at(gt_by_frame, pred_by_frame, alpha)
         det_denom = tp + fp + fn
         det_a = tp / det_denom if det_denom > 0 else 1.0
         scores.append(float(np.sqrt(det_a * ass_a)))

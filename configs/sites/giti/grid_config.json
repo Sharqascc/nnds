@@ -19,8 +19,8 @@
   },
   "configuration": {
     "cell_size": 25,
-    "naming_style": "cell_{col}_{row}"
+    "naming_style": "CELL_{col}_{row}"
   },
   "site": "GITI",
-  "description": "GITI spatial grid (100px cells)"
+  "description": "GITI spatial grid (25px cells)"
 }

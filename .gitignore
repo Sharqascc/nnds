@@ -52,3 +52,5 @@ outputs/logs/
 !data/annotations/**/*.csv
 !data/annotations/**/*.jpg
 !data/annotations/**/*.md
+# pre-push hook cache (should not be committed)
+.last_quality_checks
