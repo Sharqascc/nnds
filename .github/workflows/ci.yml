@@ -39,14 +39,14 @@ jobs:
       - name: Check formatting with Ruff
         run: ruff format --check src tests scripts
 
+      - name: Run mypy type checking (analysis)
+        run: mypy --config-file mypy.ini src/analysis
+
       - name: Run fast unit tests with coverage
         run: |
           pytest tests/ -m "not integration and not slow" \
             --cov=src --cov-branch --cov-report=term-missing \
             --cov-fail-under=70
-
-      - name: Run mypy type checking (analysis)
-        run: mypy --config-file mypy.ini src/analysis
 
       - name: Run property tests
         run: |

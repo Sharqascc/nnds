@@ -11,7 +11,7 @@ syrupy>=4.0.0
 
 # Lint / types
 ruff>=0.6.0
-mypy>=1.10.0
+mypy>=2.3,<3.0
 
 # Optional runtime deps used by agentic auto-fix scripts
 groq>=0.30.0
