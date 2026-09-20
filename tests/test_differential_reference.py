@@ -102,18 +102,15 @@ def test_pet_grid_matches_standalone_reference():
             assert grid_events[0].pet == pytest.approx(standalone.pet_s)
 
 
-def test_pet_grid_and_interval_diverge_on_zero_gap_by_design():
-    """Documented divergence: the two PET implementations disagree on
-    zero-gap (t_exit_a == t_enter_b).
+def test_pet_grid_and_interval_agree_on_zero_gap():
+    """Both PET implementations treat zero-gap (t_exit_a == t_enter_b) as
+    a valid sequential PET of 0.0.
 
-    pet_grid.compute_pet: strict `0.0 < pet`, so zero-gap produces no event.
-    pet_interval.compute_pet_from_intervals: treats zero-gap as sequential
-      with pet_s=0.0.
-
-    Neither is wrong in isolation; they were written for different
-    consumers. This test pins both behaviors so that if either changes
-    the difference is visible. Unifying them is a semantic decision, not
-    a bug fix; see docs/VALIDATION.md.
+    Previously pet_grid excluded it (strict `0.0 < pet`) while pet_interval
+    included it. Aligned in the fix for issue #15, matching the definition
+    in docs/ANNOTATION_GUIDE.md: PET = t_b_entry - t_a_exit, no exclusion
+    for the equal case. Overlap (a_exit > b_entry after sorting) still
+    produces no event; only the touching-at-a-point case is affected.
     """
     from pet_interval import compute_pet_from_intervals
     from src.analysis.grid_trajectory.pet_grid import (
@@ -127,10 +124,36 @@ def test_pet_grid_and_interval_diverge_on_zero_gap_by_design():
     b = Interval(obj_id=2, cell_id="G", t_enter=1.0, t_exit=2.0, world_samples=ws)
 
     grid_events = compute_pet([a, b], pet_threshold=100.0)
-    assert len(grid_events) == 0, "pet_grid excludes zero-gap PET (0.0 < pet)"
+    assert len(grid_events) == 1
+    assert grid_events[0].pet == 0.0
+    assert grid_events[0].obj_i == 1
+    assert grid_events[0].obj_j == 2
 
     standalone = compute_pet_from_intervals(0.0, 1.0, 1.0, 2.0)
     assert standalone.pet_status == "sequential"
     assert standalone.pet_s == pytest.approx(0.0)
     assert standalone.first_actor == "a"
     assert standalone.second_actor == "b"
+
+
+def test_pet_grid_and_interval_agree_on_overlap():
+    """Overlap (both actors in the zone simultaneously) still produces no
+    PET in either implementation. Only the zero-gap case was affected by
+    the issue #15 fix."""
+    from pet_interval import compute_pet_from_intervals
+    from src.analysis.grid_trajectory.pet_grid import (
+        Interval,
+        WorldSample,
+        compute_pet,
+    )
+
+    ws = [WorldSample(t=0.0, x=0.0, y=0.0)]
+    a = Interval(obj_id=1, cell_id="G", t_enter=0.0, t_exit=3.0, world_samples=ws)
+    b = Interval(obj_id=2, cell_id="G", t_enter=1.0, t_exit=4.0, world_samples=ws)
+
+    grid_events = compute_pet([a, b], pet_threshold=100.0)
+    assert len(grid_events) == 0
+
+    standalone = compute_pet_from_intervals(0.0, 3.0, 1.0, 4.0)
+    assert standalone.pet_status == "overlap"
+    assert standalone.pet_s is None

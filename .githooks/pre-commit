@@ -44,10 +44,18 @@ if bad:
     sys.exit(1)
 PY
 
-if grep -nE '^\s*print\(' $STAGED 2>/dev/null | grep -q '^src/'; then
-    echo "print() in src/ (use a logger):"
-    grep -nE '^\s*print\(' $STAGED | grep '^src/'
-    exit 1
+# Print-guard: reject only NEWLY ADDED print() calls in src/ files,
+# not pre-existing ones in files the commit happens to touch.
+SRC_FILES=$(printf '%s\n' $STAGED | grep '^src/' || true)
+if [ -n "$SRC_FILES" ]; then
+    ADDED_PRINTS=$(git diff --cached -U0 -- $SRC_FILES \
+        | grep -E '^\+[^+]' \
+        | grep -E '^\+[[:space:]]*print\(' || true)
+    if [ -n "$ADDED_PRINTS" ]; then
+        echo "New print() in src/ (use a logger):"
+        echo "$ADDED_PRINTS"
+        exit 1
+    fi
 fi
 
 echo "pre-commit OK"

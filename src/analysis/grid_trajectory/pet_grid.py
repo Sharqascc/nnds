@@ -347,6 +347,9 @@ def compute_pet(
     - Considers only pairs with j > i, i.e. the later-entering interval
       is B. Together with the Interval invariant t_enter <= t_exit, this
       makes only the A->B direction reachable.
+    - Zero-gap (t_exit_a == t_enter_b) is a valid sequential PET of 0.0,
+      matching pet_interval.compute_pet_from_intervals and the definition
+      in docs/ANNOTATION_GUIDE.md. See issue #15.
     """
     if pet_threshold <= 0:
         raise ValueError(f"pet_threshold must be positive, got {pet_threshold}")
@@ -370,7 +373,7 @@ def compute_pet(
                 # Case 1: A exits before B enters (A -> B)
                 if A.t_exit <= B.t_enter:
                     pet = B.t_enter - A.t_exit
-                    if 0.0 < pet <= pet_threshold:
+                    if 0.0 <= pet <= pet_threshold:
                         severity = classify_pet(
                             pet,
                             critical_threshold=critical_threshold,

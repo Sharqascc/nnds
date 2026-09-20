@@ -250,13 +250,22 @@ def test_compute_pet_case_B_exits_before_A_no_event():
     assert len(events) == 0
 
 
-def test_compute_pet_no_event_if_gap_zero():
-    # intervals touching: t_exit = t_enter => pet=0 not included
+def test_compute_pet_zero_gap_is_valid_sequential():
+    """Zero-gap (t_exit_a == t_enter_b) is a valid sequential PET of 0.0.
+
+    Per docs/ANNOTATION_GUIDE.md, PET = t_b_entry - t_a_exit, with no
+    exclusion for the equal case. Overlap is what produces no event;
+    touching at a single instant does not. Aligned with
+    pet_interval.compute_pet_from_intervals in the fix for issue #15.
+    """
     ws = []
     A = Interval(obj_id=1, cell_id="G", t_enter=0.0, t_exit=2.0, world_samples=ws)
     B = Interval(obj_id=2, cell_id="G", t_enter=2.0, t_exit=4.0, world_samples=ws)
     events = compute_pet([A, B], pet_threshold=2.0)
-    assert len(events) == 0
+    assert len(events) == 1
+    assert events[0].pet == 0.0
+    assert events[0].obj_i == 1
+    assert events[0].obj_j == 2
 
 
 def test_compute_pet_no_event_if_exceeds_threshold():
