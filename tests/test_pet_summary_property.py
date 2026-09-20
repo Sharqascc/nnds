@@ -134,3 +134,53 @@ def test_interpret_effect_size_categories(d):
         assert result == "medium"
     else:
         assert result == "large"
+
+
+@given(
+    st.lists(
+        st.floats(min_value=0.01, max_value=10.0, allow_nan=False, allow_infinity=False),
+        min_size=2,
+        max_size=30,
+    )
+)
+@pytest.mark.property
+def test_basic_stats_quantile_ordering(pet_values):
+    """Quantiles must be ordered and IQR must equal q75 - q25.
+
+    Ported from cleanup/system-reorganization (2892564) — that branch
+    rewrote the whole file and dropped its @pytest.mark.property markers,
+    so only the two genuinely-new assertions were kept.
+    """
+    analyzer, tmpdir = make_analyzer(pet_values)
+    try:
+        s = analyzer.basic_stats()
+        assert s["count"] == len(pet_values)
+        tol = 1e-9
+        assert s["min"] - tol <= s["q25"] <= s["median"] <= s["q75"] <= s["max"] + tol
+        assert s["min"] - tol <= s["mean"] <= s["max"] + tol
+        assert abs(s["iqr"] - (s["q75"] - s["q25"])) < 1e-9
+    finally:
+        tmpdir.cleanup()
+
+
+@given(
+    st.lists(
+        st.floats(min_value=0.01, max_value=10.0, allow_nan=False, allow_infinity=False),
+        min_size=2,
+        max_size=30,
+    )
+)
+@pytest.mark.property
+def test_basic_stats_percentiles_monotonic(pet_values):
+    """Percentile outputs must be non-decreasing across the p1..p99 range.
+
+    Ported from cleanup/system-reorganization (2892564), same rationale.
+    """
+    analyzer, tmpdir = make_analyzer(pet_values)
+    try:
+        s = analyzer.basic_stats()
+        pcts = [1, 5, 10, 90, 95, 99]
+        values = [s[f"p{p}"] for p in pcts]
+        assert values == sorted(values)
+    finally:
+        tmpdir.cleanup()
