@@ -69,3 +69,11 @@ def test_default_prompt_property():
     assert "{pet:.3f}" in prompt
     assert "{conflict_type}" in prompt
     assert "{tracks}" in prompt
+
+
+def test_severity_thresholds_ordered():
+    """SEVERE < HIGH < MODERATE < LOW=inf, so callers that walk the
+    dict in insertion order see increasing thresholds."""
+    th = VLMConfig().severity_thresholds
+    assert th["SEVERE"] < th["HIGH"] < th["MODERATE"]
+    assert th["LOW"] == float("inf")
