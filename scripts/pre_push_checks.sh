@@ -7,10 +7,16 @@ cd "$(git rev-parse --show-toplevel)"
 CACHE_FILE=".last_quality_checks"
 MAX_AGE=300
 
+# Cache is keyed on the tree hash, not just file mtime. A commit within
+# the TTL window only skips checks if it does not change any tracked
+# source. Prevents the prior behaviour where editing a file and pushing
+# again reused a stale pass.
+CACHE_KEY="$(git rev-parse HEAD)-$(git diff HEAD --name-only | sort | sha256sum | cut -c1-12)"
 if [ -f "$CACHE_FILE" ]; then
     age=$(( $(date +%s) - $(stat -c %Y "$CACHE_FILE" 2>/dev/null || echo 0) ))
-    if [ "$age" -lt "$MAX_AGE" ]; then
-        echo "Recent checks (${age}s old). Skipping."
+    stored="$(head -n1 "$CACHE_FILE" 2>/dev/null || true)"
+    if [ "$age" -lt "$MAX_AGE" ] && [ "$stored" = "$CACHE_KEY" ]; then
+        echo "Recent checks for this tree (${age}s old). Skipping."
         exit 0
     fi
 fi
@@ -33,5 +39,5 @@ echo "=== metamorphic + determinism ==="
 pytest tests/test_metamorphic_ssm.py tests/test_determinism.py \
     -q -o addopts="" --timeout=60
 
-touch "$CACHE_FILE"
+echo "$CACHE_KEY" > "$CACHE_FILE"
 echo "pre-push OK"

@@ -5,6 +5,12 @@ on:
   push:
   pull_request:
 
+# Cancel in-flight runs for the same ref. push + pull_request both trigger
+# for a branch with an open PR; this keeps one active run per ref instead
+# of two.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -36,8 +42,6 @@ jobs:
       - name: Run fast unit tests with coverage
         run: |
           pytest tests/ -m "not integration and not slow" \
-            --ignore=tests/test_snapshot_bev_mapper.py \
-            --ignore=tests/test_snapshot_pet_summary.py \
             --cov=src --cov-branch --cov-report=term-missing \
             --cov-fail-under=70
 
@@ -47,11 +51,9 @@ jobs:
       - name: Run property tests
         run: |
           pytest tests/ -m property -q \
-            --ignore=tests/test_snapshot_bev_mapper.py \
             --ignore=tests/test_snapshot_pet_summary.py
 
       - name: Run smoke tests (integration)
         run: |
           pytest tests/ -m "integration or smoke" -q \
-            --ignore=tests/test_snapshot_bev_mapper.py \
             --ignore=tests/test_snapshot_pet_summary.py
