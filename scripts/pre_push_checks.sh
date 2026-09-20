@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Curated pre-push. Fast subset + metamorphic + determinism.
+# Curated pre-push. Ruff + mypy + fast subset + metamorphic + determinism.
 # Full property/differential suite lives in CI.
 set -e
 cd "$(git rev-parse --show-toplevel)"
@@ -27,6 +27,9 @@ ruff format --check src tests scripts
 
 echo "=== import guardrail ==="
 python scripts/check_imports.py
+
+echo "=== mypy (analysis) ==="
+mypy --config-file mypy.ini src/analysis
 
 echo "=== fast subset ==="
 pytest tests/ -q -o addopts="" -n auto \

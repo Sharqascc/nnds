@@ -3,7 +3,7 @@
 REPO_ROOT=$(git rev-parse --show-toplevel)
 cd "$REPO_ROOT"
 
-echo "🔍 Running pre-push checks (Ruff + Pytest)..."
+echo "🔍 Running pre-push checks (Ruff + Mypy + Pytest)..."
 if bash scripts/pre_push_checks.sh; then
     echo "✅ Pre-push checks passed."
     exit 0
