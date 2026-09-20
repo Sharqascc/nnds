@@ -87,3 +87,47 @@ def test_hota_bounded():
     trk, gt = _perfect()
     v = hota(trk, gt)
     assert 0.0 <= v <= 1.0
+
+
+def test_hota_is_not_idf1_on_split_ids():
+    """Regression for the HOTA-vs-IDF1 confusion.
+
+    A single GT track over 10 frames, predicted as two IDs of 5 frames each
+    with perfect boxes. Correct HOTA:
+      DetA = 10/10 = 1.0
+      AssA = mean(5/10, 5/10) = 0.5
+      HOTA = sqrt(1.0 * 0.5) = 0.7071
+
+    The previous implementation used a global Jaccard on the ID-overlap
+    matrix (IDF1-style), which yielded 0.5774. On this case IDF1 correctly
+    returns 0.5 and must not equal HOTA.
+    """
+    import math
+
+    gt = [Track(frame=f, track_id=1, box=(0.0, 0.0, 10.0, 10.0)) for f in range(10)]
+    trk = [Track(frame=f, track_id=100, box=(0.0, 0.0, 10.0, 10.0)) for f in range(5)] + [
+        Track(frame=f, track_id=200, box=(0.0, 0.0, 10.0, 10.0)) for f in range(5, 10)
+    ]
+
+    h = hota(trk, gt)
+    i = idf1(trk, gt)
+
+    assert h == pytest.approx(math.sqrt(0.5), abs=1e-3), (
+        f"HOTA should be 0.7071 on this case, got {h:.4f}"
+    )
+    assert i == pytest.approx(0.5, abs=1e-3), f"IDF1 should be 0.5, got {i:.4f}"
+    assert abs(h - i) > 0.05, f"HOTA ({h:.4f}) and IDF1 ({i:.4f}) should differ on split IDs"
+
+
+def test_hota_matches_deta_when_assa_is_perfect():
+    """If predictions perfectly match GT (no splits, no FPs), DetA=1 and
+    AssA=1, so HOTA=1."""
+    gt = [Track(frame=f, track_id=1, box=(0.0, 0.0, 10.0, 10.0)) for f in range(5)]
+    trk = [Track(frame=f, track_id=1, box=(0.0, 0.0, 10.0, 10.0)) for f in range(5)]
+    assert hota(trk, gt) == pytest.approx(1.0, abs=1e-9)
+
+
+def test_hota_zero_when_no_true_positives():
+    gt = [Track(frame=0, track_id=1, box=(0.0, 0.0, 10.0, 10.0))]
+    trk = [Track(frame=0, track_id=1, box=(500.0, 500.0, 510.0, 510.0))]
+    assert hota(trk, gt) == pytest.approx(0.0)
