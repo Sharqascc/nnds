@@ -36,8 +36,8 @@ def build_velocity_tensors(csv_path, Th=16, scaler_stats=None):
             continue
         sub = grp.iloc[:Th]
 
-        ti = sub[["x_i", "y_i"]].values.astype(np.float32)
-        tj = sub[["x_j", "y_j"]].values.astype(np.float32)
+        ti: np.ndarray = sub[["x_i", "y_i"]].values.astype(np.float32)
+        tj: np.ndarray = sub[["x_j", "y_j"]].values.astype(np.float32)
 
         v_i = np.zeros_like(ti)
         v_i[1:] = np.diff(ti, axis=0)

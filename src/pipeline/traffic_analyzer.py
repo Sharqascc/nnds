@@ -109,7 +109,7 @@ class CompleteTrafficAnalyzer:
     def pixel_to_world(self, pixel_point):
         if self.homography is None:
             raise RuntimeError("Homography not initialized")
-        pixel_h = np.append(np.array(pixel_point, dtype=np.float32), 1.0).reshape(3, 1)
+        pixel_h: np.ndarray = np.append(np.array(pixel_point, dtype=np.float32), 1.0).reshape(3, 1)
         world_h = self.homography @ pixel_h
         if abs(world_h[2]) < 1e-9:
             raise ValueError(f"pixel {pixel_point} maps to infinity (world_h[2]={world_h[2]})")

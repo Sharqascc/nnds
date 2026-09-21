@@ -30,7 +30,7 @@ def compute_homography_dlt(src_points: np.ndarray, dst_points: np.ndarray) -> np
     if n < 4:
         raise ValueError("At least 4 point correspondences are required")
 
-    A = np.zeros((2 * n, 9), dtype=np.float64)
+    A: np.ndarray = np.zeros((2 * n, 9), dtype=np.float64)
 
     for i in range(n):
         x, y = src_points[i]
@@ -54,13 +54,13 @@ def _project_points_homography(pixel_points: np.ndarray, H: np.ndarray) -> np.nd
     Project Nx2 points through a 3x3 homography, returning Nx2 points.
     """
     pixel_points = np.asarray(pixel_points, dtype=np.float64)
-    ones = np.ones((len(pixel_points), 1), dtype=np.float64)
+    ones: np.ndarray = np.ones((len(pixel_points), 1), dtype=np.float64)
     pts_h = np.hstack([pixel_points, ones])
     proj_h = (H @ pts_h.T).T
     denom = proj_h[:, 2:3]
 
     valid = ~np.isclose(denom[:, 0], 0.0)
-    out = np.full((len(pixel_points), 2), np.nan, dtype=np.float64)
+    out: np.ndarray = np.full((len(pixel_points), 2), np.nan, dtype=np.float64)
     out[valid] = proj_h[valid, :2] / denom[valid]
     return out
 

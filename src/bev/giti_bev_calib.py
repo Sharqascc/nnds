@@ -97,8 +97,8 @@ def load_giti_homography(
             f"Expected at least 4 calibration_points, got {len(points)} in {json_path}"
         )
 
-    pts_pix = []
-    pts_world = []
+    pts_pix_list: list[list[float]] = []
+    pts_world_list: list[list[float]] = []
 
     for p in points:
         try:
@@ -109,11 +109,11 @@ def load_giti_homography(
         except (KeyError, TypeError, ValueError) as e:
             raise ValueError(f"Invalid calibration point entry {p}: {e}")
 
-        pts_pix.append([px, py])
-        pts_world.append([X, Y])
+        pts_pix_list.append([px, py])
+        pts_world_list.append([X, Y])
 
-    pts_pix = np.asarray(pts_pix, dtype=np.float64)
-    pts_world = np.asarray(pts_world, dtype=np.float64)
+    pts_pix: np.ndarray = np.asarray(pts_pix_list, dtype=np.float64)
+    pts_world: np.ndarray = np.asarray(pts_world_list, dtype=np.float64)
 
     logger.debug(
         "Computing homography with %d calibration points (ransac_thresh=%.3f)",
