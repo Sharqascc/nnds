@@ -49,6 +49,9 @@ jobs:
             bash -n "$f"
           done
 
+      - name: Fetch tags (for archive-index drift check)
+        run: git fetch --tags
+
       - name: Run fast unit tests with coverage
         run: |
           pytest tests/ -m "not integration and not slow" \
