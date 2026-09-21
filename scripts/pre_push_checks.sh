@@ -44,6 +44,11 @@ pytest tests/ -q -o addopts="" -n auto \
     --ignore=tests/test_snapshot_pet_summary.py \
     --timeout=60
 
+echo "=== property subset (fast)" ===
+pytest tests/test_pet_summary_property.py \
+       tests/test_traffic_analyzer_property.py \
+    -q -o addopts="" -n auto --timeout=60
+
 echo "=== metamorphic + determinism ==="
 pytest tests/test_metamorphic_ssm.py tests/test_determinism.py \
     -q -o addopts="" --timeout=60
