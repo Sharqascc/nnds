@@ -38,18 +38,18 @@ class CompleteTrafficAnalyzer:
     def __init__(self, bev_width: int = 800, bev_height: int = 800):
         self.bev_width = bev_width
         self.bev_height = bev_height
-        self.pixel_points = None
-        self.world_points_approx = None
-        self.homography = None
-        self.inv_homography = None
-        self.inlier_mask = None
+        self.pixel_points: np.ndarray | None = None
+        self.world_points_approx: np.ndarray | None = None
+        self.homography: np.ndarray | None = None
+        self.inv_homography: np.ndarray | None = None
+        self.inlier_mask: np.ndarray | None = None
         self.calibration_metrics: dict = {}
-        self.bev_x_min = None
-        self.bev_x_max = None
-        self.bev_y_min = None
-        self.bev_y_max = None
-        self.meters_per_pixel_x = None
-        self.meters_per_pixel_y = None
+        self.bev_x_min: float | None = None
+        self.bev_x_max: float | None = None
+        self.bev_y_min: float | None = None
+        self.bev_y_max: float | None = None
+        self.meters_per_pixel_x: float | None = None
+        self.meters_per_pixel_y: float | None = None
 
     def calibrate(
         self,
@@ -59,11 +59,12 @@ class CompleteTrafficAnalyzer:
         ransac_confidence: float = 0.99,
         ransac_max_iters: int = 5000,
     ):
-        self.pixel_points = np.array(pixel_points, dtype=np.float32)
+        pixel_pts = np.array(pixel_points, dtype=np.float32)
+        self.pixel_points = pixel_pts
         wpts = np.array(world_points_approx, dtype=np.float32)
         self.world_points_approx = wpts
         H, mask = cv2.findHomography(
-            self.pixel_points,
+            pixel_pts,
             wpts[:, :2],
             cv2.RANSAC,
             ransacReprojThreshold=ransac_threshold,
@@ -77,7 +78,7 @@ class CompleteTrafficAnalyzer:
         if mask is not None:
             self.inlier_mask = mask.ravel().astype(bool)
             projected = cv2.perspectiveTransform(
-                self.pixel_points.reshape(-1, 1, 2), self.homography
+                pixel_pts.reshape(-1, 1, 2), self.homography
             ).reshape(-1, 2)
             errors = np.linalg.norm(projected - wpts[:, :2], axis=1)
             self.calibration_metrics["final_mae"] = float(np.mean(errors))
@@ -108,7 +109,7 @@ class CompleteTrafficAnalyzer:
     def pixel_to_world(self, pixel_point):
         if self.homography is None:
             raise RuntimeError("Homography not initialized")
-        pixel_h = np.append(np.array(pixel_point, dtype=np.float32), 1.0).reshape(3, 1)
+        pixel_h: np.ndarray = np.append(np.array(pixel_point, dtype=np.float32), 1.0).reshape(3, 1)
         world_h = self.homography @ pixel_h
         if abs(world_h[2]) < 1e-9:
             raise ValueError(f"pixel {pixel_point} maps to infinity (world_h[2]={world_h[2]})")

@@ -279,8 +279,8 @@ class CustomTracker:
         # track that was already heading toward the detection.
         n_a = len(active_ids)
         n_d = len(detections)
-        cost = np.zeros((n_a, n_d), dtype=np.float32)
-        motion = np.zeros((n_a, n_d), dtype=np.float32)
+        cost: np.ndarray = np.zeros((n_a, n_d), dtype=np.float32)
+        motion: np.ndarray = np.zeros((n_a, n_d), dtype=np.float32)
         for i, tid in enumerate(active_ids):
             pred_box = self.tracks[tid].box
             for j, det in enumerate(detections):
@@ -328,7 +328,9 @@ class CustomTracker:
                     )
                 det_embeddings[j] = det.embedding
 
-            cost2 = np.zeros((len(remaining_tracks), len(remaining_dets)), dtype=np.float32)
+            cost2: np.ndarray = np.zeros(
+                (len(remaining_tracks), len(remaining_dets)), dtype=np.float32
+            )
             for i, tid in enumerate(remaining_tracks):
                 pred_center = self.tracks[tid].center
                 track_hist = self.tracks[tid].hist

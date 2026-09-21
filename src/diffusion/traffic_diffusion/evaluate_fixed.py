@@ -156,8 +156,8 @@ def run_evaluation(
                 continue
             sub = grp.iloc[:Th]
 
-            ti = sub[["x_i", "y_i"]].values.astype(np.float32)
-            tj = sub[["x_j", "y_j"]].values.astype(np.float32)
+            ti: np.ndarray = sub[["x_i", "y_i"]].values.astype(np.float32)
+            tj: np.ndarray = sub[["x_j", "y_j"]].values.astype(np.float32)
 
             start_i = ti[0].copy()
             ti_rel = ti - start_i

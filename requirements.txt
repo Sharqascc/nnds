@@ -2,9 +2,9 @@ torch>=2.0.0
 torchvision
 ultralytics>=8.0.0
 opencv-python
-numpy
-pandas
-scipy
+numpy>=2.5,<3
+pandas>=3.0,<4
+scipy>=1.18,<2
 matplotlib
 tqdm
 PyYAML

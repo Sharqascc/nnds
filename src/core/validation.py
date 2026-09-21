@@ -19,7 +19,7 @@ class ValidationMetrics:
 
 @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def compute_error_metrics(errors: Sequence[float] | np.ndarray) -> ValidationMetrics:
-    arr = np.asarray(errors, dtype=float)
+    arr: np.ndarray = np.asarray(errors, dtype=float)
     if arr.size == 0:
         raise ValueError("errors must not be empty")
     return ValidationMetrics(

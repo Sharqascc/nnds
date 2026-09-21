@@ -958,12 +958,12 @@ class PETConflictChecker:
         if len(traj) < 2:
             return 5.0
 
-        dx = np.diff(traj["x"].values)  # type: ignore[arg-type]
-        dy = np.diff(traj["y"].values)  # type: ignore[arg-type]
+        dx = np.diff(traj["x"].to_numpy(dtype=float))
+        dy = np.diff(traj["y"].to_numpy(dtype=float))
         dt = (
-            np.diff(traj["timestamp"].values)  # type: ignore[arg-type]
+            np.diff(traj["timestamp"].to_numpy(dtype=float))
             if "timestamp" in traj.columns
-            else np.diff(traj["frame"].values) / 30.0  # type: ignore[arg-type]
+            else np.diff(traj["frame"].to_numpy(dtype=float)) / 30.0
         )
 
         speeds = np.sqrt(dx**2 + dy**2) / np.maximum(dt, 0.001)

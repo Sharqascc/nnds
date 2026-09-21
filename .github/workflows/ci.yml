@@ -31,16 +31,16 @@ jobs:
           if [ -f requirements-vlm.txt ]; then pip install -r requirements-vlm.txt; fi
 
       - name: Compile all Python files
-        run: python -m compileall -q src tests scripts
+        run: python -m compileall -q src tests scripts conftest.py
 
       - name: Lint with Ruff
-        run: ruff check src tests scripts
+        run: ruff check .
 
       - name: Check formatting with Ruff
-        run: ruff format --check src tests scripts
+        run: ruff format --check .
 
       - name: Run mypy type checking (analysis)
-        run: mypy --config-file mypy.ini src/analysis
+        run: mypy --config-file mypy.ini src/
 
       - name: Check shell syntax
         run: |

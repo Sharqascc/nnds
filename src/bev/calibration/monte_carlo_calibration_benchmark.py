@@ -62,7 +62,7 @@ NX, NY = 27, 12
 W_X, W_Y = 49.5, 22.0
 x_coords = np.linspace(0.0, W_X, NX)
 y_coords = np.linspace(0.0, W_Y, NY)
-XX, YY = np.meshgrid(x_coords, y_coords)
+XX, YY = np.meshgrid(x_coords, y_coords)  # type: tuple[np.ndarray, np.ndarray]
 ZW = np.zeros_like(XX)
 world_points_true = np.stack([XX.ravel(), YY.ravel(), ZW.ravel()], axis=1).astype(np.float32)
 
@@ -222,15 +222,15 @@ def estimate_homography(
     img_pts: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Estimate homography from image -> world (X,Y) with RANSAC."""
-    src = img_pts.astype(np.float32)
-    dst = world_pts[:, :2].astype(np.float32)
+    src: np.ndarray = img_pts.astype(np.float32)
+    dst: np.ndarray = world_pts[:, :2].astype(np.float32)
     H, mask = cv2.findHomography(src, dst, cv2.RANSAC, 3.0)
     return H, mask
 
 
 def apply_homography(H: np.ndarray, img_pts: np.ndarray) -> np.ndarray:
     """Apply homography to 2D image points, return Nx2 world coordinates."""
-    pts = img_pts.astype(np.float32)
+    pts: np.ndarray = img_pts.astype(np.float32)
     pts_h = cv2.convertPointsToHomogeneous(pts).reshape(-1, 3).T
     mapped = H @ pts_h
     mapped = (mapped[:2] / mapped[2]).T
@@ -252,8 +252,8 @@ def solve_pnp_world_error(
     hold, rather than relying on the module global.
     """
     ref = world_points_true if reference_world_pts is None else reference_world_pts
-    obj = world_pts_for_pnp.reshape(-1, 1, 3).astype(np.float32)
-    img = img_pts.reshape(-1, 1, 2).astype(np.float32)
+    obj: np.ndarray = world_pts_for_pnp.reshape(-1, 1, 3).astype(np.float32)
+    img: np.ndarray = img_pts.reshape(-1, 1, 2).astype(np.float32)
     ok, rvec, tvec = cv2.solvePnP(obj, img, K, dist_coeffs, flags=method_flag)
     if not ok:
         return float("inf"), None, None
@@ -290,8 +290,8 @@ def solve_p3p_ransac_world_error(
     if rng is None:
         rng = np.random.default_rng()  # pragma: no cover
 
-    obj_all = world_pts.astype(np.float32)
-    img_all = img_pts.astype(np.float32)
+    obj_all: np.ndarray = world_pts.astype(np.float32)
+    img_all: np.ndarray = img_pts.astype(np.float32)
     N = obj_all.shape[0]
     best_mae = float("inf")
 

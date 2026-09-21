@@ -1,5 +1,3 @@
-
-
 # Hypothesis CI profile: deterministic seeds for reproducible CI.
 try:
     from hypothesis import settings as _hyp_settings
