@@ -31,6 +31,12 @@ python scripts/check_imports.py
 echo "=== mypy (analysis) ==="
 mypy --config-file mypy.ini src/analysis
 
+echo "=== shell syntax ==="
+shopt -s nullglob
+for f in scripts/*.sh .githooks/pre-commit .githooks/pre-push; do
+    bash -n "$f" || { echo "shell syntax error: $f"; exit 1; }
+done
+
 echo "=== fast subset ==="
 pytest tests/ -q -o addopts="" -n auto \
     -m "not property and not integration and not slow and not differential and not metamorphic" \

@@ -4,6 +4,10 @@
 
 NNDS is a comprehensive traffic safety analysis pipeline that detects vehicles and pedestrians, tracks them in 3D space, computes safety metrics such as PET, TTC, and DRAC, and generates bird's-eye-view (BEV) visualizations.
 
+> Long-lived branches are preserved as `archive/*` tags.
+> See [docs/BRANCH_ARCHIVE.md](docs/BRANCH_ARCHIVE.md) for the
+> index and restore instructions.
+
 ## Installation
 
 ```bash
