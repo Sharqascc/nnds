@@ -42,6 +42,13 @@ jobs:
       - name: Run mypy type checking (analysis)
         run: mypy --config-file mypy.ini src/analysis
 
+      - name: Check shell syntax
+        run: |
+          shopt -s nullglob
+          for f in scripts/*.sh .githooks/pre-commit .githooks/pre-push; do
+            bash -n "$f"
+          done
+
       - name: Run fast unit tests with coverage
         run: |
           pytest tests/ -m "not integration and not slow" \
