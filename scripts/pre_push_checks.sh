@@ -22,14 +22,14 @@ if [ -f "$CACHE_FILE" ]; then
 fi
 
 echo "=== ruff ==="
-ruff check src tests scripts
-ruff format --check src tests scripts
+ruff check .
+ruff format --check .
 
 echo "=== import guardrail ==="
 python scripts/check_imports.py
 
 echo "=== mypy (analysis) ==="
-mypy --config-file mypy.ini src/analysis
+mypy --config-file mypy.ini src/
 
 echo "=== shell syntax ==="
 shopt -s nullglob
