@@ -47,6 +47,19 @@ implemented, which script computes it, and the JSON key that script emits.
 | R^2 (SSM agreement) | src/analysis/ssm_agreement.py::agreement_metrics | pet_r2, ttc_r2 | - |
 | Spearman rho | same | pet_spearman, ttc_spearman | - |
 
+### AP method (VOC-style)
+
+The detection AP functions (`ap_at_iou`, `ap_by_size`, `map_at_iou_range`) use
+**VOC all-points interpolation** for the precision-recall curve, not COCO's
+101-point interpolation. The labels `mAP50:95` and `APs / APm / APl` follow
+COCO conventions for *which thresholds and size buckets* to average over, but
+the AP value at each threshold is computed with the VOC method.
+
+The two methods converge within ~1% in practice. If you need byte-exact
+comparison against pycocotools output, use a COCO-mode AP implementation
+instead. This footnote exists so the difference is explicit rather than
+implied by the label.
+
 ## Definitions and caveats
 
 Detection.

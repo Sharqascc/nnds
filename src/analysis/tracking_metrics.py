@@ -111,43 +111,6 @@ def mota(
     return 1.0 - (c["fn"] + c["fp"] + c["idsw"]) / float(n_gt)
 
 
-def _association(
-    gt_by_frame: dict[int, list[Track]],
-    pred_by_frame: dict[int, list[Track]],
-    iou_thr: float,
-) -> tuple[float, int, int, int]:
-    """Return (AssA, TP, FP, FN) at the given IoU threshold."""
-    gt_ids = sorted({t.track_id for v in gt_by_frame.values() for t in v})
-    pred_ids = sorted({t.track_id for v in pred_by_frame.values() for t in v})
-    if not gt_ids or not pred_ids:
-        tp = sum(len(v) for v in pred_by_frame.values()) if not gt_ids else 0
-        fn = sum(len(v) for v in gt_by_frame.values()) if not pred_ids else 0
-        return 0.0, 0, tp if not gt_ids else 0, fn
-    gt_idx = {tid: i for i, tid in enumerate(gt_ids)}
-    pred_idx = {tid: i for i, tid in enumerate(pred_ids)}
-    overlap: np.ndarray = np.zeros((len(gt_ids), len(pred_ids)), dtype=float)
-    tp = fp = fn = 0
-    for frame in sorted(set(gt_by_frame) | set(pred_by_frame)):
-        g = gt_by_frame.get(frame, [])
-        p = pred_by_frame.get(frame, [])
-        pairs = _match_frame(g, p, iou_thr)
-        matched_gt = {gi for gi, _ in pairs}
-        matched_p = {pi for _, pi in pairs}
-        tp += len(pairs)
-        fp += len(p) - len(matched_p)
-        fn += len(g) - len(matched_gt)
-        for gi, pi in pairs:
-            overlap[gt_idx[g[gi].track_id], pred_idx[p[pi].track_id]] += 1.0
-    row, col = linear_sum_assignment(-overlap)
-    tpa = float(overlap[row, col].sum())
-    n_gt_total = sum(len(v) for v in gt_by_frame.values())
-    n_pred_total = sum(len(v) for v in pred_by_frame.values())
-    fna = n_gt_total - tpa
-    fpa = n_pred_total - tpa
-    denom = tpa + fna + fpa
-    return (tpa / denom if denom > 0 else 0.0), tp, fp, fn
-
-
 def idf1(
     tracked: Sequence[Track], ground_truth: Sequence[Track], iou_thr: float = MOTA_IOU
 ) -> float:

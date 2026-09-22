@@ -47,9 +47,12 @@ def _value_metrics(
     gt = _dedupe_min(gt_events, field)
     common = sorted(set(pred) & set(gt))
     if not common:
+        # No overlap between predictions and ground truth: MAE and RMSE are
+        # undefined, not zero. Returning 0.0 would report a completely wrong
+        # prediction as perfect agreement. Use NaN so callers must handle it.
         return {
-            "mae": 0.0,
-            "rmse": 0.0,
+            "mae": float("nan"),
+            "rmse": float("nan"),
             "n_matched": 0,
             "n_pred_only": len(set(pred) - set(gt)),
             "n_gt_only": len(set(gt) - set(pred)),
