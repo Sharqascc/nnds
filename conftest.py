@@ -1,9 +1,25 @@
-# Hypothesis CI profile: deterministic seeds for reproducible CI.
+"""Pytest configuration: Hypothesis profiles and test classification."""
+
+from __future__ import annotations
+
+import os
+
+# Hypothesis profiles: different scales for different execution contexts.
+#
+#   ci       (default)  50 examples  - pre-push, local developer runs
+#   ci-pr            300 examples  - PR gate (CI workflow, `ci.yml`)
+#   ci-deep         2500 examples  - nightly deep verification
+#
+# Select via HYPOTHESIS_PROFILE env var. Unset -> "ci", so local runs
+# are unchanged. All profiles derandomize for reproducible results.
 try:
     from hypothesis import settings as _hyp_settings
 
+    _profile = os.environ.get("HYPOTHESIS_PROFILE", "ci")
     _hyp_settings.register_profile("ci", derandomize=True, max_examples=50)
-    _hyp_settings.load_profile("ci")
+    _hyp_settings.register_profile("ci-pr", derandomize=True, max_examples=300, deadline=2000)
+    _hyp_settings.register_profile("ci-deep", derandomize=True, max_examples=2500, deadline=None)
+    _hyp_settings.load_profile(_profile)
 except ImportError:
     pass
 

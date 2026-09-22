@@ -59,6 +59,8 @@ jobs:
             --cov-fail-under=70
 
       - name: Run property tests
+        env:
+          HYPOTHESIS_PROFILE: ci-pr
         run: |
           pytest tests/ -m property -q \
             --ignore=tests/test_snapshot_pet_summary.py
