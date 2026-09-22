@@ -54,3 +54,6 @@ outputs/logs/
 !data/annotations/**/*.md
 # pre-push hook cache (should not be committed)
 .last_quality_checks
+
+# mutation testing artifacts (cosmic-ray)
+mutants/
