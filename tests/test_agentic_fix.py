@@ -188,6 +188,7 @@ def test_call_with_github_fallback_uses_github_when_groq_fails(monkeypatch):
 
 
 # ---------- Property-based test ----------
+@pytest.mark.property
 @given(st.lists(st.text(min_size=1, max_size=20), min_size=2, max_size=5))
 def test_call_with_fallback_always_returns_success_when_one_model_works(model_names):
     """If the first model rate-limits, fallback to the second model succeeds."""

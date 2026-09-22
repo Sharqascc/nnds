@@ -10,6 +10,7 @@ from src.analysis.ssm.ssm_verification import SSMVerifier, compare_with_referenc
 # ------------------------------------------------------------------
 
 
+@pytest.mark.property
 @given(st.lists(st.floats(min_value=-1e6, max_value=1e6), min_size=10, max_size=100))
 def test_pet_non_negativity_invariant(values):
     """
@@ -31,6 +32,7 @@ def test_pet_non_negativity_invariant(values):
         assert not quality["passed"] or len(quality["warnings"]) > 0
 
 
+@pytest.mark.property
 @given(st.lists(st.floats(min_value=0.0, max_value=1e6), min_size=10, max_size=100))
 def test_ttc_distribution_stability(values):
     """

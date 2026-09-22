@@ -81,6 +81,7 @@ def test_extract_patch_no_changes():
 
 
 # ---------- Property test for extract_patch ----------
+@pytest.mark.property
 @given(st.text(min_size=0, max_size=500))
 def test_extract_patch_never_throws(text):
     # It should always return a string without raising
