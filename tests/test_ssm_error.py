@@ -81,14 +81,15 @@ def test_pet_dedup_uses_minimum():
 
 
 def test_pet_empty_both():
+    import math
+
     m = pet_value_metrics([], [])
-    assert m == {
-        "mae": 0.0,
-        "rmse": 0.0,
-        "n_matched": 0,
-        "n_pred_only": 0,
-        "n_gt_only": 0,
-    }
+    # Zero overlap means the value metrics are undefined (NaN), not perfect (0.0).
+    assert math.isnan(m["mae"])
+    assert math.isnan(m["rmse"])
+    assert m["n_matched"] == 0
+    assert m["n_pred_only"] == 0
+    assert m["n_gt_only"] == 0
 
 
 def test_ttc_known_error():
@@ -105,3 +106,17 @@ def test_ssm_combined_returns_both():
     m = ssm_value_metrics(pred, gt)
     assert m["pet"]["mae"] == 0.0
     assert m["ttc"]["mae"] == 0.0
+
+
+def test_pet_no_overlap_returns_nan():
+    """Non-empty inputs that share no pair keys -> MAE/RMSE are undefined."""
+    import math
+
+    pred = [_e(1, 2, pet=1.5)]
+    gt = [_e(3, 4, pet=2.0)]
+    m = pet_value_metrics(pred, gt)
+    assert math.isnan(m["mae"])
+    assert math.isnan(m["rmse"])
+    assert m["n_matched"] == 0
+    assert m["n_pred_only"] == 1
+    assert m["n_gt_only"] == 1

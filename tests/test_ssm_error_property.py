@@ -17,7 +17,14 @@ events_st = st.lists(event_st, min_size=0, max_size=15)
 @given(events_st)
 @settings(max_examples=50)
 def test_pet_mae_non_negative(events):
+    import math
+
     m = pet_value_metrics(events, events)
+    # MAE/RMSE are NaN when there is nothing to match (undefined, not zero).
+    if m["n_matched"] == 0:
+        assert math.isnan(m["mae"])
+        assert math.isnan(m["rmse"])
+        return
     assert m["mae"] >= 0.0
     assert m["rmse"] >= 0.0
 
@@ -25,8 +32,15 @@ def test_pet_mae_non_negative(events):
 @given(events_st)
 @settings(max_examples=50)
 def test_identical_events_zero_error(events):
+    import math
+
     m = pet_value_metrics(events, events)
-    assert m["mae"] == pytest.approx(0.0, abs=1e-12)
+    # Empty input: undefined. Non-empty: perfect agreement is zero error.
+    if m["n_matched"] == 0:
+        assert math.isnan(m["mae"])
+        assert math.isnan(m["rmse"])
+    else:
+        assert m["mae"] == pytest.approx(0.0, abs=1e-12)
     assert m["n_pred_only"] == 0
     assert m["n_gt_only"] == 0
 
@@ -34,9 +48,15 @@ def test_identical_events_zero_error(events):
 @given(events_st, events_st)
 @settings(max_examples=50)
 def test_mae_symmetric(pred, gt):
+    import math
+
     m1 = pet_value_metrics(pred, gt)
     m2 = pet_value_metrics(gt, pred)
-    assert m1["mae"] == pytest.approx(m2["mae"], abs=1e-9)
+    if m1["n_matched"] == 0:
+        assert math.isnan(m1["mae"])
+        assert math.isnan(m2["mae"])
+    else:
+        assert m1["mae"] == pytest.approx(m2["mae"], abs=1e-9)
     assert m1["n_matched"] == m2["n_matched"]
     assert m1["n_pred_only"] == m2["n_gt_only"]
     assert m1["n_gt_only"] == m2["n_pred_only"]
@@ -46,13 +66,22 @@ def test_mae_symmetric(pred, gt):
 @settings(max_examples=50)
 def test_rmse_geq_mae(pred, gt):
     m = pet_value_metrics(pred, gt)
+    # Undefined when nothing matched.
+    if m["n_matched"] == 0:
+        return
     assert m["rmse"] + 1e-9 >= m["mae"]
 
 
 @given(events_st, events_st)
 @settings(max_examples=50)
 def test_ttc_mae_non_negative(pred, gt):
+    import math
+
     m = ttc_value_metrics(pred, gt)
+    if m["n_matched"] == 0:
+        assert math.isnan(m["mae"])
+        assert math.isnan(m["rmse"])
+        return
     assert m["mae"] >= 0.0
     assert m["rmse"] >= 0.0
 

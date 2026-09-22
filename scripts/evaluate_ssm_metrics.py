@@ -55,11 +55,15 @@ def main() -> None:
     metrics = ssm_value_metrics(pred, gt)
     crit = critical_conflict_recall(pred, gt, field="pet", threshold=args.critical_threshold)
 
+    def _fmt(v: float) -> str:
+        # NaN means no matched pairs -> metric is undefined, not zero.
+        return "N/A (0 matched)" if v != v else f"{v:.4f} s"
+
     for field in ("pet", "ttc"):
         m = metrics[field]
         print(f"{field.upper()} value metrics:")
-        print(f"  MAE: {m['mae']:.4f} s")
-        print(f"  RMSE: {m['rmse']:.4f} s")
+        print(f"  MAE: {_fmt(m['mae'])}")
+        print(f"  RMSE: {_fmt(m['rmse'])}")
         print(f"  Matched pairs: {m['n_matched']}")
         print(f"  Pred-only (FP): {m['n_pred_only']}")
         print(f"  GT-only (FN): {m['n_gt_only']}")
@@ -67,11 +71,15 @@ def main() -> None:
     print(f"  Recall: {crit['recall']:.4f}")
     print(f"  Critical GT events: {crit['n_critical_gt']}")
 
+    # NaN is undefined: emit JSON null rather than the non-standard `NaN` literal.
+    def _json_safe(v: float):
+        return None if v != v else float(v)
+
     out_json = {
-        "pet_mae_s": metrics["pet"]["mae"],
-        "pet_rmse_s": metrics["pet"]["rmse"],
-        "ttc_mae_s": metrics["ttc"]["mae"],
-        "ttc_rmse_s": metrics["ttc"]["rmse"],
+        "pet_mae_s": _json_safe(metrics["pet"]["mae"]),
+        "pet_rmse_s": _json_safe(metrics["pet"]["rmse"]),
+        "ttc_mae_s": _json_safe(metrics["ttc"]["mae"]),
+        "ttc_rmse_s": _json_safe(metrics["ttc"]["rmse"]),
         "critical_conflict_recall": crit["recall"],
     }
     if args.out_json:
