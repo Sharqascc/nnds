@@ -22,3 +22,13 @@ jobs:
       - name: Run integration and smoke tests
         run: |
           pytest tests/ -m "integration or smoke" -q
+
+      - name: Deep property tests
+        # Hypothesis with 2500 examples per property. Not a PR gate -
+        # purely informational, to surface rare counterexamples that
+        # the 300-example PR profile misses.
+        env:
+          HYPOTHESIS_PROFILE: ci-deep
+        run: |
+          pytest tests/ -m property -q -o addopts= \
+            -n auto --timeout=300
