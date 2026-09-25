@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/Sharqascc/nnds/actions/workflows/ci.yml/badge.svg)](https://github.com/Sharqascc/nnds/actions/workflows/ci.yml)
 
+> **Reproducing results:** see [REPRODUCE.md](REPRODUCE.md) for the full pipeline walkthrough and an honest list of what is and is not reproducible from a fresh clone.
+
 NNDS is a comprehensive traffic safety analysis pipeline that detects vehicles and pedestrians, tracks them in 3D space, computes safety metrics such as PET, TTC, and DRAC, and generates bird's-eye-view (BEV) visualizations.
 
 > Long-lived branches are preserved as `archive/*` tags.

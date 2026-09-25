@@ -15,6 +15,19 @@ cd "$ROOT"
 MAX_FRAMES="${1:-300}"
 DEVICE="${2:-cpu}"
 
+echo "=== [0/4] Checking Git LFS ==="
+if ! command -v git-lfs >/dev/null 2>&1; then
+    echo "WARNING: git-lfs not installed. Videos will be pointers."
+    echo "         Install: https://git-lfs.com and run: git lfs pull"
+fi
+for v in data/sample_data/GITI_traffic_video.mp4 \
+         data/sample_data/MRC_traffic_video.mp4; do
+    if [ -f "$v" ] && [ "$(stat -c%s "$v")" -lt 1048576 ]; then
+        echo "WARNING: $v looks like an LFS pointer ($(stat -c%s "$v") bytes)."
+        echo "         Run: git lfs pull"
+    fi
+done
+
 echo "=== [1/4] Installing dependencies ==="
 pip install -q ultralytics pandas matplotlib opencv-python pyyaml scipy
 
@@ -25,12 +38,12 @@ echo "=== [3/4] Copying videos from Drive (if available) ==="
 # This is optional; videos must be present in data/sample_data/
 # The user should manually copy videos if not already present.
 # We'll check for their existence.
-if [[ ! -f data/sample_data/traffic_video.mp4 || $(stat -c%s data/sample_data/traffic_video.mp4) -lt 1048576 ]]; then
-    echo "WARNING: GITI video not found. Please copy from Drive to data/sample_data/traffic_video.mp4"
+if [[ ! -f data/sample_data/GITI_traffic_video.mp4 || $(stat -c%s data/sample_data/GITI_traffic_video.mp4) -lt 1048576 ]]; then
+    echo "WARNING: GITI video not found. Please copy from Drive to data/sample_data/GITI_traffic_video.mp4"
 fi
 
-if [[ ! -f data/sample_data/mrc_intersection.mp4 || $(stat -c%s data/sample_data/mrc_intersection.mp4) -lt 1048576 ]]; then
-    echo "WARNING: MRC video not found. Please copy from Drive to data/sample_data/mrc_intersection.mp4"
+if [[ ! -f data/sample_data/MRC_traffic_video.mp4 || $(stat -c%s data/sample_data/MRC_traffic_video.mp4) -lt 1048576 ]]; then
+    echo "WARNING: MRC video not found. Please copy from Drive to data/sample_data/MRC_traffic_video.mp4"
 fi
 
 echo "=== [4/4] Running parallel pipeline (GITI + MRC) ==="
@@ -65,12 +78,12 @@ def run_site(args):
     return site, r.returncode
 
 jobs = [
-    ('GITI', repo/'data/sample_data/traffic_video.mp4',
+    ('GITI', repo/'data/sample_data/GITI_traffic_video.mp4',
      repo/'configs/sites/giti/bev_config.json',
      repo/'configs/sites/giti/grid_config.json',
      repo/'configs/sites/giti/gate_config.yaml',
      repo/'outputs/giti_full_300_parallel.csv'),
-    ('MRC', repo/'data/sample_data/mrc_intersection.mp4',
+    ('MRC', repo/'data/sample_data/MRC_traffic_video.mp4',
      repo/'configs/sites/mrc/bev_config.json',
      repo/'configs/sites/mrc/grid_config.json',
      repo/'configs/sites/mrc/gate_config.yaml',
