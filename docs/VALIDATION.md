@@ -31,8 +31,11 @@ difference between "the metric code is correct" and "the pipeline is accurate".
   needed for an independent position-error number.
 - Velocity / acceleration accuracy. Requires a reference trajectory
   (surveyed points or radar), not just pixel annotations.
-- PET / TTC accuracy. Requires human-annotated conflict events on a real
-  sequence.
+- PET / TTC accuracy. **Partially addressed.** 114 PET events
+  have been hand-labeled (`data/reviews/ssm_review_114/`); the
+  review gives MCC, balanced accuracy, and PR-AUC per feature.
+  The prior 0.857 precision/recall/F1 has been retracted as
+  unsupported. TTC values are not yet labeled.
 
 ## What this means in plain terms
 

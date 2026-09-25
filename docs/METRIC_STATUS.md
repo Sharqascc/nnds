@@ -59,11 +59,13 @@ from the repository.
 | BEV | homography reproj error (6 calibration pts) | 0.000001 m max | configs/giti_calibration_points.json | ✅ verified (self-consistent) |
 | Trajectory | velocity MAE | — | no world GT | ❌ blocked |
 | Trajectory | acceleration MAE | — | no world GT | ❌ blocked |
-| PET / SSM | precision | 0.857 | 53-event review (reconstructed) | ⚠️ unverified (source files not in repo) |
-| PET / SSM | recall | 0.857 | same | ⚠️ unverified (source files not in repo) |
-| PET / SSM | F1 | 0.857 | same | ⚠️ unverified (source files not in repo) |
+| PET / SSM | 55° angle gate MCC | −0.106 (CI [−0.307, +0.084]) | 114-event review | ✅ verified (anti-signal; gate retired) |
+| PET / SSM | 2-feature model MCC | +0.367 (CI [+0.005, +0.723]) | 114-event review | ✅ verified (weak; not deployed) |
+| PET / SSM | N-class precision | 0.814 ± 0.082 | 114-event review, 2-feature model | ✅ verified |
+| PET / SSM | N-class recall | 0.713 ± 0.124 | same | ✅ verified |
+| PET / SSM | Y-class precision | 0.548 ± 0.119 | same | ✅ verified |
+| PET / SSM | Y-class recall | 0.660 ± 0.174 | same | ✅ verified |
 | PET / SSM | PET MAE vs GT | 0.0 (circular) | GT PET = pipeline PET | ⚠️ meaningless; see #15 (zero-gap divergence) |
-| PET / SSM | critical-conflict recall | 0.857 | 7 real events with PET<1.0s | ⚠️ unverified (source files not in repo) |
 
 ## Reproduction commands
 
@@ -73,11 +75,15 @@ from the repository.
         --ground-truth data/annotations/giti_300/first_real_metric/gt_detection_5f_reviewed.csv \
         --out-json outputs/detection_metrics.json
 
-    # PET / SSM
-    python scripts/evaluate_ssm_metrics.py \
-        --predicted outputs/pet_pred_14.csv \
-        --ground-truth outputs/pet_gt_20.csv \
-        --out-json outputs/ssm_metrics.json
+    # PET / SSM — 114-event review (see data/reviews/ssm_review_114/)
+    # The prior 0.857 number has been retracted; see REPRODUCE.md.
+    python -c "
+import pandas as pd
+df = pd.read_csv('data/reviews/ssm_review_114/to_label.csv')
+print(df['verdict'].value_counts())
+"
+    # For feature-level analysis (MCC, balanced accuracy, PR-AUC per feature),
+    # see data/reviews/ssm_review_114/findings.md.
 
 ## What unblocks the blocked rows
 
