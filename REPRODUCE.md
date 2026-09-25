@@ -70,33 +70,40 @@ Runtime on a CPU-only machine: ~10 minutes for 300 frames per site.
 
 ## What is NOT reproducible from the repository
 
-### PET / SSM precision, recall, F1 = 0.857
+### PET / SSM precision, recall, F1 = 0.857 — RETRACTED
 
-The 0.857 numbers reported in `docs/METRIC_STATUS.md` were computed
-against three input files:
+The prior 0.857 numbers were computed against three input files
+(`outputs/pet_pred_14.csv`, `outputs/pet_gt_20.csv`,
+`outputs/pet_gt_y_only.csv`) that have never been committed to git
+history. `git log --all -- outputs/pet_pred_14.csv` returns nothing.
+An independent review of 114 hand-labeled PET events (see below)
+found the number has no traceable derivation, and that the pipeline
+gate the number was reported against is worse than random on
+independent labels. **The number is retracted, not merely
+unverified.** It is not reported in the paper and should not be
+quoted.
 
+### What replaces it: the 114-event SSM review
+
+A hand-labeled review of 114 PET events is committed at
+`data/reviews/ssm_review_114/`. All PET/SSM quality numbers in
+`docs/METRIC_STATUS.md` derive from it. To verify:
+
+```bash
+ls data/reviews/ssm_review_114/
+cat data/reviews/ssm_review_114/findings.md      # the review writeup
+python -c "
+import pandas as pd
+df = pd.read_csv('data/reviews/ssm_review_114/to_label.csv')
+print(df['verdict'].value_counts())
+# expected: N 76, Y 38
+"
 ```
-outputs/pet_pred_14.csv
-outputs/pet_gt_20.csv
-outputs/pet_gt_y_only.csv
-```
 
-**None of these files have ever been committed to git history.**
-Verified with `git log --all -- outputs/pet_pred_14.csv` (no commits),
-and same for the other two. The numbers cannot be regenerated from
-the repository alone, and are marked `unverified` in
-`docs/METRIC_STATUS.md` as of PR #24.
-
-To reproduce them, either:
-
-1. Restore the three input CSVs to `outputs/`, then run
-   `python scripts/evaluate_ssm_metrics.py \
-     --predicted outputs/pet_pred_14.csv \
-     --ground-truth outputs/pet_gt_20.csv`, or
-2. Retract the number from any downstream document.
-
-The repository currently does (2) — the metric is disclosed as
-unverified wherever it appears.
+The review reports MCC, balanced accuracy, and PR-AUC for each
+candidate feature, and a cross-validated 2-feature model. It does
+**not** support the prior 0.857 and does not recommend deploying the
+2-feature model (weak signal, wide CI).
 
 ### Pre-computed outputs under outputs/
 
