@@ -305,7 +305,7 @@ class ReproducibilityAuditor:
                     timeout=5,
                 )
                 return result.stdout.strip()
-        except:
+        except Exception:  # nosec B110 -- sysctl unavailable on this platform
             pass
         return "unknown"
 
@@ -327,7 +327,7 @@ class ReproducibilityAuditor:
                 )
                 bytes_mem = int(result.stdout.strip())
                 return round(bytes_mem / (1024**3), 2)
-        except:
+        except Exception:  # nosec B110 -- platform probe; graceful fallback
             pass
         return 0.0
 
@@ -362,7 +362,7 @@ class ReproducibilityAuditor:
 
             if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
                 gpus.append({"type": "MPS", "name": "Apple Silicon GPU"})
-        except:
+        except Exception:  # nosec B110 -- MPS probe; absent on non-Apple hardware
             pass
 
         return gpus if gpus else [{"type": "none", "name": "CPU only"}]

@@ -16,22 +16,40 @@ from transformers import (
 
 
 class VLLMAnalyzer:
-    def __init__(self, model_name="Salesforce/blip-vqa-base", device="cpu"):
+    def __init__(
+        self,
+        model_name="Salesforce/blip-vqa-base",
+        device="cpu",
+        revision: str | None = None,
+    ):
+        """Load a VLM. Pass `revision=<git sha>` to pin an exact model
+        version (recommended for reproducible pipelines). Default None
+        resolves to the Hub's default branch, which may change."""
         self.device = device if torch.cuda.is_available() else "cpu"
         print(f"Loading VLM model: {model_name} on {self.device}")
         if "blip2" in model_name.lower():
             # BLIP2 large model
-            self.processor = Blip2Processor.from_pretrained(model_name)
+            self.processor = Blip2Processor.from_pretrained(
+                model_name,
+                revision=revision,  # nosec B615 -- revision optional, None = Hub default
+            )
             self.model = Blip2ForConditionalGeneration.from_pretrained(
                 model_name,
+                revision=revision,
                 torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
                 device_map="auto",
             )
             # Do not call .to(self.device) after device_map
         else:
             # small BLIP VQA
-            self.processor = BlipProcessor.from_pretrained(model_name)
-            self.model = BlipForQuestionAnswering.from_pretrained(model_name)
+            self.processor = BlipProcessor.from_pretrained(
+                model_name,
+                revision=revision,  # nosec B615 -- revision optional
+            )
+            self.model = BlipForQuestionAnswering.from_pretrained(
+                model_name,
+                revision=revision,  # nosec B615 -- revision optional
+            )
             self.model.to(self.device)
             self.model.eval()
         print("✅ VLM loaded.")

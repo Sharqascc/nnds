@@ -16,7 +16,7 @@ def load_eval_model(checkpoint_path, device, T=15, N=1, F=4, cond_dim=4, hidden_
 
     # weights_only=False: checkpoints may bundle a "stats" dict (numpy arrays)
     # alongside the state_dict. Only load checkpoints you trust.
-    ckpt = torch.load(checkpoint_path, map_location=device, weights_only=False)
+    ckpt = torch.load(checkpoint_path, map_location=device, weights_only=False)  # nosec B614 -- see comment above
     state = ckpt.get("state_dict", ckpt) if isinstance(ckpt, dict) else ckpt
     model.load_state_dict(state)
     model.eval()

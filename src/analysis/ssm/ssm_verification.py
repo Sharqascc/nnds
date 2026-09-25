@@ -512,7 +512,7 @@ class SSMVerifier:
         """
         suite = {
             "tests": [],
-            "overall_pass": True,
+            "overall_pass": True,  # nosec B105 -- key name, not a credential
             "summary": "",
             "timestamp": datetime.now().isoformat(),
         }

@@ -98,8 +98,8 @@ def main(argv=None):
             try:
                 subprocess.run(cmd, check=True)
                 break
-            except Exception:
-                pass
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                pass  # try the next candidate path
     if not uvh_model_path.exists():
         log(f"UVH model not found: {uvh_model_path}", "ERROR")
         sys.exit(1)

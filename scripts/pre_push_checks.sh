@@ -31,6 +31,9 @@ python scripts/check_imports.py
 echo "=== mypy (analysis) ==="
 mypy --config-file mypy.ini src/
 
+echo "=== bandit (SAST) ==="
+bandit -c bandit.yaml -r src/ -q
+
 echo "=== shell syntax ==="
 shopt -s nullglob
 for f in scripts/*.sh .githooks/pre-commit .githooks/pre-push; do
