@@ -1,3 +1,4 @@
+import ast
 import os
 
 import numpy as np
@@ -11,7 +12,7 @@ from torch.utils.data import DataLoader, Dataset
 
 
 def parse_traj_txy(cell):
-    arr = np.array(eval(cell), dtype=float)  # (T,3): t,x,y
+    arr = np.array(ast.literal_eval(cell), dtype=float)  # (T,3): t,x,y
     return arr[:, 0], arr[:, 1:3]
 
 

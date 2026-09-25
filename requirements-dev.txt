@@ -19,3 +19,6 @@ groq>=0.30.0
 # Used by a handful of tests and notebooks
 pydantic
 ipython
+
+# Static security analysis (see bandit.yaml)
+bandit>=1.7

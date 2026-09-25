@@ -15,9 +15,9 @@ from src.diffusion.traffic_diffusion.trajectory_diffusion import (
 
 def load_checkpoint_safe(ckpt_path, device):
     try:
-        return torch.load(ckpt_path, map_location=device, weights_only=False)
+        return torch.load(ckpt_path, map_location=device, weights_only=False)  # nosec B614 -- trusted local checkpoint
     except TypeError:
-        return torch.load(ckpt_path, map_location=device)
+        return torch.load(ckpt_path, map_location=device)  # nosec B614 -- trusted local checkpoint
 
 
 def rts_smooth(tracks, dt=0.1, Q=0.1, R=0.5):

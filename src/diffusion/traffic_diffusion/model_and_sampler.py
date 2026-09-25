@@ -30,7 +30,7 @@ def load_model(checkpoint_path: str, traj_shape, cond_dim, hidden_dim=128):
     # weights_only=False: our checkpoints bundle a "stats" dict (numpy arrays)
     # alongside the state_dict, so the strict weights-only unpickler (PyTorch
     # 2.6+ default) rejects them. Only load checkpoints you trust.
-    ckpt = torch.load(checkpoint_path, map_location=_DEVICE, weights_only=False)
+    ckpt = torch.load(checkpoint_path, map_location=_DEVICE, weights_only=False)  # nosec B614 -- see comment above
     state = ckpt.get("state_dict", ckpt)
     model.load_state_dict(state)
     model.to(_DEVICE).eval()

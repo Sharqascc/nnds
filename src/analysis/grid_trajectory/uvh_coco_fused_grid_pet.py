@@ -499,7 +499,7 @@ def run_uvh_coco_fused_grid_pet(
                 ov_coco_dir = _openvino_dir(coco_person_model_path)
                 if ov_uvh_dir.exists() and ov_coco_dir.exists():
                     use_openvino = True
-            except Exception:
+            except Exception:  # nosec B110 -- OpenVINO detection; absence is expected
                 pass
     elif backend == "openvino":
         use_openvino = True

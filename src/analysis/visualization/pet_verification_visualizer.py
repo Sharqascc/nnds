@@ -62,7 +62,7 @@ class PETVerificationVisualizer:
                 result = json.loads(json_str)
                 if isinstance(result, list):
                     return result
-            except Exception:
+            except Exception:  # nosec B110 -- JSON parse fallback; ast path follows
                 pass
             try:
                 import ast

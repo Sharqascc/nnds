@@ -258,7 +258,7 @@ def train_model(
 
 
 def evaluate_model(test_csv, checkpoint_path, K=10, Th=16, dt=0.1):
-    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)  # nosec B614 -- trusted local checkpoint
     # Get Th from checkpoint if available
     if "traj_shape" in checkpoint:
         Th = checkpoint["traj_shape"][0]
