@@ -185,7 +185,48 @@ def test_run_video_to_pet_fixed_import_error(monkeypatch):
             run_video_to_pet_fixed("dummy.mp4")
 
 
-def test_run_pipeline_sam3_returns_dict():
-    args = SimpleNamespace(detector="sam3", video="dummy.mp4", out_csv="out.csv")
+def test_run_pipeline_forwards_args_to_run_video_to_pet(monkeypatch):
+    """run_pipeline must invoke run_video_to_pet with args from the namespace.
+
+    Historically this test asserted that run_pipeline returned a dict
+    without doing anything (matching the a12d32e stub). That stub was a
+    regression; run_pipeline is supposed to actually drive the pipeline.
+    """
+    from src.pipeline import traffic_analyzer
+
+    captured: dict = {}
+
+    def fake_run_video_to_pet(**kwargs):
+        captured.update(kwargs)
+        return "fake-result"
+
+    monkeypatch.setattr(traffic_analyzer, "run_video_to_pet", fake_run_video_to_pet)
+
+    args = SimpleNamespace(
+        detector="uvh-coco-fused",
+        video="dummy.mp4",
+        out_csv="out.csv",
+        bev_config="bev.json",
+        grid_config="grid.json",
+        sam3_weights="sam3.pt",
+        pet_threshold=2.0,
+        max_frames=None,
+        yolo_weights="data/models/yolo11n.pt",
+        uvh_model="data/models/uvh26.pt",
+        coco_person_model="data/models/yolo11n.pt",
+        rtdetr_weights="rtdetr-l.pt",
+        device="auto",
+        max_gap=5,
+        max_jump=30.0,
+        video_source=None,
+        gate_config="configs/gate_config.yaml",
+        no_progress=False,
+    )
     result = run_pipeline(args)
-    assert result == {"video": "dummy.mp4", "out_csv": "out.csv"}
+    assert result == "fake-result"
+    assert captured["video_path"] == "dummy.mp4"
+    assert captured["out_csv_path"] == "out.csv"
+    assert captured["detector"] == "uvh-coco-fused"
+    assert captured["device"] == "auto"
+    assert captured["max_frame_gap"] == 5
+    assert captured["show_progress"] is True
