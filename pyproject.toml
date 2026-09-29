@@ -16,12 +16,18 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "torch>=2.0.0",
+    "torchvision",
+    "ultralytics>=8.0.0",
+    "opencv-python",
     "numpy",
     "pandas",
-    "matplotlib",
     "scipy",
-    "scikit-learn",
+    "matplotlib",
     "tqdm",
+    "PyYAML",
+    "openvino>=2024.0.0",
+    "lap>=0.5.12",
+    "scikit-learn",
 ]
 
 [project.license]
@@ -29,18 +35,33 @@ text = "MIT"
 
 [project.optional-dependencies]
 dev = [
-    "black>=24.0.0",
-    "isort>=5.13.0",
-    "flake8>=7.0.0",
-    "pre-commit>=3.6.0",
-]
-test = [
     "pytest>=8.0.0",
     "pytest-cov>=5.0.0",
+    "pytest-timeout>=2.2.0",
+    "pytest-mock",
+    "hypothesis>=6.100.0",
+    "syrupy>=4.0.0",
+    "ruff>=0.6.0",
+    "mypy>=2.3,<3.0",
+    "groq>=0.30.0",
+    "pydantic",
+    "ipython",
 ]
 
 [project.scripts]
-nnds = "traffic_analyzer:main"
+nnds = "pipeline.traffic_analyzer:main"
+validate-nnds-outputs = "scripts.validate_outputs:main"
+paired-ttest = "scripts.paired_ttest:main"
+validate-contracts = "scripts.validate_contracts:main"
+inspect-pet = "scripts.inspect_pet:main"
+generate-pet-verification-video = "scripts.generate_pet_verification_video:main"
+validation-report = "scripts.validation_report:main"
+estimate-time-of-day = "scripts.estimate_time_of_day:main"
+generate-safety-report-groq = "scripts.generate_safety_report_groq:main"
+evaluate-tracking-metrics = "scripts.evaluate_tracking_metrics:main"
+tracking-report = "scripts.tracking_report:main"
+tracking-report-fast = "scripts.tracking_report_fast:main"
+validate-all = "scripts.validate_all:main"
 
 [tool.black]
 line-length = 100
@@ -53,7 +74,17 @@ profile = "black"
 line_length = 100
 
 [tool.pytest.ini_options]
-addopts = "--cov=src --cov-report=term-missing"
 testpaths = [
     "tests",
 ]
+
+
+[tool.coverage.run]
+omit = [
+    "src/analysis/safety_eval_diffusion_notebook.py",
+]
+
+[tool.setuptools]
+packages.find.include = ["*", "scripts"]
+packages.find.where = ["src"]
+

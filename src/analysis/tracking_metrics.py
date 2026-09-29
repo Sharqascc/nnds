@@ -1,0 +1,226 @@
+"""Tracking metrics: HOTA, MOTA, IDF1. Pure functions; no I/O, no pandas."""
+
+from __future__ import annotations
+
+from collections import defaultdict
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
+
+import numpy as np
+from scipy.optimize import linear_sum_assignment
+
+Box = tuple[float, float, float, float]
+
+HOTA_ALPHAS: tuple[float, ...] = tuple(round(0.05 * i, 2) for i in range(1, 20))
+MOTA_IOU: float = 0.5
+
+
+@dataclass(frozen=True)
+class Track:
+    frame: int
+    track_id: int
+    box: Box
+
+
+def _iou(a: Box, b: Box) -> float:
+    x1 = max(a[0], b[0])
+    y1 = max(a[1], b[1])
+    x2 = min(a[2], b[2])
+    y2 = min(a[3], b[3])
+    inter = max(0.0, x2 - x1) * max(0.0, y2 - y1)
+    if inter <= 0.0:
+        return 0.0
+    area_a = max(0.0, a[2] - a[0]) * max(0.0, a[3] - a[1])
+    area_b = max(0.0, b[2] - b[0]) * max(0.0, b[3] - b[1])
+    union = area_a + area_b - inter
+    return inter / union if union > 0.0 else 0.0
+
+
+def _group(tracks: Sequence[Track]) -> dict[int, list[Track]]:
+    out: dict[int, list[Track]] = defaultdict(list)
+    for t in tracks:
+        out[t.frame].append(t)
+    return out
+
+
+def _match_frame(
+    gt_frame: Sequence[Track], pred_frame: Sequence[Track], iou_thr: float
+) -> list[tuple[int, int]]:
+    if not gt_frame or not pred_frame:
+        return []
+    ious: np.ndarray = np.zeros((len(gt_frame), len(pred_frame)), dtype=float)
+    for gi, g in enumerate(gt_frame):
+        for pi, p in enumerate(pred_frame):
+            ious[gi, pi] = _iou(g.box, p.box)
+    order = np.dstack(np.unravel_index(np.argsort(-ious, axis=None), ious.shape))[0]
+    used_g: set[int] = set()
+    used_p: set[int] = set()
+    pairs: list[tuple[int, int]] = []
+    for gi, pi in order:
+        if ious[gi, pi] < iou_thr:
+            break
+        if gi in used_g or pi in used_p:
+            continue
+        used_g.add(int(gi))
+        used_p.add(int(pi))
+        pairs.append((int(gi), int(pi)))
+    return pairs
+
+
+def _counts(
+    gt_by_frame: dict[int, list[Track]],
+    pred_by_frame: dict[int, list[Track]],
+    iou_thr: float,
+) -> dict[str, int]:
+    tp = fp = fn = idsw = 0
+    last_match: dict[int, int] = {}
+    for frame in sorted(set(gt_by_frame) | set(pred_by_frame)):
+        g = gt_by_frame.get(frame, [])
+        p = pred_by_frame.get(frame, [])
+        pairs = _match_frame(g, p, iou_thr)
+        matched_gt = {gi for gi, _ in pairs}
+        matched_p = {pi for _, pi in pairs}
+        for gi, pi in pairs:
+            gt_id = g[gi].track_id
+            pred_id = p[pi].track_id
+            if gt_id in last_match and last_match[gt_id] != pred_id:
+                idsw += 1
+            last_match[gt_id] = pred_id
+        tp += len(pairs)
+        fp += len(p) - len(matched_p)
+        fn += len(g) - len(matched_gt)
+    return {
+        "tp": tp,
+        "fp": fp,
+        "fn": fn,
+        "idsw": idsw,
+        "n_gt": sum(len(v) for v in gt_by_frame.values()),
+        "n_pred": sum(len(v) for v in pred_by_frame.values()),
+    }
+
+
+def mota(
+    tracked: Sequence[Track], ground_truth: Sequence[Track], iou_thr: float = MOTA_IOU
+) -> float:
+    gt_by_frame = _group(ground_truth)
+    pred_by_frame = _group(tracked)
+    c = _counts(gt_by_frame, pred_by_frame, iou_thr)
+    n_gt = c["n_gt"]
+    if n_gt == 0:
+        return 1.0 if c["n_pred"] == 0 else 0.0
+    return 1.0 - (c["fn"] + c["fp"] + c["idsw"]) / float(n_gt)
+
+
+def idf1(
+    tracked: Sequence[Track], ground_truth: Sequence[Track], iou_thr: float = MOTA_IOU
+) -> float:
+    gt_by_frame = _group(ground_truth)
+    pred_by_frame = _group(tracked)
+    n_gt = sum(len(v) for v in gt_by_frame.values())
+    n_pred = sum(len(v) for v in pred_by_frame.values())
+    if n_gt == 0 and n_pred == 0:
+        return 1.0
+    if n_gt == 0 or n_pred == 0:
+        return 0.0
+    gt_ids = sorted({t.track_id for t in ground_truth})
+    pred_ids = sorted({t.track_id for t in tracked})
+    gt_idx = {tid: i for i, tid in enumerate(gt_ids)}
+    pred_idx = {tid: i for i, tid in enumerate(pred_ids)}
+    overlap: np.ndarray = np.zeros((len(gt_ids), len(pred_ids)), dtype=float)
+    for frame in sorted(set(gt_by_frame) | set(pred_by_frame)):
+        g = gt_by_frame.get(frame, [])
+        p = pred_by_frame.get(frame, [])
+        for gi, pi in _match_frame(g, p, iou_thr):
+            overlap[gt_idx[g[gi].track_id], pred_idx[p[pi].track_id]] += 1.0
+    row, col = linear_sum_assignment(-overlap)
+    idtp = float(overlap[row, col].sum())
+    idfn = n_gt - idtp
+    idfp = n_pred - idtp
+    denom = 2 * idtp + idfp + idfn
+    return (2 * idtp / denom) if denom > 0 else 0.0
+
+
+def _hota_association_at(
+    gt_by_frame: dict[int, list[Track]],
+    pred_by_frame: dict[int, list[Track]],
+    alpha: float,
+) -> tuple[float, int, int, int]:
+    """HOTA's AssA at one IoU threshold.
+
+    For each unique (gt_id, pred_id) pair that appears as a true positive,
+    AssA for that pair is TPA / (TPA + FNA + FPA), where:
+      TPA = frames where this exact pair was matched
+      FNA = frames where gt_id is present but not matched to pred_id
+      FPA = frames where pred_id is present but not matched to gt_id
+    The overall AssA is the mean over all TP pairs.
+
+    This is the HOTA paper's definition (Luiten et al., IJCV 2020). A global
+    Jaccard on the ID-overlap matrix (which was used previously) gives an
+    IDF1-style number, not HOTA.
+    """
+    tps: list[tuple[int, int, int]] = []
+    for frame in sorted(set(gt_by_frame) | set(pred_by_frame)):
+        g = gt_by_frame.get(frame, [])
+        p = pred_by_frame.get(frame, [])
+        for gi, pi in _match_frame(g, p, alpha):
+            tps.append((frame, g[gi].track_id, p[pi].track_id))
+
+    tp = len(tps)
+    n_gt = sum(len(v) for v in gt_by_frame.values())
+    n_pred = sum(len(v) for v in pred_by_frame.values())
+    fn = n_gt - tp
+    fp = n_pred - tp
+    det_denom = tp + fp + fn
+    det_a = tp / det_denom if det_denom > 0 else 1.0
+
+    if tp == 0:
+        return 0.0, tp, fp, fn
+
+    # Precompute presence and match sets for O(pairs + frames)
+    gt_frames_by_id: dict[int, set[int]] = {}
+    for frame, gl in gt_by_frame.items():
+        for gt_track in gl:
+            gt_frames_by_id.setdefault(gt_track.track_id, set()).add(frame)
+    pred_frames_by_id: dict[int, set[int]] = {}
+    for frame, pl in pred_by_frame.items():
+        for pred_track in pl:
+            pred_frames_by_id.setdefault(pred_track.track_id, set()).add(frame)
+    matched_by_pair: dict[tuple[int, int], set[int]] = {}
+    for frame, gid, pid in tps:
+        matched_by_pair.setdefault((gid, pid), set()).add(frame)
+
+    ass_list: list[float] = []
+    for (gid, pid), matched_frames in matched_by_pair.items():
+        gt_frames = gt_frames_by_id.get(gid, set())
+        pred_frames = pred_frames_by_id.get(pid, set())
+        tpa = len(matched_frames)
+        fna = len(gt_frames - matched_frames)
+        fpa = len(pred_frames - matched_frames)
+        denom = tpa + fna + fpa
+        if denom > 0:
+            ass_list.append(tpa / denom)
+
+    ass_a = float(np.mean(ass_list)) if ass_list else 0.0
+    return ass_a, tp, fp, fn
+
+
+def hota(
+    tracked: Sequence[Track],
+    ground_truth: Sequence[Track],
+    thresholds: Iterable[float] = HOTA_ALPHAS,
+) -> float:
+    gt_by_frame = _group(ground_truth)
+    pred_by_frame = _group(tracked)
+    scores: list[float] = []
+    for alpha in thresholds:
+        ass_a, tp, fp, fn = _hota_association_at(gt_by_frame, pred_by_frame, alpha)
+        det_denom = tp + fp + fn
+        det_a = tp / det_denom if det_denom > 0 else 1.0
+        scores.append(float(np.sqrt(det_a * ass_a)))
+    return float(np.mean(scores)) if scores else 0.0
+
+
+def count_id_switches(
+    tracked: Sequence[Track], ground_truth: Sequence[Track], iou_thr: float = MOTA_IOU
+) -> int:
+    return _counts(_group(ground_truth), _group(tracked), iou_thr)["idsw"]

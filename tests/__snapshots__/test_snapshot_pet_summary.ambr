@@ -1,0 +1,27 @@
+# serializer version: 1
+# name: test_pet_summary_snapshot
+  dict({
+    'ci_level': 0.95,
+    'ci_mean_lower': -0.4031,
+    'ci_mean_upper': 4.5031,
+    'count': 4,
+    'cv': 0.752022,
+    'iqr': 1.85,
+    'kurtosis': -1.228977,
+    'max': 4.0,
+    'mean': 2.05,
+    'median': 1.85,
+    'min': 0.5,
+    'p1': 0.521,
+    'p10': 0.71,
+    'p5': 0.605,
+    'p90': 3.55,
+    'p95': 3.775,
+    'p99': 3.955,
+    'q25': 1.025,
+    'q75': 2.875,
+    'sem': 0.770822,
+    'skew': 0.576423,
+    'std': 1.541644,
+  })
+# ---

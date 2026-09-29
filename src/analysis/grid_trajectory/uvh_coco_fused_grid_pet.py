@@ -1,0 +1,1197 @@
+# mypy: ignore-errors
+from __future__ import annotations
+
+import json
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import torch
+from tqdm import tqdm
+from ultralytics import YOLO
+
+from src.analysis.conflict_classifier import classify_conflict_geometry
+from src.analysis.grid_trajectory.spatial_grid import SpatialGrid
+from src.bev.bev_mapper import BEVMapper
+from src.pipeline.custom_tracker import CustomTracker, Detection
+from src.pipeline.reid_encoder import ReIDEncoder
+
+# ---------------------------------------------------------------------
+# Tracker ablation knobs. Change one at a time, rerun, measure.
+# Frozen after the ablation completes.
+# ---------------------------------------------------------------------
+TRACKER_MAX_AGE = 60  # original; 120 ablation had zero effect
+TRACKER_IOU_THRESHOLD = 0.20  # original; 0.15 not run
+TRACKER_REID_STAGE1 = False  # not wired in; reserved
+
+
+def _compute_histogram(frame, x1, y1, x2, y2):
+    """Compute normalized HSV histogram for a crop."""
+    try:
+        x1i, y1i = max(0, int(x1)), max(0, int(y1))
+        x2i, y2i = min(frame.shape[1], int(x2)), min(frame.shape[0], int(y2))
+        crop = frame[y1i:y2i, x1i:x2i]
+        if crop.size == 0:
+            return None
+        # Convert to HSV
+        hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
+        # 2D histogram over H and S
+        hist = cv2.calcHist([hsv], [0, 1], None, [30, 32], [0, 180, 0, 256])
+        cv2.normalize(hist, hist)
+        return hist.flatten()
+    except Exception:
+        return None
+
+
+UVH_DISPLAY_MAP = {
+    "Three-wheeler": "auto",
+    "Two-wheeler": "bike",
+    "Hatchback": "car",
+    "Sedan": "car",
+    "SUV": "car",
+    "MUV": "car",
+    "Van": "car",
+    "Truck": "truck",
+    "LCV": "truck",
+    "Bus": "bus",
+    "Mini-bus": "bus",
+    "tempo-traveller": "bus",
+}
+
+CLASS_NAME_TO_ID = {
+    "pedestrian": 0,
+    "person": 0,
+    "bicycle": 1,
+    "car": 2,
+    "bike": 3,
+    "motorcycle": 3,
+    "bus": 5,
+    "truck": 7,
+    "auto": 8,
+}
+
+
+@dataclass
+class TrackPoint:
+    frame: int
+    x: float
+    y: float
+    cls_id: int
+    cls_name: str
+    conf: float
+
+
+def _segment_intersection(p1, p2, q1, q2):
+    """Find intersection point of two 2D line segments.
+
+    Uses 3D cross product internally (z=0) to avoid numpy 2.x issues
+    with 2D np.cross.
+    """
+    # Convert to 3D (z=0) for cross product compatibility
+    p = np.array([p1[0], p1[1], 0.0], dtype=float)
+    r = np.array([p2[0], p2[1], 0.0], dtype=float) - p
+    q = np.array([q1[0], q1[1], 0.0], dtype=float)
+    s = np.array([q2[0], q2[1], 0.0], dtype=float) - q
+
+    rxs = np.cross(r, s)[2]  # z-component
+    q_p = q - p
+    qpxr = np.cross(q_p, r)[2]  # z-component
+
+    if abs(rxs) < 1e-9 and abs(qpxr) < 1e-9:
+        return None
+    if abs(rxs) < 1e-9 and abs(qpxr) >= 1e-9:
+        return None
+
+    t = np.cross(q_p, s)[2] / rxs
+    u = np.cross(q_p, r)[2] / rxs
+
+    if 0.0 <= t <= 1.0 and 0.0 <= u <= 1.0:
+        inter = p + t * r
+        return float(inter[0]), float(inter[1])
+    return None
+
+
+def _point_in_square(px, py, cx, cy, half_size):
+    return (cx - half_size) <= px <= (cx + half_size) and (cy - half_size) <= py <= (cy + half_size)
+
+
+def _track_missing_ratio(meta: dict[str, Any], n_points: int) -> float:
+    """Fraction of frames in a track's lifespan with no detection.
+
+    0.0 = perfectly continuous track.
+    1.0 = single detection, empty track, or malformed meta.
+    """
+    span = int(meta["max_frame"]) - int(meta["min_frame"]) + 1
+    if span <= 0 or n_points <= 0:
+        return 1.0
+    return max(0.0, (span - n_points) / span)
+
+
+def _heading_near_point(
+    points: list[TrackPoint],
+    cx: float,
+    cy: float,
+    half_window: int = 15,
+    min_points: int = 3,
+) -> float | None:
+    """Direction of travel (degrees, 0-360) in pixel space near (cx, cy).
+
+    Finds the point in `points` closest to (cx, cy), then measures the
+    direction over a window of +/- half_window frames around it.
+    Returns None if fewer than `min_points` lie in the window, or if
+    the track is effectively stationary there.
+    """
+    if not points:
+        return None
+    idx = min(
+        range(len(points)),
+        key=lambda i: (points[i].x - cx) ** 2 + (points[i].y - cy) ** 2,
+    )
+    lo = max(0, idx - half_window)
+    hi = min(len(points), idx + half_window + 1)
+    seg = points[lo:hi]
+    if len(seg) < min_points:
+        return None
+    f0, f1 = seg[0].frame, seg[-1].frame
+    if f1 == f0:
+        return None
+    dx = seg[-1].x - seg[0].x
+    dy = seg[-1].y - seg[0].y
+    if abs(dx) + abs(dy) < 0.5:
+        return None
+    return float(np.degrees(np.arctan2(dy, dx)) % 360)
+
+
+def _angle_diff_deg(a: float | None, b: float | None) -> float | None:
+    """Smallest angular difference between two headings, in degrees (0-180)."""
+    if a is None or b is None:
+        return None
+    d = abs(a - b) % 360
+    return min(d, 360 - d)
+
+
+def _max_gap_in_window(
+    points: list[TrackPoint],
+    center_frame: int,
+    half_window: int = 20,
+) -> int:
+    """Longest run of consecutive frames with no detection inside
+    [center_frame - half_window, center_frame + half_window].
+
+    Counts the maximum of:
+      - interior gaps between consecutive in-window detections,
+      - the leading gap from window start to first detection,
+      - the trailing gap from last detection to window end.
+
+    Returns the full window length (2*half_window + 1) if the track
+    has no detection inside the window.
+    """
+    full = 2 * half_window + 1
+    if not points:
+        return full
+    lo = center_frame - half_window
+    hi = center_frame + half_window
+    in_win = sorted(p.frame for p in points if lo <= p.frame <= hi)
+    if not in_win:
+        return full
+    edge_lo = in_win[0] - lo
+    edge_hi = hi - in_win[-1]
+    interior = 0
+    for i in range(1, len(in_win)):
+        d = in_win[i] - in_win[i - 1] - 1
+        if d > interior:
+            interior = d
+    return max(interior, edge_lo, edge_hi)
+
+
+def _entry_exit_frames(points: list[TrackPoint], cx: float, cy: float, half_size: float):
+    inside_frames = [pt.frame for pt in points if _point_in_square(pt.x, pt.y, cx, cy, half_size)]
+    if not inside_frames:
+        return None
+    return min(inside_frames), max(inside_frames)
+
+
+def _segment_bbox(p1, p2):
+    return (min(p1[0], p2[0]), min(p1[1], p2[1]), max(p1[0], p2[0]), max(p1[1], p2[1]))
+
+
+def _bbox_overlap(box1, box2, pad=0.0):
+    return not (
+        box1[2] < box2[0] - pad
+        or box2[2] < box1[0] - pad
+        or box1[3] < box2[1] - pad
+        or box2[3] < box1[1] - pad
+    )
+
+
+@dataclass(frozen=True)
+class StructuredPetResult:
+    """Structured PET result preserving overlap information."""
+
+    pet_s: float | None
+    pet_status: str
+    first_actor: str | None
+    second_actor: str | None
+    overlap_duration_s: float
+
+
+def _compute_structured_pet_from_windows(
+    a_entry: int | float,
+    a_exit: int | float,
+    b_entry: int | float,
+    b_exit: int | float,
+    fps: float,
+) -> StructuredPetResult:
+    """Compute PET while distinguishing sequential passage from overlap."""
+    values = {
+        "a_entry": a_entry,
+        "a_exit": a_exit,
+        "b_entry": b_entry,
+        "b_exit": b_exit,
+        "fps": fps,
+    }
+
+    for name, value in values.items():
+        if not np.isfinite(float(value)):
+            raise ValueError(f"{name} must be finite")
+
+    if fps <= 0:
+        raise ValueError("fps must be positive")
+
+    if a_entry > a_exit:
+        raise ValueError("a_entry must be <= a_exit")
+
+    if b_entry > b_exit:
+        raise ValueError("b_entry must be <= b_exit")
+
+    a_entry_s = float(a_entry) / float(fps)
+    a_exit_s = float(a_exit) / float(fps)
+    b_entry_s = float(b_entry) / float(fps)
+    b_exit_s = float(b_exit) / float(fps)
+
+    if a_exit_s <= b_entry_s:
+        return StructuredPetResult(
+            pet_s=b_entry_s - a_exit_s,
+            pet_status="sequential",
+            first_actor="a",
+            second_actor="b",
+            overlap_duration_s=0.0,
+        )
+
+    if b_exit_s <= a_entry_s:
+        return StructuredPetResult(
+            pet_s=a_entry_s - b_exit_s,
+            pet_status="sequential",
+            first_actor="b",
+            second_actor="a",
+            overlap_duration_s=0.0,
+        )
+
+    return StructuredPetResult(
+        pet_s=None,
+        pet_status="overlap",
+        first_actor=None,
+        second_actor=None,
+        overlap_duration_s=min(a_exit_s, b_exit_s) - max(a_entry_s, b_entry_s),
+    )
+
+
+def _compute_pet_from_windows(a_entry, a_exit, b_entry, b_exit, fps):
+    """
+    Pure function: compute Post‑Encroachment Time from two entry/exit windows.
+
+    Returns:
+        (pet, first_id, second_id, frame_ref) if a valid PET can be computed,
+        otherwise None.
+    """
+    if a_exit <= b_entry:
+        pet = (b_entry - a_exit) / fps
+        first_id, second_id = "a", "b"
+        frame_ref = b_entry
+    elif b_exit <= a_entry:
+        pet = (a_entry - b_exit) / fps
+        first_id, second_id = "b", "a"
+        frame_ref = a_entry
+    else:
+        return None
+    return pet, first_id, second_id, frame_ref
+
+
+def _pair_conflict_point(track_a: list[TrackPoint], track_b: list[TrackPoint]):
+    for i in range(len(track_a) - 1):
+        p1 = (track_a[i].x, track_a[i].y)
+        p2 = (track_a[i + 1].x, track_a[i + 1].y)
+        bbox_a = _segment_bbox(p1, p2)
+        for j in range(len(track_b) - 1):
+            q1 = (track_b[j].x, track_b[j].y)
+            q2 = (track_b[j + 1].x, track_b[j + 1].y)
+            bbox_b = _segment_bbox(q1, q2)
+            if not _bbox_overlap(bbox_a, bbox_b):
+                continue
+            inter = _segment_intersection(p1, p2, q1, q2)
+            if inter is not None:
+                return inter
+    return None
+
+
+def _box_intersection(
+    a: tuple[float, float, float, float], b: tuple[float, float, float, float]
+) -> float:
+    ax1, ay1, ax2, ay2 = a
+    bx1, by1, bx2, by2 = b
+    x1 = max(ax1, bx1)
+    y1 = max(ay1, by1)
+    x2 = min(ax2, bx2)
+    y2 = min(ay2, by2)
+    if x2 <= x1 or y2 <= y1:
+        return 0.0
+    return float((x2 - x1) * (y2 - y1))
+
+
+def _box_area(box: tuple[float, float, float, float]) -> float:
+    x1, y1, x2, y2 = box
+    return max(0.0, x2 - x1) * max(0.0, y2 - y1)
+
+
+def _overlap_over_person(
+    person_box: tuple[float, float, float, float], other_box: tuple[float, float, float, float]
+) -> float:
+    inter = _box_intersection(person_box, other_box)
+    area = _box_area(person_box)
+    return 0.0 if area <= 0 else inter / area
+
+
+def _load_gates(gate_config_path):
+    """Load virtual gates from YAML config."""
+    import yaml
+
+    with open(gate_config_path) as f:
+        cfg = yaml.safe_load(f)
+    gates = []
+    for g in cfg["gates"]:
+        gates.append(
+            {
+                "name": g["name"],
+                "p1": tuple(g["start"]),
+                "p2": tuple(g["end"]),
+                "entry_side": g.get("entry_side", "left"),
+            }
+        )
+    return gates
+
+
+def _line_side(p, p1, p2):
+    """Return signed side of point p relative to line p1->p2."""
+    ax, ay = p1
+    bx, by = p2
+    px, py = p
+    return (bx - ax) * (py - ay) - (by - ay) * (px - ax)
+
+
+def _get_entry_gate(points, gates):
+    """Determine the first gate a track enters, or "unknown" if none."""
+    if len(points) < 2:
+        return "unknown"
+    # Sort by frame
+    sorted_pts = sorted(points, key=lambda p: p.frame)
+    prev = sorted_pts[0]
+    for curr in sorted_pts[1:]:
+        for gate in gates:
+            side_prev = _line_side((prev.x, prev.y), gate["p1"], gate["p2"])
+            side_curr = _line_side((curr.x, curr.y), gate["p1"], gate["p2"])
+            if side_prev * side_curr < 0:
+                # crossing detected, check entry side
+                entry_side = gate["entry_side"]
+                if (
+                    entry_side == "both"
+                    or (entry_side == "left" and side_prev < 0 and side_curr > 0)
+                    or (entry_side == "right" and side_prev > 0 and side_curr < 0)
+                ):
+                    return gate["name"]
+        prev = curr
+    return "unknown"
+
+
+def run_uvh_coco_fused_grid_pet(
+    video_path: str,
+    bev_config_path: str,
+    grid_config_path: str,
+    uvh_model_path: str,
+    coco_person_model_path: str,
+    output_csv_path: str,
+    pet_threshold: float = 2.0,
+    max_missing_ratio: float = 0.10,
+    max_sequential_angle_deg: float = 55.0,
+    min_conflict_gap_frames: int = 10,
+    conflict_gap_window_frames: int = 20,
+    max_frames: int | None = None,
+    imgsz: int = 1280,
+    uvh_conf: float = 0.20,
+    coco_person_conf: float = 0.20,
+    person_suppress_overlap: float = 0.35,
+    show_progress: bool = True,
+    interactive: bool = False,
+    device: str = "auto",
+    backend: str = "auto",
+    max_frame_gap: int = 5,
+    max_spatial_jump: float = 30.0,
+    prediction_tolerance: float = 80.0,
+    video_source: str | None = None,
+    time_of_day_label: str | None = None,
+    gate_config_path: str = "configs/gate_config.yaml",
+) -> dict[str, Any]:
+    video_path = str(Path(video_path).resolve())
+    uvh_model_path = str(Path(uvh_model_path).resolve())
+    coco_person_model_path = str(Path(coco_person_model_path).resolve())
+    output_csv_path = str(Path(output_csv_path).resolve())
+
+    if device == "auto":
+        device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+    # Load gates for entry detection
+    try:
+        gates = _load_gates(gate_config_path)
+    except Exception:
+        gates = []
+
+    # Grid + BEV mappers for detailed PET output
+    spatial_grid = None
+    bev_mapper = None
+    try:
+        spatial_grid = SpatialGrid(grid_config_path)
+    except Exception:
+        spatial_grid = None
+    try:
+        import json as _json
+
+        with open(bev_config_path) as f:
+            bev_cfg = _json.load(f)
+        H = np.array(bev_cfg["H_pixel_to_world"], dtype=np.float32)
+        bounds = bev_cfg
+        bev_res = bev_cfg.get("bev_resolution", None)
+        if bev_res is None:
+            # Compute pixel dimensions from resolution (m/px) and bounds
+            res = bev_cfg.get("resolution", 0.1)
+            bev_w = int((bev_cfg["x_max"] - bev_cfg["x_min"]) / res)
+            bev_h = int((bev_cfg["y_max"] - bev_cfg["y_min"]) / res)
+            bev_res = [bev_w, bev_h]
+        bev_mapper = BEVMapper(H, bounds, bev_res)
+    except Exception:
+        bev_mapper = None
+
+    # Determine OpenVINO model directories
+    def _openvino_dir(model_pt_path: str) -> Path:
+        p = Path(model_pt_path)
+        return p.with_name(p.stem + "_openvino_model")
+
+    use_openvino = False
+    if backend == "auto":
+        if torch.cuda.is_available():
+            device = "cuda:0" if device == "auto" else device
+        else:
+            try:
+                ov_uvh_dir = _openvino_dir(uvh_model_path)
+                ov_coco_dir = _openvino_dir(coco_person_model_path)
+                if ov_uvh_dir.exists() and ov_coco_dir.exists():
+                    use_openvino = True
+            except Exception:  # nosec B110 -- OpenVINO detection; absence is expected
+                pass
+    elif backend == "openvino":
+        use_openvino = True
+
+    if use_openvino:
+        uvh_model = YOLO(str(_openvino_dir(uvh_model_path)), task="detect")
+        coco_model = YOLO(str(_openvino_dir(coco_person_model_path)), task="detect")
+    else:
+        uvh_model = YOLO(uvh_model_path)
+        coco_model = YOLO(coco_person_model_path)
+
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        raise RuntimeError(f"Failed to open video: {video_path}")
+
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    if not fps or fps <= 0:
+        fps = 30.0
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    cap.release()
+
+    detection_rows = []
+    tracks: dict[int, list[TrackPoint]] = {}
+
+    frame_idx = 0
+
+    uvh_results = uvh_model.predict(
+        source=video_path,
+        stream=True,
+        conf=uvh_conf,
+        imgsz=imgsz,
+        verbose=False,
+        device=device,
+    )
+
+    coco_results = coco_model.predict(
+        source=video_path,
+        stream=True,
+        conf=coco_person_conf,
+        imgsz=imgsz,
+        verbose=False,
+        device=device,
+        classes=[0],
+    )
+
+    reid_encoder = ReIDEncoder(device=device) if device != "cpu" else ReIDEncoder(device="cpu")
+    custom_tracker = CustomTracker(
+        max_age=TRACKER_MAX_AGE,
+        min_hits=1,
+        iou_threshold=TRACKER_IOU_THRESHOLD,
+        log_overlaps=True,
+        overlap_log_path="outputs/tracking_overlap_debug.log",
+        reid_encoder=reid_encoder,
+    )
+
+    total_iters = total_frames if max_frames is None else min(total_frames, max_frames)
+    pbar = tqdm(
+        total=total_iters, desc="Processing frames", unit="frame", disable=not show_progress
+    )
+    for uvh_r, coco_r in zip(uvh_results, coco_results, strict=False):
+        if max_frames is not None and frame_idx >= max_frames:
+            break
+
+        uvh_boxes_for_suppression = []
+
+        # Collect raw detections for this frame
+        raw_dets: list[Detection] = []
+
+        uvh_boxes = uvh_r.boxes
+        if uvh_boxes is not None and uvh_boxes.xyxy is not None and len(uvh_boxes) > 0:
+            xyxy = uvh_boxes.xyxy.cpu().numpy()
+            clss = (
+                uvh_boxes.cls.cpu().numpy().astype(int)
+                if uvh_boxes.cls is not None
+                else np.array([], dtype=int)
+            )
+            confs = (
+                uvh_boxes.conf.cpu().numpy()
+                if uvh_boxes.conf is not None
+                else np.array([], dtype=float)
+            )
+
+            for i, box in enumerate(xyxy):
+                raw_name = uvh_r.names[int(clss[i])]
+                mapped_name = UVH_DISPLAY_MAP.get(raw_name)
+                if mapped_name is None:
+                    continue
+
+                x1, y1, x2, y2 = map(float, box.tolist())
+                cx = (x1 + x2) / 2.0
+                cy = (y1 + y2) / 2.0
+                cls_id = int(CLASS_NAME_TO_ID.get(mapped_name, 99))
+                score = float(confs[i]) if i < len(confs) else 0.0
+
+                uvh_box = (x1, y1, x2, y2)
+                uvh_boxes_for_suppression.append(uvh_box)
+
+                hist = _compute_histogram(uvh_r.orig_img, x1, y1, x2, y2)
+
+                det = Detection(
+                    frame=frame_idx,
+                    hist=hist,
+                    x1=x1,
+                    y1=y1,
+                    x2=x2,
+                    y2=y2,
+                    cx=cx,
+                    cy=cy,
+                    cls_id=cls_id,
+                    cls_name=mapped_name,
+                    conf=score,
+                    source="uvh26",
+                )
+                raw_dets.append(det)
+
+        coco_boxes = coco_r.boxes
+        if coco_boxes is not None and coco_boxes.xyxy is not None and len(coco_boxes) > 0:
+            xyxy = coco_boxes.xyxy.cpu().numpy()
+            confs = (
+                coco_boxes.conf.cpu().numpy()
+                if coco_boxes.conf is not None
+                else np.array([], dtype=float)
+            )
+
+            for i, box in enumerate(xyxy):
+                x1, y1, x2, y2 = map(float, box.tolist())
+                person_box = (x1, y1, x2, y2)
+
+                covered = any(
+                    _overlap_over_person(person_box, veh_box) >= person_suppress_overlap
+                    for veh_box in uvh_boxes_for_suppression
+                )
+                if covered:
+                    continue
+
+                cx = (x1 + x2) / 2.0
+                cy = (y1 + y2) / 2.0
+                score = float(confs[i]) if i < len(confs) else 0.0
+                hist = _compute_histogram(coco_r.orig_img, x1, y1, x2, y2)
+
+                det = Detection(
+                    frame=frame_idx,
+                    x1=x1,
+                    y1=y1,
+                    x2=x2,
+                    y2=y2,
+                    cx=cx,
+                    cy=cy,
+                    cls_id=0,
+                    cls_name="pedestrian",
+                    conf=score,
+                    source="coco_person",
+                    hist=hist,
+                )
+                raw_dets.append(det)
+
+        # Update custom tracker
+        matched = custom_tracker.update(raw_dets, frame_img=uvh_r.orig_img, frame=frame_idx)
+
+        # Append detections to rows and tracks
+        for det_idx, track_id in matched.items():
+            det = raw_dets[det_idx]
+            detection_rows.append(
+                {
+                    "frame": det.frame,
+                    "track_id": track_id,
+                    "class_id": det.cls_id,
+                    "class_name": det.cls_name,
+                    "conf": det.conf,
+                    "x1": det.x1,
+                    "y1": det.y1,
+                    "x2": det.x2,
+                    "y2": det.y2,
+                    "cx": det.cx,
+                    "cy": det.cy,
+                    "source": det.source,
+                }
+            )
+
+            # Trajectory points are stored at the box bottom-center, not the
+            # box center. The bottom edge is the ground-contact line and is
+            # what BEV projection / PET / grid-cell assignment should use.
+            tracks.setdefault(track_id, []).append(
+                TrackPoint(
+                    frame=det.frame,
+                    x=det.cx,
+                    y=det.y2,
+                    cls_id=det.cls_id,
+                    cls_name=det.cls_name,
+                    conf=det.conf,
+                )
+            )
+
+        if show_progress and frame_idx % 25 == 0:
+            pass
+        frame_idx += 1
+        pbar.update(1)
+
+        # === INTERACTIVE PAUSE ===
+        if interactive and frame_idx % 20 == 0:
+            print("\n" + "=" * 50)
+            print(f"🔄 Processed {frame_idx} frames.")
+            try:
+                cap = cv2.VideoCapture(video_path)
+                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+                ret, frame = cap.read()
+                cap.release()
+                if ret:
+                    from IPython.display import display
+
+                    fig = plt.figure()
+                    plt.imshow(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                    plt.title(f"Frame {frame_idx}")
+                    plt.axis("off")
+                    display(fig)
+                    plt.close(fig)
+            except Exception as e:
+                print(f"⚠️ Could not show frame: {e}")
+
+            print("Press Enter to continue, or type 'stop' and press Enter to abort.")
+            sys.stdout.flush()
+            user_input = input().strip().lower()
+            if user_input == "stop":
+                print("⏹️ Stopped by user.")
+                break
+
+    pbar.close()
+    print(f"[UVH-COCO] backend={'openvino' if use_openvino else 'pytorch'} device={device}")
+    print(
+        f"[UVH-COCO] ✅ Frame processing finished ({frame_idx} frames). Initializing track indexing...",
+        flush=True,
+    )
+
+    det_df = pd.DataFrame(detection_rows)
+    out_path = Path(output_csv_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    detections_csv = str(out_path.with_name(out_path.stem + "_detections.csv"))
+    det_df.to_csv(detections_csv, index=False)
+
+    pet_events = []
+    event_id = 1
+    conflict_half_size = 20.0
+
+    # Split tracks with gaps or jumps to avoid mixing different objects
+    tracks = _split_tracks_by_gaps(
+        tracks,
+        max_frame_gap=max_frame_gap,
+        max_spatial_jump=max_spatial_jump,
+        prediction_tolerance=prediction_tolerance,
+    )
+    print(
+        f"[DEBUG_SPLIT_PARAMS] max_gap={max_frame_gap}, max_jump={max_spatial_jump}, tracks_after={len(tracks)}"
+    )
+
+    # Debug: dump per-segment health metrics to <pet>_segments.csv
+    _seg_rows = []
+    for _sid, _pts in tracks.items():
+        if not _pts:
+            continue
+        _pts = sorted(_pts, key=lambda p: p.frame)
+        _frames = [p.frame for p in _pts]
+        _span = _frames[-1] - _frames[0] + 1 if _frames else 0
+        _gaps = [_frames[i] - _frames[i - 1] - 1 for i in range(1, len(_frames))]
+        _gaps = [g for g in _gaps if g > 0]
+        _jumps, _speeds = [], []
+        for i in range(1, len(_pts)):
+            _df = _pts[i].frame - _pts[i - 1].frame
+            if _df <= 0:
+                continue
+            _d = ((_pts[i].x - _pts[i - 1].x) ** 2 + (_pts[i].y - _pts[i - 1].y) ** 2) ** 0.5
+            _jumps.append(_d)
+            _speeds.append(_d / _df)
+        _n = len(_pts)
+        _mr = 1 - _n / _span if _span > 0 else 1.0
+        _net = 0.0
+        _path = 0.0
+        if _n >= 2:
+            _net = ((_pts[-1].x - _pts[0].x) ** 2 + (_pts[-1].y - _pts[0].y) ** 2) ** 0.5
+            _path = sum(_jumps)
+        _straight = _net / _path if _path > 0 else 1.0
+        _conf = [p.conf for p in _pts]
+        _edge_touch = False
+        if _n >= 1:
+            _fx, _fy = _pts[0].x, _pts[0].y
+            _lx, _ly = _pts[-1].x, _pts[-1].y
+            _edge_touch = (
+                _fx < 10
+                or _fx > 1590
+                or _fy < 10
+                or _fy > 710
+                or _lx < 10
+                or _lx > 1590
+                or _ly < 10
+                or _ly > 710
+            )
+        _seg_rows.append(
+            {
+                "seg_id": int(_sid),
+                "orig_id": int(_sid) // 1000 if _sid >= 1000 else int(_sid),
+                "seg": int(_sid) % 1000 if _sid >= 1000 else 0,
+                "n": _n,
+                "first_frame": int(_frames[0]),
+                "last_frame": int(_frames[-1]),
+                "span": int(_span),
+                "missing_ratio": round(_mr, 4),
+                "max_gap": max(_gaps) if _gaps else 0,
+                "n_gaps_gt3": sum(1 for g in _gaps if g > 3),
+                "n_gaps_gt5": sum(1 for g in _gaps if g > 5),
+                "max_jump": round(max(_jumps), 2) if _jumps else 0.0,
+                "max_speed": round(max(_speeds), 2) if _speeds else 0.0,
+                "mean_speed": round(sum(_speeds) / len(_speeds), 3) if _speeds else 0.0,
+                "straightness": round(_straight, 3),
+                "conf_mean": round(sum(_conf) / len(_conf), 3) if _conf else 0.0,
+                "conf_min": round(min(_conf), 3) if _conf else 0.0,
+                "net_disp": round(_net, 2),
+                "edge_touch": bool(_edge_touch),
+                "class_name": _pts[0].cls_name,
+            }
+        )
+    _seg_df = pd.DataFrame(_seg_rows)
+    _seg_out = out_path.with_name(out_path.stem + "_segments.csv")
+    _seg_df.to_csv(_seg_out, index=False)
+    print(f"[UVH-COCO] segments_csv={_seg_out} rows={len(_seg_df)}", flush=True)
+
+    valid_tracks = {tid: pts for tid, pts in tracks.items() if len(pts) >= 3}
+
+    print(
+        f"[UVH-COCO] Tracking splitter: original={len(set(tid // 1000 for tid in tracks if tid >= 1000) | {tid for tid in tracks if tid < 1000})}, split={len(tracks)} tracks"
+    )
+    track_items = list(valid_tracks.items())
+
+    # Precompute track metadata for fast temporal/spatial pruning
+    track_meta = {}
+    for tid, pts in valid_tracks.items():
+        frames = [p.frame for p in pts]
+        xs = [p.x for p in pts]
+        ys = [p.y for p in pts]
+        track_meta[tid] = {
+            "frames": frames,
+            "min_frame": min(frames),
+            "max_frame": max(frames),
+            "min_x": min(xs),
+            "max_x": max(xs),
+            "min_y": min(ys),
+            "max_y": max(ys),
+        }
+
+    # Build cell sets for overlap pruning
+    track_cells: dict[int, set] = {}
+    if spatial_grid is not None:
+        for tid, pts in valid_tracks.items():
+            cells = set()
+            for pt in pts:
+                cell = spatial_grid.get_cell_from_pixels(pt.x, pt.y)
+                if cell != "OUT_OF_BOUNDS":
+                    cells.add(cell)
+            track_cells[tid] = cells
+
+    max_frames_diff = int(pet_threshold * fps) + 5  # temporal padding
+    spatial_pad = 50.0  # pixel padding for bounding box check
+
+    track_pbar = tqdm(
+        range(len(track_items)),
+        desc="Checking track pairs",
+        unit="track",
+        disable=not show_progress,
+    )
+    for i in track_pbar:
+        track_a_id, pts_a = track_items[i]
+        meta_a = track_meta[track_a_id]
+        for j in range(i + 1, len(track_items)):
+            track_b_id, pts_b = track_items[j]
+            meta_b = track_meta[track_b_id]
+
+            # Cell overlap pruning: if both track_cells exist and do not intersect, skip
+            if spatial_grid is not None and track_cells:
+                cells_a = track_cells.get(track_a_id, set())
+                cells_b = track_cells.get(track_b_id, set())
+                if cells_a and cells_b and cells_a.isdisjoint(cells_b):
+                    continue
+
+            # Temporal pruning: skip if track lifetimes are too far apart
+            if (
+                meta_a["min_frame"] > meta_b["max_frame"] + max_frames_diff
+                or meta_b["min_frame"] > meta_a["max_frame"] + max_frames_diff
+            ):
+                continue
+
+            # Spatial pruning: skip if bounding boxes do not overlap (with padding)
+            if (
+                meta_a["max_x"] < meta_b["min_x"] - spatial_pad
+                or meta_a["min_x"] > meta_b["max_x"] + spatial_pad
+                or meta_a["max_y"] < meta_b["min_y"] - spatial_pad
+                or meta_a["min_y"] > meta_b["max_y"] + spatial_pad
+            ):
+                continue
+
+            # Tracking-quality gate: reject pairs where either track is
+            # too fragmented (see tests/test_pet_tracking_gate.py and the
+            # 300-frame pilot: missing_ratio<0.10 keeps 13/14 real events,
+            # drops 26/39 false; precision 0.264 -> 0.500).
+            if _track_missing_ratio(meta_a, len(pts_a)) > max_missing_ratio:
+                continue
+            if _track_missing_ratio(meta_b, len(pts_b)) > max_missing_ratio:
+                continue
+
+            inter = _pair_conflict_point(pts_a, pts_b)
+            if inter is None:
+                continue
+
+            cx, cy = inter
+
+            # Sequential-angle gate: reject pairs whose travel
+            # directions at the conflict point are far apart, or
+            # cannot be measured. Default threshold 55 deg: Y
+            # events max out at ~54 deg on the 300-frame pilot,
+            # rejected N events start at ~78 deg. See
+            # docs/pet_gate_v1.md.
+            _ha = _heading_near_point(pts_a, cx, cy)
+            _hb = _heading_near_point(pts_b, cx, cy)
+            _ad = _angle_diff_deg(_ha, _hb)
+            if _ad is None or _ad > max_sequential_angle_deg:
+                continue
+
+            a_window = _entry_exit_frames(pts_a, cx, cy, conflict_half_size)
+            b_window = _entry_exit_frames(pts_b, cx, cy, conflict_half_size)
+            if a_window is None or b_window is None:
+                continue
+
+            a_entry, a_exit = a_window
+            b_entry, b_exit = b_window
+
+            pet_result = _compute_pet_from_windows(a_entry, a_exit, b_entry, b_exit, fps)
+            if pet_result is None:
+                continue
+            pet, first_placeholder, _second_placeholder, frame_ref = pet_result
+
+            # Conflict-window coverage gate: reject when either
+            # track has a run of at least min_conflict_gap_frames
+            # consecutive undetected frames inside
+            # +/- conflict_gap_window_frames of the conflict
+            # frame. A track absent for a third of that window
+            # cannot confirm the event. See docs/pet_gate_v1.md.
+            _cf = int(frame_ref)
+            _ga = _max_gap_in_window(pts_a, _cf, conflict_gap_window_frames)
+            _gb = _max_gap_in_window(pts_b, _cf, conflict_gap_window_frames)
+            if _ga >= min_conflict_gap_frames or _gb >= min_conflict_gap_frames:
+                continue
+
+            structured_result = _compute_structured_pet_from_windows(
+                a_entry,
+                a_exit,
+                b_entry,
+                b_exit,
+                fps,
+            )
+
+            # Map placeholder IDs back to actual track IDs
+            if first_placeholder == "a":
+                first_id = track_a_id
+                second_id = track_b_id
+            else:
+                first_id = track_b_id
+                second_id = track_a_id
+
+            # The `pet > 0` guard is stricter than docs/ANNOTATION_GUIDE.md
+            # (which permits PET = 0 for zero-gap sequential events). Kept
+            # here as a deliberate debounce against duplicate-frame
+            # detections. The two standalone PET implementations now agree
+            # on zero-gap per issue #15; see docs/pet_gate_v1.md for the
+            # reasoning behind tighter pipeline-side filters.
+            if pet <= pet_threshold and pet > 0:
+                # Determine grid cell for conflict point
+                grid_cell = spatial_grid.get_cell_from_pixels(cx, cy) if spatial_grid else "UNKNOWN"
+
+                # Decode composite IDs into original track and segment
+                def _decode_composite(cid):
+                    orig = cid // 1000
+                    seg = cid % 1000
+                    return orig, seg
+
+                orig_a, seg_a = _decode_composite(first_id)
+                orig_b, seg_b = _decode_composite(second_id)
+
+                # Calculate time-based PET from explicit time columns
+                if a_exit <= b_entry:
+                    pet_time_based = float((b_entry / fps) - (a_exit / fps))
+                elif b_exit <= a_entry:
+                    pet_time_based = float((a_entry / fps) - (b_exit / fps))
+                else:
+                    pet_time_based = float("nan")
+
+                # Exclude events where both tracks originate from the same original track (segments of same vehicle)
+                if orig_a == orig_b:
+                    continue
+
+                # track_a / track_b use the raw tracker IDs (same namespace
+                # as pet_detections.csv). The composite split-form is
+                # preserved in orig_track_a + seg_a for traceability. Fixes
+                # the namespace collision where detections used 1..N and
+                # PET events used orig*1000+seg.
+                pet_events.append(
+                    {
+                        "event_id": event_id,
+                        "site": video_source if video_source is not None else Path(video_path).stem,
+                        "pet": float(pet),  # frame-based PET
+                        "pet_time_based": pet_time_based,  # time-based PET
+                        "pet_s": structured_result.pet_s,
+                        "pet_status": structured_result.pet_status,
+                        "first_actor": structured_result.first_actor,
+                        "second_actor": structured_result.second_actor,
+                        "overlap_duration_s": structured_result.overlap_duration_s,
+                        "frame": int(frame_ref),
+                        "track_a": int(orig_a),
+                        "track_b": int(orig_b),
+                        "orig_track_a": int(orig_a),
+                        "seg_a": int(seg_a),
+                        "orig_track_b": int(orig_b),
+                        "seg_b": int(seg_b),
+                        "conflict_type": classify_conflict_geometry(
+                            _track_to_json(pts_a if first_id == track_a_id else pts_b, bev_mapper),
+                            _track_to_json(pts_b if first_id == track_a_id else pts_a, bev_mapper),
+                            int(frame_ref),
+                            fps,
+                        ),
+                        "gate_a_entry": _get_entry_gate(
+                            pts_a if first_id == track_a_id else pts_b, gates
+                        ),
+                        "gate_b_entry": _get_entry_gate(
+                            pts_b if first_id == track_a_id else pts_a, gates
+                        ),
+                        "grid_cell": grid_cell,
+                        "track_a_entry_frame": int(a_entry),
+                        "track_a_exit_frame": int(a_exit),
+                        "track_a_exit_time_sec": float(a_exit / fps),
+                        "track_b_entry_frame": int(b_entry),
+                        "track_b_entry_time_sec": float(b_entry / fps),
+                        "track_b_exit_frame": int(b_exit),
+                        "world_traj_i": f"track_{first_id}",
+                        "world_traj_j": f"track_{second_id}",
+                        "traj_a_json": _track_to_json(
+                            pts_a if first_id == track_a_id else pts_b, bev_mapper
+                        ),
+                        "traj_b_json": _track_to_json(
+                            pts_b if first_id == track_a_id else pts_a, bev_mapper
+                        ),
+                        "video_source": video_source
+                        if video_source is not None
+                        else Path(video_path).stem,
+                        "time_of_day_label": time_of_day_label
+                        if time_of_day_label is not None
+                        else "unknown",
+                    }
+                )
+                event_id += 1
+
+    track_pbar.close()
+    pet_df = pd.DataFrame(
+        pet_events,
+        columns=[
+            "event_id",
+            "site",
+            "pet",
+            "pet_time_based",
+            "pet_s",
+            "pet_status",
+            "first_actor",
+            "second_actor",
+            "overlap_duration_s",
+            "frame",
+            "track_a",
+            "track_b",
+            "orig_track_a",
+            "seg_a",
+            "orig_track_b",
+            "seg_b",
+            "conflict_type",
+            "grid_cell",
+            "track_a_entry_frame",
+            "track_a_exit_frame",
+            "track_a_exit_time_sec",
+            "track_b_entry_frame",
+            "track_b_entry_time_sec",
+            "track_b_exit_frame",
+            "world_traj_i",
+            "world_traj_j",
+            "traj_a_json",
+            "traj_b_json",
+            "video_source",
+            "time_of_day_label",
+            "gate_a_entry",
+            "gate_b_entry",
+        ],
+    )
+    pet_df.to_csv(output_csv_path, index=False)
+
+    print(f"[UVH-COCO] detections_csv={detections_csv} rows={len(det_df)}")
+    print(f"[UVH-COCO] pet_csv={output_csv_path} rows={len(pet_df)}")
+    print(f"[UVH-COCO] fps={fps:.3f} valid_tracks={len(valid_tracks)}")
+
+    return {
+        "detections_csv": detections_csv,
+        "pet_csv": output_csv_path,
+        "pet_events": pet_events,
+        "fps": fps,
+        "num_tracks": len(valid_tracks),
+    }
+
+
+def _track_to_json(points: list[TrackPoint], bev_mapper=None) -> str:
+    """Convert a list of TrackPoint to a JSON string with pixel and world coords.
+
+    pt.x / pt.y are already the box bottom-center (ground contact), so no
+    change is needed here — the JSON carries whatever the pipeline stored.
+    """
+    rows = []
+    for pt in points:
+        row = {
+            "frame": int(pt.frame),
+            "x_pixel": float(pt.x),
+            "y_pixel": float(pt.y),
+            "world_x": None,
+            "world_y": None,
+        }
+        if bev_mapper is not None:
+            world = bev_mapper.pixel_to_world((pt.x, pt.y))
+            if world is not None:
+                row["world_x"] = float(world[0])
+                row["world_y"] = float(world[1])
+        rows.append(row)
+    return json.dumps(rows)
+
+
+def _split_tracks_by_gaps(
+    tracks: dict[int, list[TrackPoint]],
+    max_frame_gap: int = 10,
+    max_spatial_jump: float = 50.0,
+    prediction_tolerance: float = 80.0,
+) -> dict[int, list[TrackPoint]]:
+    """
+    Split track IDs when there is a long frame gap or huge spatial jump,
+    but skip splitting if the next point matches a linear prediction from
+    the last two points (handles short occlusion).
+    """
+    split_tracks: dict[int, list[TrackPoint]] = {}
+    for tid, pts in tracks.items():
+        pts = sorted(pts, key=lambda p: p.frame)
+        if not pts:
+            continue
+        current_sub = 0
+        start_idx = 0
+        for i in range(1, len(pts)):
+            gap = pts[i].frame - pts[i - 1].frame
+            dx = pts[i].x - pts[i - 1].x
+            dy = pts[i].y - pts[i - 1].y
+            dist = (dx * dx + dy * dy) ** 0.5
+
+            # Predict next position using last two points (linear extrapolation)
+            if i >= 2 and gap > 0:
+                prev_prev = pts[i - 2]
+                prev = pts[i - 1]
+                dt1 = prev.frame - prev_prev.frame
+                if dt1 > 0:
+                    vx = (prev.x - prev_prev.x) / dt1
+                    vy = (prev.y - prev_prev.y) / dt1
+                    pred_x = prev.x + vx * gap
+                    pred_y = prev.y + vy * gap
+                    pred_dist = ((pts[i].x - pred_x) ** 2 + (pts[i].y - pred_y) ** 2) ** 0.5
+                else:
+                    pred_dist = float("inf")
+            else:
+                pred_dist = float("inf")
+
+            # Split only if gap/jump is large AND prediction is poor
+            if (
+                gap > max_frame_gap or dist > max_spatial_jump
+            ) and pred_dist > prediction_tolerance:
+                new_id = tid * 1000 + current_sub
+                split_tracks[new_id] = pts[start_idx:i]
+                current_sub += 1
+                start_idx = i
+        # final segment
+        new_id = tid * 1000 + current_sub
+        split_tracks[new_id] = pts[start_idx:]
+    return split_tracks
+
+
+def _can_intersect_temporal(track_a, track_b, fps=25.0, max_pet=2.0):
+    """O(1) temporal check: Skip tracks whose lifetime windows do not overlap within max_pet seconds."""
+    max_frames_diff = int(max_pet * fps) + 5
+    min_a, max_a = track_a["frames"][0], track_a["frames"][-1]
+    min_b, max_b = track_b["frames"][0], track_b["frames"][-1]
+
+    return not (min_b > max_a + max_frames_diff or min_a > max_b + max_frames_diff)

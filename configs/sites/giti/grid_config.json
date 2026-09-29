@@ -1,0 +1,26 @@
+{
+  "corners": {
+    "top_left": [
+      0,
+      0
+    ],
+    "top_right": [
+      1600,
+      0
+    ],
+    "bottom_left": [
+      0,
+      720
+    ],
+    "bottom_right": [
+      1600,
+      720
+    ]
+  },
+  "configuration": {
+    "cell_size": 25,
+    "naming_style": "CELL_{col}_{row}"
+  },
+  "site": "GITI",
+  "description": "GITI spatial grid (25px cells)"
+}

@@ -16,6 +16,7 @@ DEMO_CSV = DOCS_DIR / "data_samples" / "petevents_bev_demo.csv"
 # Helpers
 # ---------------------------
 
+
 def _iter_json_configs():
     if not CONFIG_DIR.exists():
         return []
@@ -28,15 +29,16 @@ def _load_json(path: Path):
         data = json.loads(text)
     except Exception as exc:
         raise AssertionError(f"Failed to parse JSON config: {path}") from exc
-    assert isinstance(
-        data, (dict, list)
-    ), f"Config {path} must be a JSON object or array, got {type(data).__name__}"
+    assert isinstance(data, (dict, list)), (
+        f"Config {path} must be a JSON object or array, got {type(data).__name__}"
+    )
     return data
 
 
 # ---------------------------
 # Generic JSON existence & parse tests
 # ---------------------------
+
 
 def test_config_dir_exists():
     assert CONFIG_DIR.exists(), f"Config dir not found: {CONFIG_DIR}"
@@ -54,6 +56,7 @@ def test_all_json_configs_parse():
 # YAML support: gate_config.yaml
 # ---------------------------
 
+
 def test_gate_config_yaml_parses_and_has_basic_keys():
     gate_path = CONFIG_DIR / "gate_config.yaml"
     assert gate_path.exists(), f"Missing gate_config.yaml at {gate_path}"
@@ -69,15 +72,16 @@ def test_gate_config_yaml_parses_and_has_basic_keys():
     # Minimal schema: expect a top-level gates list or mapping
     assert "gates" in data, "gate_config.yaml must define a top-level 'gates' key"
     gates = data["gates"]
-    assert isinstance(
-        gates, (list, dict)
-    ), f"'gates' must be a list or dict, got {type(gates).__name__}"
+    assert isinstance(gates, (list, dict)), (
+        f"'gates' must be a list or dict, got {type(gates).__name__}"
+    )
     assert gates, "gate_config.yaml 'gates' collection must not be empty"
 
 
 # ---------------------------
 # Schema & bounds checks: bev_config.json
 # ---------------------------
+
 
 def test_bev_config_has_required_fields_and_bounds():
     bev_cfg_path = CONFIG_DIR / "bev_config.json"
@@ -105,9 +109,9 @@ def test_bev_config_has_required_fields_and_bounds():
         assert resolution > 0, f"BEV resolution must be positive, got {resolution}"
     elif isinstance(resolution, (list, tuple)):
         assert len(resolution) == 2, f"BEV resolution list must be length 2, got {len(resolution)}"
-        assert all(
-            isinstance(v, (int, float)) and v > 0 for v in resolution
-        ), f"BEV resolution entries must be positive numbers, got {resolution}"
+        assert all(isinstance(v, (int, float)) and v > 0 for v in resolution), (
+            f"BEV resolution entries must be positive numbers, got {resolution}"
+        )
     else:
         raise AssertionError(f"Unexpected type for BEV resolution: {type(resolution).__name__}")
 
@@ -121,6 +125,7 @@ def test_bev_config_has_required_fields_and_bounds():
                 "Intersection should typically span >10m in each direction."
             ),
             UserWarning,
+            stacklevel=2,
         )
 
 
@@ -142,12 +147,14 @@ def test_bev_config_has_valid_homography():
         warnings.warn(
             "Homography appears to be identity matrix - check calibration",
             UserWarning,
+            stacklevel=2,
         )
 
 
 # ---------------------------
 # Schema & bounds checks: giti_calibration_points.json
 # ---------------------------
+
 
 def test_calibration_points_have_spread_and_required_fields():
     calib_path = CONFIG_DIR / "giti_calibration_points.json"
@@ -166,7 +173,9 @@ def test_calibration_points_have_spread_and_required_fields():
 
     for p in points:
         assert isinstance(p, dict), "Each calibration point must be a JSON object"
-        assert "pixel" in p and "world" in p, "Each calibration point must have 'pixel' and 'world' keys"
+        assert "pixel" in p and "world" in p, (
+            "Each calibration point must have 'pixel' and 'world' keys"
+        )
 
         # pixel sanity
         pix = p["pixel"]
@@ -201,12 +210,14 @@ def test_calibration_points_have_spread_and_required_fields():
                     f"expected at least ~{min_spread} in at least one direction."
                 ),
                 UserWarning,
+                stacklevel=2,
             )
 
 
 # ---------------------------
 # Demo CSV presence & data quality
 # ---------------------------
+
 
 def test_demo_csv_exists_and_has_rows():
     assert DEMO_CSV.exists(), f"Demo PET CSV not found at {DEMO_CSV}"
@@ -226,6 +237,7 @@ def test_demo_csv_exists_and_has_rows():
                 "Consider populating with real sample data."
             ),
             UserWarning,
+            stacklevel=2,
         )
     else:
         # PET should be strictly positive
@@ -236,4 +248,5 @@ def test_demo_csv_exists_and_has_rows():
                     "PET should be strictly positive."
                 ),
                 UserWarning,
+                stacklevel=2,
             )

@@ -1,0 +1,21 @@
+# serializer version: 1
+# name: test_bev_mapping_snapshot
+  list([
+    tuple(
+      0,
+      0,
+    ),
+    tuple(
+      50,
+      50,
+    ),
+    tuple(
+      100,
+      100,
+    ),
+    tuple(
+      25,
+      75,
+    ),
+  ])
+# ---

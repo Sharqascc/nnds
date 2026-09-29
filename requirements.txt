@@ -1,13 +1,13 @@
-# NNDS Core Dependencies - No version pins, let pip resolve
-# This ensures maximum compatibility with your environment
-
-numpy
-pandas
-scipy
+torch>=2.0.0
+torchvision
+ultralytics>=8.0.0
 opencv-python
+numpy>=2.5,<3
+pandas>=3.0,<4
+scipy>=1.18,<2
 matplotlib
 tqdm
 PyYAML
-torch
-torchvision
-ultralytics
+openvino>=2024.0.0
+lap>=0.5.12
+scikit-learn

@@ -1,9 +1,16 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
   pull_request:
 
+# Cancel in-flight runs for the same ref. push + pull_request both trigger
+# for a branch with an open PR; this keeps one active run per ref instead
+# of two.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -15,14 +22,53 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: '3.12'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install -r requirements-dev.txt
+          if [ -f requirements-vlm.txt ]; then pip install -r requirements-vlm.txt; fi
 
-      - name: Run smoke test
+      - name: Compile all Python files
+        run: python -m compileall -q src tests scripts conftest.py
+
+      - name: Lint with Ruff
+        run: ruff check .
+
+      - name: Check formatting with Ruff
+        run: ruff format --check .
+
+      - name: Run mypy type checking (analysis)
+        run: mypy --config-file mypy.ini src/
+
+      - name: Run bandit (SAST)
+        run: bandit -c bandit.yaml -r src/
+
+      - name: Check shell syntax
         run: |
-          pytest -q tests/test_research_run_smoke.py
+          shopt -s nullglob
+          for f in scripts/*.sh .githooks/pre-commit .githooks/pre-push; do
+            bash -n "$f"
+          done
+
+      - name: Fetch tags (for archive-index drift check)
+        run: git fetch --tags
+
+      - name: Run fast unit tests with coverage
+        run: |
+          pytest tests/ -m "not integration and not slow" \
+            --cov=src --cov-branch --cov-report=term-missing \
+            --cov-fail-under=70
+
+      - name: Run property tests
+        env:
+          HYPOTHESIS_PROFILE: ci-pr
+        run: |
+          pytest tests/ -m property -q \
+            --ignore=tests/test_snapshot_pet_summary.py
+
+      - name: Run smoke tests (integration)
+        run: |
+          pytest tests/ -m "integration or smoke" -q \
+            --ignore=tests/test_snapshot_pet_summary.py

@@ -1,0 +1,24 @@
+-r requirements.txt
+
+# Testing
+pytest>=8.0.0
+pytest-cov>=5.0.0
+pytest-timeout>=2.2.0
+pytest-mock
+pytest-xdist>=3.5.0
+hypothesis>=6.100.0
+syrupy>=4.0.0
+
+# Lint / types
+ruff>=0.6.0
+mypy>=2.3,<3.0
+
+# Optional runtime deps used by agentic auto-fix scripts
+groq>=0.30.0
+
+# Used by a handful of tests and notebooks
+pydantic
+ipython
+
+# Static security analysis (see bandit.yaml)
+bandit>=1.7

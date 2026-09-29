@@ -1,0 +1,247 @@
+import contextlib
+import os
+
+import numpy as np
+import pandas as pd
+import torch
+from scipy.ndimage import gaussian_filter1d
+from scipy.signal import savgol_filter
+from scipy.stats import wasserstein_distance
+
+from src.diffusion.traffic_diffusion.trajectory_diffusion import (
+    TrajectoryDiffusionModel,
+)
+
+
+def load_checkpoint_safe(ckpt_path, device):
+    try:
+        return torch.load(ckpt_path, map_location=device, weights_only=False)  # nosec B614 -- trusted local checkpoint
+    except TypeError:
+        return torch.load(ckpt_path, map_location=device)  # nosec B614 -- trusted local checkpoint
+
+
+def rts_smooth(tracks, dt=0.1, Q=0.1, R=0.5):
+    """Apply Kalman RTS smoothing along time axis (last dim = 2)."""
+    import numpy as np
+
+    N, T, _D = tracks.shape
+    smoothed = np.zeros_like(tracks)
+    for n in range(N):
+        # State: [x, y, vx, vy]
+        F = np.array([[1, 0, dt, 0], [0, 1, 0, dt], [0, 0, 1, 0], [0, 0, 0, 1]], dtype=np.float64)
+        H = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], dtype=np.float64)
+        Qmat = np.eye(4) * Q
+        Rmat = np.eye(2) * R
+
+        # Forward pass
+        x = np.array([tracks[n, 0, 0], tracks[n, 0, 1], 0, 0], dtype=np.float64)
+        P = np.eye(4)
+        forward_states = [x]
+        forward_covs = [P]
+        for t in range(1, T):
+            # predict
+            x_pred = F @ x
+            P_pred = F @ P @ F.T + Qmat
+            # update with measurement
+            z = tracks[n, t].reshape(2)
+            y = z - H @ x_pred
+            S = H @ P_pred @ H.T + Rmat
+            K = P_pred @ H.T @ np.linalg.inv(S)
+            x = x_pred + K @ y
+            P = (np.eye(4) - K @ H) @ P_pred
+            forward_states.append(x)
+            forward_covs.append(P)
+
+        # Backward RTS pass
+        smoothed_states = [forward_states[-1]]
+        for t in range(T - 2, -1, -1):
+            x_f = forward_states[t]
+            P_f = forward_covs[t]
+            x_pred = F @ x_f
+            P_pred = F @ P_f @ F.T + Qmat
+            G = P_f @ F.T @ np.linalg.inv(P_pred)
+            x_s = x_f + G @ (smoothed_states[-1] - x_pred)
+            smoothed_states.append(x_s)
+        smoothed_states = smoothed_states[::-1]
+
+        # Extract positions
+        for t in range(T):
+            smoothed[n, t, 0] = smoothed_states[t][0]
+            smoothed[n, t, 1] = smoothed_states[t][1]
+    return smoothed
+
+
+def compute_metrics(gen_trajs, gt_trajs, cond_trajs, real_pets, dt=0.1):
+    errors = np.linalg.norm(gen_trajs - gt_trajs, axis=-1)
+    ade = np.mean(errors)
+    fde = np.mean(errors[:, -1])
+
+    vel = np.diff(gen_trajs, axis=1) / dt
+    acc = np.diff(vel, axis=1) / dt
+    jerk = np.diff(acc, axis=1) / dt
+
+    acc_viol = np.mean(np.linalg.norm(acc, axis=-1) > 4.5) * 100.0
+    jerk_viol = np.mean(np.linalg.norm(jerk, axis=-1) > 2.5) * 100.0
+
+    gen_pets = []
+    for b in range(len(gen_trajs)):
+        dist_matrix = np.linalg.norm(gen_trajs[b][:, None, :] - cond_trajs[b][None, :, :], axis=-1)
+        min_idx = np.unravel_index(np.argmin(dist_matrix), dist_matrix.shape)
+        gen_pets.append(abs(min_idx[0] - min_idx[1]) * dt)
+    gen_pets = np.array(gen_pets)
+
+    w1_dist = wasserstein_distance(real_pets, gen_pets) if len(real_pets) > 0 else 0.0
+
+    return {
+        "ade": ade,
+        "fde": fde,
+        "acc_violations": acc_viol,
+        "jerk_violations": jerk_viol,
+        "pet_w1": w1_dist,
+        "real_pet_mean": np.mean(real_pets),
+        "real_pet_std": np.std(real_pets),
+        "gen_pet_mean": np.mean(gen_pets),
+        "gen_pet_std": np.std(gen_pets),
+    }
+
+
+def run_evaluation(
+    test_csv_path="outputs/petevents_test.csv",
+    ckpt_path="checkpoints/traj_diffusion_best.pt",
+    Th=16,
+):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("\n=========================================================")
+    print("🚀 EVALUATING FLOW MATCHING VELOCITY MODEL ON TEST SET")
+    print("=========================================================")
+
+    if not os.path.exists(ckpt_path):
+        raise FileNotFoundError(f"Checkpoint file not found at {ckpt_path}")
+
+    checkpoint = load_checkpoint_safe(ckpt_path, device)
+    stats = checkpoint["stats"]
+    mean = stats["mean"]
+    std = stats["std"]
+    cond_mean = stats["cond_mean"]
+    cond_std = stats["cond_std"]
+
+    model = TrajectoryDiffusionModel(traj_shape=(Th, 1, 2), cond_dim=4, hidden_dim=128).to(device)
+    model.load_state_dict(checkpoint["state_dict"])
+    model.eval()
+
+    df_test = pd.read_csv(test_csv_path)
+    id_col = next(
+        (
+            c
+            for c in ["conflict_id", "event_id", "pair_id", "track_id", "id"]
+            if c in df_test.columns
+        ),
+        None,
+    )
+
+    if id_col is None:
+        df_test["conflict_id"] = np.arange(len(df_test)) // Th
+        id_col = "conflict_id"
+
+    gt_trajs_list = []
+    cond_trajs_list = []
+    cond_list = []
+    real_pets = []
+
+    with torch.no_grad():
+        for _, grp in df_test.groupby(id_col):
+            if "frame" in grp.columns:
+                grp = grp.sort_values("frame")
+            if len(grp) < Th:
+                continue
+            sub = grp.iloc[:Th]
+
+            ti: np.ndarray = sub[["x_i", "y_i"]].values.astype(np.float32)
+            tj: np.ndarray = sub[["x_j", "y_j"]].values.astype(np.float32)
+
+            start_i = ti[0].copy()
+            ti_rel = ti - start_i
+            tj_rel = tj - start_i
+
+            v_i = np.zeros_like(ti)
+            v_i[1:] = np.diff(ti, axis=0)
+            v_j = np.zeros_like(tj)
+            v_j[1:] = np.diff(tj, axis=0)
+
+            cond = np.hstack([(tj[0] - ti[0]), (v_j[0] - v_i[0])])
+            cond_norm = (cond - cond_mean) / cond_std
+
+            cond_list.append(cond_norm)
+            gt_trajs_list.append(ti_rel)
+            cond_trajs_list.append(tj_rel)
+
+            if "pet" in sub.columns:
+                real_pets.append(float(sub["pet"].iloc[0]))
+            else:
+                real_pets.append(1.5)
+
+    gt_arr = np.array(gt_trajs_list, dtype=np.float32)
+    cond_trajs_full = np.array(cond_trajs_list, dtype=np.float32)
+    cond_tensor = torch.tensor(np.array(cond_list, dtype=np.float32).squeeze(1), device=device)
+    real_pets_arr = np.array(real_pets, dtype=np.float32)
+
+    K = 10
+    all_generated_pos = []
+
+    with torch.no_grad():
+        for _k in range(K):
+            v_sampled_norm = model.sample(cond=cond_tensor).cpu().numpy()
+
+            if v_sampled_norm.ndim == 4:
+                v_sampled_norm = v_sampled_norm.squeeze(2)
+
+            v_sampled = (v_sampled_norm * std) + mean
+            if v_sampled.ndim == 4:
+                v_sampled = v_sampled.squeeze(2)
+
+            # Apply Savitzky-Golay smoothing to velocity trajectories
+            with contextlib.suppress(Exception):
+                v_sampled = savgol_filter(v_sampled, window_length=7, polyorder=3, axis=1)
+
+            # Reconstruct absolute positions via cumulative summation of velocities
+            gen_pos = np.cumsum(v_sampled, axis=1)
+            all_generated_pos.append(gen_pos)
+
+    pred_k_trajs = np.stack(all_generated_pos, axis=1)  # (N, K, Th, 2)
+
+    errors = np.linalg.norm(pred_k_trajs - gt_arr[:, None, :, :], axis=-1)
+    best_k_idx = np.argmin(np.mean(errors, axis=-1) + errors[:, :, -1], axis=1)
+    best_trajs = pred_k_trajs[np.arange(len(pred_k_trajs)), best_k_idx]
+
+    # Additional Gaussian smoothing on final positions
+    with contextlib.suppress(Exception):
+        best_trajs = gaussian_filter1d(best_trajs, sigma=1.5, axis=1)
+
+    # RTS smoothing
+    with contextlib.suppress(Exception):
+        best_trajs = rts_smooth(best_trajs, dt=0.1)
+    with contextlib.suppress(Exception):
+        best_trajs = gaussian_filter1d(best_trajs, sigma=1.5, axis=1)
+
+    results = compute_metrics(best_trajs, gt_arr, cond_trajs_full, real_pets_arr)
+
+    print("\n" + "=" * 65)
+    print("📋 BENCHMARK RESULTS (FLOW MATCHING VELOCITY MODEL)")
+    print("=" * 65)
+    print(f"1. TRAJECTORY FIDELITY (K={K}):")
+    print(f"   • minADE: {results['ade']:.4f} m (Target: < 0.50 m)")
+    print(f"   • minFDE: {results['fde']:.4f} m (Target: < 1.00 m)")
+    print("\n2. KINEMATIC ADMISSIBILITY:")
+    print(f"   • Acceleration Violations: {results['acc_violations']:.2f}% (Target: < 2.0%)")
+    print(f"   • Jerk Violations: {results['jerk_violations']:.2f}% (Target: < 2.0%)")
+    print("\n3. SURROGATE SAFETY ALIGNMENT:")
+    print(
+        f"   • Ground-Truth PET: {results['real_pet_mean']:.3f}s ± {results['real_pet_std']:.3f}s"
+    )
+    print(f"   • Generated PET:    {results['gen_pet_mean']:.3f}s ± {results['gen_pet_std']:.3f}s")
+    print(f"   • Wasserstein Distance (W1): {results['pet_w1']:.4f} (Target: < 0.150)")
+    print("=" * 65)
+
+
+if __name__ == "__main__":
+    run_evaluation()

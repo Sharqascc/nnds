@@ -1,0 +1,9 @@
+{
+  "version": "1.0",
+  "description": "Audit configuration for NNDS pipeline",
+  "checks": [
+    "detection",
+    "tracking",
+    "pet"
+  ]
+}

@@ -1,0 +1,35 @@
+# Bandit configuration for the NNDS pipeline.
+#
+# Rationale for each suppression:
+#
+#   B404  import subprocess            -- subprocess is used for reproducible
+#                                         environment auditing (pip freeze,
+#                                         sysctl). Not a security concern here.
+#   B603  subprocess without shell=True -- all subprocess calls use list-form
+#                                         args (no shell interpretation) with
+#                                         trusted commands (sys.executable,
+#                                         sysctl). Shell injection is not
+#                                         possible.
+#   B607  partial executable path      -- same call sites; the "partial" path
+#                                         is intentional (PATH lookup of sysctl,
+#                                         which has no standard absolute path
+#                                         across Linux/macOS).
+#
+# Rules NOT suppressed here are meant to be handled per-site with `# nosec`
+# and a rationale:
+#   B307  eval                         -- fixed: literal_eval in safety_eval
+#   B614  torch.load weights_only=False -- per-site nosec (trusted checkpoints)
+#   B615  HF from_pretrained w/o revision -- per-site nosec (revision param added)
+#   B110  try/except/pass              -- per-site nosec (intentional feature probes)
+#   B105  hardcoded_password_string    -- per-site nosec (false positives)
+
+skips: ['B404', 'B603', 'B607']
+
+# Only report medium and above; low findings are noise for this repo.
+# (B110/B105/B404/B603/B607 are LOW and suppressed either by skip or nosec.)
+severity: medium
+
+exclude_dirs:
+  - 'tests'
+  - 'scripts'
+  - 'docs'

@@ -1,0 +1,14 @@
+[console_scripts]
+estimate-time-of-day = scripts.estimate_time_of_day:main
+evaluate-tracking-metrics = scripts.evaluate_tracking_metrics:main
+generate-pet-verification-video = scripts.generate_pet_verification_video:main
+generate-safety-report-groq = scripts.generate_safety_report_groq:main
+inspect-pet = scripts.inspect_pet:main
+nnds = pipeline.traffic_analyzer:main
+paired-ttest = scripts.paired_ttest:main
+tracking-report = scripts.tracking_report:main
+tracking-report-fast = scripts.tracking_report_fast:main
+validate-all = scripts.validate_all:main
+validate-contracts = scripts.validate_contracts:main
+validate-nnds-outputs = scripts.validate_outputs:main
+validation-report = scripts.validation_report:main
