@@ -315,6 +315,7 @@ def run_video_to_pet(
     video_source=None,
     time_of_day_label=None,
     gate_config_path="configs/gate_config.yaml",
+    show_progress: bool = True,
 ):
     if not Path(str(video_path)).exists():
         raise SystemExit(f"Video file not found: {video_path}")
@@ -398,6 +399,7 @@ def run_video_to_pet(
             video_source=video_source,
             time_of_day_label=time_of_day_label,
             gate_config_path=str(gate_config_path),
+            show_progress=show_progress,
         )
 
     elif detector == "rtdetr":
@@ -444,10 +446,35 @@ def run_video_to_pet_fixed(
 
 
 def run_pipeline(args):
+    """Execute the video-to-PET pipeline from parsed CLI args.
+
+    Restored after the a12d32e stub (see git log -p for context).
+    Forwards every CLI argument that maps to a run_video_to_pet kwarg.
+    """
     detector = str(getattr(args, "detector", "")).lower()
     if detector not in _SUPPORTED_DETECTORS:
         raise ValueError(f"Unsupported detector policy: {detector}")
-    return {"video": args.video, "out_csv": getattr(args, "out_csv", None)}
+    g = lambda name, default=None: getattr(args, name, default)  # noqa: E731
+    return run_video_to_pet(
+        video_path=args.video,
+        bev_config_path=g("bev_config") or "configs/bev_config.json",
+        grid_config_path=g("grid_config") or "configs/GITI_grid_config.json",
+        sam3_weights_path=g("sam3_weights", "sam3.pt"),
+        out_csv_path=g("out_csv") or "outputs/petevents_bev.csv",
+        pet_threshold=g("pet_threshold", 2.0),
+        max_frames=g("max_frames"),
+        detector=detector,
+        yolo_weights_path=g("yolo_weights", "data/models/yolo11n.pt"),
+        uvh_model_path=g("uvh_model", "data/models/uvh26.pt"),
+        coco_person_model_path=g("coco_person_model", "data/models/yolo11n.pt"),
+        rtdetr_weights_path=g("rtdetr_weights", "rtdetr-l.pt"),
+        device=g("device", "auto"),
+        max_frame_gap=g("max_gap", 5),
+        max_spatial_jump=g("max_jump", 30.0),
+        video_source=g("video_source"),
+        gate_config_path=g("gate_config", "configs/gate_config.yaml"),
+        show_progress=not g("no_progress", False),
+    )
 
 
 def run_demo():
@@ -499,6 +526,39 @@ def parse_args(argv=None):
     parser.add_argument("--grid-config", dest="grid_config", type=str, default=None)
     parser.add_argument("--max-gap", dest="max_gap", type=int, default=5)
     parser.add_argument("--max-frames", dest="max_frames", type=int, default=None)
+    parser.add_argument(
+        "--max-jump",
+        dest="max_jump",
+        type=float,
+        default=30.0,
+        help="Maximum inter-frame spatial jump (pixels) when splitting tracks",
+    )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="auto",
+        help="Inference device: auto, cpu, cuda, mps",
+    )
+    parser.add_argument(
+        "--video-source",
+        dest="video_source",
+        type=str,
+        default=None,
+        help="Site / source name recorded in each PET event",
+    )
+    parser.add_argument(
+        "--gate-config",
+        dest="gate_config",
+        type=str,
+        default="configs/gate_config.yaml",
+        help="YAML file describing entry/exit gates",
+    )
+    parser.add_argument(
+        "--no-progress",
+        dest="no_progress",
+        action="store_true",
+        help="Disable tqdm progress bars",
+    )
     parser.add_argument("--sam3-weights", dest="sam3_weights", type=str, default="sam3.pt")
     parser.add_argument(
         "--yolo-weights",
