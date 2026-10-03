@@ -1,0 +1,11 @@
+# Large binary assets — regenerate locally with the provided scripts
+mp4_overlay/
+gifs/
+gifs_overlay/
+gifs_overlay_zone/
+gifs_light/
+events/
+controls/
+montages/
+montages10/
+*.zip

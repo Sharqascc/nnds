@@ -1,0 +1,1329 @@
+<!doctype html><html><head><meta charset="utf-8">
+<title>PET annotation — Annotator A</title>
+<style>
+body { font-family:-apple-system,sans-serif; margin:20px; background:#111; color:#eee; }
+.item { border:1px solid #333; padding:10px; margin:10px 0; border-radius:8px; }
+.meta { font-size:15px; margin-bottom:6px; }
+label { margin-right:12px; }
+select, input[type=text] { margin-left:12px; }
+#dl { position:fixed; bottom:20px; right:20px; background:#2c7; color:#000;
+       border:none; padding:12px 20px; font-size:16px; cursor:pointer;
+       border-radius:6px; font-weight:bold; z-index:99; }
+#ctr { position:fixed; bottom:20px; left:20px; background:#333; color:#eee;
+        padding:12px 20px; border-radius:6px; font-weight:bold; z-index:99; }
+</style></head><body>
+<h2>PET annotation — Annotator A</h2>
+<p><b>Blue circle (A)</b> = first road user. <b>Red circle (B)</b> = second road user.
+<b>Yellow zone</b> = the world location where they most closely approach.</p>
+<p>Question: <b>Do A and B pass through the yellow zone within 2 seconds of each other?</b>
+Choose yes / no / unsure. If yes, pick the dominant conflict type.</p>
+
+<div class="item">
+  <div class="meta"><strong>event_000</strong></div>
+  <video src="mp4_overlay/event_000.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_000" value="yes"> yes</label>
+    <label><input type="radio" name="event_000" value="no"> no</label>
+    <label><input type="radio" name="event_000" value="unsure"> unsure</label>
+    <select name="event_000_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_000_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_001</strong></div>
+  <video src="mp4_overlay/event_001.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_001" value="yes"> yes</label>
+    <label><input type="radio" name="event_001" value="no"> no</label>
+    <label><input type="radio" name="event_001" value="unsure"> unsure</label>
+    <select name="event_001_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_001_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_002</strong></div>
+  <video src="mp4_overlay/event_002.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_002" value="yes"> yes</label>
+    <label><input type="radio" name="event_002" value="no"> no</label>
+    <label><input type="radio" name="event_002" value="unsure"> unsure</label>
+    <select name="event_002_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_002_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_003</strong></div>
+  <video src="mp4_overlay/event_003.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_003" value="yes"> yes</label>
+    <label><input type="radio" name="event_003" value="no"> no</label>
+    <label><input type="radio" name="event_003" value="unsure"> unsure</label>
+    <select name="event_003_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_003_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_004</strong></div>
+  <video src="mp4_overlay/event_004.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_004" value="yes"> yes</label>
+    <label><input type="radio" name="event_004" value="no"> no</label>
+    <label><input type="radio" name="event_004" value="unsure"> unsure</label>
+    <select name="event_004_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_004_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_005</strong></div>
+  <video src="mp4_overlay/event_005.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_005" value="yes"> yes</label>
+    <label><input type="radio" name="event_005" value="no"> no</label>
+    <label><input type="radio" name="event_005" value="unsure"> unsure</label>
+    <select name="event_005_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_005_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_006</strong></div>
+  <video src="mp4_overlay/event_006.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_006" value="yes"> yes</label>
+    <label><input type="radio" name="event_006" value="no"> no</label>
+    <label><input type="radio" name="event_006" value="unsure"> unsure</label>
+    <select name="event_006_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_006_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_007</strong></div>
+  <video src="mp4_overlay/event_007.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_007" value="yes"> yes</label>
+    <label><input type="radio" name="event_007" value="no"> no</label>
+    <label><input type="radio" name="event_007" value="unsure"> unsure</label>
+    <select name="event_007_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_007_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_008</strong></div>
+  <video src="mp4_overlay/event_008.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_008" value="yes"> yes</label>
+    <label><input type="radio" name="event_008" value="no"> no</label>
+    <label><input type="radio" name="event_008" value="unsure"> unsure</label>
+    <select name="event_008_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_008_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_009</strong></div>
+  <video src="mp4_overlay/event_009.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_009" value="yes"> yes</label>
+    <label><input type="radio" name="event_009" value="no"> no</label>
+    <label><input type="radio" name="event_009" value="unsure"> unsure</label>
+    <select name="event_009_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_009_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_010</strong></div>
+  <video src="mp4_overlay/event_010.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_010" value="yes"> yes</label>
+    <label><input type="radio" name="event_010" value="no"> no</label>
+    <label><input type="radio" name="event_010" value="unsure"> unsure</label>
+    <select name="event_010_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_010_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_011</strong></div>
+  <video src="mp4_overlay/event_011.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_011" value="yes"> yes</label>
+    <label><input type="radio" name="event_011" value="no"> no</label>
+    <label><input type="radio" name="event_011" value="unsure"> unsure</label>
+    <select name="event_011_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_011_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_012</strong></div>
+  <video src="mp4_overlay/event_012.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_012" value="yes"> yes</label>
+    <label><input type="radio" name="event_012" value="no"> no</label>
+    <label><input type="radio" name="event_012" value="unsure"> unsure</label>
+    <select name="event_012_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_012_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_013</strong></div>
+  <video src="mp4_overlay/event_013.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_013" value="yes"> yes</label>
+    <label><input type="radio" name="event_013" value="no"> no</label>
+    <label><input type="radio" name="event_013" value="unsure"> unsure</label>
+    <select name="event_013_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_013_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_014</strong></div>
+  <video src="mp4_overlay/event_014.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_014" value="yes"> yes</label>
+    <label><input type="radio" name="event_014" value="no"> no</label>
+    <label><input type="radio" name="event_014" value="unsure"> unsure</label>
+    <select name="event_014_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_014_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_015</strong></div>
+  <video src="mp4_overlay/event_015.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_015" value="yes"> yes</label>
+    <label><input type="radio" name="event_015" value="no"> no</label>
+    <label><input type="radio" name="event_015" value="unsure"> unsure</label>
+    <select name="event_015_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_015_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_016</strong></div>
+  <video src="mp4_overlay/event_016.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_016" value="yes"> yes</label>
+    <label><input type="radio" name="event_016" value="no"> no</label>
+    <label><input type="radio" name="event_016" value="unsure"> unsure</label>
+    <select name="event_016_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_016_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_017</strong></div>
+  <video src="mp4_overlay/event_017.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_017" value="yes"> yes</label>
+    <label><input type="radio" name="event_017" value="no"> no</label>
+    <label><input type="radio" name="event_017" value="unsure"> unsure</label>
+    <select name="event_017_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_017_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_018</strong></div>
+  <video src="mp4_overlay/event_018.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_018" value="yes"> yes</label>
+    <label><input type="radio" name="event_018" value="no"> no</label>
+    <label><input type="radio" name="event_018" value="unsure"> unsure</label>
+    <select name="event_018_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_018_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_019</strong></div>
+  <video src="mp4_overlay/event_019.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_019" value="yes"> yes</label>
+    <label><input type="radio" name="event_019" value="no"> no</label>
+    <label><input type="radio" name="event_019" value="unsure"> unsure</label>
+    <select name="event_019_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_019_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_020</strong></div>
+  <video src="mp4_overlay/event_020.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_020" value="yes"> yes</label>
+    <label><input type="radio" name="event_020" value="no"> no</label>
+    <label><input type="radio" name="event_020" value="unsure"> unsure</label>
+    <select name="event_020_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_020_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_021</strong></div>
+  <video src="mp4_overlay/event_021.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_021" value="yes"> yes</label>
+    <label><input type="radio" name="event_021" value="no"> no</label>
+    <label><input type="radio" name="event_021" value="unsure"> unsure</label>
+    <select name="event_021_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_021_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_022</strong></div>
+  <video src="mp4_overlay/event_022.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_022" value="yes"> yes</label>
+    <label><input type="radio" name="event_022" value="no"> no</label>
+    <label><input type="radio" name="event_022" value="unsure"> unsure</label>
+    <select name="event_022_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_022_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_023</strong></div>
+  <video src="mp4_overlay/event_023.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_023" value="yes"> yes</label>
+    <label><input type="radio" name="event_023" value="no"> no</label>
+    <label><input type="radio" name="event_023" value="unsure"> unsure</label>
+    <select name="event_023_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_023_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_024</strong></div>
+  <video src="mp4_overlay/event_024.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_024" value="yes"> yes</label>
+    <label><input type="radio" name="event_024" value="no"> no</label>
+    <label><input type="radio" name="event_024" value="unsure"> unsure</label>
+    <select name="event_024_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_024_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_025</strong></div>
+  <video src="mp4_overlay/event_025.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_025" value="yes"> yes</label>
+    <label><input type="radio" name="event_025" value="no"> no</label>
+    <label><input type="radio" name="event_025" value="unsure"> unsure</label>
+    <select name="event_025_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_025_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_026</strong></div>
+  <video src="mp4_overlay/event_026.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_026" value="yes"> yes</label>
+    <label><input type="radio" name="event_026" value="no"> no</label>
+    <label><input type="radio" name="event_026" value="unsure"> unsure</label>
+    <select name="event_026_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_026_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_027</strong></div>
+  <video src="mp4_overlay/event_027.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_027" value="yes"> yes</label>
+    <label><input type="radio" name="event_027" value="no"> no</label>
+    <label><input type="radio" name="event_027" value="unsure"> unsure</label>
+    <select name="event_027_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_027_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_028</strong></div>
+  <video src="mp4_overlay/event_028.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_028" value="yes"> yes</label>
+    <label><input type="radio" name="event_028" value="no"> no</label>
+    <label><input type="radio" name="event_028" value="unsure"> unsure</label>
+    <select name="event_028_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_028_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_029</strong></div>
+  <video src="mp4_overlay/event_029.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_029" value="yes"> yes</label>
+    <label><input type="radio" name="event_029" value="no"> no</label>
+    <label><input type="radio" name="event_029" value="unsure"> unsure</label>
+    <select name="event_029_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_029_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_030</strong></div>
+  <video src="mp4_overlay/event_030.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_030" value="yes"> yes</label>
+    <label><input type="radio" name="event_030" value="no"> no</label>
+    <label><input type="radio" name="event_030" value="unsure"> unsure</label>
+    <select name="event_030_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_030_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_031</strong></div>
+  <video src="mp4_overlay/event_031.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_031" value="yes"> yes</label>
+    <label><input type="radio" name="event_031" value="no"> no</label>
+    <label><input type="radio" name="event_031" value="unsure"> unsure</label>
+    <select name="event_031_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_031_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_032</strong></div>
+  <video src="mp4_overlay/event_032.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_032" value="yes"> yes</label>
+    <label><input type="radio" name="event_032" value="no"> no</label>
+    <label><input type="radio" name="event_032" value="unsure"> unsure</label>
+    <select name="event_032_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_032_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_033</strong></div>
+  <video src="mp4_overlay/event_033.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_033" value="yes"> yes</label>
+    <label><input type="radio" name="event_033" value="no"> no</label>
+    <label><input type="radio" name="event_033" value="unsure"> unsure</label>
+    <select name="event_033_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_033_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_034</strong></div>
+  <video src="mp4_overlay/event_034.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_034" value="yes"> yes</label>
+    <label><input type="radio" name="event_034" value="no"> no</label>
+    <label><input type="radio" name="event_034" value="unsure"> unsure</label>
+    <select name="event_034_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_034_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_035</strong></div>
+  <video src="mp4_overlay/event_035.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_035" value="yes"> yes</label>
+    <label><input type="radio" name="event_035" value="no"> no</label>
+    <label><input type="radio" name="event_035" value="unsure"> unsure</label>
+    <select name="event_035_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_035_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_036</strong></div>
+  <video src="mp4_overlay/event_036.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_036" value="yes"> yes</label>
+    <label><input type="radio" name="event_036" value="no"> no</label>
+    <label><input type="radio" name="event_036" value="unsure"> unsure</label>
+    <select name="event_036_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_036_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_037</strong></div>
+  <video src="mp4_overlay/event_037.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_037" value="yes"> yes</label>
+    <label><input type="radio" name="event_037" value="no"> no</label>
+    <label><input type="radio" name="event_037" value="unsure"> unsure</label>
+    <select name="event_037_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_037_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_038</strong></div>
+  <video src="mp4_overlay/event_038.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_038" value="yes"> yes</label>
+    <label><input type="radio" name="event_038" value="no"> no</label>
+    <label><input type="radio" name="event_038" value="unsure"> unsure</label>
+    <select name="event_038_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_038_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>event_039</strong></div>
+  <video src="mp4_overlay/event_039.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="event_039" value="yes"> yes</label>
+    <label><input type="radio" name="event_039" value="no"> no</label>
+    <label><input type="radio" name="event_039" value="unsure"> unsure</label>
+    <select name="event_039_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="event_039_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_000</strong></div>
+  <video src="mp4_overlay/control_000.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_000" value="yes"> yes</label>
+    <label><input type="radio" name="control_000" value="no"> no</label>
+    <label><input type="radio" name="control_000" value="unsure"> unsure</label>
+    <select name="control_000_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_000_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_001</strong></div>
+  <video src="mp4_overlay/control_001.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_001" value="yes"> yes</label>
+    <label><input type="radio" name="control_001" value="no"> no</label>
+    <label><input type="radio" name="control_001" value="unsure"> unsure</label>
+    <select name="control_001_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_001_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_002</strong></div>
+  <video src="mp4_overlay/control_002.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_002" value="yes"> yes</label>
+    <label><input type="radio" name="control_002" value="no"> no</label>
+    <label><input type="radio" name="control_002" value="unsure"> unsure</label>
+    <select name="control_002_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_002_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_003</strong></div>
+  <video src="mp4_overlay/control_003.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_003" value="yes"> yes</label>
+    <label><input type="radio" name="control_003" value="no"> no</label>
+    <label><input type="radio" name="control_003" value="unsure"> unsure</label>
+    <select name="control_003_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_003_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_004</strong></div>
+  <video src="mp4_overlay/control_004.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_004" value="yes"> yes</label>
+    <label><input type="radio" name="control_004" value="no"> no</label>
+    <label><input type="radio" name="control_004" value="unsure"> unsure</label>
+    <select name="control_004_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_004_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_005</strong></div>
+  <video src="mp4_overlay/control_005.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_005" value="yes"> yes</label>
+    <label><input type="radio" name="control_005" value="no"> no</label>
+    <label><input type="radio" name="control_005" value="unsure"> unsure</label>
+    <select name="control_005_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_005_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_006</strong></div>
+  <video src="mp4_overlay/control_006.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_006" value="yes"> yes</label>
+    <label><input type="radio" name="control_006" value="no"> no</label>
+    <label><input type="radio" name="control_006" value="unsure"> unsure</label>
+    <select name="control_006_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_006_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_007</strong></div>
+  <video src="mp4_overlay/control_007.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_007" value="yes"> yes</label>
+    <label><input type="radio" name="control_007" value="no"> no</label>
+    <label><input type="radio" name="control_007" value="unsure"> unsure</label>
+    <select name="control_007_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_007_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_008</strong></div>
+  <video src="mp4_overlay/control_008.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_008" value="yes"> yes</label>
+    <label><input type="radio" name="control_008" value="no"> no</label>
+    <label><input type="radio" name="control_008" value="unsure"> unsure</label>
+    <select name="control_008_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_008_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_009</strong></div>
+  <video src="mp4_overlay/control_009.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_009" value="yes"> yes</label>
+    <label><input type="radio" name="control_009" value="no"> no</label>
+    <label><input type="radio" name="control_009" value="unsure"> unsure</label>
+    <select name="control_009_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_009_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_010</strong></div>
+  <video src="mp4_overlay/control_010.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_010" value="yes"> yes</label>
+    <label><input type="radio" name="control_010" value="no"> no</label>
+    <label><input type="radio" name="control_010" value="unsure"> unsure</label>
+    <select name="control_010_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_010_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_011</strong></div>
+  <video src="mp4_overlay/control_011.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_011" value="yes"> yes</label>
+    <label><input type="radio" name="control_011" value="no"> no</label>
+    <label><input type="radio" name="control_011" value="unsure"> unsure</label>
+    <select name="control_011_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_011_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_012</strong></div>
+  <video src="mp4_overlay/control_012.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_012" value="yes"> yes</label>
+    <label><input type="radio" name="control_012" value="no"> no</label>
+    <label><input type="radio" name="control_012" value="unsure"> unsure</label>
+    <select name="control_012_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_012_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_013</strong></div>
+  <video src="mp4_overlay/control_013.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_013" value="yes"> yes</label>
+    <label><input type="radio" name="control_013" value="no"> no</label>
+    <label><input type="radio" name="control_013" value="unsure"> unsure</label>
+    <select name="control_013_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_013_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_014</strong></div>
+  <video src="mp4_overlay/control_014.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_014" value="yes"> yes</label>
+    <label><input type="radio" name="control_014" value="no"> no</label>
+    <label><input type="radio" name="control_014" value="unsure"> unsure</label>
+    <select name="control_014_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_014_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_015</strong></div>
+  <video src="mp4_overlay/control_015.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_015" value="yes"> yes</label>
+    <label><input type="radio" name="control_015" value="no"> no</label>
+    <label><input type="radio" name="control_015" value="unsure"> unsure</label>
+    <select name="control_015_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_015_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_016</strong></div>
+  <video src="mp4_overlay/control_016.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_016" value="yes"> yes</label>
+    <label><input type="radio" name="control_016" value="no"> no</label>
+    <label><input type="radio" name="control_016" value="unsure"> unsure</label>
+    <select name="control_016_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_016_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_017</strong></div>
+  <video src="mp4_overlay/control_017.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_017" value="yes"> yes</label>
+    <label><input type="radio" name="control_017" value="no"> no</label>
+    <label><input type="radio" name="control_017" value="unsure"> unsure</label>
+    <select name="control_017_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_017_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_018</strong></div>
+  <video src="mp4_overlay/control_018.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_018" value="yes"> yes</label>
+    <label><input type="radio" name="control_018" value="no"> no</label>
+    <label><input type="radio" name="control_018" value="unsure"> unsure</label>
+    <select name="control_018_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_018_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_019</strong></div>
+  <video src="mp4_overlay/control_019.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_019" value="yes"> yes</label>
+    <label><input type="radio" name="control_019" value="no"> no</label>
+    <label><input type="radio" name="control_019" value="unsure"> unsure</label>
+    <select name="control_019_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_019_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_020</strong></div>
+  <video src="mp4_overlay/control_020.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_020" value="yes"> yes</label>
+    <label><input type="radio" name="control_020" value="no"> no</label>
+    <label><input type="radio" name="control_020" value="unsure"> unsure</label>
+    <select name="control_020_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_020_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_021</strong></div>
+  <video src="mp4_overlay/control_021.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_021" value="yes"> yes</label>
+    <label><input type="radio" name="control_021" value="no"> no</label>
+    <label><input type="radio" name="control_021" value="unsure"> unsure</label>
+    <select name="control_021_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_021_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_022</strong></div>
+  <video src="mp4_overlay/control_022.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_022" value="yes"> yes</label>
+    <label><input type="radio" name="control_022" value="no"> no</label>
+    <label><input type="radio" name="control_022" value="unsure"> unsure</label>
+    <select name="control_022_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_022_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_023</strong></div>
+  <video src="mp4_overlay/control_023.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_023" value="yes"> yes</label>
+    <label><input type="radio" name="control_023" value="no"> no</label>
+    <label><input type="radio" name="control_023" value="unsure"> unsure</label>
+    <select name="control_023_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_023_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_024</strong></div>
+  <video src="mp4_overlay/control_024.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_024" value="yes"> yes</label>
+    <label><input type="radio" name="control_024" value="no"> no</label>
+    <label><input type="radio" name="control_024" value="unsure"> unsure</label>
+    <select name="control_024_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_024_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_025</strong></div>
+  <video src="mp4_overlay/control_025.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_025" value="yes"> yes</label>
+    <label><input type="radio" name="control_025" value="no"> no</label>
+    <label><input type="radio" name="control_025" value="unsure"> unsure</label>
+    <select name="control_025_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_025_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_026</strong></div>
+  <video src="mp4_overlay/control_026.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_026" value="yes"> yes</label>
+    <label><input type="radio" name="control_026" value="no"> no</label>
+    <label><input type="radio" name="control_026" value="unsure"> unsure</label>
+    <select name="control_026_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_026_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_027</strong></div>
+  <video src="mp4_overlay/control_027.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_027" value="yes"> yes</label>
+    <label><input type="radio" name="control_027" value="no"> no</label>
+    <label><input type="radio" name="control_027" value="unsure"> unsure</label>
+    <select name="control_027_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_027_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_028</strong></div>
+  <video src="mp4_overlay/control_028.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_028" value="yes"> yes</label>
+    <label><input type="radio" name="control_028" value="no"> no</label>
+    <label><input type="radio" name="control_028" value="unsure"> unsure</label>
+    <select name="control_028_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_028_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_029</strong></div>
+  <video src="mp4_overlay/control_029.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_029" value="yes"> yes</label>
+    <label><input type="radio" name="control_029" value="no"> no</label>
+    <label><input type="radio" name="control_029" value="unsure"> unsure</label>
+    <select name="control_029_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_029_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_030</strong></div>
+  <video src="mp4_overlay/control_030.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_030" value="yes"> yes</label>
+    <label><input type="radio" name="control_030" value="no"> no</label>
+    <label><input type="radio" name="control_030" value="unsure"> unsure</label>
+    <select name="control_030_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_030_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_031</strong></div>
+  <video src="mp4_overlay/control_031.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_031" value="yes"> yes</label>
+    <label><input type="radio" name="control_031" value="no"> no</label>
+    <label><input type="radio" name="control_031" value="unsure"> unsure</label>
+    <select name="control_031_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_031_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_032</strong></div>
+  <video src="mp4_overlay/control_032.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_032" value="yes"> yes</label>
+    <label><input type="radio" name="control_032" value="no"> no</label>
+    <label><input type="radio" name="control_032" value="unsure"> unsure</label>
+    <select name="control_032_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_032_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_033</strong></div>
+  <video src="mp4_overlay/control_033.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_033" value="yes"> yes</label>
+    <label><input type="radio" name="control_033" value="no"> no</label>
+    <label><input type="radio" name="control_033" value="unsure"> unsure</label>
+    <select name="control_033_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_033_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_034</strong></div>
+  <video src="mp4_overlay/control_034.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_034" value="yes"> yes</label>
+    <label><input type="radio" name="control_034" value="no"> no</label>
+    <label><input type="radio" name="control_034" value="unsure"> unsure</label>
+    <select name="control_034_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_034_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_035</strong></div>
+  <video src="mp4_overlay/control_035.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_035" value="yes"> yes</label>
+    <label><input type="radio" name="control_035" value="no"> no</label>
+    <label><input type="radio" name="control_035" value="unsure"> unsure</label>
+    <select name="control_035_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_035_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_036</strong></div>
+  <video src="mp4_overlay/control_036.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_036" value="yes"> yes</label>
+    <label><input type="radio" name="control_036" value="no"> no</label>
+    <label><input type="radio" name="control_036" value="unsure"> unsure</label>
+    <select name="control_036_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_036_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_037</strong></div>
+  <video src="mp4_overlay/control_037.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_037" value="yes"> yes</label>
+    <label><input type="radio" name="control_037" value="no"> no</label>
+    <label><input type="radio" name="control_037" value="unsure"> unsure</label>
+    <select name="control_037_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_037_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_038</strong></div>
+  <video src="mp4_overlay/control_038.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_038" value="yes"> yes</label>
+    <label><input type="radio" name="control_038" value="no"> no</label>
+    <label><input type="radio" name="control_038" value="unsure"> unsure</label>
+    <select name="control_038_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_038_notes" placeholder="notes">
+  </div>
+</div>
+<div class="item">
+  <div class="meta"><strong>control_039</strong></div>
+  <video src="mp4_overlay/control_039.mp4" autoplay loop muted playsinline
+         style="width:520px;display:block"></video>
+  <div class="judge">
+    <label><input type="radio" name="control_039" value="yes"> yes</label>
+    <label><input type="radio" name="control_039" value="no"> no</label>
+    <label><input type="radio" name="control_039" value="unsure"> unsure</label>
+    <select name="control_039_ct">
+      <option value="">type…</option>
+      <option>rear_end</option><option>head_on</option>
+      <option>crossing</option><option>side_swipe</option><option>other</option>
+    </select>
+    <input type="text" name="control_039_notes" placeholder="notes">
+  </div>
+</div>
+<div id="ctr">0 / 80</div>
+<button id="dl" onclick="saveCSV()">Download CSV</button>
+<script>
+function up() {
+  const items = document.querySelectorAll('.item');
+  let n = 0;
+  items.forEach(it => {
+    const id = it.querySelector('strong').textContent.trim();
+    if (document.querySelector(`input[name="${id}"]:checked`)) n++;
+  });
+  document.getElementById('ctr').textContent = `${n} / ${items.length}`;
+}
+document.addEventListener('change', up);
+function saveCSV() {
+  const items = document.querySelectorAll('.item');
+  let csv = 'item_id,judged_event,conflict_type,notes\n';
+  items.forEach(it => {
+    const id = it.querySelector('strong').textContent.trim();
+    const v = document.querySelector(`input[name="${id}"]:checked`);
+    const ct = document.querySelector(`select[name="${id}_ct"]`).value;
+    const nt = document.querySelector(`input[name="${id}_notes"]`).value.replace(/,/g,';');
+    csv += `${id},${v?v.value:''},${ct},${nt}\n`;
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+  a.download = 'workbook_annotator_A.csv';
+  a.click();
+}
+</script></body></html>

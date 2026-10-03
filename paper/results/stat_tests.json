@@ -1,0 +1,67 @@
+{
+  "pet_mwu": {
+    "U": 2318.0,
+    "p": 0.3223478726713571,
+    "rank_biserial": 0.10880430603614,
+    "n_giti": 153,
+    "n_mrc": 34
+  },
+  "pet_ks": {
+    "statistic": 0.16339869281045752,
+    "p": 0.4094093174425434
+  },
+  "pet_median_diff_ci": {
+    "point": -0.03332515708183048,
+    "lo": -0.8664494261605193,
+    "hi": 0.36657449746564913
+  },
+  "pet_mean_diff_ci": {
+    "point": -0.1405967175726146,
+    "lo": -0.47714352588727793,
+    "hi": 0.19527762362330062
+  },
+  "severity_chi2": {
+    "chi2": 1.6611369694076465,
+    "p": 0.4358014694188821,
+    "dof": 2,
+    "table": {
+      "GITI": {
+        "critical": 49,
+        "moderate": 80,
+        "serious": 24
+      },
+      "MRC": {
+        "critical": 8,
+        "moderate": 18,
+        "serious": 8
+      }
+    }
+  },
+  "conflict_type_chi2": {
+    "chi2": 24.202220639826756,
+    "p": 7.275497014858334e-05,
+    "dof": 4,
+    "table": {
+      "GITI": {
+        "crossing": 30,
+        "head_on": 32,
+        "other": 53,
+        "rear_end": 4,
+        "side_swipe": 34
+      },
+      "MRC": {
+        "crossing": 1,
+        "head_on": 1,
+        "other": 25,
+        "rear_end": 3,
+        "side_swipe": 4
+      }
+    }
+  },
+  "power": {
+    "cohens_d": -0.16592581032256448,
+    "power_approx": 0.14129068718032303,
+    "n1": 153,
+    "n2": 34
+  }
+}
