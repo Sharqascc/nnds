@@ -78,15 +78,11 @@ def _event_participation(screened: pd.DataFrame) -> dict:
         "tracks_in_2_3_events": int(((vals >= 2) & (vals <= 3)).sum()),
         "tracks_in_4_10_events": int(((vals >= 4) & (vals <= 10)).sum()),
         "tracks_in_gt10_events": int((vals > 10).sum()),
-        "top_5_hub_tracks": [
-            {"track_id": int(t), "n_events": int(n)} for t, n in top
-        ],
+        "top_5_hub_tracks": [{"track_id": int(t), "n_events": int(n)} for t, n in top],
     }
 
 
-def _jump_stats_by_verdict(
-    labels: pd.DataFrame, mapping: pd.DataFrame, jump: pd.DataFrame
-) -> dict:
+def _jump_stats_by_verdict(labels: pd.DataFrame, mapping: pd.DataFrame, jump: pd.DataFrame) -> dict:
     m = labels.merge(mapping, left_on="idx", right_on="label_idx")
     m = m.merge(jump, left_on="label_idx", right_on="event_idx")
     out: dict = {}

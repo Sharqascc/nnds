@@ -1,4 +1,5 @@
 """Runtime test for paper.analysis.tracker_health."""
+
 from __future__ import annotations
 
 import json
