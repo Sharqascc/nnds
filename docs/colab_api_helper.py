@@ -29,7 +29,8 @@ def _api(token: str, method: str, path: str, body=None):
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(
         f"https://api.github.com{path}",
-        data=data, method=method,
+        data=data,
+        method=method,
         headers={
             "Authorization": f"Bearer {token}",
             "Accept": "application/vnd.github+json",
@@ -44,7 +45,13 @@ def _api(token: str, method: str, path: str, body=None):
         return {"_http_error": e.code, "_body": e.read().decode()[:400]}
 
 
-def put_file(token: str, path: str, content: str, message: str, branch: str = BRANCH) -> dict:
+def put_file(
+    token: str,
+    path: str,
+    content: str,
+    message: str,
+    branch: str = BRANCH,
+) -> dict:
     existing = _api(token, "GET", f"/repos/{REPO}/contents/{path}?ref={branch}")
     body = {
         "message": message,
@@ -56,18 +63,33 @@ def put_file(token: str, path: str, content: str, message: str, branch: str = BR
     return _api(token, "PUT", f"/repos/{REPO}/contents/{path}", body)
 
 
-def trigger_workflow(token: str, workflow_file: str, inputs: dict, branch: str = BRANCH) -> dict:
+def trigger_workflow(
+    token: str,
+    workflow_file: str,
+    inputs: dict,
+    branch: str = BRANCH,
+) -> dict:
     return _api(
-        token, "POST",
+        token,
+        "POST",
         f"/repos/{REPO}/actions/workflows/{workflow_file}/dispatches",
         {"ref": branch, "inputs": inputs},
     )
 
 
-def wait_for_run(token: str, commit_sha: str, workflow_name: str, timeout_s: int = 900) -> dict:
+def wait_for_run(
+    token: str,
+    commit_sha: str,
+    workflow_name: str,
+    timeout_s: int = 900,
+) -> dict:
     deadline = time.time() + timeout_s
     while time.time() < deadline:
-        runs = _api(token, "GET", f"/repos/{REPO}/actions/runs?branch={BRANCH}&per_page=20")
+        runs = _api(
+            token,
+            "GET",
+            f"/repos/{REPO}/actions/runs?branch={BRANCH}&per_page=20",
+        )
         for r in runs.get("workflow_runs", []):
             if r["head_sha"] == commit_sha and r["name"] == workflow_name:
                 if r["status"] == "completed":
