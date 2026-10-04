@@ -5,7 +5,9 @@ Reproduces paper/results/stat_tests.json from outputs/*_screened_with_gates.csv.
 Run:
     python -m paper.analysis.statistical_tests
 """
+
 from __future__ import annotations
+
 import json
 from pathlib import Path
 
@@ -38,9 +40,11 @@ def mwu_and_ks(a: np.ndarray, b: np.ndarray) -> dict:
     ks, p_ks = stats.ks_2samp(a, b)
     return {
         "pet_mwu": {
-            "U": float(u), "p": float(p_u),
+            "U": float(u),
+            "p": float(p_u),
             "rank_biserial": float(rank_biserial),
-            "n_giti": n1, "n_mrc": n2,
+            "n_giti": n1,
+            "n_mrc": n2,
         },
         "pet_ks": {"statistic": float(ks), "p": float(p_ks)},
     }
@@ -80,7 +84,9 @@ def severity_test(a: np.ndarray, b: np.ndarray) -> dict:
     chi2, p, dof, _ = stats.chi2_contingency(ct.values)
     return {
         "severity_chi2": {
-            "chi2": float(chi2), "p": float(p), "dof": int(dof),
+            "chi2": float(chi2),
+            "p": float(p),
+            "dof": int(dof),
             "table": ct.to_dict(),
         }
     }
@@ -94,7 +100,9 @@ def conflict_type_test(giti: pd.DataFrame, mrc: pd.DataFrame) -> dict:
     chi2, p, dof, _ = stats.chi2_contingency(ct.values)
     return {
         "conflict_type_chi2": {
-            "chi2": float(chi2), "p": float(p), "dof": int(dof),
+            "chi2": float(chi2),
+            "p": float(p),
+            "dof": int(dof),
             "table": ct.to_dict(),
         }
     }
@@ -103,16 +111,13 @@ def conflict_type_test(giti: pd.DataFrame, mrc: pd.DataFrame) -> dict:
 def post_hoc_power(a: np.ndarray, b: np.ndarray) -> dict:
     n1, n2 = len(a), len(b)
     pooled_sd = np.sqrt(
-        ((n1 - 1) * a.std(ddof=1) ** 2 + (n2 - 1) * b.std(ddof=1) ** 2)
-        / (n1 + n2 - 2)
+        ((n1 - 1) * a.std(ddof=1) ** 2 + (n2 - 1) * b.std(ddof=1) ** 2) / (n1 + n2 - 2)
     )
     d_cohen = (a.mean() - b.mean()) / pooled_sd
     ncp = abs(d_cohen) * np.sqrt(n1 * n2 / (n1 + n2))
     z_alpha = norm.ppf(1 - 0.05 / 2)
     power = 1 - norm.cdf(z_alpha - ncp) + norm.cdf(-z_alpha - ncp)
-    return {"power": {"cohens_d": float(d_cohen),
-                       "power_approx": float(power),
-                       "n1": n1, "n2": n2}}
+    return {"power": {"cohens_d": float(d_cohen), "power_approx": float(power), "n1": n1, "n2": n2}}
 
 
 def main() -> dict:

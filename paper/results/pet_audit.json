@@ -7,20 +7,11 @@
   "resolution_rule": "PET < 0.10 s = fewer than 3 frames at 30 fps; not reliably measurable",
   "matched_genuine": 30,
   "matched_spurious": 73,
-  "precision_measurable": 0.2913,
-  "precision_measurable_ci95": [
-    0.206,
-    0.389
-  ],
+  "precision_measurable": 0.2912621359223301,
   "unmatched_genuine": 8,
   "unmatched_spurious": 3,
-  "precision_all_candidates": 0.2632,
-  "precision_all_candidates_ci95": [
-    0.185,
-    0.353
-  ],
-  "subresolution_detection_rate": 0.7273,
-  "subresolution_note": "8 of 11 sub-resolution events were confirmed as genuine conflicts. The pipeline detects these but cannot report their PET accurately because they fall below the tracker's temporal resolution. This is a measurement floor, not a false-positive class.",
+  "precision_all_candidates": 0.2631578947368421,
+  "subresolution_note": "8 of 11 sub-resolution events were confirmed as genuine conflicts. The pipeline detects these but cannot report their PET accurately. This is a measurement floor, not a false-positive class.",
   "selection_rule": "The 114 audited events were the first 114 rows of giti_screened.csv in original (pre-screen) order. After the later PET < 0.10 s screen, 103 remain and map monotonically to current rows 1..152. This is a consecutive temporal window, not a random sample.",
-  "selection_rule_limitation": "The audited 114 events are a consecutive block, not a random sample. They likely cover an early portion of the video rather than the full recording. Precision on this block may differ from precision on the remaining 50 events. A random re-sample of the remaining events is required to test for sampling bias and is proposed as future work."
+  "selection_rule_limitation": "The audited 114 events are a consecutive block, not a random sample. They likely cover an early portion of the video rather than the full recording. Precision on this block may differ from precision on the remaining 50 events. A random re-sample is required to test for sampling bias and is proposed as future work."
 }
