@@ -1,90 +1,26 @@
 {
   "source": "data/reviews/ssm_review_114/to_label.csv",
-  "labels_total": 114,
-  "labels_dropped_pet_below_010": 11,
-  "labels_evaluated": 103,
-  "genuine": 30,
-  "spurious": 73,
-  "candidate_precision": 0.2912621359223301,
-  "sensitivity_all_114_precision": 0.3333333333333333,
-  "excluded_reason": "PET < 0.10 s (<3 frames at 30 fps) \u2014 below temporal resolution",
-  "excluded_events": [
-    {
-      "idx": 7,
-      "track_a": 52000,
-      "track_b": 7000,
-      "pet": 0.066649936490655,
-      "verdict": "Y"
-    },
-    {
-      "idx": 25,
-      "track_a": 49002,
-      "track_b": 17000,
-      "pet": 0.066649936490655,
-      "verdict": "N"
-    },
-    {
-      "idx": 26,
-      "track_a": 17000,
-      "track_b": 49003,
-      "pet": 0.0333249682453275,
-      "verdict": "Y"
-    },
-    {
-      "idx": 38,
-      "track_a": 22000,
-      "track_b": 65006,
-      "pet": 0.0333249682453275,
-      "verdict": "Y"
-    },
-    {
-      "idx": 47,
-      "track_a": 24000,
-      "track_b": 94000,
-      "pet": 0.0333249682453275,
-      "verdict": "Y"
-    },
-    {
-      "idx": 52,
-      "track_a": 46002,
-      "track_b": 25000,
-      "pet": 0.0999749047359825,
-      "verdict": "N"
-    },
-    {
-      "idx": 57,
-      "track_a": 26000,
-      "track_b": 59002,
-      "pet": 0.0333249682453275,
-      "verdict": "N"
-    },
-    {
-      "idx": 63,
-      "track_a": 29000,
-      "track_b": 91000,
-      "pet": 0.066649936490655,
-      "verdict": "Y"
-    },
-    {
-      "idx": 78,
-      "track_a": 41000,
-      "track_b": 92003,
-      "pet": 0.0999749047359825,
-      "verdict": "Y"
-    },
-    {
-      "idx": 102,
-      "track_a": 60000,
-      "track_b": 92003,
-      "pet": 0.0333249682453275,
-      "verdict": "Y"
-    },
-    {
-      "idx": 113,
-      "track_a": 102000,
-      "track_b": 103000,
-      "pet": 0.066649936490655,
-      "verdict": "Y"
-    }
-  ]
+  "n_audited_total": 114,
+  "n_measurable": 103,
+  "n_subresolution": 11,
+  "pet_resolution_threshold_s": 0.1,
+  "resolution_rule": "PET < 0.10 s = fewer than 3 frames at 30 fps; not reliably measurable",
+  "matched_genuine": 30,
+  "matched_spurious": 73,
+  "precision_measurable": 0.2913,
+  "precision_measurable_ci95": [
+    0.206,
+    0.389
+  ],
+  "unmatched_genuine": 8,
+  "unmatched_spurious": 3,
+  "precision_all_candidates": 0.2632,
+  "precision_all_candidates_ci95": [
+    0.185,
+    0.353
+  ],
+  "subresolution_detection_rate": 0.7273,
+  "subresolution_note": "8 of 11 sub-resolution events were confirmed as genuine conflicts. The pipeline detects these but cannot report their PET accurately because they fall below the tracker's temporal resolution. This is a measurement floor, not a false-positive class.",
+  "selection_rule": "The 114 audited events were the first 114 rows of giti_screened.csv in original (pre-screen) order. After the later PET < 0.10 s screen, 103 remain and map monotonically to current rows 1..152. This is a consecutive temporal window, not a random sample.",
+  "selection_rule_limitation": "The audited 114 events are a consecutive block, not a random sample. They likely cover an early portion of the video rather than the full recording. Precision on this block may differ from precision on the remaining 50 events. A random re-sample of the remaining events is required to test for sampling bias and is proposed as future work."
 }
