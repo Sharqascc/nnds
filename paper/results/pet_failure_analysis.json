@@ -1,0 +1,27 @@
+{
+  "pet_candidate_audit": {
+    "labels_source": "data/reviews/ssm_review_114/to_label.csv",
+    "n_labeled": 114,
+    "dropped_pet_below_010s": 11,
+    "n_evaluated": 103,
+    "genuine": 30,
+    "spurious": 73,
+    "candidate_precision": 0.2913
+  },
+  "hub_track_analysis": {
+    "hypothesis": "stationary tracks dominate false positives",
+    "result": "rejected \u2014 top hub tracks move 3-11 m in world space",
+    "conclusion": "false positives come from legitimate moving tracks                        paired by fine-grained grid overlap, not stationary objects"
+  },
+  "grid_config": {
+    "cell_size_pixels": 25,
+    "cell_size_world_m": 0.396,
+    "pet_window_s": 3.0,
+    "note": "0.4 m cells are ~1/10 the size of a vehicle; two vehicles                  in adjacent lanes will share many cells over 3 s"
+  },
+  "documented_failure_modes": [
+    "fine-grained cells produce geometric near-misses, not semantic conflicts",
+    "55 degree heading gate is anti-signal (MCC -0.106, from findings.md)",
+    "kinematic post-filter reaches MCC +0.367 (from findings.md)"
+  ]
+}
