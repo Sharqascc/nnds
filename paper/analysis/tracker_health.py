@@ -95,7 +95,7 @@ def _jump_stats_by_verdict(
         if len(sub) == 0:
             continue
         out[v] = {
-            "n": int(len(sub)),
+            "n": len(sub),
             "max_p95_median": float(sub.max_p95.median()),
             "max_p99_median": float(sub.max_p99.median()),
             "max_frac_median": float(sub.max_frac.median()),
