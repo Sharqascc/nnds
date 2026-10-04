@@ -1,0 +1,54 @@
+name: Paper Annotation
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/paper-annotation.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Pull LFS objects
+        run: git lfs pull
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install scikit-learn Pillow
+
+      - name: Verify LFS videos are real
+        run: |
+          ls -lh data/sample_data/GITI_traffic_video.mp4
+          test $(stat -c%s data/sample_data/GITI_traffic_video.mp4) -gt 1000000
+
+      - name: Extract FP list
+        run: python -m paper.analysis.extract_fp_list
+
+      - name: Build FP overlay clips
+        run: python -m paper.analysis.build_fp_clips
+
+      - name: Generate taxonomy HTML
+        run: python -m paper.analysis.generate_fp_taxonomy
+
+      - name: Bundle for download
+        run: |
+          cd paper/annotations
+          zip -q -r fp_taxonomy_bundle.zip fp_taxonomy.html fp_overlay
+
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: fp-taxonomy-bundle
+          path: paper/annotations/fp_taxonomy_bundle.zip
+          retention-days: 30
