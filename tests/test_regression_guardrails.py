@@ -14,8 +14,7 @@ import pytest
 REPO = Path(__file__).resolve().parents[1]
 BEV_CFG = REPO / "configs" / "bev_config.json"
 GRID_CFG = REPO / "configs" / "GITI_grid_config.json"
-GRID_PET_SRC = (REPO / "src" / "analysis" / "grid_trajectory"
-                / "uvh_coco_fused_grid_pet.py")
+GRID_PET_SRC = REPO / "src" / "analysis" / "grid_trajectory" / "uvh_coco_fused_grid_pet.py"
 RAW_CSV = REPO / "outputs" / "giti_raw.csv"
 FROZEN_SUMMARY = REPO / "outputs" / "final_screened_summary.json"
 

@@ -13,11 +13,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[1]
-MODULES = sorted(
-    p.stem
-    for p in (REPO / "paper" / "analysis").glob("*.py")
-    if p.stem != "__init__"
-)
+MODULES = sorted(p.stem for p in (REPO / "paper" / "analysis").glob("*.py") if p.stem != "__init__")
 
 
 def test_modules_discovered():
