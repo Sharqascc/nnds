@@ -64,9 +64,15 @@ def _metrics(td: dict) -> dict:
     frames = sorted(td)
     n = len(frames)
     if n < 2:
-        return {"length": n, "gap_rate": 0.0, "gap_bucket": "n/a",
-                "speed_mean": 0.0, "speed_max": 0.0,
-                "heading_jitter_rate": 0.0, "net_disp": 0.0}
+        return {
+            "length": n,
+            "gap_rate": 0.0,
+            "gap_bucket": "n/a",
+            "speed_mean": 0.0,
+            "speed_max": 0.0,
+            "heading_jitter_rate": 0.0,
+            "net_disp": 0.0,
+        }
     span = frames[-1] - frames[0] + 1
     gaps = [frames[i] - frames[i - 1] - 1 for i in range(1, len(frames))]
     max_gap = max(gaps) if gaps else 0
@@ -102,14 +108,19 @@ def _metrics(td: dict) -> dict:
     else:
         jitter_rate = 0.0
 
-    net_disp = float(np.hypot(td[frames[-1]][2] - td[frames[0]][2],
-                              td[frames[-1]][3] - td[frames[0]][3]))
+    net_disp = float(
+        np.hypot(td[frames[-1]][2] - td[frames[0]][2], td[frames[-1]][3] - td[frames[0]][3])
+    )
     speeds_arr = np.array(speeds) if speeds else np.array([0.0])
-    return {"length": n, "gap_rate": float(gap_rate), "gap_bucket": bucket,
-            "speed_mean": float(speeds_arr.mean()),
-            "speed_max": float(speeds_arr.max()),
-            "heading_jitter_rate": jitter_rate,
-            "net_disp": net_disp}
+    return {
+        "length": n,
+        "gap_rate": float(gap_rate),
+        "gap_bucket": bucket,
+        "speed_mean": float(speeds_arr.mean()),
+        "speed_max": float(speeds_arr.max()),
+        "heading_jitter_rate": jitter_rate,
+        "net_disp": net_disp,
+    }
 
 
 def _quality(m: dict) -> float:
@@ -172,8 +183,12 @@ def main() -> Path:
         "n_events_scored": len(y),
         "n_positive_events": int(y_arr.sum()),
         "quality_auc_vs_verdict": auc,
-        "quality_mean_Y": float(np.array(event_q)[y_arr == 1].mean()) if (y_arr == 1).any() else 0.0,
-        "quality_mean_N": float(np.array(event_q)[y_arr == 0].mean()) if (y_arr == 0).any() else 0.0,
+        "quality_mean_Y": float(np.array(event_q)[y_arr == 1].mean())
+        if (y_arr == 1).any()
+        else 0.0,
+        "quality_mean_N": float(np.array(event_q)[y_arr == 0].mean())
+        if (y_arr == 0).any()
+        else 0.0,
         "heading_jitter_median": float(np.median(jitter_vals)),
         "heading_jitter_p90": float(np.percentile(jitter_vals, 90)),
         "gap_buckets": gap_buckets,
