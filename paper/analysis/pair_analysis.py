@@ -78,18 +78,18 @@ def _net_disp(td: dict) -> float:
     frames = sorted(td)
     if len(frames) < 2:
         return 0.0
-    return float(np.hypot(td[frames[-1]][0] - td[frames[0]][0],
-                          td[frames[-1]][1] - td[frames[0]][1]))
+    return float(
+        np.hypot(td[frames[-1]][0] - td[frames[0]][0], td[frames[-1]][1] - td[frames[0]][1])
+    )
 
 
 def _event_features(ta: dict, tb: dict) -> dict:
     common = sorted(set(ta) & set(tb))
     n_common = len(common)
     if n_common > 0:
-        dists = np.array([
-            float(np.hypot(ta[f][0] - tb[f][0], ta[f][1] - tb[f][1]))
-            for f in common
-        ])
+        dists = np.array(
+            [float(np.hypot(ta[f][0] - tb[f][0], ta[f][1] - tb[f][1])) for f in common]
+        )
         min_common = float(dists.min())
         frac_under_2 = float((dists < 2.0).mean())
         frac_under_5 = float((dists < 5.0).mean())
@@ -136,10 +136,8 @@ def _event_features(ta: dict, tb: dict) -> dict:
         "gap_rate_b": _gap_rate(tb),
         "net_disp_a_m": _net_disp(ta),
         "net_disp_b_m": _net_disp(tb),
-        "both_stationary": int(spd_a_mean < STATIONARY_MPS
-                                and spd_b_mean < STATIONARY_MPS),
-        "one_stationary": int((spd_a_mean < STATIONARY_MPS)
-                              != (spd_b_mean < STATIONARY_MPS)),
+        "both_stationary": int(spd_a_mean < STATIONARY_MPS and spd_b_mean < STATIONARY_MPS),
+        "one_stationary": int((spd_a_mean < STATIONARY_MPS) != (spd_b_mean < STATIONARY_MPS)),
     }
 
 
@@ -185,10 +183,7 @@ def main() -> Path:
     df = pd.DataFrame(features)
     y = np.array([1 if v == "Y" else 0 for v in verdicts])
 
-    numeric_cols = [
-        c for c in df.columns
-        if c != "event_idx" and df[c].dtype.kind in "fiu"
-    ]
+    numeric_cols = [c for c in df.columns if c != "event_idx" and df[c].dtype.kind in "fiu"]
 
     auc_rows = []
     fisher_rows = []
@@ -198,22 +193,25 @@ def main() -> Path:
             a = float(roc_auc_score(y, vals))
         except ValueError:
             a = 0.5
-        auc_rows.append({
-            "feature": c,
-            "auc": a,
-            "separation": max(a, 1.0 - a),
-        })
-        fisher_rows.append({
-            "feature": c,
-            "fisher_log": _fisher_ratio(vals, y),
-        })
+        auc_rows.append(
+            {
+                "feature": c,
+                "auc": a,
+                "separation": max(a, 1.0 - a),
+            }
+        )
+        fisher_rows.append(
+            {
+                "feature": c,
+                "fisher_log": _fisher_ratio(vals, y),
+            }
+        )
 
     auc_rows.sort(key=lambda x: -x["separation"])
     fisher_rows.sort(key=lambda x: -x["fisher_log"])
 
     mask_fp = y == 0
-    fp_features = df.loc[mask_fp, numeric_cols].replace(
-        [np.inf, -np.inf], np.nan).fillna(0.0)
+    fp_features = df.loc[mask_fp, numeric_cols].replace([np.inf, -np.inf], np.nan).fillna(0.0)
     fp_idx = df.loc[mask_fp, "event_idx"].tolist()
 
     clusters = []
@@ -233,26 +231,28 @@ def main() -> Path:
                 sd = fp_features.values.std(axis=0) + 1e-9
                 z = (means - fp_features.values.mean(axis=0)) / sd
                 top = np.argsort(-np.abs(z))[:5]
-                profile.append({
-                    "cluster": ci,
-                    "size": n,
-                    "top_features": [
-                        {
-                            "feature": numeric_cols[int(t)],
-                            "mean_in_cluster": float(means[int(t)]),
-                            "z_vs_all_fp": float(z[int(t)]),
-                        }
-                        for t in top
-                    ],
-                    "member_event_idx": [
-                        int(e) for e in np.array(fp_idx)[idxs][:30]
-                    ],
-                })
-            clusters.append({
-                "k": k,
-                "inertia": float(km.inertia_),
-                "profiles": profile,
-            })
+                profile.append(
+                    {
+                        "cluster": ci,
+                        "size": n,
+                        "top_features": [
+                            {
+                                "feature": numeric_cols[int(t)],
+                                "mean_in_cluster": float(means[int(t)]),
+                                "z_vs_all_fp": float(z[int(t)]),
+                            }
+                            for t in top
+                        ],
+                        "member_event_idx": [int(e) for e in np.array(fp_idx)[idxs][:30]],
+                    }
+                )
+            clusters.append(
+                {
+                    "k": k,
+                    "inertia": float(km.inertia_),
+                    "profiles": profile,
+                }
+            )
 
     out = {
         "n_events": len(df),
