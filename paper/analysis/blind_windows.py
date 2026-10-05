@@ -52,8 +52,11 @@ def _forbidden_frames(screened: pd.DataFrame) -> set:
 
 def _sample_windows(forbidden: set) -> list:
     rng = np.random.default_rng(SEED)
-    allowed = [f for f in range(0, TOTAL_FRAMES - WINDOW_FRAMES)
-               if f not in forbidden and (f + WINDOW_FRAMES) not in forbidden]
+    allowed = [
+        f
+        for f in range(0, TOTAL_FRAMES - WINDOW_FRAMES)
+        if f not in forbidden and (f + WINDOW_FRAMES) not in forbidden
+    ]
     if len(allowed) < N_WINDOWS:
         raise RuntimeError(f"not enough allowed frames: {len(allowed)}")
     rng.shuffle(allowed)
@@ -69,9 +72,8 @@ def _sample_windows(forbidden: set) -> list:
         taken |= window
     if len(starts) < N_WINDOWS:
         extra = rng.choice(
-            [a for a in allowed if a not in starts],
-            size=N_WINDOWS - len(starts),
-            replace=False)
+            [a for a in allowed if a not in starts], size=N_WINDOWS - len(starts), replace=False
+        )
         starts.extend(int(x) for x in extra)
     return sorted(starts)
 
@@ -80,9 +82,11 @@ def _build_clip(start: int, idx: int) -> Path:
     dur = WINDOW_FRAMES / FPS
     out = OUT_DIR / f"blind_{idx:03d}.mp4"
     subprocess.run(
-        f"ffmpeg -y -loglevel error -ss {start/FPS:.3f} -i {VIDEO} "
+        f"ffmpeg -y -loglevel error -ss {start / FPS:.3f} -i {VIDEO} "
         f"-t {dur:.3f} -c:v libx264 -preset veryfast -crf 23 -an {out}",
-        shell=True, check=False)
+        shell=True,
+        check=False,
+    )
     return out
 
 
@@ -145,16 +149,16 @@ def _make_html(rows: list) -> str:
         cid = r["clip_id"]
         parts.append(
             f'<div class="item" data-id="{cid}" data-start="{r["start_frame"]}">'
-            f'<div><b>{cid}</b>  (start frame {r["start_frame"]})</div>'
+            f"<div><b>{cid}</b>  (start frame {r['start_frame']})</div>"
             f'<video src="blind_windows/{cid}.mp4" autoplay loop muted playsinline></video>'
-            f'<div>'
+            f"<div>"
             f'<label><input type="radio" name="{cid}" value="yes"> yes</label>'
             f'<label><input type="radio" name="{cid}" value="no"> no</label>'
             f'<label><input type="radio" name="{cid}" value="unsure"> unsure</label>'
             f'PET (s): <input type="number" name="{cid}_pet" min="0" max="5" step="0.1">'
-            f'</div>'
+            f"</div>"
             f'<div>notes: <input type="text" name="{cid}_notes" placeholder="optional"></div>'
-            f'</div>'
+            f"</div>"
         )
     return HTML_TEMPLATE.format(rows="\n".join(parts), n=len(rows))
 
@@ -173,14 +177,19 @@ def main() -> Path:
         if clip.exists():
             rows.append({"clip_id": f"blind_{i:03d}", "start_frame": s})
     HTML_OUT.write_text(_make_html(rows))
-    (OUT_DIR / "manifest.json").write_text(json.dumps({
-        "n_windows": len(rows),
-        "window_frames": WINDOW_FRAMES,
-        "fps": FPS,
-        "seed": SEED,
-        "event_pad_frames": EVENT_PAD_FRAMES,
-        "clips": rows,
-    }, indent=2))
+    (OUT_DIR / "manifest.json").write_text(
+        json.dumps(
+            {
+                "n_windows": len(rows),
+                "window_frames": WINDOW_FRAMES,
+                "fps": FPS,
+                "seed": SEED,
+                "event_pad_frames": EVENT_PAD_FRAMES,
+                "clips": rows,
+            },
+            indent=2,
+        )
+    )
     return HTML_OUT
 
 
