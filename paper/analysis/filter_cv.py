@@ -151,7 +151,7 @@ def main() -> Path:
             "max_pet_s": MAX_PET_S,
             "note": "pre-specified, not tuned on this data",
         },
-        "n_events": int(len(df)),
+        "n_events": len(df),
         "n_positive": int((y_true == 1).sum()),
         "baseline_all_kept": baseline,
         "filtered_all_events": filtered,
