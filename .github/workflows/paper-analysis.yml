@@ -1,0 +1,58 @@
+name: Paper Analysis
+
+on:
+  workflow_dispatch:
+    inputs:
+      module:
+        description: "paper.analysis module to run"
+        required: true
+        default: "tracking_diagnostics"
+        type: string
+      keep_days:
+        description: "Artifact retention days"
+        required: false
+        default: "14"
+        type: string
+  push:
+    paths:
+      - "paper/analysis/**"
+      - ".github/workflows/paper-analysis.yml"
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install scikit-learn Pillow
+      - name: Determine module
+        id: pick
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "module=${{ inputs.module }}" >> "$GITHUB_OUTPUT"
+            echo "keep=${{ inputs.keep_days }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "module=tracking_diagnostics" >> "$GITHUB_OUTPUT"
+            echo "keep=14" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Run module
+        run: python -m paper.analysis.${{ steps.pick.outputs.module }}
+      - name: Upload outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-results-${{ steps.pick.outputs.module }}
+          path: |
+            paper/results/*.json
+            paper/results/*.md
+            paper/results/*.png
+          retention-days: ${{ steps.pick.outputs.keep }}
