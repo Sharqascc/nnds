@@ -21,13 +21,18 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
           pip install scikit-learn Pillow
 
-      - name: Verify LFS videos are real
+      - name: Verify LFS video
         run: |
           ls -lh data/sample_data/GITI_traffic_video.mp4
           test $(stat -c%s data/sample_data/GITI_traffic_video.mp4) -gt 1000000
@@ -38,6 +43,15 @@ jobs:
       - name: Build FP overlay clips
         run: python -m paper.analysis.build_fp_clips
 
+      - name: Assert exactly 73 clips built
+        run: |
+          n=$(ls paper/annotations/fp_overlay/*.mp4 2>/dev/null | wc -l)
+          echo "clips built: $n"
+          if [ "$n" -ne 73 ]; then
+            echo "::error::expected 73 clips, got $n"
+            exit 1
+          fi
+
       - name: Generate taxonomy HTML
         run: python -m paper.analysis.generate_fp_taxonomy
 
@@ -45,6 +59,7 @@ jobs:
         run: |
           cd paper/annotations
           zip -q -r fp_taxonomy_bundle.zip fp_taxonomy.html fp_overlay
+          ls -lh fp_taxonomy_bundle.zip
 
       - name: Upload bundle
         uses: actions/upload-artifact@v4
