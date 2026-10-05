@@ -158,7 +158,7 @@ def main() -> Path:
     labels = pd.read_csv(LABELS)
     mapping = pd.read_csv(MAPPING)
 
-    idx_to_verdict = dict(zip(labels.idx, labels.verdict))
+    idx_to_verdict = dict(zip(labels.idx, labels.verdict, strict=True))
     giti_to_label = {}
     for _, row in mapping.iterrows():
         giti_to_label[int(row.giti_idx)] = int(row.label_idx)
