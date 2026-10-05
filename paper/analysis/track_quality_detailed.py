@@ -179,9 +179,7 @@ def main() -> Path:
         "Y": int((clean["verdict"] == "Y").sum()),
         "N": int((clean["verdict"] == "N").sum()),
     }
-    clean_stats["precision"] = (
-        clean_stats["Y"] / clean_stats["n"] if clean_stats["n"] else 0.0
-    )
+    clean_stats["precision"] = clean_stats["Y"] / clean_stats["n"] if clean_stats["n"] else 0.0
 
     out = {
         "n_tracks": len(per_track),
