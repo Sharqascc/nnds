@@ -123,10 +123,14 @@ def _merge_score(a: dict, b: dict) -> dict:
     if heading_delta > MAX_HEADING_DELTA_DEG:
         return None
     score = (
-        1.0 - gap_frames / MAX_GAP_FRAMES
-        + 1.0 - space_gap / MAX_GAP_M
-        + 1.0 - speed_delta / MAX_SPEED_DELTA_MPS
-        + 1.0 - heading_delta / MAX_HEADING_DELTA_DEG
+        1.0
+        - gap_frames / MAX_GAP_FRAMES
+        + 1.0
+        - space_gap / MAX_GAP_M
+        + 1.0
+        - speed_delta / MAX_SPEED_DELTA_MPS
+        + 1.0
+        - heading_delta / MAX_HEADING_DELTA_DEG
     ) / 4.0
     return {
         "gap_frames": int(gap_frames),
@@ -178,8 +182,7 @@ def main() -> Path:
     summaries = {tid: _track_summary(td) for tid, td in tracks.items()}
     valid_summaries = {tid: s for tid, s in summaries.items() if s is not None}
 
-    short_before = [tid for tid, s in valid_summaries.items()
-                    if s["length"] <= SHORT_TRACK_FRAMES]
+    short_before = [tid for tid, s in valid_summaries.items() if s["length"] <= SHORT_TRACK_FRAMES]
 
     cands = _find_candidates(valid_summaries)
     chains, merge_map = _greedy_chains(cands)
@@ -188,8 +191,7 @@ def main() -> Path:
     for tid, s in valid_summaries.items():
         root = merge_map.get(tid, tid)
         merged_lengths[root] = merged_lengths.get(root, 0) + s["length"]
-    short_after = [root for root, L in merged_lengths.items()
-                   if L <= SHORT_TRACK_FRAMES]
+    short_after = [root for root, L in merged_lengths.items() if L <= SHORT_TRACK_FRAMES]
 
     screened = pd.read_csv(SCREENED)
     labels = pd.read_csv(LABELS)
@@ -206,21 +208,23 @@ def main() -> Path:
     for _, r in labels.iterrows():
         if r.idx not in valid_idx:
             continue
-        match = screened[screened.index == int(
-            mapping.loc[mapping.label_idx == r.idx, "giti_idx"].iloc[0]
-        )]
+        match = screened[
+            screened.index == int(mapping.loc[mapping.label_idx == r.idx, "giti_idx"].iloc[0])
+        ]
         if len(match) == 0:
             continue
         ta = int(match.iloc[0]["track_a"])
         tb = int(match.iloc[0]["track_b"])
-        ev_rows.append({
-            "idx": int(r.idx),
-            "verdict": r.verdict,
-            "before_short": event_hits_short(ta, set(short_before))
-                            or event_hits_short(tb, set(short_before)),
-            "after_short": event_hits_short(ta, set(short_after))
-                           or event_hits_short(tb, set(short_after)),
-        })
+        ev_rows.append(
+            {
+                "idx": int(r.idx),
+                "verdict": r.verdict,
+                "before_short": event_hits_short(ta, set(short_before))
+                or event_hits_short(tb, set(short_before)),
+                "after_short": event_hits_short(ta, set(short_after))
+                or event_hits_short(tb, set(short_after)),
+            }
+        )
     ev = pd.DataFrame(ev_rows)
 
     def stats(mask: pd.Series) -> dict:
@@ -228,8 +232,7 @@ def main() -> Path:
         y = int((sub["verdict"] == "Y").sum())
         n = int((sub["verdict"] == "N").sum())
         total = y + n
-        return {"n": total, "Y": y, "N": n,
-                "precision": (y / total) if total else 0.0}
+        return {"n": total, "Y": y, "N": n, "precision": (y / total) if total else 0.0}
 
     before_short = stats(ev["before_short"])
     after_short = stats(ev["after_short"])
