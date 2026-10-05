@@ -51,10 +51,7 @@ def _min_concurrent_dist(ta: dict, tb: dict) -> float:
     common = set(ta) & set(tb)
     if not common:
         return float("inf")
-    return float(min(
-        np.hypot(ta[f][0] - tb[f][0], ta[f][1] - tb[f][1])
-        for f in common
-    ))
+    return float(min(np.hypot(ta[f][0] - tb[f][0], ta[f][1] - tb[f][1]) for f in common))
 
 
 def _load_events() -> pd.DataFrame:
@@ -79,18 +76,19 @@ def _load_events() -> pd.DataFrame:
         tb = _track_points(row.traj_b_json)
         if not ta or not tb:
             continue
-        rows.append({
-            "event_idx": li,
-            "y_true": 1 if verdict == "Y" else 0,
-            "min_concurrent_dist_m": _min_concurrent_dist(ta, tb),
-            "pet_s": float(row.pet),
-        })
+        rows.append(
+            {
+                "event_idx": li,
+                "y_true": 1 if verdict == "Y" else 0,
+                "min_concurrent_dist_m": _min_concurrent_dist(ta, tb),
+                "pet_s": float(row.pet),
+            }
+        )
     return pd.DataFrame(rows)
 
 
 def _apply_rule(df: pd.DataFrame) -> np.ndarray:
-    keep = (df["min_concurrent_dist_m"] <= MAX_CONCURRENT_DIST_M) & \
-           (df["pet_s"] <= MAX_PET_S)
+    keep = (df["min_concurrent_dist_m"] <= MAX_CONCURRENT_DIST_M) & (df["pet_s"] <= MAX_PET_S)
     return keep.values.astype(int)
 
 
@@ -102,8 +100,7 @@ def _metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
     prec = tp / (tp + fp) if (tp + fp) else 0.0
     rec = tp / (tp + fn) if (tp + fn) else 0.0
     f1 = 2 * prec * rec / (prec + rec) if (prec + rec) else 0.0
-    return {"tp": tp, "fp": fp, "fn": fn, "tn": tn,
-            "precision": prec, "recall": rec, "f1": f1}
+    return {"tp": tp, "fp": fp, "fn": fn, "tn": tn, "precision": prec, "recall": rec, "f1": f1}
 
 
 def _bootstrap_ci(values: list, n_boot: int, rng: np.random.Generator) -> dict:
@@ -113,9 +110,11 @@ def _bootstrap_ci(values: list, n_boot: int, rng: np.random.Generator) -> dict:
         sample = rng.choice(arr, size=len(arr), replace=True)
         means.append(float(sample.mean()))
     means = np.array(means)
-    return {"mean": float(arr.mean()),
-            "lo": float(np.percentile(means, 2.5)),
-            "hi": float(np.percentile(means, 97.5))}
+    return {
+        "mean": float(arr.mean()),
+        "lo": float(np.percentile(means, 2.5)),
+        "hi": float(np.percentile(means, 97.5)),
+    }
 
 
 def main() -> Path:
