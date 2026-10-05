@@ -1,0 +1,50 @@
+name: Paper Blind Recall
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - name: Pull LFS objects
+        run: git lfs pull
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install scikit-learn Pillow
+      - name: Verify LFS video
+        run: |
+          ls -lh data/sample_data/GITI_traffic_video.mp4
+          test $(stat -c%s data/sample_data/GITI_traffic_video.mp4) -gt 1000000
+      - name: Build blind windows
+        run: python -m paper.analysis.blind_windows
+      - name: Assert clips built
+        run: |
+          n=$(ls paper/annotations/blind_windows/*.mp4 2>/dev/null | wc -l)
+          echo "blind clips: $n"
+          if [ "$n" -lt 30 ]; then
+            echo "::error::expected >=30 clips, got $n"
+            exit 1
+          fi
+      - name: Bundle
+        run: |
+          cd paper/annotations
+          zip -q -r blind_recall_bundle.zip blind_review.html blind_windows
+          ls -lh blind_recall_bundle.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: blind-recall-bundle
+          path: paper/annotations/blind_recall_bundle.zip
+          retention-days: 30
