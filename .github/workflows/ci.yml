@@ -36,8 +36,16 @@ jobs:
       - name: Compile all Python files
         run: python -m compileall -q src tests scripts conftest.py
 
-      - name: Lint with Ruff
-        run: ruff check .
+      - name: Lint with Ruff (auto-fix)
+        run: |
+          ruff check --fix .
+          if ! git diff --quiet; then
+            git config user.name "github-actions"
+            git config user.email "actions@github.com"
+            git add -A
+            git commit -m "style: auto-fix lint via CI"
+          fi
+          ruff check .
 
       - name: Auto-format with Ruff
         run: |
@@ -47,8 +55,8 @@ jobs:
             git config user.email "actions@github.com"
             git add -A
             git commit -m "style: auto-format via CI"
-            git push
           fi
+          git push
 
       - name: Run mypy type checking (analysis)
         run: mypy --config-file mypy.ini src/
