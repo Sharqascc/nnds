@@ -591,10 +591,13 @@ def main():
     # --version handled before argparse so it works with no other args
     if "--version" in sys.argv:
         import subprocess
+
         try:
             rev = subprocess.run(
                 ["git", "describe", "--tags", "--always"],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             ).stdout.strip()
         except Exception:
             rev = "unknown"
@@ -606,6 +609,7 @@ def main():
     # --self-check and --dry-run: run preflight and exit
     if getattr(args, "self_check", False) or getattr(args, "dry_run", False):
         from importlib import import_module
+
         try:
             preflight = import_module("src.pipeline.preflight")
         except ModuleNotFoundError:
@@ -624,6 +628,7 @@ def main():
             detector=getattr(args, "detector", "uvh-coco-fused"),
         )
         import json as _json
+
         print(_json.dumps(report.to_dict(), indent=2))
         raise SystemExit(0 if report.ok else 1)
 
