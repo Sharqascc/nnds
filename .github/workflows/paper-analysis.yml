@@ -18,6 +18,9 @@ on:
       - "paper/analysis/**"
       - ".github/workflows/paper-analysis.yml"
 
+permissions:
+  contents: read
+
 jobs:
   run:
     runs-on: ubuntu-latest
