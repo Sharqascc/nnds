@@ -22,3 +22,5 @@ Helper for Colab: `docs/colab_api_helper.py`.
 One executor (GitHub Actions) means no drift between environments. Every
 change is reproducible from its commit SHA alone. Nothing is lost when
 the Colab runtime restarts.
+
+<!-- coderabbit-retrigger -->
