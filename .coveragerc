@@ -1,0 +1,19 @@
+[run]
+branch = True
+source =
+    src
+    paper/analysis
+omit =
+    src/diffusion/*
+    src/vlm/*
+    src/utils/duration_parser.py
+    src/utils/interactive.py
+    src/utils/debug_helpers.py
+    */__init__.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if TYPE_CHECKING:
+    raise NotImplementedError
+    if __name__ == .__main__.:
