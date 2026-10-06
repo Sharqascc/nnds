@@ -14,7 +14,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pandas as pd
-from . import preflight  # noqa: E402
+
+from . import preflight
 
 # ---------------------------------------------------------------------------
 # Data types
