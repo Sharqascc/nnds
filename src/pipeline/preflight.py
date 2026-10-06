@@ -107,8 +107,7 @@ def _check_device(r: PreflightReport, requested: str) -> None:
 def _check_ffmpeg(r: PreflightReport) -> None:
     path = shutil.which("ffmpeg")
     if path is None:
-        r.add("ffmpeg on PATH", False, "ffmpeg not found",
-              "apt-get install -y ffmpeg")
+        r.add("ffmpeg on PATH", False, "ffmpeg not found", "apt-get install -y ffmpeg")
     else:
         r.add("ffmpeg on PATH", True, path)
 
