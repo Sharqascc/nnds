@@ -46,19 +46,21 @@ class PreflightReport:
         }
 
 
-def _check_file(r: PreflightReport, path: str, name: str,
-                min_bytes: int, fix: str) -> None:
+def _check_file(r: PreflightReport, path: str, name: str, min_bytes: int, fix: str) -> None:
     p = Path(path)
     if not p.exists():
         r.add(name, False, f"missing: {path}", fix)
         return
     size = p.stat().st_size
     if size < min_bytes:
-        r.add(name, False,
-              f"{path} is {size} bytes (< {min_bytes}); likely an LFS pointer or corrupt file",
-              "run `git lfs pull` to fetch real data")
+        r.add(
+            name,
+            False,
+            f"{path} is {size} bytes (< {min_bytes}); likely an LFS pointer or corrupt file",
+            "run `git lfs pull` to fetch real data",
+        )
         return
-    r.add(name, True, f"{path} ({size/1e6:.1f} MB)")
+    r.add(name, True, f"{path} ({size / 1e6:.1f} MB)")
 
 
 def _check_config(r: PreflightReport, path: str | None, name: str) -> None:
@@ -73,22 +75,29 @@ def _check_config(r: PreflightReport, path: str | None, name: str) -> None:
         json.loads(p.read_text())
         r.add(name, True, f"{path} parsed")
     except Exception as e:
-        r.add(name, False, f"{path} not valid JSON: {e}",
-              "restore from git: git checkout <sha> -- <path>")
+        r.add(
+            name,
+            False,
+            f"{path} not valid JSON: {e}",
+            "restore from git: git checkout <sha> -- <path>",
+        )
 
 
 def _check_device(r: PreflightReport, requested: str) -> None:
     try:
         import torch
     except ImportError:
-        r.add("torch available", False, "torch not installed",
-              "pip install -r requirements.txt")
+        r.add("torch available", False, "torch not installed", "pip install -r requirements.txt")
         return
     r.add("torch available", True, f"torch {torch.__version__}")
     cuda = torch.cuda.is_available()
     if requested == "cuda" and not cuda:
-        r.add("device cuda", False, "cuda requested but not available",
-              "use --device auto or --device cpu")
+        r.add(
+            "device cuda",
+            False,
+            "cuda requested but not available",
+            "use --device auto or --device cpu",
+        )
     elif requested == "auto":
         r.add("device auto", True, "cuda" if cuda else "cpu")
     else:
@@ -97,8 +106,7 @@ def _check_device(r: PreflightReport, requested: str) -> None:
 
 def _check_ffmpeg(r: PreflightReport) -> None:
     if shutil.which("ffmpeg") is None:
-        r.add("ffmpeg on PATH", False, "ffmpeg not found",
-              "apt-get install -y ffmpeg")
+        r.add("ffmpeg on PATH", False, "ffmpeg not found", "apt-get install -y ffmpeg")
     else:
         r.add("ffmpeg on PATH", True, shutil.which("ffmpeg"))
 
@@ -110,17 +118,16 @@ def _check_outdir(r: PreflightReport, path: str) -> None:
         p.parent.touch(exist_ok=True)
         r.add("output dir writable", True, str(p.parent))
     except Exception as e:
-        r.add("output dir writable", False, str(e),
-              "check directory permissions")
+        r.add("output dir writable", False, str(e), "check directory permissions")
 
 
 def _check_ultralytics(r: PreflightReport) -> None:
     try:
         import ultralytics
+
         r.add("ultralytics available", True, f"ultralytics {ultralytics.__version__}")
     except ImportError:
-        r.add("ultralytics available", False, "not installed",
-              "pip install ultralytics")
+        r.add("ultralytics available", False, "not installed", "pip install ultralytics")
 
 
 def run_checks(
@@ -139,28 +146,51 @@ def run_checks(
     r = PreflightReport()
 
     if video:
-        _check_file(r, video, "video file", MIN_VIDEO_BYTES,
-                    "ensure LFS is pulled (git lfs pull) or place the file at this path")
+        _check_file(
+            r,
+            video,
+            "video file",
+            MIN_VIDEO_BYTES,
+            "ensure LFS is pulled (git lfs pull) or place the file at this path",
+        )
     else:
         r.add("video file", True, "not provided (demo mode?)")
 
     if detector in ("uvh-coco-fused", "uvh-coco"):
         if uvh_model:
-            _check_file(r, uvh_model, "uvh model", MIN_WEIGHT_BYTES,
-                        "download from HF: iisc-aim/UVH-26")
+            _check_file(
+                r, uvh_model, "uvh model", MIN_WEIGHT_BYTES, "download from HF: iisc-aim/UVH-26"
+            )
         if yolo_weights:
-            _check_file(r, yolo_weights, "yolo weights", MIN_WEIGHT_BYTES,
-                        "ultralytics will auto-download on first use")
+            _check_file(
+                r,
+                yolo_weights,
+                "yolo weights",
+                MIN_WEIGHT_BYTES,
+                "ultralytics will auto-download on first use",
+            )
     if detector == "rtdetr" and rtdetr_weights:
-        _check_file(r, rtdetr_weights, "rtdetr weights", MIN_WEIGHT_BYTES,
-                    "download rtdetr-l.pt from ultralytics assets")
+        _check_file(
+            r,
+            rtdetr_weights,
+            "rtdetr weights",
+            MIN_WEIGHT_BYTES,
+            "download rtdetr-l.pt from ultralytics assets",
+        )
     if detector == "sam3" and sam3_weights:
-        _check_file(r, sam3_weights, "sam3 weights", MIN_WEIGHT_BYTES,
-                    "request access at huggingface.co/facebookresearch/sam3")
+        _check_file(
+            r,
+            sam3_weights,
+            "sam3 weights",
+            MIN_WEIGHT_BYTES,
+            "request access at huggingface.co/facebookresearch/sam3",
+        )
 
-    for name, path in (("bev config", bev_config),
-                       ("grid config", grid_config),
-                       ("gate config", gate_config)):
+    for name, path in (
+        ("bev config", bev_config),
+        ("grid config", grid_config),
+        ("gate config", gate_config),
+    ):
         _check_config(r, path, name)
 
     _check_device(r, device)
@@ -172,6 +202,7 @@ def run_checks(
 
 def main() -> int:
     import argparse
+
     ap = argparse.ArgumentParser(description="Preflight checks for traffic analyzer")
     ap.add_argument("--video")
     ap.add_argument("--uvh-model")

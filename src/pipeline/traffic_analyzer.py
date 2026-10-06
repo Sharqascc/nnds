@@ -523,12 +523,13 @@ def parse_args(argv=None):
     parser.add_argument("--video", type=str, default=None)
     parser.add_argument("--out-csv", dest="out_csv", type=str, default=None)
     parser.add_argument("--pet-threshold", dest="pet_threshold", type=float, default=2.0)
-    parser.add_argument("--dry-run", action="store_true",
-                        help="run preflight checks only, do not execute pipeline")
-    parser.add_argument("--self-check", action="store_true",
-                        help="verify environment and exit")
-    parser.add_argument("--version", action="store_true",
-                        help="print version and git revision and exit")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="run preflight checks only, do not execute pipeline"
+    )
+    parser.add_argument("--self-check", action="store_true", help="verify environment and exit")
+    parser.add_argument(
+        "--version", action="store_true", help="print version and git revision and exit"
+    )
     parser.add_argument("--detector", type=str, default="uvh-coco-fused")
     parser.add_argument("--bev-config", dest="bev_config", type=str, default=None)
     parser.add_argument("--grid-config", dest="grid_config", type=str, default=None)
