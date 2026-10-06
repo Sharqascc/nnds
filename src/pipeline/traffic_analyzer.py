@@ -7,6 +7,7 @@ import json
 import logging
 import math
 import re
+import sys
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
@@ -586,7 +587,46 @@ def parse_args(argv=None):
 
 def main():
     logging.basicConfig(level=logging.INFO)
+
+    # --version handled before argparse so it works with no other args
+    if "--version" in sys.argv:
+        import subprocess
+        try:
+            rev = subprocess.run(
+                ["git", "describe", "--tags", "--always"],
+                capture_output=True, text=True, timeout=5,
+            ).stdout.strip()
+        except Exception:
+            rev = "unknown"
+        print(f"traffic_analyzer revision: {rev or 'unknown'}")
+        return
+
     args = parse_args()
+
+    # --self-check and --dry-run: run preflight and exit
+    if getattr(args, "self_check", False) or getattr(args, "dry_run", False):
+        from importlib import import_module
+        try:
+            preflight = import_module("src.pipeline.preflight")
+        except ModuleNotFoundError:
+            preflight = import_module("preflight")
+        report = preflight.run_checks(
+            video=getattr(args, "video", None),
+            uvh_model=getattr(args, "uvh_model", None),
+            yolo_weights=getattr(args, "yolo_weights", None),
+            rtdetr_weights=getattr(args, "rtdetr_weights", None),
+            sam3_weights=getattr(args, "sam3_weights", None),
+            bev_config=getattr(args, "bev_config", None),
+            grid_config=getattr(args, "grid_config", None),
+            gate_config=getattr(args, "gate_config", None),
+            out_csv=getattr(args, "out_csv", "outputs/petevents_bev.csv"),
+            device=getattr(args, "device", "auto"),
+            detector=getattr(args, "detector", "uvh-coco-fused"),
+        )
+        import json as _json
+        print(_json.dumps(report.to_dict(), indent=2))
+        raise SystemExit(0 if report.ok else 1)
+
     if getattr(args, "demo", False):
         run_demo()
         return
