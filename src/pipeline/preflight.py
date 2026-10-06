@@ -61,7 +61,7 @@ def _check_file(r: PreflightReport, path: str, name: str,
     r.add(name, True, f"{path} ({size/1e6:.1f} MB)")
 
 
-def _check_config(r: PreflightReport, path: Optional[str], name: str) -> None:
+def _check_config(r: PreflightReport, path: str | None, name: str) -> None:
     if path is None:
         r.add(name, True, "not provided (optional)")
         return
@@ -124,14 +124,14 @@ def _check_ultralytics(r: PreflightReport) -> None:
 
 
 def run_checks(
-    video: Optional[str] = None,
-    uvh_model: Optional[str] = None,
-    yolo_weights: Optional[str] = None,
-    rtdetr_weights: Optional[str] = None,
-    sam3_weights: Optional[str] = None,
-    bev_config: Optional[str] = None,
-    grid_config: Optional[str] = None,
-    gate_config: Optional[str] = None,
+    video: str | None = None,
+    uvh_model: str | None = None,
+    yolo_weights: str | None = None,
+    rtdetr_weights: str | None = None,
+    sam3_weights: str | None = None,
+    bev_config: str | None = None,
+    grid_config: str | None = None,
+    gate_config: str | None = None,
     out_csv: str = "outputs/petevents_bev.csv",
     device: str = "auto",
     detector: str = "uvh-coco-fused",
