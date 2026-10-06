@@ -6,6 +6,9 @@ on:
     paths:
       - ".github/workflows/paper-annotation.yml"
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
