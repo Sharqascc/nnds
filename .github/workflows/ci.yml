@@ -65,6 +65,11 @@ jobs:
       - name: Run bandit (SAST)
         run: bandit -c bandit.yaml -r src/ paper/analysis/ scripts/ -ll
 
+      - name: Run pylint (non-blocking, reports score)
+        run: |
+          pylint src/paper 2>/dev/null || true
+          pylint src/pipeline src/analysis --score=y --exit-zero 2>&1 | tail -30
+
       - name: Check shell syntax
         run: |
           shopt -s nullglob
