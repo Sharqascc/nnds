@@ -30,7 +30,7 @@ STATIONARY_MPS = 0.5
 
 
 def _track_points(js: str) -> dict:
-    out = {}
+    out: dict = {}
     try:
         pts = json.loads(js)
     except (json.JSONDecodeError, TypeError):
