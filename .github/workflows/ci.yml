@@ -60,10 +60,10 @@ jobs:
           git push
 
       - name: Run mypy type checking (analysis)
-        run: mypy --config-file mypy.ini src/
+        run: mypy --config-file mypy.ini src/ paper/analysis/ scripts/ 2>&1 | head -50
 
       - name: Run bandit (SAST)
-        run: bandit -c bandit.yaml -r src/
+        run: bandit -c bandit.yaml -r src/ paper/analysis/ scripts/ -ll
 
       - name: Check shell syntax
         run: |
@@ -78,7 +78,7 @@ jobs:
       - name: Run fast unit tests with coverage
         run: |
           pytest tests/ -m "not integration and not slow" \
-            --cov=src --cov-branch --cov-report=term-missing \
+            --cov=src --cov=paper/analysis --cov-branch --cov-report=term-missing \
             --cov-fail-under=70
 
       - name: Run property tests
