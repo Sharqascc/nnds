@@ -37,7 +37,7 @@ HEADING_JITTER_DEG = 45.0
 
 
 def _load_tracks(raw: pd.DataFrame) -> dict:
-    tracks = {}
+    tracks: dict = {}
     for _, r in raw.iterrows():
         for tc, jc in (("track_a", "traj_a_json"), ("track_b", "traj_b_json")):
             t = r.get(tc)
@@ -170,7 +170,7 @@ def main() -> Path:
     except ValueError:
         auc = 0.5
 
-    gap_buckets = {}
+    gap_buckets: dict = {}
     for m in per_track.values():
         b = m["gap_bucket"]
         gap_buckets[b] = gap_buckets.get(b, 0) + 1
