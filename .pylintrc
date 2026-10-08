@@ -1,0 +1,36 @@
+[MAIN]
+# Do not fail CI on the first run; we set the threshold after seeing the score.
+# Change to 7.0 (or higher) once we know the baseline.
+fail-under=0.0
+jobs=1
+
+[MESSAGES CONTROL]
+# Ruff and mypy already cover these; disabling avoids duplicate noise.
+disable=
+    C0103,  # invalid-name
+    C0114,  # missing-module-docstring
+    C0115,  # missing-class-docstring
+    C0116,  # missing-function-docstring
+    R0801,  # duplicate-code
+    R0902,  # too-many-instance-attributes
+    R0903,  # too-few-public-methods
+    R0912,  # too-many-branches
+    R0913,  # too-many-arguments
+    R0914,  # too-many-locals
+    R0915,  # too-many-statements
+    W0212,  # protected-access (needed in tests)
+    W0511,  # fixme
+    W0613,  # unused-argument (typing signatures)
+    E0401,  # import-error (env-dependent)
+    E0611,  # no-name-in-module (cv2 stubs)
+    E1101,  # no-member (cv2.VideoWriter_fourcc and similar)
+    E1136,  # unsubscriptable-object (numpy 2 typing)
+
+[FORMAT]
+max-line-length=100
+
+[BASIC]
+good-names=i,j,k,v,x,y,n,m,df,fn,db,ap
+
+[TYPECHECK]
+ignored-modules=cv2
