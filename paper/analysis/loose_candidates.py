@@ -102,8 +102,8 @@ def _pair_features(fa, xya, fb, xyb):
         "mean_speed_a_mps": speed_a,
         "mean_speed_b_mps": speed_b,
         "heading_delta_deg": float(hdiff),
-        "track_a_len": int(len(fa)),
-        "track_b_len": int(len(fb)),
+        "track_a_len": len(fa),
+        "track_b_len": len(fb),
     }
 
 
