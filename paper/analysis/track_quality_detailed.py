@@ -174,7 +174,7 @@ def main() -> Path:
         }
 
     clean = ev[ev["n_any_flags"] == 0]
-    clean_stats = {
+    clean_stats: dict = {
         "n": len(clean),
         "Y": int((clean["verdict"] == "Y").sum()),
         "N": int((clean["verdict"] == "N").sum()),
