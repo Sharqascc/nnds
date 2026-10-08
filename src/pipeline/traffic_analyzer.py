@@ -242,6 +242,31 @@ def _extract_events(result):
     return list(events) if events else []
 
 
+_EVENT_COLUMNS = [
+    "pet",
+    "frame",
+    "track_a",
+    "track_b",
+    "conflict_type",
+    "grid_cell",
+    "track_a_entry_frame",
+    "track_a_exit_frame",
+    "track_b_entry_frame",
+    "track_b_exit_frame",
+    "track_a_exit_time_sec",
+    "track_b_entry_time_sec",
+    "track_b_exit_time_sec",
+    "world_traj_i",
+    "world_traj_j",
+    "traj_a_json",
+    "traj_b_json",
+    "video_source",
+    "time_of_day_label",
+    "gate_a_entry",
+    "gate_b_entry",
+]
+
+
 def _events_to_dataframe(events):
     rows = []
     for event in events:
@@ -269,6 +294,8 @@ def _events_to_dataframe(events):
             "gate_b_entry": _get(event, "gate_b_entry"),
         }
         rows.append(row)
+    if not rows:
+        return pd.DataFrame(columns=_EVENT_COLUMNS)
     return pd.DataFrame(rows)
 
 
