@@ -14,12 +14,9 @@ from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
     _segment_bbox,
 )
 
-FINITE = st.floats(min_value=-1e5, max_value=1e5,
-                   allow_nan=False, allow_infinity=False)
-ANGLE = st.floats(min_value=-720.0, max_value=720.0,
-                  allow_nan=False, allow_infinity=False)
-SMALL_POS = st.floats(min_value=0.001, max_value=1e3,
-                      allow_nan=False, allow_infinity=False)
+FINITE = st.floats(min_value=-1e5, max_value=1e5, allow_nan=False, allow_infinity=False)
+ANGLE = st.floats(min_value=-720.0, max_value=720.0, allow_nan=False, allow_infinity=False)
+SMALL_POS = st.floats(min_value=0.001, max_value=1e3, allow_nan=False, allow_infinity=False)
 
 
 # ---------------------------------------------------------------------------
@@ -165,8 +162,7 @@ def test_bbox_overlap_self_non_negative(b):
     assert _bbox_overlap(b, b) >= 0
 
 
-@given(x_gap=st.floats(min_value=0.01, max_value=100.0,
-                       allow_nan=False, allow_infinity=False))
+@given(x_gap=st.floats(min_value=0.01, max_value=100.0, allow_nan=False, allow_infinity=False))
 @settings(max_examples=30, deadline=None)
 def test_bbox_overlap_far_apart_is_zero(x_gap):
     b1 = (0.0, 0.0, 10.0, 10.0)
