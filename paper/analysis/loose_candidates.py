@@ -126,9 +126,8 @@ def main():
             continue
         if f["time_gap_at_min_s"] > MAX_TIME_GAP_S:
             continue
-        score = (
-            0.6 * (1.0 - f["min_cross_time_dist_m"] / MIN_PATH_DIST_M)
-            + 0.4 * (1.0 - f["time_gap_at_min_s"] / MAX_TIME_GAP_S)
+        score = 0.6 * (1.0 - f["min_cross_time_dist_m"] / MIN_PATH_DIST_M) + 0.4 * (
+            1.0 - f["time_gap_at_min_s"] / MAX_TIME_GAP_S
         )
         f["combined_score"] = score
         f["track_a"] = a_id
