@@ -76,7 +76,7 @@ jobs:
             --grid-config configs/GITI_grid_config.json \
             --gate-config configs/gate_config.yaml \
             --device cpu \
-            --max-frames 50 || true
+            --max-frames 300 || true
 
       - name: Verify output
         run: |
