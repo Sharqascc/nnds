@@ -84,7 +84,7 @@ def _build_clip(start: int, idx: int) -> Path:
     subprocess.run(
         f"ffmpeg -y -loglevel error -ss {start / FPS:.3f} -i {VIDEO} "
         f"-t {dur:.3f} -c:v libx264 -preset veryfast -crf 23 -an {out}",
-        shell=True,
+        shell=True,  # nosec B602 - ffmpeg args are constructed from constants
         check=False,
     )
     return out
