@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import tempfile
 import subprocess
 from pathlib import Path
 
@@ -23,7 +24,7 @@ from PIL import Image, ImageDraw
 
 REPO = Path(__file__).resolve().parents[2]
 ANN = REPO / "paper" / "annotations" / "fp_overlay"
-WORK = Path("/tmp/fp_build")
+WORK = Path(tempfile.mkdtemp(prefix="fp_build_"))
 FP_LIST = REPO / "data" / "reviews" / "ssm_review_114" / "fp_list.csv"
 RAW_CSV = REPO / "outputs" / "giti_raw.csv"
 SCREENED = REPO / "outputs" / "giti_screened_with_gates.csv"
@@ -105,7 +106,7 @@ def _main() -> Path:
         subprocess.run(
             f"ffmpeg -y -loglevel error -ss {tmin / FPS_VIDEO:.3f} -i {VIDEO} "
             f"-t {dur:.3f} -c:v libx264 -preset veryfast -crf 23 -an {clip}",
-            shell=True,
+            shell=True,  # nosec B602
             check=False,
         )
         if not clip.exists():
@@ -121,7 +122,7 @@ def _main() -> Path:
         fd.mkdir(exist_ok=True)
         subprocess.run(
             f"ffmpeg -y -loglevel error -i {clip} -vf scale=520:-1,fps=10 {fd}/f_%04d.png",
-            shell=True,
+            shell=True,  # nosec B602
         )
         fs = sorted(fd.glob("f_*.png"))
         if not fs:
@@ -152,7 +153,7 @@ def _main() -> Path:
         subprocess.run(
             f"ffmpeg -y -loglevel error -framerate 10 -i {out_dir}/o_%04d.png "
             f"-c:v libx264 -preset veryfast -crf 26 -pix_fmt yuv420p {mp4}",
-            shell=True,
+            shell=True,  # nosec B602
             check=False,
         )
         shutil.rmtree(fd, ignore_errors=True)
