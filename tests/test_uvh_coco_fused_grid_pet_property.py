@@ -14,12 +14,9 @@ from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
     _segment_bbox,
 )
 
-FINITE = st.floats(min_value=-1e5, max_value=1e5,
-                   allow_nan=False, allow_infinity=False)
-ANGLE = st.floats(min_value=-720.0, max_value=720.0,
-                  allow_nan=False, allow_infinity=False)
-SMALL_POS = st.floats(min_value=0.001, max_value=1e3,
-                      allow_nan=False, allow_infinity=False)
+FINITE = st.floats(min_value=-1e5, max_value=1e5, allow_nan=False, allow_infinity=False)
+ANGLE = st.floats(min_value=-720.0, max_value=720.0, allow_nan=False, allow_infinity=False)
+SMALL_POS = st.floats(min_value=0.001, max_value=1e3, allow_nan=False, allow_infinity=False)
 BOX = st.tuples(FINITE, FINITE, FINITE, FINITE)
 
 
@@ -49,10 +46,12 @@ def test_box_area_degenerate_is_zero(x, y):
     assert _box_area((x, y, x, y)) == 0.0
 
 
-@given(x1=FINITE, y1=FINITE, w=st.floats(min_value=0.0, max_value=100.0,
-                                          allow_nan=False, allow_infinity=False),
-       h=st.floats(min_value=0.0, max_value=100.0,
-                   allow_nan=False, allow_infinity=False))
+@given(
+    x1=FINITE,
+    y1=FINITE,
+    w=st.floats(min_value=0.0, max_value=100.0, allow_nan=False, allow_infinity=False),
+    h=st.floats(min_value=0.0, max_value=100.0, allow_nan=False, allow_infinity=False),
+)
 @settings(max_examples=80, deadline=None)
 def test_box_area_positive_on_ordered_box(x1, y1, w, h):
     got = _box_area((x1, y1, x1 + w, y1 + h))
@@ -106,9 +105,11 @@ def test_point_in_square_center_is_inside(cx, cy, r):
     assert _point_in_square(cx, cy, cx, cy, r) is True
 
 
-@given(cx=FINITE, cy=FINITE,
-       r=st.floats(min_value=0.001, max_value=10.0,
-                   allow_nan=False, allow_infinity=False))
+@given(
+    cx=FINITE,
+    cy=FINITE,
+    r=st.floats(min_value=0.001, max_value=10.0, allow_nan=False, allow_infinity=False),
+)
 @settings(max_examples=50, deadline=None)
 def test_point_in_square_far_away_is_outside(cx, cy, r):
     assert _point_in_square(cx + 1e4, cy, cx, cy, r) is False
@@ -161,8 +162,7 @@ def test_bbox_overlap_self_true_when_non_degenerate(b):
         assert _bbox_overlap(b, b) is True
 
 
-@given(x_gap=st.floats(min_value=0.01, max_value=100.0,
-                       allow_nan=False, allow_infinity=False))
+@given(x_gap=st.floats(min_value=0.01, max_value=100.0, allow_nan=False, allow_infinity=False))
 @settings(max_examples=30, deadline=None)
 def test_bbox_overlap_far_apart_is_false(x_gap):
     b1 = (0.0, 0.0, 10.0, 10.0)
@@ -182,9 +182,7 @@ def test_bbox_overlap_pad_extends_reach():
 # ---------------------------------------------------------------------------
 
 
-@given(p=st.tuples(FINITE, FINITE),
-       p1=st.tuples(FINITE, FINITE),
-       p2=st.tuples(FINITE, FINITE))
+@given(p=st.tuples(FINITE, FINITE), p1=st.tuples(FINITE, FINITE), p2=st.tuples(FINITE, FINITE))
 @settings(max_examples=80, deadline=None)
 def test_line_side_deterministic(p, p1, p2):
     assert _line_side(p, p1, p2) == _line_side(p, p1, p2)
