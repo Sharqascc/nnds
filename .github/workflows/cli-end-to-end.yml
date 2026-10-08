@@ -45,7 +45,7 @@ jobs:
       - name: CLI --self-check (with real paths)
         run: |
           python -m src.pipeline.traffic_analyzer --self-check \
-            --video data/sample_data/anonymized_traffic_video_50f.mp4 \
+            --video data/sample_data/GITI_traffic_video.mp4 \
             --uvh-model data/models/uvh26.pt \
             --yolo-weights data/models/yolo11n.pt \
             --bev-config configs/bev_config.json \
@@ -67,7 +67,7 @@ jobs:
       - name: Run CLI pipeline (50-frame sample)
         run: |
           python -m src.pipeline.traffic_analyzer \
-            --video data/sample_data/anonymized_traffic_video_50f.mp4 \
+            --video data/sample_data/GITI_traffic_video.mp4 \
             --out-csv outputs/cli_e2e_petevents.csv \
             --detector uvh-coco-fused \
             --uvh-model data/models/uvh26.pt \
@@ -76,7 +76,7 @@ jobs:
             --grid-config configs/GITI_grid_config.json \
             --gate-config configs/gate_config.yaml \
             --device cpu \
-            --max-frames 300 || true
+            --max-frames 400 || true
 
       - name: Verify output
         run: |
@@ -85,8 +85,13 @@ jobs:
             exit 1
           fi
           rows=$(wc -l < outputs/cli_e2e_petevents.csv)
-          echo "CSV rows: $rows"
+          echo "CSV rows (incl header): $rows"
           head -3 outputs/cli_e2e_petevents.csv
+          # On the full GITI video we expect at least 1 event row
+          if [ "$rows" -lt 2 ]; then
+            echo "::error::No PET events detected on full GITI video — expected >0"
+            exit 1
+          fi
 
       - name: Upload CSV artifact
         uses: actions/upload-artifact@v4
