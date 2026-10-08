@@ -83,7 +83,7 @@ def _endpoint(td: dict, frames: list, at_end: bool) -> dict:
     return {"xy": xy, "speed": speed, "heading": heading}
 
 
-def _track_summary(td: dict) -> dict:
+def _track_summary(td: dict) -> dict | None:
     frames = sorted(td)
     if len(frames) < 2:
         return None
@@ -107,7 +107,7 @@ def _angle_diff_deg(a: float, b: float) -> float:
     return float(min(d, 360.0 - d))
 
 
-def _merge_score(a: dict, b: dict) -> dict:
+def _merge_score(a: dict, b: dict) -> dict | None:
     gap_frames = b["start_frame"] - a["end_frame"]
     if gap_frames < 0 or gap_frames > MAX_GAP_FRAMES:
         return None
@@ -157,7 +157,7 @@ def _find_candidates(summaries: dict) -> list:
     return cands
 
 
-def _greedy_chains(cands: list) -> list:
+def _greedy_chains(cands: list) -> tuple[list, dict]:
     used_end: set = set()
     used_start: set = set()
     chains = []
@@ -169,7 +169,7 @@ def _greedy_chains(cands: list) -> list:
         used_end.add(c["a"])
         used_start.add(c["b"])
         chains.append(c)
-    merged = {}
+    merged: dict = {}
     for c in chains:
         target = merged.get(c["a"], c["a"])
         merged[c["b"]] = target
