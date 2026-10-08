@@ -1,0 +1,96 @@
+name: CLI End-to-End
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/cli-end-to-end.yml"
+      - "src/pipeline/traffic_analyzer.py"
+      - "src/pipeline/preflight.py"
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Pull LFS objects
+        run: git lfs pull
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install scikit-learn Pillow
+
+      - name: Verify LFS video is real
+        run: |
+          ls -lh data/sample_data/GITI_traffic_video.mp4
+          test $(stat -c%s data/sample_data/GITI_traffic_video.mp4) -gt 1000000
+
+      - name: CLI --version
+        run: python -m src.pipeline.traffic_analyzer --version
+
+      - name: CLI --self-check (with real paths)
+        run: |
+          python -m src.pipeline.traffic_analyzer --self-check \
+            --video data/sample_data/anonymized_traffic_video_50f.mp4 \
+            --uvh-model data/models/uvh26.pt \
+            --yolo-weights data/models/yolo11n.pt \
+            --bev-config configs/bev_config.json \
+            --grid-config configs/GITI_grid_config.json \
+            --gate-config configs/gate_config.yaml \
+            --out-csv /tmp/selfcheck.csv \
+            --device cpu \
+            --detector uvh-coco-fused || true
+
+      - name: Download UVH-26 weights
+        run: |
+          mkdir -p data/models
+          wget -q -O data/models/uvh26.pt \
+            "https://huggingface.co/iisc-aim/UVH-26/resolve/main/weights/YOLOv11-S/UVH-26-MV-YOLOv11-S.pt"
+          python -c "from ultralytics import YOLO; YOLO('yolo11n.pt')"
+          mv yolo11n.pt data/models/ || true
+          ls -lh data/models/
+
+      - name: Run CLI pipeline (50-frame sample)
+        run: |
+          python -m src.pipeline.traffic_analyzer \
+            --video data/sample_data/anonymized_traffic_video_50f.mp4 \
+            --out-csv outputs/cli_e2e_petevents.csv \
+            --detector uvh-coco-fused \
+            --uvh-model data/models/uvh26.pt \
+            --yolo-weights data/models/yolo11n.pt \
+            --bev-config configs/bev_config.json \
+            --grid-config configs/GITI_grid_config.json \
+            --gate-config configs/gate_config.yaml \
+            --device cpu \
+            --max-frames 50 || true
+
+      - name: Verify output
+        run: |
+          if [ ! -f outputs/cli_e2e_petevents.csv ]; then
+            echo "::error::CSV not produced"
+            exit 1
+          fi
+          rows=$(wc -l < outputs/cli_e2e_petevents.csv)
+          echo "CSV rows: $rows"
+          head -3 outputs/cli_e2e_petevents.csv
+
+      - name: Upload CSV artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-e2e-petevents
+          path: outputs/cli_e2e_petevents.csv
+          retention-days: 14
