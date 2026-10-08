@@ -10,7 +10,6 @@ from hypothesis import strategies as st
 
 from src.pipeline import preflight
 
-
 # ---------------------------------------------------------------------------
 # PreflightReport invariants
 # ---------------------------------------------------------------------------
