@@ -16,8 +16,7 @@ from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
     _split_tracks_by_gaps,
 )
 
-SMALL = st.floats(min_value=-50.0, max_value=50.0,
-                  allow_nan=False, allow_infinity=False)
+SMALL = st.floats(min_value=-50.0, max_value=50.0, allow_nan=False, allow_infinity=False)
 
 
 def _tp(frame: int, x: float, y: float) -> TrackPoint:
@@ -54,9 +53,11 @@ def test_single_point_yields_one_segment():
 # ---------------------------------------------------------------------------
 
 
-@given(n=st.integers(min_value=1, max_value=50),
-       tid=st.integers(min_value=0, max_value=100),
-       xs=st.lists(SMALL, min_size=50, max_size=50))
+@given(
+    n=st.integers(min_value=1, max_value=50),
+    tid=st.integers(min_value=0, max_value=100),
+    xs=st.lists(SMALL, min_size=50, max_size=50),
+)
 @settings(max_examples=40, deadline=None)
 def test_all_points_preserved_across_segments(n, tid, xs):
     points = [_tp(i, xs[i], 0.0) for i in range(n)]
@@ -66,13 +67,14 @@ def test_all_points_preserved_across_segments(n, tid, xs):
     assert recovered == expected
 
 
-@given(n=st.integers(min_value=2, max_value=30),
-       tid=st.integers(min_value=0, max_value=100),
-       vx=st.floats(min_value=-1.0, max_value=1.0,
-                    allow_nan=False, allow_infinity=False),
-       vy=st.floats(min_value=-1.0, max_value=1.0,
-                    allow_nan=False, allow_infinity=False),
-       x0=SMALL, y0=SMALL)
+@given(
+    n=st.integers(min_value=2, max_value=30),
+    tid=st.integers(min_value=0, max_value=100),
+    vx=st.floats(min_value=-1.0, max_value=1.0, allow_nan=False, allow_infinity=False),
+    vy=st.floats(min_value=-1.0, max_value=1.0, allow_nan=False, allow_infinity=False),
+    x0=SMALL,
+    y0=SMALL,
+)
 @settings(max_examples=40, deadline=None)
 def test_clean_sequence_is_not_split(n, tid, vx, vy, x0, y0):
     points = [_tp(i, x0 + vx * i, y0 + vy * i) for i in range(n)]
@@ -132,8 +134,7 @@ def test_skips_split_when_prediction_matches():
     assert len(out) == 1
 
 
-@given(dx=st.floats(min_value=200.0, max_value=1e5,
-                    allow_nan=False, allow_infinity=False))
+@given(dx=st.floats(min_value=200.0, max_value=1e5, allow_nan=False, allow_infinity=False))
 @settings(max_examples=30, deadline=None)
 def test_any_impossible_leap_is_split(dx):
     points = [
@@ -155,8 +156,9 @@ def test_any_impossible_leap_is_split(dx):
 # ---------------------------------------------------------------------------
 
 
-@given(frames=st.lists(st.integers(min_value=0, max_value=1000),
-                       min_size=1, max_size=20, unique=True))
+@given(
+    frames=st.lists(st.integers(min_value=0, max_value=1000), min_size=1, max_size=20, unique=True)
+)
 @settings(max_examples=40, deadline=None)
 def test_shuffled_input_produces_sorted_segments(frames):
     shuffled = list(frames)
