@@ -11,8 +11,7 @@ from src.analysis.grid_trajectory import yolo_cpu_grid_pet as yp
 
 
 def _pt(frame: int, x: float, y: float) -> yp.TrackPoint:
-    return yp.TrackPoint(frame=frame, x=x, y=y,
-                         cls_id=2, cls_name="car", conf=0.9)
+    return yp.TrackPoint(frame=frame, x=x, y=y, cls_id=2, cls_name="car", conf=0.9)
 
 
 def test_single_track_yields_entry_exit_interval():

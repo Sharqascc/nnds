@@ -31,14 +31,18 @@ def test_site_gate_configs_parse():
 
 def test_gate_counter_module_public_api():
     from src.analysis import gate_counter
+
     names = [n for n in dir(gate_counter) if not n.startswith("_")]
     assert any("count" in n.lower() or "gate" in n.lower() for n in names), names
 
 
 def test_gate_counter_module_has_gate_dataclass_or_class():
     from src.analysis import gate_counter
+
     # At least one class or dataclass
-    classes = [n for n in dir(gate_counter)
-               if not n.startswith("_")
-               and isinstance(getattr(gate_counter, n, None), type)]
+    classes = [
+        n
+        for n in dir(gate_counter)
+        if not n.startswith("_") and isinstance(getattr(gate_counter, n, None), type)
+    ]
     assert classes, "no classes found in gate_counter"

@@ -56,17 +56,20 @@ def test_grid_config_has_positive_cell_size():
 
 def test_bev_mapper_public_api():
     from src.bev import bev_mapper
+
     names = [n for n in dir(bev_mapper) if not n.startswith("_")]
     assert any("BEV" in n or "Mapper" in n for n in names), names
 
 
 def test_spatial_grid_public_api():
     from src.analysis.grid_trajectory import spatial_grid
+
     names = [n for n in dir(spatial_grid) if not n.startswith("_")]
     assert any("SpatialGrid" in n or "Grid" in n for n in names), names
 
 
 def test_pet_grid_public_api():
     from src.analysis.grid_trajectory import pet_grid
+
     for name in ("compute_pet", "summarize_pet"):
         assert hasattr(pet_grid, name), f"pet_grid missing {name}"
