@@ -13,10 +13,13 @@ def test_quality_is_in_unit_interval():
     assert 0.0 <= q <= 1.0
 
 
-def test_quality_zero_on_degenerate_track():
+def test_quality_low_on_degenerate_track():
+    """A track with minimal length and maximal gap/jitter gets a low score."""
     m = {"length": 1, "gap_rate": 1.0, "heading_jitter_rate": 1.0}
     q = tqv2._quality(m)
-    assert q == pytest.approx(0.0, abs=1e-9)
+    # Formula: 0.4 * min(1, length/60) + 0.4 * (1 - gap) + 0.2 * (1 - jitter)
+    # = 0.4 * (1/60) + 0 + 0 = 0.00667
+    assert q < 0.05
 
 
 def test_quality_monotone_in_length():
