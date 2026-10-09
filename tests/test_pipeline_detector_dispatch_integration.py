@@ -34,7 +34,8 @@ def _run(detector: str, extra: list[str]) -> subprocess.CompletedProcess:
         "--detector", detector,
         "--device", "cpu",
         "--max-frames", "20",
-    ] + extra
+        *extra,
+    ]
     return subprocess.run(cmd, cwd=REPO, capture_output=True,
                           text=True, timeout=600)
 
