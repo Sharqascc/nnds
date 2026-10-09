@@ -9,11 +9,17 @@ from hypothesis import strategies as st
 from paper.analysis import loose_candidates as lc
 
 
-def test_arr_returns_2d_array():
+def test_arr_returns_tuple_of_arrays():
     td = {0: (1.0, 2.0), 1: (3.0, 4.0), 2: (5.0, 6.0)}
-    arr = lc._arr(td)
-    assert isinstance(arr, np.ndarray)
-    assert arr.shape == (3, 2)
+    out = lc._arr(td)
+    assert isinstance(out, tuple)
+    assert len(out) == 2
+    frames, xy = out
+    assert isinstance(frames, np.ndarray)
+    assert isinstance(xy, np.ndarray)
+    assert xy.ndim == 2
+    assert xy.shape[1] == 2
+    assert frames.shape[0] == xy.shape[0]
 
 
 @given(
