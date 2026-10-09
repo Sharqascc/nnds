@@ -22,11 +22,13 @@ def _skip_if_missing(paths):
 
 
 def test_screened_counts_match_summary_json():
-    _skip_if_missing([
-        OUT / "giti_screened_with_gates.csv",
-        OUT / "mrc_screened_with_gates.csv",
-        OUT / "final_screened_summary.json",
-    ])
+    _skip_if_missing(
+        [
+            OUT / "giti_screened_with_gates.csv",
+            OUT / "mrc_screened_with_gates.csv",
+            OUT / "final_screened_summary.json",
+        ]
+    )
     giti = pd.read_csv(OUT / "giti_screened_with_gates.csv")
     mrc = pd.read_csv(OUT / "mrc_screened_with_gates.csv")
     summary = json.loads((OUT / "final_screened_summary.json").read_text())
@@ -36,11 +38,13 @@ def test_screened_counts_match_summary_json():
 
 
 def test_raw_counts_match_summary_json():
-    _skip_if_missing([
-        OUT / "giti_raw.csv",
-        OUT / "mrc_raw.csv",
-        OUT / "final_screened_summary.json",
-    ])
+    _skip_if_missing(
+        [
+            OUT / "giti_raw.csv",
+            OUT / "mrc_raw.csv",
+            OUT / "final_screened_summary.json",
+        ]
+    )
     giti = pd.read_csv(OUT / "giti_raw.csv")
     mrc = pd.read_csv(OUT / "mrc_raw.csv")
     summary = json.loads((OUT / "final_screened_summary.json").read_text())
@@ -59,11 +63,13 @@ def test_screened_csvs_are_subsets_of_raw():
 
 
 def test_combined_events_equal_sum_of_sites():
-    _skip_if_missing([
-        OUT / "giti_screened_with_gates.csv",
-        OUT / "mrc_screened_with_gates.csv",
-        OUT / "combined_screened_simplified.csv",
-    ])
+    _skip_if_missing(
+        [
+            OUT / "giti_screened_with_gates.csv",
+            OUT / "mrc_screened_with_gates.csv",
+            OUT / "combined_screened_simplified.csv",
+        ]
+    )
     giti = pd.read_csv(OUT / "giti_screened_with_gates.csv")
     mrc = pd.read_csv(OUT / "mrc_screened_with_gates.csv")
     combined = pd.read_csv(OUT / "combined_screened_simplified.csv")

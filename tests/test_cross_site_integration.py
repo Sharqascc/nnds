@@ -34,10 +34,12 @@ def test_sites_are_giti_and_mrc_only():
 
 
 def test_giti_has_more_events_than_mrc():
-    _skip_if_missing([
-        OUT / "giti_screened_with_gates.csv",
-        OUT / "mrc_screened_with_gates.csv",
-    ])
+    _skip_if_missing(
+        [
+            OUT / "giti_screened_with_gates.csv",
+            OUT / "mrc_screened_with_gates.csv",
+        ]
+    )
     giti = pd.read_csv(OUT / "giti_screened_with_gates.csv")
     mrc = pd.read_csv(OUT / "mrc_screened_with_gates.csv")
     assert len(giti) > len(mrc)

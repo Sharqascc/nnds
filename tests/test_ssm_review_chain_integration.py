@@ -21,8 +21,13 @@ def _skip_if_missing(paths):
 
 
 def test_review_dir_has_expected_files():
-    expected = ["to_label.csv", "label_to_giti_mapping.csv",
-                "features.csv", "all_features.csv", "ev_jumpstats.csv"]
+    expected = [
+        "to_label.csv",
+        "label_to_giti_mapping.csv",
+        "features.csv",
+        "all_features.csv",
+        "ev_jumpstats.csv",
+    ]
     for name in expected:
         assert (REV / name).exists(), f"missing {name}"
 
@@ -52,10 +57,12 @@ def test_mapping_has_103_rows_after_screen():
 
 
 def test_mapping_indices_reference_valid_screened_rows():
-    _skip_if_missing([
-        REV / "label_to_giti_mapping.csv",
-        REPO / "outputs/giti_screened_with_gates.csv",
-    ])
+    _skip_if_missing(
+        [
+            REV / "label_to_giti_mapping.csv",
+            REPO / "outputs/giti_screened_with_gates.csv",
+        ]
+    )
     mapping = pd.read_csv(REV / "label_to_giti_mapping.csv")
     giti = pd.read_csv(REPO / "outputs/giti_screened_with_gates.csv")
     assert mapping.giti_idx.max() < len(giti)

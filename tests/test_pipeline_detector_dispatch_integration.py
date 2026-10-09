@@ -28,25 +28,37 @@ def _skip_if_missing(paths):
 
 def _run(detector: str, extra: list[str]) -> subprocess.CompletedProcess:
     cmd = [
-        sys.executable, "-m", "src.pipeline.traffic_analyzer",
-        "--video", str(VIDEO),
-        "--out-csv", f"/tmp/int_{detector}.csv",
-        "--detector", detector,
-        "--device", "cpu",
-        "--max-frames", "20",
+        sys.executable,
+        "-m",
+        "src.pipeline.traffic_analyzer",
+        "--video",
+        str(VIDEO),
+        "--out-csv",
+        f"/tmp/int_{detector}.csv",
+        "--detector",
+        detector,
+        "--device",
+        "cpu",
+        "--max-frames",
+        "20",
         *extra,
     ]
-    return subprocess.run(cmd, cwd=REPO, capture_output=True,
-                          text=True, timeout=600)
+    return subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, timeout=600)
 
 
 def test_uvh_coco_fused_dispatch_runs():
     _skip_if_missing([VIDEO, UVH, YOLO])
-    r = _run("uvh-coco-fused", [
-        "--uvh-model", str(UVH),
-        "--yolo-weights", str(YOLO),
-        "--coco-person-model", str(YOLO),
-    ])
+    r = _run(
+        "uvh-coco-fused",
+        [
+            "--uvh-model",
+            str(UVH),
+            "--yolo-weights",
+            str(YOLO),
+            "--coco-person-model",
+            str(YOLO),
+        ],
+    )
     assert r.returncode == 0, r.stderr[-1500:]
 
 

@@ -61,6 +61,7 @@ def test_site_configs_have_expected_keys():
 
 def test_camera_matrices_are_3x3():
     import numpy as np
+
     for name in ("camera_matrix.npy", "camera_matrix_video_est.npy"):
         p = CONFIGS / name
         if p.exists():
@@ -70,6 +71,7 @@ def test_camera_matrices_are_3x3():
 
 def test_distortion_coeffs_shape():
     import numpy as np
+
     for name in ("distortion_coeffs.npy", "distortion_coeffs_video_est.npy"):
         p = CONFIGS / name
         if p.exists():
