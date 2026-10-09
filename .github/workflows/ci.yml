@@ -37,27 +37,23 @@ jobs:
       - name: Compile all Python files
         run: python -m compileall -q src tests scripts conftest.py
 
-      - name: Lint with Ruff (auto-fix)
+      - name: Lint + auto-format with Ruff
         run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
           ruff check --fix .
-          if ! git diff --quiet; then
-            git config user.name "github-actions"
-            git config user.email "actions@github.com"
-            git add -A
-            git commit -m "style: auto-fix lint via CI"
-          fi
-          ruff check .
-
-      - name: Auto-format with Ruff
-        run: |
           ruff format .
           if ! git diff --quiet; then
-            git config user.name "github-actions"
-            git config user.email "actions@github.com"
             git add -A
-            git commit -m "style: auto-format via CI"
+            git commit -m "style: auto-fix + auto-format via CI"
+            # Rebase on the latest remote state before pushing. Prevents
+            # rejection when the branch has moved forward since checkout.
+            git pull --rebase origin "${GITHUB_REF_NAME}" || true
+            git push origin "HEAD:${GITHUB_REF_NAME}" || true
           fi
-          git push
+          # Verify clean state regardless of whether a commit was made
+          ruff check .
+          ruff format --check .
 
       - name: Run mypy type checking (analysis)
         run: mypy --config-file mypy.ini src/ paper/analysis/ scripts/ 2>&1 | head -50
