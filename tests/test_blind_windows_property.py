@@ -9,8 +9,12 @@ from paper.analysis import blind_windows as bw
 
 def test_forbidden_frames_on_empty_df():
     df = pd.DataFrame(
-        columns=["track_a_entry_frame", "track_a_exit_frame",
-                 "track_b_entry_frame", "track_b_exit_frame"]
+        columns=[
+            "track_a_entry_frame",
+            "track_a_exit_frame",
+            "track_b_entry_frame",
+            "track_b_exit_frame",
+        ]
     )
     assert bw._forbidden_frames(df) == set()
 
@@ -40,8 +44,10 @@ def test_sample_windows_is_deterministic():
 
 
 def test_make_html_contains_one_video_per_row():
-    rows = [{"clip_id": "blind_000", "start_frame": 0},
-            {"clip_id": "blind_001", "start_frame": 100}]
+    rows = [
+        {"clip_id": "blind_000", "start_frame": 0},
+        {"clip_id": "blind_001", "start_frame": 100},
+    ]
     html = bw._make_html(rows)
     assert html.count("<video") == 2
     assert "blind_000" in html

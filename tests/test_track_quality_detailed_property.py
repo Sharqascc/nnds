@@ -43,9 +43,7 @@ def test_gappy_flag_triggers_on_high_gap_rate():
 
 
 def test_track_metrics_on_static_track():
-    td = {0: (1.0, 1.0, 1.0, 1.0),
-          1: (1.0, 1.0, 1.0, 1.0),
-          2: (1.0, 1.0, 1.0, 1.0)}
+    td = {0: (1.0, 1.0, 1.0, 1.0), 1: (1.0, 1.0, 1.0, 1.0), 2: (1.0, 1.0, 1.0, 1.0)}
     m = tqd._track_metrics(td)
     assert m["length"] == 3
     assert m["span"] == 3

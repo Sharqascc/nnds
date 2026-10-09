@@ -39,22 +39,24 @@ def test_metrics_perfect_predictions():
     pet=st.floats(0.0, 5.0, allow_nan=False, allow_infinity=False),
 )
 def test_apply_rule_binary_output(dist, pet):
-    df = pd.DataFrame({
-        "min_concurrent_dist_m": [dist, dist],
-        "pet_s": [pet, pet],
-    })
+    df = pd.DataFrame(
+        {
+            "min_concurrent_dist_m": [dist, dist],
+            "pet_s": [pet, pet],
+        }
+    )
     out = fc._apply_rule(df)
     assert out.shape == (2,)
     assert set(out.tolist()).issubset({0, 1})
-    expected = 1 if (dist <= fc.MAX_CONCURRENT_DIST_M
-                     and pet <= fc.MAX_PET_S) else 0
+    expected = 1 if (dist <= fc.MAX_CONCURRENT_DIST_M and pet <= fc.MAX_PET_S) else 0
     assert (out == expected).all()
 
 
 @given(
     values=st.lists(
         st.floats(-10.0, 10.0, allow_nan=False, allow_infinity=False),
-        min_size=5, max_size=20,
+        min_size=5,
+        max_size=20,
     )
 )
 def test_bootstrap_ci_is_bounded_by_min_and_max(values):

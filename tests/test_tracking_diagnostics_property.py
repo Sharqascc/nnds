@@ -22,9 +22,7 @@ def test_to_cell_px_monotone_in_x():
 
 
 def test_track_lengths_shape_on_simple_track():
-    tracks = {1: {0: (0.0, 0.0, 0.0, 0.0),
-                  1: (0.0, 0.0, 1.0, 0.0),
-                  2: (0.0, 0.0, 2.0, 0.0)}}
+    tracks = {1: {0: (0.0, 0.0, 0.0, 0.0), 1: (0.0, 0.0, 1.0, 0.0), 2: (0.0, 0.0, 2.0, 0.0)}}
     out = td._track_lengths(tracks)
     assert out["n_tracks"] == 1
     assert out["min"] == 3
@@ -32,17 +30,14 @@ def test_track_lengths_shape_on_simple_track():
 
 
 def test_gap_rate_no_gaps_is_zero():
-    tracks = {1: {0: (0.0, 0.0, 0.0, 0.0),
-                  1: (0.0, 0.0, 0.0, 0.0),
-                  2: (0.0, 0.0, 0.0, 0.0)}}
+    tracks = {1: {0: (0.0, 0.0, 0.0, 0.0), 1: (0.0, 0.0, 0.0, 0.0), 2: (0.0, 0.0, 0.0, 0.0)}}
     out = td._gap_rate(tracks)
     assert out["mean"] == pytest.approx(0.0)
 
 
 def test_speed_plausibility_flags_fast_track():
     tracks = {
-        1: {0: (0.0, 0.0, 0.0, 0.0),
-            30: (0.0, 0.0, 500.0, 0.0)},  # 500 m in 1 s
+        1: {0: (0.0, 0.0, 0.0, 0.0), 30: (0.0, 0.0, 500.0, 0.0)},  # 500 m in 1 s
     }
     out = td._speed_plausibility(tracks)
     assert out["implausible_count"] >= 1

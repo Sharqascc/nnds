@@ -14,11 +14,13 @@ from paper.analysis import statistical_tests as stt
 @given(
     a=st.lists(
         st.floats(0.0, 5.0, allow_nan=False, allow_infinity=False),
-        min_size=5, max_size=30,
+        min_size=5,
+        max_size=30,
     ),
     b=st.lists(
         st.floats(0.0, 5.0, allow_nan=False, allow_infinity=False),
-        min_size=5, max_size=30,
+        min_size=5,
+        max_size=30,
     ),
 )
 def test_mwu_and_ks_shapes(a, b):

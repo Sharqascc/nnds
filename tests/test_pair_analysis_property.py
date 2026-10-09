@@ -46,11 +46,13 @@ def test_net_disp_zero_on_static_track():
 @given(
     x=st.lists(
         st.floats(0.0, 10.0, allow_nan=False, allow_infinity=False),
-        min_size=4, max_size=20,
+        min_size=4,
+        max_size=20,
     ),
     y=st.lists(
         st.sampled_from([0, 1]),
-        min_size=4, max_size=20,
+        min_size=4,
+        max_size=20,
     ),
 )
 def test_fisher_ratio_finite(x, y):

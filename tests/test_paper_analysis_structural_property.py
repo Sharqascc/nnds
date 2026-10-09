@@ -22,7 +22,8 @@ def test_has_callable_main(name):
     assert callable(mod.main)
     sig = inspect.signature(mod.main)
     required = [
-        p for p in sig.parameters.values()
+        p
+        for p in sig.parameters.values()
         if p.default is inspect.Parameter.empty
         and p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
     ]
