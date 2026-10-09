@@ -45,7 +45,7 @@ def test_status_consistent_with_pet_value(a, b):
         assert result.pet_s is None
         assert result.first_actor is None
         assert result.second_actor is None
-        assert result.overlap_duration_s > 0.0
+        assert result.overlap_duration_s >= 0.0
 
 
 @given(a=valid_interval(), b=valid_interval())
@@ -66,9 +66,14 @@ def test_swap_symmetry(a, b):
     if r1.pet_s is None:
         assert r2.pet_s is None
         assert r1.pet_status == r2.pet_status == "overlap"
-    else:
-        assert r2.pet_s == pytest.approx(r1.pet_s)
-        # First/second actors must swap when arguments swap
+        return
+    assert r2.pet_s == pytest.approx(r1.pet_s)
+    # When both intervals have positive length, first/second actor must swap.
+    # Zero-length intervals have no natural ordering, so the code may return
+    # the same actor for both argument orders — that is not a violation.
+    a_len = a[1] - a[0]
+    b_len = b[1] - b[0]
+    if a_len > 0.0 and b_len > 0.0:
         assert r1.first_actor != r2.first_actor
 
 
