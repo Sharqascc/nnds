@@ -6,8 +6,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from pet_interval import compute_pet_from_intervals, compute_pet_from_frames
-
+from pet_interval import compute_pet_from_frames, compute_pet_from_intervals
 
 _FLOAT = st.floats(
     min_value=-1_000.0,
