@@ -53,8 +53,8 @@ def test_screened_csvs_are_subsets_of_raw():
     raw = pd.read_csv(OUT / "giti_raw.csv")
     screened = pd.read_csv(OUT / "giti_screened.csv")
     # Every screened (track_a, track_b, pet) pair appears in raw
-    raw_keys = set(zip(raw.track_a, raw.track_b, raw.pet.round(4)))
-    screened_keys = set(zip(screened.track_a, screened.track_b, screened.pet.round(4)))
+    raw_keys = set(zip(raw.track_a, raw.track_b, raw.pet.round(4), strict=True))
+    screened_keys = set(zip(screened.track_a, screened.track_b, screened.pet.round(4), strict=True))
     assert screened_keys.issubset(raw_keys)
 
 
