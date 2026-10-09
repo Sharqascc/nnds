@@ -62,13 +62,13 @@ def test_validate_frame_stride_rejects_non_positive(n):
 
 
 def test_validate_bev_config_accepts_full_config():
-    sg._validate_bev_config({
-        "H_pixel_to_world": [[1.0, 0.0, 0.0],
-                             [0.0, 1.0, 0.0],
-                             [0.0, 0.0, 1.0]],
-        "bev_bounds": [0.0, 0.0, 100.0, 100.0],
-        "bev_resolution": [1000, 800],
-    })
+    sg._validate_bev_config(
+        {
+            "H_pixel_to_world": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            "bev_bounds": [0.0, 0.0, 100.0, 100.0],
+            "bev_resolution": [1000, 800],
+        }
+    )
 
 
 def test_validate_bev_config_rejects_empty():

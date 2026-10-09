@@ -10,8 +10,14 @@ from hypothesis import strategies as st
 from src.analysis.ssm import ssm_verification as sv
 
 REQUIRED_KEYS = {
-    "metric_name", "checks", "warnings", "errors",
-    "passed", "clean_data", "summary", "statistics",
+    "metric_name",
+    "checks",
+    "warnings",
+    "errors",
+    "passed",
+    "clean_data",
+    "summary",
+    "statistics",
 }
 
 
@@ -37,7 +43,8 @@ def test_all_nan_fails():
 @given(
     vals=st.lists(
         st.floats(0.0, 10.0, allow_nan=False, allow_infinity=False),
-        min_size=10, max_size=30,
+        min_size=10,
+        max_size=30,
     )
 )
 def test_clean_input_passes(vals):
@@ -51,7 +58,8 @@ def test_clean_input_passes(vals):
 @given(
     vals=st.lists(
         st.floats(0.0, 10.0, allow_nan=False, allow_infinity=False),
-        min_size=10, max_size=30,
+        min_size=10,
+        max_size=30,
     ),
     n_nan=st.integers(0, 5),
 )
@@ -66,7 +74,8 @@ def test_nan_values_are_removed(vals, n_nan):
 @given(
     vals=st.lists(
         st.floats(0.0, 10.0, allow_nan=False, allow_infinity=False),
-        min_size=10, max_size=30,
+        min_size=10,
+        max_size=30,
     ),
     n_inf=st.integers(0, 3),
 )

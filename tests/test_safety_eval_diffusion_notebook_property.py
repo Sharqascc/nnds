@@ -17,9 +17,7 @@ sedn = pytest.importorskip(
 _FINITE_POS = st.floats(0.0, 1000.0, allow_nan=False, allow_infinity=False)
 
 
-@given(pet=_FINITE_POS, half_life=st.floats(0.01, 100.0,
-                                            allow_nan=False,
-                                            allow_infinity=False))
+@given(pet=_FINITE_POS, half_life=st.floats(0.01, 100.0, allow_nan=False, allow_infinity=False))
 def test_risk_in_unit_interval(pet, half_life):
     r = sedn.pet_to_risk_exponential(pet, half_life)
     assert 0.0 <= r <= 1.0

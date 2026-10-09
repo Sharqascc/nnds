@@ -10,9 +10,9 @@ from src.analysis.grid_trajectory import yolo_cpu_grid_pet as yp
 
 # -------------- _segment_intersection --------------
 
+
 def test_intersecting_diagonals_returns_center():
-    r = yp._segment_intersection((0.0, 0.0), (2.0, 2.0),
-                                 (0.0, 2.0), (2.0, 0.0))
+    r = yp._segment_intersection((0.0, 0.0), (2.0, 2.0), (0.0, 2.0), (2.0, 0.0))
     assert r is not None
     x, y = r
     assert abs(x - 1.0) < 1e-6
@@ -20,20 +20,17 @@ def test_intersecting_diagonals_returns_center():
 
 
 def test_parallel_segments_return_none():
-    r = yp._segment_intersection((0.0, 0.0), (1.0, 1.0),
-                                 (0.0, 1.0), (1.0, 2.0))
+    r = yp._segment_intersection((0.0, 0.0), (1.0, 1.0), (0.0, 1.0), (1.0, 2.0))
     assert r is None
 
 
 def test_disjoint_collinear_segments_return_none():
-    r = yp._segment_intersection((0.0, 0.0), (1.0, 1.0),
-                                 (5.0, 5.0), (6.0, 6.0))
+    r = yp._segment_intersection((0.0, 0.0), (1.0, 1.0), (5.0, 5.0), (6.0, 6.0))
     assert r is None
 
 
 def test_non_crossing_segments_return_none():
-    r = yp._segment_intersection((0.0, 0.0), (1.0, 0.0),
-                                 (2.0, 2.0), (3.0, 3.0))
+    r = yp._segment_intersection((0.0, 0.0), (1.0, 0.0), (2.0, 2.0), (3.0, 3.0))
     assert r is None
 
 
@@ -44,12 +41,12 @@ def test_non_crossing_segments_return_none():
     y2=st.floats(-10.0, 10.0, allow_nan=False, allow_infinity=False),
 )
 def test_segment_intersection_returns_tuple_or_none(x1, y1, x2, y2):
-    r = yp._segment_intersection((0.0, 0.0), (1.0, 1.0),
-                                 (x1, y1), (x2, y2))
+    r = yp._segment_intersection((0.0, 0.0), (1.0, 1.0), (x1, y1), (x2, y2))
     assert r is None or (isinstance(r, tuple) and len(r) == 2)
 
 
 # -------------- _point_in_square --------------
+
 
 @given(
     cx=st.floats(-100.0, 100.0, allow_nan=False, allow_infinity=False),
@@ -85,9 +82,9 @@ def test_point_far_outside_is_outside(cx, cy, hs):
 
 # -------------- _entry_exit_frames --------------
 
+
 def _pt(frame, x=0.0, y=0.0):
-    return yp.TrackPoint(frame=frame, x=x, y=y,
-                         cls_id=0, cls_name="person", conf=0.9)
+    return yp.TrackPoint(frame=frame, x=x, y=y, cls_id=0, cls_name="person", conf=0.9)
 
 
 def test_entry_exit_no_points_inside_returns_none():
@@ -107,6 +104,7 @@ def test_entry_exit_min_lte_max():
 
 
 # -------------- _pair_conflict_point --------------
+
 
 def test_pair_conflict_none_when_no_intersection():
     a = [_pt(0, 0.0, 0.0), _pt(1, 1.0, 1.0)]
