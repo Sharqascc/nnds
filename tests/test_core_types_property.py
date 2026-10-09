@@ -55,16 +55,30 @@ def test_trajectory_non_increasing_rejected():
 def test_pet_event_rejects_same_tracks():
     ta = t.Trajectory(track_id=1, points=(t.WorldPoint(0.0, 0.0, 0.0),))
     with pytest.raises(ValueError):
-        t.PETEvent(event_id=0, pet=1.0, track_a=1, track_b=1,
-                   conflict_type="x", world_traj_i=ta, world_traj_j=ta)
+        t.PETEvent(
+            event_id=0,
+            pet=1.0,
+            track_a=1,
+            track_b=1,
+            conflict_type="x",
+            world_traj_i=ta,
+            world_traj_j=ta,
+        )
 
 
 @given(pet=st.floats(0.0, 10.0, allow_nan=False, allow_infinity=False))
 def test_pet_event_accepts_valid(pet):
     ta = t.Trajectory(track_id=1, points=(t.WorldPoint(0.0, 0.0, 0.0),))
     tb = t.Trajectory(track_id=2, points=(t.WorldPoint(0.0, 1.0, 0.0),))
-    ev = t.PETEvent(event_id=0, pet=pet, track_a=1, track_b=2,
-                    conflict_type="cell", world_traj_i=ta, world_traj_j=tb)
+    ev = t.PETEvent(
+        event_id=0,
+        pet=pet,
+        track_a=1,
+        track_b=2,
+        conflict_type="cell",
+        world_traj_i=ta,
+        world_traj_j=tb,
+    )
     assert ev.pet == pet
 
 
@@ -85,7 +99,8 @@ def test_trajectory_batch_rejects_mismatched_batch():
         t.TrajectoryBatch(
             inputs=np.zeros((2, 3, 4)),
             targets=np.zeros((3, 5, 4)),
-            meta={}, fps=30.0,
+            meta={},
+            fps=30.0,
         )
 
 
@@ -94,7 +109,8 @@ def test_trajectory_batch_rejects_bad_fps():
         t.TrajectoryBatch(
             inputs=np.zeros((1, 3, 4)),
             targets=np.zeros((1, 3, 4)),
-            meta={}, fps=0.0,
+            meta={},
+            fps=0.0,
         )
 
 
@@ -103,5 +119,6 @@ def test_trajectory_batch_rejects_non_3d():
         t.TrajectoryBatch(
             inputs=np.zeros((2, 3)),
             targets=np.zeros((2, 3)),
-            meta={}, fps=30.0,
+            meta={},
+            fps=30.0,
         )

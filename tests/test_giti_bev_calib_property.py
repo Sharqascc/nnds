@@ -31,11 +31,17 @@ def test_malformed_json_raises(tmp_path):
 
 def test_too_few_points_raises(tmp_path):
     p = tmp_path / "few.json"
-    p.write_text(json.dumps({"calibration_points": [
-        {"pixel": {"x": 0, "y": 0}, "world": {"easting": 0.0, "northing": 0.0}},
-        {"pixel": {"x": 100, "y": 0}, "world": {"easting": 10.0, "northing": 0.0}},
-        {"pixel": {"x": 0, "y": 100}, "world": {"easting": 0.0, "northing": 10.0}},
-    ]}))
+    p.write_text(
+        json.dumps(
+            {
+                "calibration_points": [
+                    {"pixel": {"x": 0, "y": 0}, "world": {"easting": 0.0, "northing": 0.0}},
+                    {"pixel": {"x": 100, "y": 0}, "world": {"easting": 10.0, "northing": 0.0}},
+                    {"pixel": {"x": 0, "y": 100}, "world": {"easting": 0.0, "northing": 10.0}},
+                ]
+            }
+        )
+    )
     with pytest.raises(ValueError):
         gbc.load_giti_homography(p)
 
@@ -49,13 +55,19 @@ def test_missing_points_raises(tmp_path):
 
 def test_invalid_point_entry_raises(tmp_path):
     p = tmp_path / "badpoint.json"
-    p.write_text(json.dumps({"calibration_points": [
-        {"pixel": {"x": 0, "y": 0}, "world": {"easting": 0.0, "northing": 0.0}},
-        {"pixel": {"x": 100, "y": 0}, "world": {"easting": 10.0, "northing": 0.0}},
-        {"pixel": {"x": 0, "y": 100}, "world": {"easting": 0.0, "northing": 10.0}},
-        {"pixel": {"x": 100, "y": 100}, "world": {"easting": 10.0, "northing": 10.0}},
-        {"missing_pixel": "bad"},
-    ]}))
+    p.write_text(
+        json.dumps(
+            {
+                "calibration_points": [
+                    {"pixel": {"x": 0, "y": 0}, "world": {"easting": 0.0, "northing": 0.0}},
+                    {"pixel": {"x": 100, "y": 0}, "world": {"easting": 10.0, "northing": 0.0}},
+                    {"pixel": {"x": 0, "y": 100}, "world": {"easting": 0.0, "northing": 10.0}},
+                    {"pixel": {"x": 100, "y": 100}, "world": {"easting": 10.0, "northing": 10.0}},
+                    {"missing_pixel": "bad"},
+                ]
+            }
+        )
+    )
     with pytest.raises(ValueError):
         gbc.load_giti_homography(p)
 
@@ -69,8 +81,7 @@ def test_valid_rectangle_gives_homography(tmp_path):
         ((0, 100), (0.0, 10.0)),
         ((100, 100), (10.0, 10.0)),
     ]:
-        pts.append({"pixel": {"x": px, "y": py},
-                    "world": {"easting": X, "northing": Y}})
+        pts.append({"pixel": {"x": px, "y": py}, "world": {"easting": X, "northing": Y}})
     p = tmp_path / "ok.json"
     p.write_text(json.dumps({"calibration_points": pts}))
 

@@ -54,7 +54,8 @@ def test_colors_bgr_has_required_keys():
 
 
 def test_constructor_accepts_custom_thresholds():
-    p = vo.VideoOverlayPlotter(thresholds={"critical": 0.2, "serious": 0.5,
-                                            "moderate": 1.0, "safe": 3.0})
+    p = vo.VideoOverlayPlotter(
+        thresholds={"critical": 0.2, "serious": 0.5, "moderate": 1.0, "safe": 3.0}
+    )
     assert p._get_severity_label(0.1) == "CRITICAL"
     assert p._get_severity_label(2.0) == "SAFE"

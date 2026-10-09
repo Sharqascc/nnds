@@ -50,18 +50,21 @@ def test_same_tracks_rejected():
 def test_valid_events_roundtrip(pet, event_id, frame, ta, tb):
     if ta == tb:
         tb = tb + 1
-    rec = c.PETEventRecord(**_valid_event(
-        event_id=event_id, pet=pet, frame=frame,
-        track_a=ta, track_b=tb,
-    ))
+    rec = c.PETEventRecord(
+        **_valid_event(
+            event_id=event_id,
+            pet=pet,
+            frame=frame,
+            track_a=ta,
+            track_b=tb,
+        )
+    )
     assert rec.pet == pet
     assert rec.track_a == ta
     assert rec.track_b == tb
 
 
-@given(
-    pct=st.floats(-1.0, -0.01, allow_nan=False, allow_infinity=False)
-)
+@given(pct=st.floats(-1.0, -0.01, allow_nan=False, allow_infinity=False))
 def test_negative_percentage_rejected(pct):
     with pytest.raises(ValidationError):
         c.RiskLevelSummary(count=1, percentage=pct)
@@ -69,15 +72,14 @@ def test_negative_percentage_rejected(pct):
 
 def test_uncertainty_rejects_empty_error_sources():
     with pytest.raises(ValidationError):
-        c.PETUncertaintyContract(
-            nominal_pet=1.0, uncertainty_std=0.1, error_sources={}
-        )
+        c.PETUncertaintyContract(nominal_pet=1.0, uncertainty_std=0.1, error_sources={})
 
 
 def test_uncertainty_rejects_negative_error_source():
     with pytest.raises(ValidationError):
         c.PETUncertaintyContract(
-            nominal_pet=1.0, uncertainty_std=0.1,
+            nominal_pet=1.0,
+            uncertainty_std=0.1,
             error_sources={"a": -0.1},
         )
 

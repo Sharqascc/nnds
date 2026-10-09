@@ -11,7 +11,8 @@ from src.analysis.visualization import pet_gt_scatter as pgs
 
 _ARR = st.lists(
     st.floats(0.0, 5.0, allow_nan=False, allow_infinity=False),
-    min_size=1, max_size=20,
+    min_size=1,
+    max_size=20,
 )
 
 
