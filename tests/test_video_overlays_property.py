@@ -62,8 +62,7 @@ def test_colors_bgr_has_required_keys():
 def test_constructor_accepts_custom_thresholds():
     """Custom thresholds change the label boundaries accordingly."""
     p = vo.VideoOverlayPlotter(
-        thresholds={"critical": 0.2, "serious": 0.5,
-                    "moderate": 1.0, "safe": 3.0}
+        thresholds={"critical": 0.2, "serious": 0.5, "moderate": 1.0, "safe": 3.0}
     )
     assert p._get_severity_label(0.1) == "CRITICAL"
     assert p._get_severity_label(0.3) == "SERIOUS"
@@ -81,8 +80,7 @@ def test_constructor_accepts_custom_thresholds():
 def test_label_monotone_in_ordering(critical, serious, moderate, safe):
     """A smaller PET always maps to the same or an earlier severity."""
     p = vo.VideoOverlayPlotter(
-        thresholds={"critical": critical, "serious": serious,
-                    "moderate": moderate, "safe": safe}
+        thresholds={"critical": critical, "serious": serious, "moderate": moderate, "safe": safe}
     )
     ordered = ["CRITICAL", "SERIOUS", "MODERATE", "SLIGHT", "SAFE"]
     ranks = []
