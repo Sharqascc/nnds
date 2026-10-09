@@ -8,7 +8,6 @@ from hypothesis import strategies as st
 
 from src.analysis.visualization import video_overlays as vo
 
-
 # The module implements five severity levels (verified against source):
 #   CRITICAL < critical
 #   SERIOUS  < serious
