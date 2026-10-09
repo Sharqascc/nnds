@@ -14,7 +14,6 @@ from pathlib import Path
 
 import pytest
 
-
 # Modules marked out of scope — import is best-effort; optional deps may
 # be missing in some environments. A successful import is required only
 # if the module's dependencies are available.

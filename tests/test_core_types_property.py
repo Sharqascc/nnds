@@ -11,7 +11,6 @@ from hypothesis import strategies as st
 
 from src.core import types as t
 
-
 _FINITE = st.floats(-1e6, 1e6, allow_nan=False, allow_infinity=False)
 
 
