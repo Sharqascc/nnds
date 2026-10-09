@@ -19,8 +19,9 @@ _FLOAT = st.floats(
 @st.composite
 def valid_interval(draw):
     start = draw(_FLOAT)
-    length = draw(st.floats(min_value=0.0, max_value=1_000.0,
-                            allow_nan=False, allow_infinity=False))
+    length = draw(
+        st.floats(min_value=0.0, max_value=1_000.0, allow_nan=False, allow_infinity=False)
+    )
     return start, start + length
 
 
@@ -105,16 +106,13 @@ def test_infinity_raises(a):
     a_dur=st.integers(0, 1000),
     b_entry=st.integers(-1000, 1000),
     b_dur=st.integers(0, 1000),
-    fps=st.floats(min_value=1.0, max_value=200.0,
-                  allow_nan=False, allow_infinity=False),
+    fps=st.floats(min_value=1.0, max_value=200.0, allow_nan=False, allow_infinity=False),
 )
 def test_frames_matches_seconds(a_entry, a_dur, b_entry, b_dur, fps):
     a_exit = a_entry + a_dur
     b_exit = b_entry + b_dur
     r_frames = compute_pet_from_frames(a_entry, a_exit, b_entry, b_exit, fps)
-    r_seconds = compute_pet_from_intervals(
-        a_entry / fps, a_exit / fps, b_entry / fps, b_exit / fps
-    )
+    r_seconds = compute_pet_from_intervals(a_entry / fps, a_exit / fps, b_entry / fps, b_exit / fps)
     assert r_frames.pet_status == r_seconds.pet_status
     if r_seconds.pet_s is not None:
         assert r_frames.pet_s == pytest.approx(r_seconds.pet_s, abs=1e-9)
