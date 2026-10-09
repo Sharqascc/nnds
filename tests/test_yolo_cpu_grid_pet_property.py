@@ -8,7 +8,6 @@ from hypothesis import strategies as st
 
 from src.analysis.grid_trajectory import yolo_cpu_grid_pet as yp
 
-
 # -------------- _segment_intersection --------------
 
 def test_intersecting_diagonals_returns_center():

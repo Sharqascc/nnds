@@ -9,7 +9,6 @@ from hypothesis import strategies as st
 
 from src.analysis.ssm import ssm_verification as sv
 
-
 REQUIRED_KEYS = {
     "metric_name", "checks", "warnings", "errors",
     "passed", "clean_data", "summary", "statistics",
