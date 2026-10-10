@@ -1,4 +1,8 @@
-# last-push: 2026-10-09T13:50:37.142509+00:00
+# Tiered CI: static analysis, three parallel test lanes, combined coverage gate.
+#
+# Coverage files use names WITHOUT a leading dot (`coverage.fast`, etc.) so
+# actions/upload-artifact@v4 sees them — it skips dotfiles by default.
+# Coverage gating is done ONCE in the combined `coverage` job at 70%.
 name: CI
 
 on:
@@ -6,37 +10,34 @@ on:
   push:
   pull_request:
 
-# Cancel in-flight runs for the same ref. push + pull_request both trigger
-# for a branch with an open PR; this keeps one active run per ref instead
-# of two.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
 permissions:
   contents: write
 
 jobs:
-  test:
+  static:
+    name: Static analysis
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            requirements-vlm.txt
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
           if [ -f requirements-vlm.txt ]; then pip install -r requirements-vlm.txt; fi
-
       - name: Compile all Python files
         run: python -m compileall -q src tests scripts conftest.py
-
       - name: Lint + auto-format with Ruff
         run: |
           git config user.name "github-actions"
@@ -46,50 +47,177 @@ jobs:
           if ! git diff --quiet; then
             git add -A
             git commit -m "style: auto-fix + auto-format via CI"
-            # Rebase on the latest remote state before pushing. Prevents
-            # rejection when the branch has moved forward since checkout.
             git pull --rebase origin "${GITHUB_REF_NAME}" || true
             git push origin "HEAD:${GITHUB_REF_NAME}" || true
           fi
-          # Verify clean state regardless of whether a commit was made
           ruff check .
           ruff format --check .
-
       - name: Run mypy type checking (analysis)
         run: mypy --config-file mypy.ini src/ paper/analysis/ scripts/ 2>&1 | head -50
-
       - name: Run bandit (SAST)
         run: bandit -c bandit.yaml -r src/ paper/analysis/ scripts/ -ll
-
       - name: Run pylint (non-blocking, reports score)
         run: |
           pylint src/paper 2>/dev/null || true
           pylint src/pipeline src/analysis --score=y --exit-zero 2>&1 | tail -30
-
       - name: Check shell syntax
         run: |
           shopt -s nullglob
           for f in scripts/*.sh .githooks/pre-commit .githooks/pre-push; do
             bash -n "$f"
           done
-
       - name: Fetch tags (for archive-index drift check)
         run: git fetch --tags
 
-      - name: Run fast unit tests with coverage
+  test-fast:
+    name: Fast unit tests
+    needs: static
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            requirements-vlm.txt
+      - name: Install dependencies
         run: |
-          pytest tests/ -m "not integration and not slow" \
-            --cov=src --cov=paper/analysis --cov-branch --cov-report=term-missing \
-            --cov-fail-under=70
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          if [ -f requirements-vlm.txt ]; then pip install -r requirements-vlm.txt; fi
+      - name: Run fast unit tests
+        run: |
+          pytest tests/ \
+            -m "not integration and not smoke and not full and not slow and not property" \
+            --cov=src --cov=paper/analysis --cov-branch --cov-report= \
+            --durations=25
+      - name: Rename coverage data
+        if: always()
+        run: |
+          if [ -f .coverage ]; then cp .coverage coverage.fast; fi
+          ls -la coverage.fast || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-fast
+          path: coverage.fast
+          if-no-files-found: warn
 
+  test-property:
+    name: Property tests (hypothesis ci-pr)
+    needs: static
+    runs-on: ubuntu-latest
+    env:
+      HYPOTHESIS_PROFILE: ci-pr
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            requirements-vlm.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          if [ -f requirements-vlm.txt ]; then pip install -r requirements-vlm.txt; fi
       - name: Run property tests
-        env:
-          HYPOTHESIS_PROFILE: ci-pr
         run: |
           pytest tests/ -m property -q \
+            --cov=src --cov=paper/analysis --cov-branch --cov-report= \
             --ignore=tests/test_snapshot_pet_summary.py
-
-      - name: Run smoke tests (integration)
+      - name: Rename coverage data
+        if: always()
         run: |
-          pytest tests/ -m "integration or smoke" -q \
-            --ignore=tests/test_snapshot_pet_summary.py
+          if [ -f .coverage ]; then cp .coverage coverage.property; fi
+          ls -la coverage.property || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-property
+          path: coverage.property
+          if-no-files-found: warn
+
+  test-full:
+    name: Full / smoke / integration / slow
+    needs: static
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            requirements-vlm.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          if [ -f requirements-vlm.txt ]; then pip install -r requirements-vlm.txt; fi
+      - name: Run full / smoke / integration / slow tests
+        run: |
+          pytest tests/ -m "integration or smoke or full or slow" -q \
+            --cov=src --cov=paper/analysis --cov-branch --cov-report= \
+            --ignore=tests/test_snapshot_pet_summary.py \
+            --durations=25
+      - name: Rename coverage data
+        if: always()
+        run: |
+          if [ -f .coverage ]; then cp .coverage coverage.full; fi
+          ls -la coverage.full || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-full
+          path: coverage.full
+          if-no-files-found: warn
+
+  coverage:
+    name: Coverage gate (combined)
+    needs: [test-fast, test-property, test-full]
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install coverage
+      - uses: actions/download-artifact@v4
+        with:
+          path: cov-artifacts
+      - name: List what we got (for debugging)
+        run: find cov-artifacts -type f | sort
+      - name: Combine and gate
+        run: |
+          # Copy each lane's coverage file into the root with a unique suffix.
+          found=0
+          for lane in fast property full; do
+            f="cov-artifacts/coverage-$lane/coverage.$lane"
+            if [ -f "$f" ]; then
+              cp "$f" "coverage.$lane"
+              found=$((found+1))
+              echo "loaded $f"
+            else
+              echo "MISSING: $f"
+            fi
+          done
+          if [ "$found" -eq 0 ]; then
+            echo "No coverage data found in any lane — aborting."
+            exit 1
+          fi
+          # coverage combine finds files matching .coverage.*; rename ours in place.
+          for lane in fast property full; do
+            [ -f "coverage.$lane" ] && mv "coverage.$lane" ".coverage.$lane"
+          done
+          coverage combine
+          coverage report --fail-under=70
