@@ -27,12 +27,19 @@ def test_tracking_metrics_public_api():
 
 
 def test_traj_error_public_api():
+    """traj_error exposes velocity/acceleration error metric helpers.
+
+    Regression guard: the module's public names are `*_metrics` and
+    primitive trajectory functions, not `*error*` / `*ade*` / `*fde*`.
+    Previous substring check never matched and had been failing on the
+    integration branch since before PR #50.
+    """
     from src.analysis import traj_error
 
     names = [n for n in dir(traj_error) if not n.startswith("_")]
-    assert any("ade" in n.lower() or "fde" in n.lower() or "error" in n.lower() for n in names), (
-        names
-    )
+    expected = {"velocity_metrics", "acceleration_metrics", "trajectory_metrics"}
+    missing = expected - set(names)
+    assert not missing, f"traj_error missing public helpers: {sorted(missing)}. Actual: {names}"
 
 
 def test_metrics_modules_are_importable_together():
