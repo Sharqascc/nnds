@@ -8,6 +8,7 @@ Usage:
     python scripts/run_pipeline.py --video path/to/video.mp4 --skip-ensure
 """
 
+import os
 import runpy
 import subprocess
 import sys
@@ -42,7 +43,12 @@ if __name__ == "__main__":
     sys.path.insert(0, str(root_dir))
     from src.utils.seed import set_seed
 
-    set_seed()
+    # Seed selection: NNDS_SEED env var overrides the default. Set via:
+    #   NNDS_SEED=1234 python scripts/run_pipeline.py --video ...
+    # set_seed also exports PYTHONHASHSEED so subprocesses
+    # (ensure_models.py, estimate_time_of_day.py) inherit it.
+    _seed = int(os.environ.get("NNDS_SEED", "42"))
+    set_seed(_seed)
 
     ensure_models_if_needed()
 

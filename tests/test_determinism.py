@@ -62,7 +62,76 @@ def test_agreement_metrics_deterministic():
 # Note: there is intentionally no "different seed -> different output" test.
 # The tracker is a Kalman filter and is fully deterministic given the same
 # detections; seed variation changes the detections but not the tracker's
-# identity assignment for small jitter. The seed-invariance test above
-# confirms the tracker is reproducible; the pipeline-wide nondeterminism
-# (device selection, cudnn) is tracked separately in
-# docs/GITI_EVAL_STATUS.md.
+# identity assignment for small jitter.
+#
+# Pipeline-wide determinism (device selection, cudnn, cuBLAS) is now enforced
+# by src.utils.seed.set_seed() with deterministic_torch=True (the default).
+# The tests below verify that hardening is applied.
+
+
+def test_set_seed_rejects_bool():
+    """A bare True/False is almost certainly a caller bug, not a valid seed."""
+    from src.utils.seed import set_seed
+
+    with pytest.raises(TypeError):
+        set_seed(True)
+    with pytest.raises(TypeError):
+        set_seed(False)
+
+
+def test_set_seed_enables_cudnn_determinism():
+    import torch
+
+    from src.utils.seed import set_seed
+
+    set_seed(123)
+    assert torch.backends.cudnn.deterministic is True
+    assert torch.backends.cudnn.benchmark is False
+
+
+def test_set_seed_sets_pythonhashseed():
+    import os
+
+    from src.utils.seed import set_seed
+
+    set_seed(99)
+    assert os.environ["PYTHONHASHSEED"] == "99"
+
+
+def test_set_seed_sets_cublas_workspace_config():
+    import os
+
+    from src.utils.seed import set_seed
+
+    os.environ.pop("CUBLAS_WORKSPACE_CONFIG", None)
+    set_seed(1)
+    assert os.environ.get("CUBLAS_WORKSPACE_CONFIG") == ":4096:8"
+
+
+def test_set_seed_deterministic_torch_false_leaves_cudnn_benchmark():
+    """Opt-out path: pass deterministic_torch=False for max throughput."""
+    import torch
+
+    from src.utils.seed import set_seed
+
+    # Set a sentinel; assert set_seed(deterministic_torch=False) does not
+    # forcibly flip it.
+    torch.backends.cudnn.benchmark = True
+    set_seed(5, deterministic_torch=False)
+    assert torch.backends.cudnn.benchmark is True
+
+
+def test_set_seed_reproducible_across_calls():
+    """Value-level check: same seed -> same first draws from each RNG."""
+    import random
+
+    import numpy as np
+    import torch
+
+    from src.utils.seed import set_seed
+
+    set_seed(11)
+    a = (random.random(), float(np.random.rand()), float(torch.rand(1).item()))
+    set_seed(11)
+    b = (random.random(), float(np.random.rand()), float(torch.rand(1).item()))
+    assert a == b
