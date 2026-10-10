@@ -1,4 +1,4 @@
-# last-push: 2026-10-09T13:50:37.142509+00:00
+# Tiered CI: static analysis, then three test lanes in parallel.
 name: CI
 
 on:
@@ -6,37 +6,29 @@ on:
   push:
   pull_request:
 
-# Cancel in-flight runs for the same ref. push + pull_request both trigger
-# for a branch with an open PR; this keeps one active run per ref instead
-# of two.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
 permissions:
   contents: write
 
 jobs:
-  test:
+  static:
+    name: Static analysis
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
           if [ -f requirements-vlm.txt ]; then pip install -r requirements-vlm.txt; fi
-
       - name: Compile all Python files
         run: python -m compileall -q src tests scripts conftest.py
-
       - name: Lint + auto-format with Ruff
         run: |
           git config user.name "github-actions"
@@ -46,50 +38,88 @@ jobs:
           if ! git diff --quiet; then
             git add -A
             git commit -m "style: auto-fix + auto-format via CI"
-            # Rebase on the latest remote state before pushing. Prevents
-            # rejection when the branch has moved forward since checkout.
             git pull --rebase origin "${GITHUB_REF_NAME}" || true
             git push origin "HEAD:${GITHUB_REF_NAME}" || true
           fi
-          # Verify clean state regardless of whether a commit was made
           ruff check .
           ruff format --check .
-
       - name: Run mypy type checking (analysis)
         run: mypy --config-file mypy.ini src/ paper/analysis/ scripts/ 2>&1 | head -50
-
       - name: Run bandit (SAST)
         run: bandit -c bandit.yaml -r src/ paper/analysis/ scripts/ -ll
-
       - name: Run pylint (non-blocking, reports score)
         run: |
           pylint src/paper 2>/dev/null || true
           pylint src/pipeline src/analysis --score=y --exit-zero 2>&1 | tail -30
-
       - name: Check shell syntax
         run: |
           shopt -s nullglob
           for f in scripts/*.sh .githooks/pre-commit .githooks/pre-push; do
             bash -n "$f"
           done
-
       - name: Fetch tags (for archive-index drift check)
         run: git fetch --tags
 
+  test-fast:
+    name: Fast unit tests
+    needs: static
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          if [ -f requirements-vlm.txt ]; then pip install -r requirements-vlm.txt; fi
       - name: Run fast unit tests with coverage
         run: |
-          pytest tests/ -m "not integration and not slow" \
+          pytest tests/ \
+            -m "not integration and not smoke and not full and not slow and not property" \
             --cov=src --cov=paper/analysis --cov-branch --cov-report=term-missing \
-            --cov-fail-under=70
+            --cov-fail-under=70 \
+            --durations=25
 
+  test-property:
+    name: Property tests (hypothesis ci-pr)
+    needs: static
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          if [ -f requirements-vlm.txt ]; then pip install -r requirements-vlm.txt; fi
       - name: Run property tests
         env:
           HYPOTHESIS_PROFILE: ci-pr
         run: |
           pytest tests/ -m property -q \
-            --ignore=tests/test_snapshot_pet_summary.py
+            --ignore=tests/test_snapshot_pet_summary.py \
+            --durations=15
 
-      - name: Run smoke tests (integration)
+  test-full:
+    name: Full / smoke / integration / slow
+    needs: static
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
         run: |
-          pytest tests/ -m "integration or smoke" -q \
-            --ignore=tests/test_snapshot_pet_summary.py
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          if [ -f requirements-vlm.txt ]; then pip install -r requirements-vlm.txt; fi
+      - name: Run full, smoke, integration, slow tests
+        run: |
+          pytest tests/ -m "integration or smoke or full or slow" -q \
+            --ignore=tests/test_snapshot_pet_summary.py \
+            --durations=25
