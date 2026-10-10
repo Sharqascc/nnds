@@ -68,9 +68,11 @@ def test_agreement_metrics_deterministic():
 # by src.utils.seed.set_seed() with deterministic_torch=True (the default).
 # The tests below verify that hardening is applied.
 
+
 def test_set_seed_rejects_bool():
     """A bare True/False is almost certainly a caller bug, not a valid seed."""
     from src.utils.seed import set_seed
+
     with pytest.raises(TypeError):
         set_seed(True)
     with pytest.raises(TypeError):
@@ -79,6 +81,7 @@ def test_set_seed_rejects_bool():
 
 def test_set_seed_enables_cudnn_determinism():
     import torch
+
     from src.utils.seed import set_seed
 
     set_seed(123)
@@ -88,6 +91,7 @@ def test_set_seed_enables_cudnn_determinism():
 
 def test_set_seed_sets_pythonhashseed():
     import os
+
     from src.utils.seed import set_seed
 
     set_seed(99)
@@ -96,6 +100,7 @@ def test_set_seed_sets_pythonhashseed():
 
 def test_set_seed_sets_cublas_workspace_config():
     import os
+
     from src.utils.seed import set_seed
 
     os.environ.pop("CUBLAS_WORKSPACE_CONFIG", None)
@@ -106,6 +111,7 @@ def test_set_seed_sets_cublas_workspace_config():
 def test_set_seed_deterministic_torch_false_leaves_cudnn_benchmark():
     """Opt-out path: pass deterministic_torch=False for max throughput."""
     import torch
+
     from src.utils.seed import set_seed
 
     # Set a sentinel; assert set_seed(deterministic_torch=False) does not
@@ -118,8 +124,10 @@ def test_set_seed_deterministic_torch_false_leaves_cudnn_benchmark():
 def test_set_seed_reproducible_across_calls():
     """Value-level check: same seed -> same first draws from each RNG."""
     import random
+
     import numpy as np
     import torch
+
     from src.utils.seed import set_seed
 
     set_seed(11)

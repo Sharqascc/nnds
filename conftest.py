@@ -47,6 +47,7 @@ def pytest_collection_modifyitems(config, items):
         if fspath.endswith("_property.py") or "property_based" in fspath:
             item.add_marker(pytest.mark.property)
 
+
 @pytest.fixture
 def seeded_rng():
     """Yield a scoped numpy Generator so tests do not touch global RNG state.
@@ -59,4 +60,5 @@ def seeded_rng():
     Override per test by constructing your own default_rng(seed).
     """
     import numpy as np
+
     return np.random.default_rng(1234)
