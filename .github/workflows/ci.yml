@@ -1,4 +1,6 @@
 # Tiered CI: static analysis, three parallel test lanes, combined coverage gate.
+# Coverage data files are renamed after pytest (COVERAGE_FILE env was unreliable
+# through pytest-cov); uploads fail loudly if the file is missing.
 name: CI
 
 on:
@@ -20,7 +22,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            requirements-vlm.txt
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -63,12 +71,16 @@ jobs:
     name: Fast unit tests
     needs: static
     runs-on: ubuntu-latest
-    env:
-      COVERAGE_FILE: .coverage.fast
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            requirements-vlm.txt
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -80,12 +92,13 @@ jobs:
             -m "not integration and not smoke and not full and not slow and not property" \
             --cov=src --cov=paper/analysis --cov-branch --cov-report= \
             --durations=25
+          mv .coverage .coverage.fast
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage-fast
-          path: .coverage.fast*
-          if-no-files-found: ignore
+          path: .coverage.fast
+          if-no-files-found: error
 
   test-property:
     name: Property tests (hypothesis ci-pr)
@@ -93,11 +106,16 @@ jobs:
     runs-on: ubuntu-latest
     env:
       HYPOTHESIS_PROFILE: ci-pr
-      COVERAGE_FILE: .coverage.property
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            requirements-vlm.txt
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -108,23 +126,28 @@ jobs:
           pytest tests/ -m property -q \
             --cov=src --cov=paper/analysis --cov-branch --cov-report= \
             --ignore=tests/test_snapshot_pet_summary.py
+          mv .coverage .coverage.property
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage-property
-          path: .coverage.property*
-          if-no-files-found: ignore
+          path: .coverage.property
+          if-no-files-found: error
 
   test-full:
     name: Full / smoke / integration / slow
     needs: static
     runs-on: ubuntu-latest
-    env:
-      COVERAGE_FILE: .coverage.full
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            requirements-vlm.txt
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -136,12 +159,13 @@ jobs:
             --cov=src --cov=paper/analysis --cov-branch --cov-report= \
             --ignore=tests/test_snapshot_pet_summary.py \
             --durations=25
+          mv .coverage .coverage.full
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage-full
-          path: .coverage.full*
-          if-no-files-found: ignore
+          path: .coverage.full
+          if-no-files-found: error
 
   coverage:
     name: Coverage gate (combined)
@@ -151,12 +175,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
+        with:
+          python-version: '3.12'
       - run: pip install coverage
       - uses: actions/download-artifact@v4
-        with: { path: cov-artifacts }
+        with:
+          path: cov-artifacts
+      - name: List what we got (for debugging)
+        run: find cov-artifacts -type f | sort
       - name: Combine and gate
         run: |
-          find cov-artifacts -name '.coverage.*' -exec cp {} . \;
+          cp cov-artifacts/coverage-fast/.coverage.fast .
+          cp cov-artifacts/coverage-property/.coverage.property .
+          cp cov-artifacts/coverage-full/.coverage.full .
           coverage combine
           coverage report --fail-under=70
