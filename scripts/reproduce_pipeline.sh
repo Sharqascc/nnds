@@ -2,31 +2,75 @@
 # =====================================================================
 # NNDS Pipeline Reproduction Script
 # =====================================================================
-# This script reproduces the full GITI + MRC PET analysis from a fresh clone.
-# Usage:
-#   bash scripts/reproduce_pipeline.sh [--max-frames 300] [--device cpu]
-# =====================================================================
-
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-MAX_FRAMES="${1:-300}"
-DEVICE="${2:-cpu}"
+MAX_FRAMES=300
+DEVICE=cpu
+GITI_ONLY=0
+PREFLIGHT_ONLY=0
+POSITIONAL=()
 
-echo "=== [0/4] Checking Git LFS ==="
-if ! command -v git-lfs >/dev/null 2>&1; then
-    echo "WARNING: git-lfs not installed. Videos will be pointers."
-    echo "         Install: https://git-lfs.com and run: git lfs pull"
-fi
-for v in data/sample_data/GITI_traffic_video.mp4 \
-         data/sample_data/MRC_traffic_video.mp4; do
-    if [ -f "$v" ] && [ "$(stat -c%s "$v")" -lt 1048576 ]; then
-        echo "WARNING: $v looks like an LFS pointer ($(stat -c%s "$v") bytes)."
-        echo "         Run: git lfs pull"
-    fi
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --max-frames)     MAX_FRAMES="$2"; shift 2 ;;
+        --device)         DEVICE="$2"; shift 2 ;;
+        --giti-only)      GITI_ONLY=1; shift ;;
+        --preflight-only) PREFLIGHT_ONLY=1; shift ;;
+        -h|--help)
+            sed -n '3,15p' "${BASH_SOURCE[0]}"
+            exit 0 ;;
+        --*)
+            echo "Unknown option: $1" >&2; exit 2 ;;
+        *)
+            POSITIONAL+=("$1"); shift ;;
+    esac
 done
+if (( ${#POSITIONAL[@]} >= 1 )); then MAX_FRAMES="${POSITIONAL[0]}"; fi
+if (( ${#POSITIONAL[@]} >= 2 )); then DEVICE="${POSITIONAL[1]}"; fi
+
+export MAX_FRAMES DEVICE GITI_ONLY
+
+VIDEO_DIR="${NNDS_VIDEO_DIR:-$ROOT/data/sample_data}"
+GITI_VIDEO="$VIDEO_DIR/GITI_traffic_video.mp4"
+MRC_VIDEO="$VIDEO_DIR/MRC_traffic_video.mp4"
+MIN_VIDEO_BYTES=1048576
+
+check_video() {
+    local path="$1"
+    if [[ ! -f "$path" ]]; then
+        echo "ERROR: missing $path" >&2
+        echo "       run: git lfs pull" >&2
+        return 1
+    fi
+    local size
+    size=$(stat -c%s "$path" 2>/dev/null || stat -f%z "$path")
+    if (( size < MIN_VIDEO_BYTES )); then
+        echo "ERROR: $path is ${size} bytes — looks like an LFS pointer, not a video" >&2
+        echo "       run: git lfs pull" >&2
+        return 1
+    fi
+    return 0
+}
+
+echo "=== [0/4] Preflight: verifying input videos ==="
+PREFLIGHT_FAILED=0
+check_video "$GITI_VIDEO" || PREFLIGHT_FAILED=1
+if (( GITI_ONLY == 0 )); then
+    check_video "$MRC_VIDEO" || PREFLIGHT_FAILED=1
+else
+    echo "NOTE: --giti-only set; skipping MRC preflight"
+fi
+if (( PREFLIGHT_FAILED )); then
+    echo "Preflight failed. Aborting." >&2
+    exit 1
+fi
+if (( PREFLIGHT_ONLY )); then
+    echo "Preflight OK."
+    exit 0
+fi
 
 echo "=== [1/4] Installing dependencies ==="
 pip install -q ultralytics pandas matplotlib opencv-python pyyaml scipy
@@ -34,32 +78,23 @@ pip install -q ultralytics pandas matplotlib opencv-python pyyaml scipy
 echo "=== [2/4] Downloading models ==="
 bash scripts/download_models.sh
 
-echo "=== [3/4] Copying videos from Drive (if available) ==="
-# This is optional; videos must be present in data/sample_data/
-# The user should manually copy videos if not already present.
-# We'll check for their existence.
-if [[ ! -f data/sample_data/GITI_traffic_video.mp4 || $(stat -c%s data/sample_data/GITI_traffic_video.mp4) -lt 1048576 ]]; then
-    echo "WARNING: GITI video not found. Please copy from Drive to data/sample_data/GITI_traffic_video.mp4"
-fi
-
-if [[ ! -f data/sample_data/MRC_traffic_video.mp4 || $(stat -c%s data/sample_data/MRC_traffic_video.mp4) -lt 1048576 ]]; then
-    echo "WARNING: MRC video not found. Please copy from Drive to data/sample_data/MRC_traffic_video.mp4"
-fi
-
-echo "=== [4/4] Running parallel pipeline (GITI + MRC) ==="
+echo "=== [3/4] Running pipeline(s) ==="
 mkdir -p outputs
 
-# Run GITI and MRC in parallel using Python multiprocessing
 python - << 'PYEOF'
-import os, sys, subprocess, multiprocessing, time
+import os, sys, subprocess, multiprocessing
 from pathlib import Path
 
 repo = Path('.')
-max_frames = int(os.environ.get('MAX_FRAMES', 300))
+max_frames = int(os.environ.get('MAX_FRAMES', '300'))
 device = os.environ.get('DEVICE', 'cpu')
+giti_only = os.environ.get('GITI_ONLY', '0') == '1'
 
 def run_site(args):
     site, video, bev, grid, gate, out = args
+    if not Path(video).exists():
+        print(f"[{site}] SKIPPED: video missing ({video})", flush=True)
+        return site, 127, out
     cmd = [
         sys.executable, '-m', 'src.pipeline.traffic_analyzer',
         '--video', str(video), '--video-source', site,
@@ -74,8 +109,8 @@ def run_site(args):
     print(f"[{site}] Starting...", flush=True)
     r = subprocess.run(cmd, capture_output=True, text=True, cwd=str(repo))
     if r.returncode != 0:
-        print(f"[{site}] FAILED: {r.stderr[-500:]}", flush=True)
-    return site, r.returncode
+        print(f"[{site}] FAILED (rc={r.returncode}): {r.stderr[-500:]}", flush=True)
+    return site, r.returncode, out
 
 jobs = [
     ('GITI', repo/'data/sample_data/GITI_traffic_video.mp4',
@@ -83,24 +118,36 @@ jobs = [
      repo/'configs/sites/giti/grid_config.json',
      repo/'configs/sites/giti/gate_config.yaml',
      repo/'outputs/giti_full_300_parallel.csv'),
-    ('MRC', repo/'data/sample_data/MRC_traffic_video.mp4',
-     repo/'configs/sites/mrc/bev_config.json',
-     repo/'configs/sites/mrc/grid_config.json',
-     repo/'configs/sites/mrc/gate_config.yaml',
-     repo/'outputs/mrc_full_300_parallel.csv')
 ]
+if not giti_only:
+    jobs.append(
+        ('MRC', repo/'data/sample_data/MRC_traffic_video.mp4',
+         repo/'configs/sites/mrc/bev_config.json',
+         repo/'configs/sites/mrc/grid_config.json',
+         repo/'configs/sites/mrc/gate_config.yaml',
+         repo/'outputs/mrc_full_300_parallel.csv')
+    )
 
-# Ensure configs are reconstructed (in case of LFS pointers)
-# This is handled by a Python script, but we'll leave a note.
-# If configs are LFS pointers, run the reconstruction function.
-
-with multiprocessing.Pool(processes=2) as pool:
+with multiprocessing.Pool(processes=len(jobs)) as pool:
     results = pool.map(run_site, jobs)
 
-for site, code in results:
-    print(f"{site}: {'OK' if code == 0 else 'FAILED'}")
+failed = []
+missing = []
+for site, code, out in results:
+    if code != 0:
+        failed.append(site)
+    if not Path(out).exists():
+        missing.append(f"{site} ({out})")
+    print(f"{site}: {'OK' if code == 0 else 'FAILED'}", flush=True)
 
-print("Done.")
+if failed:
+    print(f"\nERROR: sub-pipelines failed: {failed}", file=sys.stderr, flush=True)
+    sys.exit(1)
+if missing:
+    print(f"\nERROR: expected outputs missing: {missing}", file=sys.stderr, flush=True)
+    sys.exit(1)
+
+print("All requested pipelines succeeded.", flush=True)
 PYEOF
 
 echo "=== Reproducibility manifest ==="
@@ -124,7 +171,12 @@ for site in ['giti', 'mrc']:
             manifest["config_hashes"].append({"site": site, "file": f, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
 with open(repo/'outputs/reproducibility_manifest.json', 'w') as fp:
     json.dump(manifest, fp, indent=2)
-print("Manifest saved.")
+print("Manifest saved.", flush=True)
 PYEOF
 
-echo "✅ Reproduction complete. See outputs/giti_full_300_parallel.csv and outputs/mrc_full_300_parallel.csv"
+echo "✅ Reproduction complete."
+for out in outputs/giti_full_300_parallel.csv outputs/mrc_full_300_parallel.csv; do
+    if [[ -f "$out" ]]; then
+        echo "   - $out"
+    fi
+done
