@@ -1,8 +1,8 @@
 # Tiered CI: static analysis, three parallel test lanes, combined coverage gate.
 #
-# Coverage gating: .coveragerc has fail_under = 0, so individual lanes do not
-# gate. The `coverage` job combines .coverage.<lane> files from all three
-# lanes and enforces --fail-under=70 once, on the union.
+# Coverage files use names WITHOUT a leading dot (`coverage.fast`, etc.) so
+# actions/upload-artifact@v4 sees them — it skips dotfiles by default.
+# Coverage gating is done ONCE in the combined `coverage` job at 70%.
 name: CI
 
 on:
@@ -97,12 +97,13 @@ jobs:
       - name: Rename coverage data
         if: always()
         run: |
-          if [ -f .coverage ]; then mv .coverage .coverage.fast; fi
+          if [ -f .coverage ]; then cp .coverage coverage.fast; fi
+          ls -la coverage.fast || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage-fast
-          path: .coverage.fast
+          path: coverage.fast
           if-no-files-found: warn
 
   test-property:
@@ -134,12 +135,13 @@ jobs:
       - name: Rename coverage data
         if: always()
         run: |
-          if [ -f .coverage ]; then mv .coverage .coverage.property; fi
+          if [ -f .coverage ]; then cp .coverage coverage.property; fi
+          ls -la coverage.property || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage-property
-          path: .coverage.property
+          path: coverage.property
           if-no-files-found: warn
 
   test-full:
@@ -170,12 +172,13 @@ jobs:
       - name: Rename coverage data
         if: always()
         run: |
-          if [ -f .coverage ]; then mv .coverage .coverage.full; fi
+          if [ -f .coverage ]; then cp .coverage coverage.full; fi
+          ls -la coverage.full || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage-full
-          path: .coverage.full
+          path: coverage.full
           if-no-files-found: warn
 
   coverage:
@@ -196,11 +199,12 @@ jobs:
         run: find cov-artifacts -type f | sort
       - name: Combine and gate
         run: |
+          # Copy each lane's coverage file into the root with a unique suffix.
           found=0
           for lane in fast property full; do
-            f="cov-artifacts/coverage-$lane/.coverage.$lane"
+            f="cov-artifacts/coverage-$lane/coverage.$lane"
             if [ -f "$f" ]; then
-              cp "$f" .
+              cp "$f" "coverage.$lane"
               found=$((found+1))
               echo "loaded $f"
             else
@@ -211,5 +215,9 @@ jobs:
             echo "No coverage data found in any lane — aborting."
             exit 1
           fi
+          # coverage combine finds files matching .coverage.*; rename ours in place.
+          for lane in fast property full; do
+            [ -f "coverage.$lane" ] && mv "coverage.$lane" ".coverage.$lane"
+          done
           coverage combine
           coverage report --fail-under=70
