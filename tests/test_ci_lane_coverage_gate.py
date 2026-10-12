@@ -41,41 +41,48 @@ REPO = Path(__file__).resolve().parents[1]
 
 # Marker expression for each lane. Keep in sync with .github/workflows/ci.yml.
 LANES = {
-    "fast":     "not integration and not smoke and not full and not slow and not property",
+    "fast": "not integration and not smoke and not full and not slow and not property",
     "property": "property",
-    "full":     "integration or smoke or full or slow",
+    "full": "integration or smoke or full or slow",
 }
 
 # Markers declared in pytest.ini under [pytest] markers = ...
 DECLARED_MARKERS = {
-    "property", "metamorphic", "differential",
-    "integration", "slow", "smoke", "full",
+    "property",
+    "metamorphic",
+    "differential",
+    "integration",
+    "slow",
+    "smoke",
+    "full",
 }
 
 
 def _collect(marker: str | None) -> set[str]:
     """Return the set of test node IDs pytest selects under `marker`."""
     cmd = [
-        sys.executable, "-m", "pytest", "tests/",
-        "--collect-only", "-q", "--no-header",
-        "-p", "no:cacheprovider",
-        "-p", "no:randomly",
+        sys.executable,
+        "-m",
+        "pytest",
+        "tests/",
+        "--collect-only",
+        "-q",
+        "--no-header",
+        "-p",
+        "no:cacheprovider",
+        "-p",
+        "no:randomly",
     ]
     if marker:
         cmd += ["-m", marker]
     r = subprocess.run(cmd, capture_output=True, text=True, cwd=str(REPO))
     if r.returncode not in (0, 5):  # 5 = "no tests collected", which is fine
         raise AssertionError(
-            "pytest --collect-only failed (rc={rc}) for marker={marker!r}\n"
-            "stdout tail:\n{out}\nstderr tail:\n{err}".format(
-                rc=r.returncode, marker=marker,
-                out=r.stdout[-2000:], err=r.stderr[-2000:],
-            )
+            f"pytest --collect-only failed (rc={r.returncode}) for marker={marker!r}\n"
+            f"stdout tail:\n{r.stdout[-2000:]}\nstderr tail:\n{r.stderr[-2000:]}"
         )
     return {
-        ln.strip()
-        for ln in r.stdout.splitlines()
-        if "::" in ln and not ln.lstrip().startswith("=")
+        ln.strip() for ln in r.stdout.splitlines() if "::" in ln and not ln.lstrip().startswith("=")
     }
 
 
@@ -87,10 +94,12 @@ def test_ci_lane_markers_are_declared_in_pytest_ini():
     """
     used = set()
     for expr in LANES.values():
-        used |= set(re.findall(
-            r"\b(integration|smoke|full|slow|property|metamorphic|differential)\b",
-            expr,
-        ))
+        used |= set(
+            re.findall(
+                r"\b(integration|smoke|full|slow|property|metamorphic|differential)\b",
+                expr,
+            )
+        )
     undeclared = used - DECLARED_MARKERS
     assert not undeclared, (
         "ci.yml lane filters reference markers not declared in pytest.ini: "
@@ -115,14 +124,14 @@ def test_every_test_is_selected_by_at_least_one_lane():
 
     missing = all_ids - covered
     msg_lines = [
-        "{} test(s) are not selected by any CI lane.".format(len(missing)),
-        "Total collected: {}; lane counts: {}".format(len(all_ids), per_lane),
+        f"{len(missing)} test(s) are not selected by any CI lane.",
+        f"Total collected: {len(all_ids)}; lane counts: {per_lane}",
         "Uncovered:",
     ]
     for t in sorted(missing)[:50]:
         msg_lines.append("  " + t)
     if len(missing) > 50:
-        msg_lines.append("  ... and {} more".format(len(missing) - 50))
+        msg_lines.append(f"  ... and {len(missing) - 50} more")
     msg_lines.append("")
     msg_lines.append(
         "Fix: rename the file to match an auto-marker convention, add an "
@@ -148,9 +157,6 @@ def test_lanes_do_not_overlap():
         seen |= ids
     assert not overlaps, (
         "CI lanes overlap on the same tests (wasteful duplication):\n"
-        + "\n".join(
-            "  {}: {}...".format(lane, tests[:5])
-            for lane, tests in overlaps.items()
-        )
+        + "\n".join(f"  {lane}: {tests[:5]}..." for lane, tests in overlaps.items())
         + "\nIf the overlap is intentional, remove test_lanes_do_not_overlap."
     )
