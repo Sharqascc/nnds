@@ -582,6 +582,17 @@ def parse_args(argv=None):
         help="Site / source name recorded in each PET event",
     )
     parser.add_argument(
+        "--time-of-day",
+        dest="time_of_day",
+        type=str,
+        default=None,
+        help=(
+            "Time-of-day label recorded in each PET event (e.g. morning, "
+            "evening). The runner script sets this automatically when "
+            "--auto-time-of-day is passed."
+        ),
+    )
+    parser.add_argument(
         "--gate-config",
         dest="gate_config",
         type=str,
