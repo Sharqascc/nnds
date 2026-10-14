@@ -221,3 +221,38 @@ jobs:
           done
           coverage combine
           coverage report --fail-under=70
+
+  # ---------------------------------------------------------------------------
+  # Synthetic gate required by branch protection on `main`.
+  #
+  # The rule on main requires a status check named exactly "test". Before the
+  # CI-tiering rework (#52) the single CI job was named "test"; after the
+  # rework it was split into four lanes with different names. Rather than
+  # expand the branch-protection rule to five job names (brittle, and it needs
+  # admin scope to edit), this job collapses the four lanes back into one
+  # authoritative check named "test".
+  #
+  # `if: always()` is required: without it the job is skipped when an upstream
+  # lane fails, and a skipped required check stays pending forever.
+  # ---------------------------------------------------------------------------
+  test:
+    name: test
+    needs: [test-fast, test-property, test-full, coverage]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify every lane succeeded
+        run: |
+          echo "Upstream lane results:"
+          echo "  test-fast     = ${{ needs.test-fast.result }}"
+          echo "  test-property = ${{ needs.test-property.result }}"
+          echo "  test-full     = ${{ needs.test-full.result }}"
+          echo "  coverage      = ${{ needs.coverage.result }}"
+          if [ "${{ needs.test-fast.result }}"     != "success" ] || \
+             [ "${{ needs.test-property.result }}" != "success" ] || \
+             [ "${{ needs.test-full.result }}"     != "success" ] || \
+             [ "${{ needs.coverage.result }}"      != "success" ]; then
+            echo "::error::One or more required lanes did not succeed."
+            exit 1
+          fi
+          echo "All required lanes succeeded."
