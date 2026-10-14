@@ -30,7 +30,11 @@ def _run(args: list[str], timeout: int = 60) -> subprocess.CompletedProcess:
     # ever regressed; we point it at a nonexistent script by accident here.
     return subprocess.run(
         [sys.executable, "-m", "scripts.run_pipeline", *args],
-        capture_output=True, text=True, timeout=timeout, env=env, cwd=str(REPO),
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        env=env,
+        cwd=str(REPO),
     )
 
 

@@ -29,7 +29,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # Flags that do not require model weights. Prep is skipped for these to avoid
 # downloading ~100 MB of weights just to print a version string.
 _INFORMATIONAL_FLAGS = {
-    "-h", "--help",
+    "-h",
+    "--help",
     "--version",
     "--self-check",
     "--dry-run",
@@ -115,8 +116,10 @@ def _maybe_estimate_time_of_day() -> None:
         text=True,
     )
     if result.returncode != 0:
-        print(f"[run_pipeline] estimator failed (exit {result.returncode}); "
-              f"continuing without a label.")
+        print(
+            f"[run_pipeline] estimator failed (exit {result.returncode}); "
+            f"continuing without a label."
+        )
         print(result.stderr[-500:])
         return
 
