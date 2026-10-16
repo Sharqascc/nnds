@@ -182,8 +182,17 @@ def main() -> None:
 
     # NNDS_SEED env var overrides the default. set_seed exports PYTHONHASHSEED
     # so subprocesses inherit it.
-    _seed = int(os.environ.get("NNDS_SEED", "42"))
-    set_seed(_seed)
+    raw_seed = os.environ.get("NNDS_SEED", "42")
+    try:
+        _seed = int(raw_seed)
+    except ValueError:
+        raise SystemExit(
+            f"NNDS_SEED must be an integer, got {raw_seed!r}"
+        ) from None
+    try:
+        set_seed(_seed)
+    except ValueError as e:
+        raise SystemExit(f"invalid NNDS_SEED: {e}") from None
 
     ensure_models_if_needed()
     _maybe_estimate_time_of_day()
