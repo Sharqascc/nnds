@@ -23,6 +23,11 @@ import torch
 # Module-level variable to store the current seed
 _seed = 42
 
+# NumPy's `np.random.seed` requires a value in [0, 2**32 - 1]. We validate
+# against that range up front so a large seed fails before any RNG or
+# environment state is mutated (see qodo finding on PR #53).
+_NUMPY_SEED_MAX = 2**32 - 1
+
 
 def set_seed(seed: int = 42, *, deterministic_torch: bool = True) -> None:
     """Set random seed for Python, NumPy, and PyTorch.
@@ -40,6 +45,12 @@ def set_seed(seed: int = 42, *, deterministic_torch: bool = True) -> None:
     """
     if isinstance(seed, bool) or not isinstance(seed, int):
         raise TypeError(f"seed must be an integer, got {type(seed).__name__}")
+    if not (0 <= seed <= _NUMPY_SEED_MAX):
+        raise ValueError(
+            f"seed must be in [0, {_NUMPY_SEED_MAX}] (NumPy's accepted range); "
+            f"got {seed}. Validate before calling set_seed() if you need to "
+            f"reject or remap the input."
+        )
 
     global _seed
     _seed = seed
