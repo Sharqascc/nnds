@@ -186,9 +186,7 @@ def main() -> None:
     try:
         _seed = int(raw_seed)
     except ValueError:
-        raise SystemExit(
-            f"NNDS_SEED must be an integer, got {raw_seed!r}"
-        ) from None
+        raise SystemExit(f"NNDS_SEED must be an integer, got {raw_seed!r}") from None
     try:
         set_seed(_seed)
     except ValueError as e:
