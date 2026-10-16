@@ -37,6 +37,11 @@ from pathlib import Path
 
 import pytest
 
+# This file shells out to `pytest --collect-only` four times, each of which
+# re-imports torch/cv2/ultralytics. Wall time is ~150s in CI, which is too
+# slow for the fast lane. Marked slow so it runs in the full lane.
+pytestmark = pytest.mark.slow
+
 REPO = Path(__file__).resolve().parents[1]
 
 # Marker expression for each lane. Keep in sync with .github/workflows/ci.yml.
