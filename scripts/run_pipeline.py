@@ -132,10 +132,24 @@ def _maybe_estimate_time_of_day() -> None:
     sys.argv.extend(["--time-of-day", label])
 
 
+def _analyzer_spec_available() -> bool:
+    """Return True iff `pipeline.traffic_analyzer` is importable as a module.
+
+    `importlib.util.find_spec` imports the parent packages first, so it raises
+    ModuleNotFoundError when `pipeline` itself is not on sys.path (e.g. a source
+    checkout without `pip install -e .`). That is a legitimate "not installed"
+    answer, not an error, so we translate it to False.
+    """
+    try:
+        return importlib.util.find_spec("pipeline.traffic_analyzer") is not None
+    except (ImportError, ModuleNotFoundError, ValueError):
+        return False
+
+
 def _dispatch_to_analyzer() -> None:
     """Run the analyzer as __main__, whether installed or in a source tree."""
     # Installed package: `pip install .` installs it as `pipeline.traffic_analyzer`.
-    if importlib.util.find_spec("pipeline.traffic_analyzer") is not None:
+    if _analyzer_spec_available():
         sys.argv[0] = "pipeline.traffic_analyzer"
         runpy.run_module("pipeline.traffic_analyzer", run_name="__main__", alter_sys=False)
         return
