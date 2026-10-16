@@ -24,8 +24,8 @@ from __future__ import annotations
 import time
 from typing import Optional
 
-_TOTAL: Optional[int] = None
-_START: Optional[float] = None
+_TOTAL: int | None = None
+_START: float | None = None
 
 
 def begin(total: int, header: str = "NNDS Pipeline") -> None:

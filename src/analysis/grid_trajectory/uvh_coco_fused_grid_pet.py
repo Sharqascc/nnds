@@ -13,10 +13,9 @@ import numpy as np
 import pandas as pd
 import torch
 from tqdm import tqdm
-
-from src.analysis import _stages as stages
 from ultralytics import YOLO
 
+from src.analysis import _stages as stages
 from src.analysis.conflict_classifier import classify_conflict_geometry
 from src.analysis.grid_trajectory.spatial_grid import SpatialGrid
 from src.bev.bev_mapper import BEVMapper
