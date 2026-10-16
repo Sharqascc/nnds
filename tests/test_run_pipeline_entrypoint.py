@@ -84,18 +84,25 @@ def test_analyzer_accepts_time_of_day_flag():
     combined = r.stdout + r.stderr
     assert "unrecognized arguments" not in combined, combined
 
+
 def test_run_pipeline_rejects_non_integer_env_seed():
     """NNDS_SEED=abc should exit with a clear error, not an int() traceback."""
     import os
+
     env = os.environ.copy()
     env["NNDS_SEED"] = "abc"
     from pathlib import Path as _Path
+
     repo = _Path(__file__).resolve().parents[1]
     existing = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = str(repo) + (os.pathsep + existing if existing else "")
     r = subprocess.run(
         [sys.executable, "-m", "scripts.run_pipeline", "--version"],
-        capture_output=True, text=True, env=env, cwd=str(repo), timeout=30,
+        capture_output=True,
+        text=True,
+        env=env,
+        cwd=str(repo),
+        timeout=30,
     )
     assert r.returncode != 0
     assert "NNDS_SEED must be an integer" in (r.stdout + r.stderr)
@@ -104,15 +111,21 @@ def test_run_pipeline_rejects_non_integer_env_seed():
 def test_run_pipeline_rejects_out_of_range_env_seed():
     """NNDS_SEED=2**40 should exit with the range error, not crash mid-startup."""
     import os
+
     env = os.environ.copy()
     env["NNDS_SEED"] = str(2**40)
     from pathlib import Path as _Path
+
     repo = _Path(__file__).resolve().parents[1]
     existing = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = str(repo) + (os.pathsep + existing if existing else "")
     r = subprocess.run(
         [sys.executable, "-m", "scripts.run_pipeline", "--version"],
-        capture_output=True, text=True, env=env, cwd=str(repo), timeout=30,
+        capture_output=True,
+        text=True,
+        env=env,
+        cwd=str(repo),
+        timeout=30,
     )
     assert r.returncode != 0
     assert "invalid NNDS_SEED" in (r.stdout + r.stderr)
