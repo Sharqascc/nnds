@@ -50,6 +50,8 @@ dev = [
 
 [project.scripts]
 nnds = "pipeline.traffic_analyzer:main"
+# Full pipeline runner: model preflight, seeding, dispatch.
+nnds-run = "scripts.run_pipeline:main"
 validate-nnds-outputs = "scripts.validate_outputs:main"
 paired-ttest = "scripts.paired_ttest:main"
 validate-contracts = "scripts.validate_contracts:main"

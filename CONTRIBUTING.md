@@ -1,30 +1,26 @@
-# Contributing to NNDS
+# Contribution rule (non-negotiable)
 
-We welcome contributions! Please follow these guidelines:
+**Every change goes through GitHub. Nothing runs on a local machine or in Colab.**
 
-## Reporting Issues
-- Use the GitHub issue tracker.
-- Provide a clear description and steps to reproduce.
+Full details: `docs/WORKFLOW.md`.
+Helper for Colab: `docs/colab_api_helper.py`.
 
-## Pull Requests
-- Fork the repository and create a new branch.
-- Ensure your code passes all tests (`pytest`).
-- Format your code with `black` and `isort`.
-- Write clear commit messages.
+## TL;DR
 
-## Development Setup
+1. Write files to the repo via the GitHub Contents API. No `git clone`, no
+   `git add`, no `Path.write_text`.
+2. CI runs automatically on push (`ci.yml`). Lint, type-check, bandit,
+   pytest with coverage floor, property tests.
+3. Analysis modules run through `paper-analysis.yml`. Results are
+   downloadable artifacts, not local files.
+4. If CI fails, read the log via the API, patch, push again. Loop until
+   green.
+5. `main` is protected. Merging requires green CI. Admins cannot bypass.
 
-```bash
-pip install -e .[dev]
-pre-commit install
-```
+## Why
 
-## Code Style
-- We follow PEP 8.
-- Use `black` (line length 100) and `isort`.
+One executor (GitHub Actions) means no drift between environments. Every
+change is reproducible from its commit SHA alone. Nothing is lost when
+the Colab runtime restarts.
 
-## Testing
-- Write tests for new features.
-- Run `pytest` to ensure no regressions.
-
-Thank you for contributing!
+<!-- coderabbit-retrigger -->

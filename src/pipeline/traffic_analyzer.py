@@ -7,6 +7,7 @@ import json
 import logging
 import math
 import re
+import sys
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
@@ -241,6 +242,31 @@ def _extract_events(result):
     return list(events) if events else []
 
 
+_EVENT_COLUMNS = [
+    "pet",
+    "frame",
+    "track_a",
+    "track_b",
+    "conflict_type",
+    "grid_cell",
+    "track_a_entry_frame",
+    "track_a_exit_frame",
+    "track_b_entry_frame",
+    "track_b_exit_frame",
+    "track_a_exit_time_sec",
+    "track_b_entry_time_sec",
+    "track_b_exit_time_sec",
+    "world_traj_i",
+    "world_traj_j",
+    "traj_a_json",
+    "traj_b_json",
+    "video_source",
+    "time_of_day_label",
+    "gate_a_entry",
+    "gate_b_entry",
+]
+
+
 def _events_to_dataframe(events):
     rows = []
     for event in events:
@@ -268,6 +294,8 @@ def _events_to_dataframe(events):
             "gate_b_entry": _get(event, "gate_b_entry"),
         }
         rows.append(row)
+    if not rows:
+        return pd.DataFrame(columns=_EVENT_COLUMNS)
     return pd.DataFrame(rows)
 
 
@@ -521,6 +549,13 @@ def parse_args(argv=None):
     parser.add_argument("--video", type=str, default=None)
     parser.add_argument("--out-csv", dest="out_csv", type=str, default=None)
     parser.add_argument("--pet-threshold", dest="pet_threshold", type=float, default=2.0)
+    parser.add_argument(
+        "--dry-run", action="store_true", help="run preflight checks only, do not execute pipeline"
+    )
+    parser.add_argument("--self-check", action="store_true", help="verify environment and exit")
+    parser.add_argument(
+        "--version", action="store_true", help="print version and git revision and exit"
+    )
     parser.add_argument("--detector", type=str, default="uvh-coco-fused")
     parser.add_argument("--bev-config", dest="bev_config", type=str, default=None)
     parser.add_argument("--grid-config", dest="grid_config", type=str, default=None)
@@ -545,6 +580,17 @@ def parse_args(argv=None):
         type=str,
         default=None,
         help="Site / source name recorded in each PET event",
+    )
+    parser.add_argument(
+        "--time-of-day",
+        dest="time_of_day",
+        type=str,
+        default=None,
+        help=(
+            "Time-of-day label recorded in each PET event (e.g. morning, "
+            "evening). The runner script sets this automatically when "
+            "--auto-time-of-day is passed."
+        ),
     )
     parser.add_argument(
         "--gate-config",
@@ -579,7 +625,51 @@ def parse_args(argv=None):
 
 def main():
     logging.basicConfig(level=logging.INFO)
+
+    # --version handled before argparse so it works with no other args
+    if "--version" in sys.argv:
+        import subprocess
+
+        try:
+            rev = subprocess.run(
+                ["git", "describe", "--tags", "--always"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            ).stdout.strip()
+        except Exception:
+            rev = "unknown"
+        print(f"traffic_analyzer revision: {rev or 'unknown'}")
+        return
+
     args = parse_args()
+
+    # --self-check and --dry-run: run preflight and exit
+    if getattr(args, "self_check", False) or getattr(args, "dry_run", False):
+        from importlib import import_module
+
+        try:
+            preflight = import_module("src.pipeline.preflight")
+        except ModuleNotFoundError:
+            preflight = import_module("preflight")
+        report = preflight.run_checks(
+            video=getattr(args, "video", None),
+            uvh_model=getattr(args, "uvh_model", None),
+            yolo_weights=getattr(args, "yolo_weights", None),
+            rtdetr_weights=getattr(args, "rtdetr_weights", None),
+            sam3_weights=getattr(args, "sam3_weights", None),
+            bev_config=getattr(args, "bev_config", None),
+            grid_config=getattr(args, "grid_config", None),
+            gate_config=getattr(args, "gate_config", None),
+            out_csv=getattr(args, "out_csv", "outputs/petevents_bev.csv"),
+            device=getattr(args, "device", "auto"),
+            detector=getattr(args, "detector", "uvh-coco-fused"),
+        )
+        import json as _json
+
+        print(_json.dumps(report.to_dict(), indent=2))
+        raise SystemExit(0 if report.ok else 1)
+
     if getattr(args, "demo", False):
         run_demo()
         return

@@ -161,7 +161,7 @@ def check_file(path: Path, root: Path) -> list[tuple[str, str, str]]:
         for mod in imports:
             for bad in rule["forbids"]:
                 if _in_module(mod, bad):
-                    hits.append((rule["name"], mod, rel))
+                    hits.append((str(rule["name"]), mod, rel))
     return hits
 
 

@@ -8,28 +8,43 @@ Requires-Python: >=3.10
 Description-Content-Type: text/markdown
 License-File: LICENSE
 Requires-Dist: torch>=2.0.0
+Requires-Dist: torchvision
+Requires-Dist: ultralytics>=8.0.0
+Requires-Dist: opencv-python
 Requires-Dist: numpy
 Requires-Dist: pandas
-Requires-Dist: matplotlib
 Requires-Dist: scipy
-Requires-Dist: scikit-learn
+Requires-Dist: matplotlib
 Requires-Dist: tqdm
+Requires-Dist: PyYAML
+Requires-Dist: openvino>=2024.0.0
+Requires-Dist: lap>=0.5.12
+Requires-Dist: scikit-learn
 Provides-Extra: dev
-Requires-Dist: black>=24.0.0; extra == "dev"
-Requires-Dist: isort>=5.13.0; extra == "dev"
-Requires-Dist: flake8>=7.0.0; extra == "dev"
-Requires-Dist: pre-commit>=3.6.0; extra == "dev"
-Provides-Extra: test
-Requires-Dist: pytest>=8.0.0; extra == "test"
-Requires-Dist: pytest-cov>=5.0.0; extra == "test"
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=5.0.0; extra == "dev"
+Requires-Dist: pytest-timeout>=2.2.0; extra == "dev"
+Requires-Dist: pytest-mock; extra == "dev"
+Requires-Dist: hypothesis>=6.100.0; extra == "dev"
+Requires-Dist: syrupy>=4.0.0; extra == "dev"
+Requires-Dist: ruff>=0.6.0; extra == "dev"
+Requires-Dist: mypy<3.0,>=2.3; extra == "dev"
+Requires-Dist: groq>=0.30.0; extra == "dev"
+Requires-Dist: pydantic; extra == "dev"
+Requires-Dist: ipython; extra == "dev"
 Dynamic: license-file
 
-# 🚦 NNDS – Neural Network for Driving Safety
+# 🚦 NNDS: Neural Network for Dynamic Safety
+
 [![CI](https://github.com/Sharqascc/nnds/actions/workflows/ci.yml/badge.svg)](https://github.com/Sharqascc/nnds/actions/workflows/ci.yml)
 
-# NNDS: Neural Network for Dynamic Safety
+> **Reproducing results:** see [REPRODUCE.md](REPRODUCE.md) for the full pipeline walkthrough and an honest list of what is and is not reproducible from a fresh clone.
 
-NNDS is a traffic safety analysis pipeline that detects vehicles/pedestrians, tracks them, computes safety metrics (PET, TTC, DRAC), and generates bird's-eye-view visualizations.
+NNDS is a comprehensive traffic safety analysis pipeline that detects vehicles and pedestrians, tracks them in 3D space, computes safety metrics such as PET, TTC, and DRAC, and generates bird's-eye-view (BEV) visualizations.
+
+> Long-lived branches are preserved as `archive/*` tags.
+> See [docs/BRANCH_ARCHIVE.md](docs/BRANCH_ARCHIVE.md) for the
+> index and restore instructions.
 
 ## Installation
 
@@ -39,154 +54,114 @@ cd nnds
 pip install -r requirements.txt
 ```
 
-For a reproducible environment, use:
-```bash
-conda env create -f environment.yml
-conda activate nnds
+## GITI intersection video
+
+The repository includes the GITI intersection traffic video at:
+
+```text
+data/sample_data/GITI_traffic_video.mp4
 ```
 
-## Download Models
-
-The required models are automatically downloaded and placed in `data/models/` when using the wrapper script. Alternatively, run:
-
-```bash
-bash scripts/download_models.sh
-```
-
-This script downloads:
-- UVH-26 model from Hugging Face → `data/models/uvh26.pt`
-- YOLO11n model from Ultralytics → `data/models/yolo11n.pt`
-
-## Quick Start
-
-### Option 1: Using the Wrapper (Recommended)
+The video is stored with Git Large File Storage (Git LFS). Install Git LFS before downloading the video:
 
 ```bash
-python scripts/run_pipeline.py \
-    --video data/sample_data/traffic_video.mp4 \
-    --detector yolo-cpu \
-    --out-csv outputs/pet_events.csv
+sudo apt-get update
+sudo apt-get install git-lfs
+git lfs install
+git lfs pull
 ```
 
-The wrapper automatically prepares models (including OpenVINO export) and sets the correct Python path.
-
-### Option 2: Direct Script
-
-If you prefer to call the pipeline directly, ensure the project root is in `PYTHONPATH`:
+Verify that the video is available:
 
 ```bash
-export PYTHONPATH=/path/to/nnds:$PYTHONPATH
-python src/pipeline/traffic_analyzer.py \
-    --video data/sample_data/traffic_video.mp4 \
-    --detector yolo-cpu \
-    --yolo-weights data/models/yolo11n.pt \
-    --out-csv outputs/pet_events.csv
+ls -lh data/sample_data/GITI_traffic_video.mp4
+git lfs ls-files
 ```
 
-### Other Detectors
+The anonymized 50-frame fixture remains available for quick smoke tests:
 
-- `--detector sam3` (default, requires SAM3 weights)
-- `--detector rtdetr` (experimental)
-- `--detector uvh-coco-fused` (requires UVH + COCO person model)
-
-## Gate Line Calibration
-
-The gate line defined in `configs/gate_config.yaml` determines where PET events are counted. The default horizontal line may not intersect the traffic in your video. To calibrate:
-
-1. Inspect the detection CSV (e.g., `outputs/*_detections.csv`) to see typical x,y coordinates of objects.
-2. Edit `configs/gate_config.yaml` and set `start` and `end` points to form a line crossing the object paths.
-   - For horizontal traffic (objects move left/right), use a vertical line (e.g., `start: [x, 0], end: [x, height]`).
-   - For vertical traffic, use a horizontal line (e.g., `start: [0, y], end: [width, y]`).
-3. Re-run the pipeline.
-
-## Input & Output
-
-- **Input**: Video file (MP4, AVI, etc.)
-- **Output**:
-  - `outputs/*_detections.csv` – raw object detections
-  - `outputs/*.csv` – PET events (post‑encroachment time)
-
-## Citation
-
-If you use this code in your research, please cite:
-
-```bibtex
-@software{nnds2025,
-  author = {Your Name},
-  title = {NNDS: Neural Network for Dynamic Safety},
-  year = {2025},
-  url = {https://github.com/Sharqascc/nnds}
-}
+```text
+data/sample_data/anonymized_traffic_video_50f.mp4
 ```
 
-## License
-
-See [LICENSE](LICENSE) for details.
-
-## Validation Status
-
-- **BEV Homography:** Hartley normalized condition number 1.71, held-out reprojection error ~0.000001 ft.
-- **Pipeline:** 300-frame end-to-end validation passes automatically in CI.
-- **PET Analysis:** At our chosen operating point (max_gap=5, max_jump=30), the pipeline detects 156 PET events with median PET 1.017 s (Shapiro-Wilk p=0.0007, non-normal). A deconfounded sensitivity analysis shows PET metrics vary moderately across tracking thresholds (events 156→127; median PET 1.017→1.133 s). We report the full sensitivity table in `docs/sensitivity_deconfounded.tex` and discuss this trade-off in the manuscript.
-- **Detection/Tracking Metrics:** Ground truth required for standard MOTA/IDF1/mAP. We explicitly document this limitation and provide scripts for when GT becomes available.
-- **Sensitivity:** Track fragmentation impact on PET is quantified via `scripts/sensitivity_pet_fragmentation.py`.
-
-
-### Chosen Tracking Threshold
-We select `max_gap=5` frames and `max_jump=30` pixels as our primary operating point. This choice balances identity preservation and fragmentation: stricter settings over-split short tracks, while looser settings merge distinct vehicles, distorting PET. Our sensitivity analysis (Table in docs) shows this configuration provides the highest PET event count while keeping median PET stable at 1.017 s.
-### Note on Track Splitting & Occlusion Handling
-
-The track splitter uses a `prediction_tolerance` parameter to avoid splitting tracks during short, predictable occlusions. When an object reappears after a gap (even >15 frames) but its position closely matches a linear motion prediction, the track is intentionally kept intact to reduce fragmentation and preserve identity continuity. This behavior was verified on the 300‑frame validation sequence: tracks with gaps in the 16–20 frame range remained unsplit because their reappearance was consistent with expected motion. Disabling the prediction tolerance (`prediction_tolerance=0`) does split those tracks, confirming the parameter is active. We keep the default tolerance as a balance between identity purity and fragmentation.
-
-For full details, see the sensitivity scripts and `docs/final_submission_summary.md`.
-
-### BEV Calibration Provenance
-The six calibration points were surveyed under a planar ground assumption; therefore, a planar homography fits them with very low error. This low error reflects self-consistency of the planarity assumption, not independently validated metric accuracy. Field validation against independently measured distances is recommended.
-
-## Optional: Time-of-Day Estimation (Future Work)
-
-The pipeline includes an **optional** VLM-based time-of-day estimator (`scripts/estimate_time_of_day.py`).
-It samples frames and uses a vision-language model to classify the scene as `morning`, `evening`, or `unknown`.
-
-This feature is **not part of the core validated pipeline** and is not required for any results in the paper.
-All reported metrics use manually specified time labels (`--time-of-day`).
-To enable the experimental VLM estimator, install the optional dependencies:
+Run the UVH-COCO fused pipeline on the GITI video:
 
 ```bash
-pip install -r requirements-vlm.txt
+python -m src.pipeline.traffic_analyzer \
+  --video data/sample_data/GITI_traffic_video.mp4 \
+  --detector uvh-coco-fused \
+  --bev-config configs/bev_config.json \
+  --grid-config configs/GITI_grid_config.json \
+  --out-csv outputs/GITI_uvh_pet.csv \
+  --max-frames 50
 ```
 
-If the VLM dependencies are not installed, the estimator returns `"unknown"` and the pipeline continues normally.
+Remove `--max-frames 50` for a full-video run.
 
-## Optional Event Utilities
+The pipeline writes a detection CSV and a PET CSV:
 
-- `scripts/generate_event_descriptions.py` – deterministic natural language descriptions for each PET event.
+```text
+outputs/GITI_uvh_pet_detections.csv
+outputs/GITI_uvh_pet.csv
+```
 
-- `scripts/extract_event_frames.py` – save before/closest/after frames for manual inspection or VLM audits.
+The PET CSV uses a stable 32-column schema, including when no PET events are detected.
 
-- `scripts/generate_safety_report_groq.py` – optional LLM-based report generation (requires `GROQ_API_KEY`). Not part of core results.
+## Data paths
 
-## ⚠️ VLM Utilities – Optional & Experimental
+| Asset | Path | Purpose |
+|---|---|---|
+| GITI traffic video | data/sample_data/GITI_traffic_video.mp4 | Primary GITI-intersection input |
+| Anonymized fixture | data/sample_data/anonymized_traffic_video_50f.mp4 | Fast smoke-test input |
+| UVH detector | data/models/uvh26.pt | UVH vehicle detector |
+| COCO person model | data/models/yolo11n.pt | Person detection |
+| BEV configuration | configs/bev_config.json | Bird's-eye-view mapping |
+| GITI grid configuration | configs/GITI_grid_config.json | GITI grid mapping |
 
-The repository includes optional Vision‑Language Model (VLM) utilities for:
+## Evaluation
 
-- Time‑of‑day estimation (`scripts/estimate_time_of_day.py`)
-- Qualitative scene description (`src/vlm/analyzer.py`)
-- Experimental conflict‑type classification (`scripts/classify_conflict_type_vlm.py`)
+NNDS ships with a full SSM evaluation framework. Ground-truth CSV
+schemas are documented in docs/ANNOTATION_GUIDE.md, and every metric
+is defined in docs/METRICS.md.
 
-These are **not used in the main quantitative analysis** of the paper.
-All reported PET, conflict type, gate entry, and sensitivity metrics are deterministic and derived from trajectory geometry, not from VLM output.
+Quick start once GT CSVs exist:
 
-Preliminary tests showed that small VQA models (e.g., BLIP) cannot reliably distinguish traffic conflict types from static frames, often returning generic labels. Therefore, **conflict type is always computed geometrically** (`src/analysis/conflict_classifier.py`).
-
-To install optional VLM dependencies (if desired):
 ```bash
-pip install -r requirements-vlm.txt
+# 1. Convert raw pipeline output to the metric schemas
+python scripts/pipeline_to_metric_schemas.py \
+    --detections-csv outputs/GITI_uvh_pet_detections.csv \
+    --pet-csv        outputs/GITI_uvh_pet.csv \
+    --bev-config     configs/bev_config.json \
+    --out-dir        outputs/schemas
+
+# 2. Validate ground truth
+python scripts/validate_gt.py \
+    --detection  gt_detection.csv \
+    --tracking   gt_tracking.csv \
+    --trajectory gt_trajectory.csv \
+    --ssm        gt_ssm.csv
+
+# 3. Compute metrics (each writes JSON for the next step)
+python scripts/evaluate_detection_metrics.py  --detections outputs/schemas/pred_detection.csv  --ground-truth gt_detection.csv  --out-json detection.json
+python scripts/evaluate_tracking_metrics.py   --tracked    outputs/schemas/pred_tracking.csv   --ground-truth gt_tracking.csv   --out-json tracking.json
+python scripts/evaluate_trajectory_metrics.py --predicted  outputs/schemas/pred_trajectory.csv --ground-truth gt_trajectory.csv --out-json trajectory.json
+python scripts/evaluate_ssm_metrics.py        --predicted  outputs/schemas/pred_ssm.csv        --ground-truth gt_ssm.csv        --out-json ssm.json
+
+# 4. Assemble the 15-row gold-standard table
+python scripts/gold_standard_report.py \
+    --detection-metrics  detection.json \
+    --tracking-metrics   tracking.json \
+    --trajectory-metrics trajectory.json \
+    --ssm-metrics        ssm.json \
+    --out-md outputs/validation_report.md
 ```
 
-## ⚠️ Calibration & Units
+For a self-contained smoke test on synthetic data:
 
-- **Horizontal world coordinates are in metres**; elevation is in feet.
-- The calibration region is a synthetic **20 m × 16 m** rectangle.
-- The reported condition number and reprojection residual document **numerical conditioning and internal consistency**, not independent field accuracy.
-- See `docs/calibration_provenance.md` for full provenance.
+```bash
+python scripts/demo_end_to_end.py
+```
+
+The demo and the test suite verify that the metric implementations are
+correct. They do not measure NNDS accuracy. Real accuracy numbers
+require real ground truth. See docs/VALIDATION.md.

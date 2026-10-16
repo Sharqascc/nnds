@@ -1,150 +1,61 @@
-# Reproducing NNDS results
+# Reproduce the PET conflict results
 
-This document describes what a reviewer can reproduce from a fresh
-clone of this repository, in what order, and what cannot be
-reproduced from the repository alone.
+Artifacts frozen at tag **`v1.8-paper`** (commit `bc2bebd`). Original results
+were produced at commit `3c79dd2`; the pipeline was repaired and verified in
+`#44`/`#45`.
 
-## What a fresh clone contains
+## 1. Clone and install
 
-| Item | State in fresh clone |
-|---|---|
-| Source code, configs, tests | complete |
-| `data/sample_data/*.mp4` | **Git LFS pointer files** (~130 bytes each) |
-| `data/models/` | empty — models download from public URLs |
-| `outputs/` | pre-computed CSVs and figures (historical) |
-| Full `src/`, `scripts/`, `tests/` | complete |
+    git clone https://github.com/Sharqascc/nnds.git
+    cd nnds
+    git checkout v1.8-paper
 
-## Setup
+    git lfs install && git lfs pull        # fetch sample videos
+    python -m pip install -U pip
+    pip install -e ".[dev]" || pip install -r requirements-dev.txt
+    pip install ultralytics                 # YOLO backbone used by UVH-COCO fusion
 
-```bash
-git clone https://github.com/Sharqascc/nnds.git
-cd nnds
+## 2. Fetch model weights
 
-# 1. Git LFS (for the videos)
-sudo apt-get update && sudo apt-get install -y git-lfs
-git lfs install
-git lfs pull
+    mkdir -p data/models
+    # UVH-26 YOLOv11-S (fine-tuned on the UVH-26 traffic dataset)
+    wget -O data/models/uvh26.pt \
+      "https://huggingface.co/iisc-aim/UVH-26/resolve/main/weights/YOLOv11-S/UVH-26-MV-YOLOv11-S.pt"
+    # Person class
+    python -c "from ultralytics import YOLO; YOLO('yolo11n.pt')" && mv yolo11n.pt data/models/
 
-# 2. Python dependencies
-pip install -r requirements.txt
+## 3. Run the pipeline
 
-# 3. Model weights (~100 MB, public URLs)
-bash scripts/download_models.sh
-```
+    python -m src.pipeline.traffic_analyzer \
+      --video data/sample_data/GITI_traffic_video.mp4 \
+      --out-csv outputs/petevents_bev.csv \
+      --detector uvh-coco-fused \
+      --uvh-model data/models/uvh26.pt \
+      --yolo-weights data/models/yolo11n.pt \
+      --device auto
 
-After step 3, `data/models/` should contain `uvh26.pt` (~80 MB) and
-`yolo11n.pt` (~5 MB). The UVH model is fetched from Hugging Face
-(`iisc-aim/UVH-26`); the YOLO model from the ultralytics release
-assets. Both URLs are in `scripts/download_models.sh`.
+For a fast sanity check use `data/sample_data/anonymized_traffic_video_50f.mp4`
+with `--max-frames 50`. On this clip the pipeline emits 0 PET events (1 valid
+track over 1.67 s — no pair can form); this is the correct outcome and
+confirms the pipeline runs end-to-end.
 
-## Running the full pipeline
+## 4. Compare against frozen results
 
-```bash
-bash scripts/reproduce_pipeline.sh 300 cpu
-```
+    python - <<'PY'
+    import pandas as pd
+    from pathlib import Path
+    out = Path("outputs")
+    for site, fname in [("GITI","giti_screened_with_gates.csv"),
+                        ("MRC","mrc_screened_with_gates.csv")]:
+        df = pd.read_csv(out / fname)
+        print(site, len(df), round(df.pet.median(),4))
+    PY
 
-Positional args: `[max-frames] [device]`. Defaults are `300` and `cpu`.
+Expected: GITI 153 (median 1.5663), MRC 34 (median 1.5996); combined 187,
+mean 1.5894, range 0.1333-2.9992; severity 57/32/98/0.
 
-The script:
+## 5. Verify environment
 
-1. Checks Git LFS videos are present and not pointers
-2. Installs runtime dependencies (`ultralytics`, `pandas`, ...)
-3. Downloads model weights via `scripts/download_models.sh`
-4. Runs the GITI and MRC pipelines in parallel (2 processes)
-5. Writes `outputs/giti_full_300_parallel.csv` and
-   `outputs/mrc_full_300_parallel.csv`
-6. Writes `outputs/reproducibility_manifest.json` (git commit,
-   Python version, full `pip freeze`, config file SHA256 hashes)
-
-Runtime on a CPU-only machine: ~10 minutes for 300 frames per site.
-
-## What is reproducible
-
-- The **detection-to-PET pipeline** end to end: video -> tracked
-  boxes -> PET events -> CSV. Every input is either in the repository
-  or downloaded from a public URL.
-- The **detection metrics** (mAP, precision, recall) against the
-  committed annotation pack under `data/annotations/giti_300/`.
-- The **tracking metrics** (MOTA, IDF1, HOTA) against the same pack.
-- All unit and property tests: `pytest tests/`.
-
-## What is NOT reproducible from the repository
-
-### PET / SSM precision, recall, F1 = 0.857 — RETRACTED
-
-The prior 0.857 numbers were computed against three input files
-(`outputs/pet_pred_14.csv`, `outputs/pet_gt_20.csv`,
-`outputs/pet_gt_y_only.csv`) that have never been committed to git
-history. `git log --all -- outputs/pet_pred_14.csv` returns nothing.
-An independent review of 114 hand-labeled PET events (see below)
-found the number has no traceable derivation, and that the pipeline
-gate the number was reported against is worse than random on
-independent labels. **The number is retracted, not merely
-unverified.** It is not reported in the paper and should not be
-quoted.
-
-### What replaces it: the 114-event SSM review
-
-A hand-labeled review of 114 PET events is committed at
-`data/reviews/ssm_review_114/`. All PET/SSM quality numbers in
-`docs/METRIC_STATUS.md` derive from it. To verify:
-
-```bash
-ls data/reviews/ssm_review_114/
-cat data/reviews/ssm_review_114/findings.md      # the review writeup
-python -c "
-import pandas as pd
-df = pd.read_csv('data/reviews/ssm_review_114/to_label.csv')
-print(df['verdict'].value_counts())
-# expected: N 76, Y 38
-"
-```
-
-The review reports MCC, balanced accuracy, and PR-AUC for each
-candidate feature, and a cross-validated 2-feature model. It does
-**not** support the prior 0.857 and does not recommend deploying the
-2-feature model (weak signal, wide CI).
-
-### Pre-computed outputs under outputs/
-
-`outputs/` is in `.gitignore`, but 68 files were force-added before
-that rule was introduced (commits `06ee04f`, `2ee658c`, `6f9f975`).
-They are historical artifacts, not regenerated by the reproduce
-script. A reviewer should not expect `bash scripts/reproduce_pipeline.sh`
-to overwrite them; it writes `*_full_300_parallel.csv` instead.
-
-## Verifying outputs
-
-After a successful run:
-
-```bash
-# Check the manifest records your exact environment
-cat outputs/reproducibility_manifest.json
-
-# Compare the PET distribution against the committed reference
-python scripts/pet_agreement_report.py \
-  --predicted outputs/giti_full_300_parallel.csv \
-  --ground-truth outputs/giti_screened.csv
-
-# Run the full test suite
-pytest tests/
-```
-
-## Environment requirements
-
-- Python 3.12 or 3.13
-- `ffmpeg` (OpenCV reads the mp4s directly; ffmpeg is a fallback)
-- ~4 GB disk (videos + models + outputs)
-- No GPU required (`--device cpu` is the default)
-
-## Reporting a reproducibility failure
-
-If the steps above produce different results than expected, open an
-issue with:
-
-- The `pip freeze` output from `outputs/reproducibility_manifest.json`
-- The exact command run
-- What you observed vs. what the docs claim
-
-The manifest is written automatically by the reproduce script so this
-information is captured without extra steps.
+`outputs/paper_env.txt` records the CPU verification environment. The frozen
+CSVs were produced at commit `3c79dd2`; the tag `v1.8-paper` includes the
+pipeline fix (`bc2bebd`) and is the recommended revision for re-running.
