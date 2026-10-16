@@ -135,3 +135,56 @@ def test_set_seed_reproducible_across_calls():
     set_seed(11)
     b = (random.random(), float(np.random.rand()), float(torch.rand(1).item()))
     assert a == b
+
+def test_set_seed_rejects_negative():
+    """Negative seeds are not valid for NumPy; reject before mutating state."""
+    from src.utils.seed import set_seed, get_seed
+
+    before = get_seed()
+    with pytest.raises(ValueError):
+        set_seed(-1)
+    # State was not mutated (get_seed still reports the previous value).
+    assert get_seed() == before
+
+
+def test_set_seed_rejects_too_large():
+    """Seeds above 2**32 - 1 are rejected before any RNG is touched."""
+    from src.utils.seed import set_seed
+
+    with pytest.raises(ValueError):
+        set_seed(2**32)
+
+
+def test_set_seed_accepts_boundaries():
+    """Seed 0 and 2**32 - 1 are the valid endpoints."""
+    from src.utils.seed import set_seed, get_seed
+
+    set_seed(0)
+    assert get_seed() == 0
+    set_seed(2**32 - 1)
+    assert get_seed() == 2**32 - 1
+
+
+def test_set_seed_rejects_float_and_string():
+    from src.utils.seed import set_seed
+
+    with pytest.raises(TypeError):
+        set_seed(1.5)
+    with pytest.raises(TypeError):
+        set_seed("42")
+
+
+def test_set_seed_failure_leaves_state_untouched():
+    """A rejected seed must not partially mutate PYTHONHASHSEED or _seed."""
+    import os
+    from src.utils.seed import set_seed, get_seed
+
+    set_seed(99)
+    before_hash = os.environ["PYTHONHASHSEED"]
+    before_seed = get_seed()
+
+    with pytest.raises(ValueError):
+        set_seed(2**40)
+
+    assert get_seed() == before_seed
+    assert os.environ["PYTHONHASHSEED"] == before_hash
