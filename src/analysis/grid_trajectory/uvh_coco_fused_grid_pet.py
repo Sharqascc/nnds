@@ -15,6 +15,7 @@ import torch
 from tqdm import tqdm
 from ultralytics import YOLO
 
+from src.analysis import _stages as stages
 from src.analysis.conflict_classifier import classify_conflict_geometry
 from src.analysis.grid_trajectory.spatial_grid import SpatialGrid
 from src.bev.bev_mapper import BEVMapper
@@ -556,6 +557,9 @@ def run_uvh_coco_fused_grid_pet(
     )
 
     total_iters = total_frames if max_frames is None else min(total_frames, max_frames)
+    stages.begin(5, header=f"NNDS - {Path(video_path).name}")
+    stages.stage(1, "Setup", f"backend={'openvino' if use_openvino else 'pytorch'} device={device}")
+    stages.stage(2, "Detect + Track", f"max_frames={total_iters}")
     pbar = tqdm(
         total=total_iters, desc="Processing frames", unit="frame", disable=not show_progress
     )
@@ -727,6 +731,7 @@ def run_uvh_coco_fused_grid_pet(
                 break
 
     pbar.close()
+    stages.stage(3, "Index tracks")
     print(f"[UVH-COCO] backend={'openvino' if use_openvino else 'pytorch'} device={device}")
     print(
         f"[UVH-COCO] ✅ Frame processing finished ({frame_idx} frames). Initializing track indexing...",
@@ -862,6 +867,7 @@ def run_uvh_coco_fused_grid_pet(
     max_frames_diff = int(pet_threshold * fps) + 5  # temporal padding
     spatial_pad = 50.0  # pixel padding for bounding box check
 
+    stages.stage(4, "Compute PET", f"threshold={pet_threshold}s tracks={len(track_items)}")
     track_pbar = tqdm(
         range(len(track_items)),
         desc="Checking track pairs",
@@ -1095,12 +1101,14 @@ def run_uvh_coco_fused_grid_pet(
             "gate_b_entry",
         ],
     )
+    stages.stage(5, "Write outputs", str(output_csv_path))
     pet_df.to_csv(output_csv_path, index=False)
 
     print(f"[UVH-COCO] detections_csv={detections_csv} rows={len(det_df)}")
     print(f"[UVH-COCO] pet_csv={output_csv_path} rows={len(pet_df)}")
     print(f"[UVH-COCO] fps={fps:.3f} valid_tracks={len(valid_tracks)}")
 
+    stages.done(f"{len(pet_df)} events -> {output_csv_path}")
     return {
         "detections_csv": detections_csv,
         "pet_csv": output_csv_path,
