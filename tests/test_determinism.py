@@ -138,7 +138,7 @@ def test_set_seed_reproducible_across_calls():
 
 def test_set_seed_rejects_negative():
     """Negative seeds are not valid for NumPy; reject before mutating state."""
-    from src.utils.seed import set_seed, get_seed
+    from src.utils.seed import get_seed, set_seed
 
     before = get_seed()
     with pytest.raises(ValueError):
@@ -157,7 +157,7 @@ def test_set_seed_rejects_too_large():
 
 def test_set_seed_accepts_boundaries():
     """Seed 0 and 2**32 - 1 are the valid endpoints."""
-    from src.utils.seed import set_seed, get_seed
+    from src.utils.seed import get_seed, set_seed
 
     set_seed(0)
     assert get_seed() == 0
@@ -177,7 +177,8 @@ def test_set_seed_rejects_float_and_string():
 def test_set_seed_failure_leaves_state_untouched():
     """A rejected seed must not partially mutate PYTHONHASHSEED or _seed."""
     import os
-    from src.utils.seed import set_seed, get_seed
+
+    from src.utils.seed import get_seed, set_seed
 
     set_seed(99)
     before_hash = os.environ["PYTHONHASHSEED"]
