@@ -26,9 +26,9 @@ MAX_TIME_GAP_S = 5.0
 MIN_TRACK_FRAMES = 10
 
 
-def _load_all_tracks():
+def _load_all_tracks() -> dict[int, dict[int, tuple[float, float]]]:
     raw = pd.read_csv(RAW)
-    tracks = {}
+    tracks: dict[int, dict[int, tuple[float, float]]] = {}
     for _, r in raw.iterrows():
         for tc, jc in (("track_a", "traj_a_json"), ("track_b", "traj_b_json")):
             t = r.get(tc)
