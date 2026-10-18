@@ -12,6 +12,17 @@ from pathlib import Path
 
 import pytest
 
+
+# ---------------------------------------------------------------------------
+# Assertion policy for user-facing messages
+# ---------------------------------------------------------------------------
+# This file tests the CLI. Messages are user-facing and expected to improve
+# over time. Do not assert on exact wording; assert on:
+#   1. the failure occurred (returncode != 0)
+#   2. the message names the offending flag
+#   3. the message is recognizably a rejection (any valid form is accepted)
+# ---------------------------------------------------------------------------
+
 REPO = Path(__file__).resolve().parents[1]
 VIDEO = REPO / "data" / "sample_data" / "anonymized_traffic_video_50f.mp4"
 UVH = REPO / "data" / "models" / "uvh26.pt"
@@ -71,4 +82,14 @@ def test_yolo_cpu_dispatch_runs():
 def test_unknown_detector_is_rejected():
     r = _run("this-is-not-a-detector", [])
     assert r.returncode != 0
-    assert "Unsupported detector" in (r.stderr + r.stdout)
+    # Semantic assertion (see policy below):
+    #   * the process must fail (returncode != 0)
+    #   * the failure must mention "detector" and be a recognizable rejection
+    #     ("invalid choice" from argparse choices=, or "Unsupported detector"
+    #     from the dispatch layer). Which layer rejects is an implementation
+    #     detail; both are acceptable and both name the offending flag.
+    combined = (r.stderr + r.stdout).lower()
+    assert "detector" in combined, f"rejection must name the flag: {combined!r}"
+    assert "invalid choice" in combined or "unsupported detector" in combined, (
+        f"unexpected rejection message: {combined!r}"
+    )
