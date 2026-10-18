@@ -1,5 +1,14 @@
 # Tiered CI: static analysis, three parallel test lanes, combined coverage gate.
 #
+# Security posture:
+#   - Workflow-level `permissions: contents: read` (least privilege).
+#   - Every checkout uses `persist-credentials: false` so the token is not
+#     left in `.git/config` for subsequent `pip install` scripts to read.
+#   - No job pushes to the repository. Formatting is check-only; a failing
+#     check is a red CI, not an auto-fix. This closes CodeRabbit's
+#     "Security Misconfiguration" finding and qodo's "Failed formatting
+#     pushes still pass ci".
+#
 # Coverage files use names WITHOUT a leading dot (`coverage.fast`, etc.) so
 # actions/upload-artifact@v4 sees them — it skips dotfiles by default.
 # Coverage gating is done ONCE in the combined `coverage` job at 70%.
@@ -15,7 +24,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   static:
@@ -23,6 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -38,22 +49,15 @@ jobs:
           if [ -f requirements-vlm.txt ]; then pip install -r requirements-vlm.txt; fi
       - name: Compile all Python files
         run: python -m compileall -q src tests scripts conftest.py
-      - name: Lint + auto-format with Ruff
-        run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          ruff check --fix .
-          ruff format .
-          if ! git diff --quiet; then
-            git add -A
-            git commit -m "style: auto-fix + auto-format via CI"
-            git pull --rebase origin "${GITHUB_REF_NAME}" || true
-            git push origin "HEAD:${GITHUB_REF_NAME}" || true
-          fi
-          ruff check .
-          ruff format --check .
+      - name: Lint (Ruff)
+        run: ruff check .
+      - name: Format check (Ruff)
+        run: ruff format --check .
       - name: Run mypy type checking (analysis)
-        run: mypy --config-file mypy.ini src/ paper/analysis/ scripts/ 2>&1 | head -50
+        shell: bash
+        run: |
+          set -o pipefail
+          mypy --config-file mypy.ini src/ paper/analysis/ scripts/ 2>&1 | head -50
       - name: Run bandit (SAST)
         run: bandit -c bandit.yaml -r src/ paper/analysis/ scripts/ -ll
       - name: Run pylint (non-blocking, reports score)
@@ -75,6 +79,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -114,6 +120,8 @@ jobs:
       HYPOTHESIS_PROFILE: ci-pr
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -150,6 +158,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -188,6 +198,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -199,7 +211,9 @@ jobs:
         run: find cov-artifacts -type f | sort
       - name: Combine and gate
         run: |
-          # Copy each lane's coverage file into the root with a unique suffix.
+          # Require ALL three lanes to have produced coverage. If a lane
+          # silently produced none, the reported combined number would be a
+          # subset, not the intended union.
           found=0
           for lane in fast property full; do
             f="cov-artifacts/coverage-$lane/coverage.$lane"
@@ -211,13 +225,13 @@ jobs:
               echo "MISSING: $f"
             fi
           done
-          if [ "$found" -eq 0 ]; then
-            echo "No coverage data found in any lane — aborting."
+          if [ "$found" -ne 3 ]; then
+            echo "::error::Expected 3 coverage artifacts (fast, property, full); found $found."
             exit 1
           fi
-          # coverage combine finds files matching .coverage.*; rename ours in place.
+          # coverage combine looks for .coverage.*; rename ours in place.
           for lane in fast property full; do
-            [ -f "coverage.$lane" ] && mv "coverage.$lane" ".coverage.$lane"
+            mv "coverage.$lane" ".coverage.$lane"
           done
           coverage combine
           coverage report --fail-under=70

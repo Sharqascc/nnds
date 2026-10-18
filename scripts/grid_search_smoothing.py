@@ -10,6 +10,7 @@ from scipy.stats import wasserstein_distance
 from src.diffusion.traffic_diffusion.trajectory_diffusion import (
     TrajectoryDiffusionModel,
 )
+from src.utils.checkpoint import load_checkpoint_safe
 
 CKPT = "checkpoints_diffusion_del4_v4/traj_diffusion_best.pt"
 CSV = "outputs/diffusion_del4_v4.csv"
@@ -47,7 +48,7 @@ def compute_metrics(gen_trajs, gt_trajs, cond_trajs, real_pets, dt=0.1):
 def build_data():
     df = pd.read_csv(CSV)
     id_col = "event_id"
-    ckpt = torch.load(CKPT, map_location=DEVICE, weights_only=False)
+    ckpt = load_checkpoint_safe(CKPT, map_location=DEVICE)
     stats = ckpt["stats"]
     _mean, _std = stats["mean"], stats["std"]
     cond_mean, cond_std = stats["cond_mean"], stats["cond_std"]

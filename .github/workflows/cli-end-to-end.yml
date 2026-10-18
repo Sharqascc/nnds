@@ -8,6 +8,9 @@ on:
       - "src/pipeline/traffic_analyzer.py"
       - "src/pipeline/preflight.py"
 
+permissions:
+  contents: read
+
 jobs:
   e2e:
     runs-on: ubuntu-latest
@@ -15,6 +18,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           lfs: true
+          persist-credentials: false
 
       - name: Pull LFS objects
         run: git lfs pull
@@ -42,7 +46,19 @@ jobs:
       - name: CLI --version
         run: python -m src.pipeline.traffic_analyzer --version
 
-      - name: CLI --self-check (with real paths)
+      - name: Download UVH-26 weights
+        run: |
+          mkdir -p data/models
+          wget -q -O data/models/uvh26.pt \
+            "https://huggingface.co/iisc-aim/UVH-26/resolve/main/weights/YOLOv11-S/UVH-26-MV-YOLOv11-S.pt"
+          python -c "from ultralytics import YOLO; YOLO('yolo11n.pt')"
+          mv yolo11n.pt data/models/ || true
+          ls -lh data/models/
+
+      # Runs AFTER weights are present so the preflight check can actually
+      # verify them. The previous version ran before the download and masked
+      # the failure with `|| true` — meaning the "self-check" never checked.
+      - name: CLI --self-check
         run: |
           python -m src.pipeline.traffic_analyzer --self-check \
             --video data/sample_data/GITI_traffic_video.mp4 \
@@ -53,18 +69,11 @@ jobs:
             --gate-config configs/gate_config.yaml \
             --out-csv /tmp/selfcheck.csv \
             --device cpu \
-            --detector uvh-coco-fused || true
+            --detector uvh-coco-fused
 
-      - name: Download UVH-26 weights
-        run: |
-          mkdir -p data/models
-          wget -q -O data/models/uvh26.pt \
-            "https://huggingface.co/iisc-aim/UVH-26/resolve/main/weights/YOLOv11-S/UVH-26-MV-YOLOv11-S.pt"
-          python -c "from ultralytics import YOLO; YOLO('yolo11n.pt')"
-          mv yolo11n.pt data/models/ || true
-          ls -lh data/models/
-
-      - name: Run CLI pipeline (50-frame sample)
+      # Bounded to the first 400 frames for CI runtime. The verification
+      # below asserts against that bounded range, not against the full video.
+      - name: Run CLI pipeline (first 400 frames)
         run: |
           python -m src.pipeline.traffic_analyzer \
             --video data/sample_data/GITI_traffic_video.mp4 \
@@ -76,7 +85,7 @@ jobs:
             --grid-config configs/GITI_grid_config.json \
             --gate-config configs/gate_config.yaml \
             --device cpu \
-            --max-frames 400 || true
+            --max-frames 400
 
       - name: Verify output
         run: |
@@ -87,9 +96,9 @@ jobs:
           rows=$(wc -l < outputs/cli_e2e_petevents.csv)
           echo "CSV rows (incl header): $rows"
           head -3 outputs/cli_e2e_petevents.csv
-          # On the full GITI video we expect at least 1 event row
+          # On the first 400 frames of the GITI clip we expect at least 1 event.
           if [ "$rows" -lt 2 ]; then
-            echo "::error::No PET events detected on full GITI video — expected >0"
+            echo "::error::No PET events detected in first 400 frames — expected >0"
             exit 1
           fi
 
