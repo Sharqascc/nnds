@@ -75,7 +75,6 @@ jobs:
 
   test-fast:
     name: Fast unit tests
-    needs: static
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -96,7 +95,7 @@ jobs:
           if [ -f requirements-vlm.txt ]; then pip install -r requirements-vlm.txt; fi
       - name: Run fast unit tests
         run: |
-          pytest tests/ \
+          pytest tests/ -n auto \
             -m "not integration and not smoke and not full and not slow and not property" \
             --cov=src --cov=paper/analysis --cov-branch --cov-report= \
             --durations=25
@@ -114,7 +113,6 @@ jobs:
 
   test-property:
     name: Property tests (hypothesis ci-pr)
-    needs: static
     runs-on: ubuntu-latest
     env:
       HYPOTHESIS_PROFILE: ci-pr
@@ -137,7 +135,7 @@ jobs:
           if [ -f requirements-vlm.txt ]; then pip install -r requirements-vlm.txt; fi
       - name: Run property tests
         run: |
-          pytest tests/ -m property -q \
+          pytest tests/ -m property -q -n auto \
             --cov=src --cov=paper/analysis --cov-branch --cov-report= \
             --ignore=tests/test_snapshot_pet_summary.py
       - name: Rename coverage data
@@ -154,7 +152,6 @@ jobs:
 
   test-full:
     name: Full / smoke / integration / slow
-    needs: static
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -175,7 +172,7 @@ jobs:
           if [ -f requirements-vlm.txt ]; then pip install -r requirements-vlm.txt; fi
       - name: Run full / smoke / integration / slow tests
         run: |
-          pytest tests/ -m "integration or smoke or full or slow" -q \
+          pytest tests/ -m "integration or smoke or full or slow" -q -n auto \
             --cov=src --cov=paper/analysis --cov-branch --cov-report= \
             --ignore=tests/test_snapshot_pet_summary.py \
             --durations=25
@@ -251,18 +248,20 @@ jobs:
   # ---------------------------------------------------------------------------
   test:
     name: test
-    needs: [test-fast, test-property, test-full, coverage]
+    needs: [static, test-fast, test-property, test-full, coverage]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Verify every lane succeeded
         run: |
           echo "Upstream lane results:"
+          echo "  static        = ${{ needs.static.result }}"
           echo "  test-fast     = ${{ needs.test-fast.result }}"
           echo "  test-property = ${{ needs.test-property.result }}"
           echo "  test-full     = ${{ needs.test-full.result }}"
           echo "  coverage      = ${{ needs.coverage.result }}"
-          if [ "${{ needs.test-fast.result }}"     != "success" ] || \
+          if [ "${{ needs.static.result }}"        != "success" ] || \
+             [ "${{ needs.test-fast.result }}"     != "success" ] || \
              [ "${{ needs.test-property.result }}" != "success" ] || \
              [ "${{ needs.test-full.result }}"     != "success" ] || \
              [ "${{ needs.coverage.result }}"      != "success" ]; then
