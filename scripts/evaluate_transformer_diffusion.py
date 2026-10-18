@@ -14,9 +14,9 @@ from scipy.stats import wasserstein_distance
 
 from src.diffusion.complete_ddpm import LinearNoiseScheduler
 from src.diffusion.traffic_diffusion.transformer_diffusion import (
-from src.utils.checkpoint import load_checkpoint_safe
     TransformerTrajectoryDiffusion,
 )
+from src.utils.checkpoint import load_checkpoint_safe
 
 
 def load_position_data_subset(csv_path, Th=16, max_events=200):
@@ -48,7 +48,7 @@ def evaluate_transformer_diffusion(
     num_steps=50,
     dt=0.1,
 ):
-            ckpt = load_checkpoint_safe(checkpoint_path, map_location="cpu")
+    ckpt = load_checkpoint_safe(checkpoint_path, map_location="cpu")
     targets, conds, real_pets = load_position_data_subset(csv_path, Th=Th, max_events=max_events)
     N = len(targets)
     if N == 0:
