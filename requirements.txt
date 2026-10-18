@@ -1,13 +1,22 @@
-torch>=2.0.0
-torchvision
-ultralytics>=8.0.0
-opencv-python
-numpy>=2.5,<3
-pandas>=3.0,<4
-scipy>=1.18,<2
-matplotlib
-tqdm
-PyYAML
-openvino>=2024.0.0
-lap>=0.5.12
-scikit-learn
+# Runtime dependencies pinned to the exact versions used in CI.
+#
+# These are the versions that pass CI, that a fresh clone reproduces, and that
+# `pip install -r requirements.txt` will deliver bit-for-bit.
+#
+# Update procedure: bump the `==X.Y.Z` here, bump the corresponding
+# `>=X.Y.Z,<X.Y+1` in pyproject.toml, run CI, merge. Do not weaken to `>=` —
+# determinism is the point. See docs/REPRODUCE.md and tests/test_dependency_pins.py.
+
+torch==2.14.1
+torchvision==0.29.1
+ultralytics==8.4.178
+opencv-python==5.0.0.93
+numpy==2.5.4
+pandas==3.0.6
+scipy==1.18.1
+matplotlib==3.11.2
+tqdm==4.70.1
+PyYAML==6.0.3
+openvino==2026.4.1
+lap==0.5.13
+scikit-learn==1.9.1
