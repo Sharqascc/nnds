@@ -41,7 +41,7 @@ def evaluate_position_ddpm(
     num_steps=50,
     dt=0.1,
 ):
-            ckpt = load_checkpoint_safe(checkpoint_path, map_location="cpu")
+    ckpt = load_checkpoint_safe(checkpoint_path, map_location="cpu")
     targets, conds = load_position_data_subset(csv_path, Th=Th, max_events=max_events)
     mean = ckpt["mean"]
     std = ckpt["std"]
