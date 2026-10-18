@@ -95,7 +95,7 @@ jobs:
           if [ -f requirements-vlm.txt ]; then pip install -r requirements-vlm.txt; fi
       - name: Run fast unit tests
         run: |
-          pytest tests/ -n auto \
+          pytest tests/ -n auto --dist=loadfile \
             -m "not integration and not smoke and not full and not slow and not property" \
             --cov=src --cov=paper/analysis --cov-branch --cov-report= \
             --durations=25
@@ -135,7 +135,7 @@ jobs:
           if [ -f requirements-vlm.txt ]; then pip install -r requirements-vlm.txt; fi
       - name: Run property tests
         run: |
-          pytest tests/ -m property -q -n auto \
+          pytest tests/ -m property -q -n auto --dist=loadfile \
             --cov=src --cov=paper/analysis --cov-branch --cov-report= \
             --ignore=tests/test_snapshot_pet_summary.py
       - name: Rename coverage data
@@ -151,8 +151,21 @@ jobs:
           if-no-files-found: warn
 
   test-full:
-    name: Full / smoke / integration / slow
+    name: Full / smoke / integration / slow (${{ matrix.subset }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - subset: integration
+            marker: integration
+            coverage: coverage.full.integration
+          - subset: smoke
+            marker: smoke
+            coverage: coverage.full.smoke
+          - subset: full-or-slow
+            marker: "full or slow"
+            coverage: coverage.full
     steps:
       - uses: actions/checkout@v4
         with:
@@ -170,22 +183,22 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
           if [ -f requirements-vlm.txt ]; then pip install -r requirements-vlm.txt; fi
-      - name: Run full / smoke / integration / slow tests
+      - name: Run ${{ matrix.subset }} tests
         run: |
-          pytest tests/ -m "integration or smoke or full or slow" -q -n auto \
+          pytest tests/ -m "${{ matrix.marker }}" -q -n auto --dist=loadfile \
             --cov=src --cov=paper/analysis --cov-branch --cov-report= \
             --ignore=tests/test_snapshot_pet_summary.py \
             --durations=25
       - name: Rename coverage data
         if: always()
         run: |
-          if [ -f .coverage ]; then cp .coverage coverage.full; fi
-          ls -la coverage.full || true
+          if [ -f .coverage ]; then cp .coverage ${{ matrix.coverage }}; fi
+          ls -la ${{ matrix.coverage }} || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: coverage-full
-          path: coverage.full
+          name: ${{ matrix.coverage }}
+          path: ${{ matrix.coverage }}
           if-no-files-found: warn
 
   coverage:
@@ -211,24 +224,44 @@ jobs:
           # Require ALL three lanes to have produced coverage. If a lane
           # silently produced none, the reported combined number would be a
           # subset, not the intended union.
+          # Expected artifacts:
+          #   coverage-fast / coverage.fast
+          #   coverage-property / coverage.property
+          #   coverage.full.integration / coverage.full.integration
+          #   coverage.full.smoke       / coverage.full.smoke
+          #   coverage.full             / coverage.full           (from full-or-slow)
+          # The three full sub-lanes are recombined into coverage.full.
           found=0
-          for lane in fast property full; do
-            f="cov-artifacts/coverage-$lane/coverage.$lane"
+          for pair in "coverage-fast/coverage.fast" \
+                      "coverage-property/coverage.property" \
+                      "coverage.full.integration/coverage.full.integration" \
+                      "coverage.full.smoke/coverage.full.smoke" \
+                      "coverage.full/coverage.full"; do
+            f="cov-artifacts/$pair"
             if [ -f "$f" ]; then
-              cp "$f" "coverage.$lane"
+              cp "$f" "$(basename "$f")"
               found=$((found+1))
               echo "loaded $f"
             else
               echo "MISSING: $f"
             fi
           done
-          if [ "$found" -ne 3 ]; then
-            echo "::error::Expected 3 coverage artifacts (fast, property, full); found $found."
+          if [ "$found" -ne 5 ]; then
+            echo "::error::Expected 5 coverage artifacts (fast, property, integration, smoke, full-or-slow); found $found."
             exit 1
           fi
-          # coverage combine looks for .coverage.*; rename ours in place.
+          # Combine the three full sub-lane files into one coverage.full before
+          # merging them into the aggregate.
+          cp coverage.full.integration coverage.full.integration.tmp
+          cp coverage.full.smoke       coverage.full.smoke.tmp
+          cp coverage.full              coverage.full.tmp
+          mv coverage.full.integration.tmp .coverage.full.integration
+          mv coverage.full.smoke.tmp       .coverage.full.smoke
+          mv coverage.full.tmp             .coverage.full
+          coverage combine --append
+          # Now the aggregate combine for the three top-level lanes.
           for lane in fast property full; do
-            mv "coverage.$lane" ".coverage.$lane"
+            [ -f "coverage.$lane" ] && mv "coverage.$lane" ".coverage.$lane"
           done
           coverage combine
           coverage report --fail-under=70
