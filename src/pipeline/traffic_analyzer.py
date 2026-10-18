@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import logging
 import math
@@ -553,8 +554,10 @@ def _version_string() -> str:
         pkg = pkg_version("nnds")
     except Exception:
         pkg = "dev"
+    # If git is unavailable or the checkout has no revision info, fall back
+    # to "unknown". Not a failure condition — it only affects the version string.
     rev = "unknown"
-    try:
+    with contextlib.suppress(Exception):
         rev = (
             subprocess.run(
                 ["git", "rev-parse", "--short", "HEAD"],
@@ -564,8 +567,6 @@ def _version_string() -> str:
             ).stdout.strip()
             or "unknown"
         )
-    except Exception:
-        pass
     return f"traffic_analyzer {pkg} (revision {rev})"
 
 
