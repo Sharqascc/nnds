@@ -825,7 +825,8 @@ def main():
     video = getattr(args, "video", None)
     if not video:
         raise SystemExit(
-            "--video is required unless --demo, --self-check, --dry-run, or --version is used"
+            "--video is required. Try --demo for a sample run, or "
+            "--self-check to verify your environment."
         )
     if not Path(str(video)).exists():
         raise SystemExit(f"Video file not found: {video}")
