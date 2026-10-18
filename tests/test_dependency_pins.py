@@ -84,8 +84,7 @@ def test_pyproject_dev_deps_are_bounded() -> None:
     assert dev, "pyproject.toml [project.optional-dependencies].dev is empty"
     for dep in dev:
         assert ">=" in dep and "<" in dep, (
-            f"pyproject.toml dev dep '{dep}' is not bounded. "
-            f"Expected form: 'name>=X.Y.Z,<X.Y+1'."
+            f"pyproject.toml dev dep '{dep}' is not bounded. Expected form: 'name>=X.Y.Z,<X.Y+1'."
         )
 
 
