@@ -12,7 +12,6 @@ from pathlib import Path
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Assertion policy for user-facing messages
 # ---------------------------------------------------------------------------
@@ -54,7 +53,9 @@ def _run(detector: str, extra: list[str]) -> subprocess.CompletedProcess:
         "20",
         *extra,
     ]
-    return subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, timeout=600)
+    return subprocess.run(
+        cmd, check=False, cwd=REPO, capture_output=True, text=True, timeout=600
+    )
 
 
 def test_uvh_coco_fused_dispatch_runs():
