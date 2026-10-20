@@ -1,15 +1,8 @@
 """Verify that docs/API.md matches what generate_api_docs.py produces.
 
-Marked ``slow`` so it runs in the full-or-slow CI shard instead of the fast
-lane: the generator imports every public module (including torch-adjacent
-ones) to introspect them, which takes ~5-10 seconds. That cost does not
-belong in the fast lane, but the drift check does need to run on every PR.
-
-If this test fails, regenerate and commit:
-
-    python scripts/generate_api_docs.py
-    git add docs/API.md
-    git commit -m "docs: regenerate API.md"
+The generator parses source AST, not importing any modules. That makes it
+fast (~100 ms) and independent of which optional dependencies are installed,
+so the drift check runs in the fast CI lane.
 """
 
 from __future__ import annotations
@@ -17,11 +10,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
 REPO = Path(__file__).resolve().parents[1]
-
-pytestmark = pytest.mark.slow
 
 
 def _generate() -> str:
@@ -41,7 +30,7 @@ def test_api_md_exists() -> None:
 def test_api_md_is_up_to_date() -> None:
     api_path = REPO / "docs" / "API.md"
     if not api_path.exists():
-        pytest.skip("docs/API.md missing - covered by test_api_md_exists")
+        return
 
     committed = api_path.read_text()
     generated = _generate()
