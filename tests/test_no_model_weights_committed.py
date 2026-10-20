@@ -10,17 +10,28 @@ import pytest
 REPO = Path(__file__).resolve().parents[1]
 
 WEIGHT_EXTS = (
-    ".pt", ".pth", ".ckpt",
-    ".onnx", ".engine", ".tflite",
-    ".safetensors", ".h5", ".mlmodel", ".gguf", ".msgpack",
-    ".bin", ".pkl",
+    ".pt",
+    ".pth",
+    ".ckpt",
+    ".onnx",
+    ".engine",
+    ".tflite",
+    ".safetensors",
+    ".h5",
+    ".mlmodel",
+    ".gguf",
+    ".msgpack",
+    ".bin",
+    ".pkl",
 )
 
 MAX_BYTES = 1024 * 1024
 
-ALLOWLIST: frozenset[str] = frozenset({
-    # (No exceptions today. Add entries here only with a comment.)
-})
+ALLOWLIST: frozenset[str] = frozenset(
+    {
+        # (No exceptions today. Add entries here only with a comment.)
+    }
+)
 
 
 def _git_ls_tree() -> list[tuple[str, int]]:
@@ -58,7 +69,9 @@ def test_no_model_weights_committed() -> None:
         if size > MAX_BYTES:
             offenders.append((path, size))
     if offenders:
-        lines = [f"  {p}  ({s / 1024 / 1024:.1f} MB)" for p, s in sorted(offenders, key=lambda x: -x[1])]
+        lines = [
+            f"  {p}  ({s / 1024 / 1024:.1f} MB)" for p, s in sorted(offenders, key=lambda x: -x[1])
+        ]
         raise AssertionError(
             "Model weights committed to git:\n"
             + "\n".join(lines)
