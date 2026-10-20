@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
-"""Generate docs/API.md from public modules.
+"""Generate docs/API.md from public modules by parsing their source AST.
 
-Reads the public-API modules listed in PUBLIC_MODULES, introspects each one,
-and writes a Markdown reference to docs/API.md.
-
-The output is deterministic. A freshness test
-(tests/test_api_docs_fresh.py) fails CI if the checked-in docs/API.md drifts
-from what this script produces, so the file cannot go stale silently.
+Parsing (not importing) makes the output identical regardless of which
+optional dependencies (ultralytics, torch, cv2) are installed. That makes
+the freshness test deterministic in any environment.
 
 Usage:
     python scripts/generate_api_docs.py            # write docs/API.md
@@ -16,14 +13,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import importlib
-import inspect
+import ast
 import sys
 from pathlib import Path
-from typing import Any
 
-# Modules exposed as the public API. Order is preserved as section order
-# in the generated document.
 PUBLIC_MODULES: list[str] = [
     "src.pipeline.traffic_analyzer",
     "src.pipeline.custom_tracker",
@@ -42,15 +35,17 @@ PUBLIC_MODULES: list[str] = [
 ]
 
 
-def _signature(obj: Any) -> str:
-    try:
-        return str(inspect.signature(obj))
-    except (ValueError, TypeError):
-        return "(...)"
+def _root() -> Path:
+    return Path(__file__).resolve().parents[1]
 
 
-def _first_para(obj: Any) -> str:
-    doc = inspect.getdoc(obj) or ""
+def _module_path(name: str) -> Path:
+    return _root() / (name.replace(".", "/") + ".py")
+
+
+def _first_para(doc: str | None) -> str:
+    if not doc:
+        return ""
     para: list[str] = []
     for line in doc.splitlines():
         if not line.strip() and para:
@@ -59,34 +54,112 @@ def _first_para(obj: Any) -> str:
     return " ".join(para)
 
 
-def _public_members(mod: Any) -> list[tuple[str, Any]]:
-    out: list[tuple[str, Any]] = []
-    for name in dir(mod):
-        if name.startswith("_"):
-            continue
-        obj = getattr(mod, name)
-        if getattr(obj, "__module__", None) != mod.__name__:
-            continue
-        out.append((name, obj))
-    return sorted(out)
+def _unparse(node: ast.AST) -> str:
+    try:
+        return ast.unparse(node)
+    except Exception:
+        return "..."
 
 
-def _render_class(name: str, cls: type) -> list[str]:
-    lines = [f"#### `{name}{_signature(cls)}`", ""]
-    doc = _first_para(cls)
+def _format_arg(arg: ast.arg, default: ast.expr | None) -> str:
+    s = arg.arg
+    if arg.annotation is not None:
+        s += f": {_unparse(arg.annotation)}"
+    if default is not None:
+        s += f" = {_unparse(default)}"
+    return s
+
+
+def _format_args(args: ast.arguments) -> str:
+    parts: list[str] = []
+    pos_args = args.args
+    pad = len(pos_args) - len(args.defaults)
+    defaults: list[ast.expr | None] = [None] * pad + list(args.defaults)
+    for arg, dflt in zip(pos_args, defaults, strict=False):
+        parts.append(_format_arg(arg, dflt))
+    if args.vararg is not None:
+        parts.append("*" + _format_arg(args.vararg, None))
+    elif args.kwonlyargs:
+        parts.append("*")
+    for arg, dflt in zip(args.kwonlyargs, args.kw_defaults, strict=False):
+        parts.append(_format_arg(arg, dflt))
+    if args.kwarg is not None:
+        parts.append("**" + _format_arg(args.kwarg, None))
+    return ", ".join(parts)
+
+
+def _format_signature(node: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
+    sig = f"{node.name}({_format_args(node.args)})"
+    if node.returns is not None:
+        sig += f" -> {_unparse(node.returns)}"
+    return sig
+
+
+def _render_method(node: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
+    sig = _format_signature(node)
+    d = _first_para(ast.get_docstring(node)) or "(no description)"
+    return f"- **`{sig}`** - {d}"
+
+
+def _render_class(cls: ast.ClassDef) -> list[str]:
+    lines = [f"#### `{cls.name}`", ""]
+    doc = _first_para(ast.get_docstring(cls))
     if doc:
         lines.extend([doc, ""])
     methods = [
-        (n, getattr(cls, n))
-        for n in dir(cls)
-        if not n.startswith("_") and callable(getattr(cls, n))
+        node
+        for node in cls.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and not node.name.startswith("_")
     ]
-    for mname, mobj in sorted(methods):
-        msig = _signature(mobj)
-        mdoc = _first_para(mobj) or "(no description)"
-        lines.append(f"- **`{mname}{msig}`** - {mdoc}")
+    for m in sorted(methods, key=lambda n: n.name):
+        lines.append(_render_method(m))
     if methods:
         lines.append("")
+    return lines
+
+
+def _render_module(name: str) -> list[str]:
+    lines = [f"## `{name}`", ""]
+    path = _module_path(name)
+    if not path.exists():
+        lines.append(f"**(module file missing: `{path.relative_to(_root())}`)**")
+        lines.append("")
+        return lines
+    try:
+        tree = ast.parse(path.read_text(), filename=str(path))
+    except SyntaxError as exc:
+        lines.append(f"**(parse failed: `{type(exc).__name__}: {exc.msg}`)**")
+        lines.append("")
+        return lines
+
+    mod_doc = _first_para(ast.get_docstring(tree))
+    if mod_doc:
+        lines.extend([mod_doc, ""])
+
+    classes = [
+        node
+        for node in tree.body
+        if isinstance(node, ast.ClassDef) and not node.name.startswith("_")
+    ]
+    functions = [
+        node
+        for node in tree.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and not node.name.startswith("_")
+    ]
+
+    if classes:
+        lines.extend(["### Classes", ""])
+        for cls in classes:
+            lines.extend(_render_class(cls))
+
+    if functions:
+        lines.extend(["### Functions", ""])
+        for fn in sorted(functions, key=lambda n: n.name):
+            lines.append(_render_method(fn))
+        lines.append("")
+
     return lines
 
 
@@ -100,42 +173,13 @@ def generate() -> str:
         "Public modules and functions in the NNDS pipeline. This file is the",
         "single source of truth for what NNDS exposes to callers.",
         "",
+        "Generated from the source AST, not by importing the modules, so the",
+        "output is identical regardless of which optional dependencies are",
+        "installed in the environment that runs the generator.",
+        "",
     ]
-    for mod_name in PUBLIC_MODULES:
-        lines.append(f"## `{mod_name}`")
-        lines.append("")
-        try:
-            mod = importlib.import_module(mod_name)
-        except Exception as exc:
-            lines.append(f"**(import failed: `{type(exc).__name__}: {exc}`)**")
-            lines.append("")
-            continue
-
-        mod_doc = _first_para(mod)
-        if mod_doc:
-            lines.extend([mod_doc, ""])
-
-        classes: list[tuple[str, Any]] = []
-        functions: list[tuple[str, Any]] = []
-        for name, obj in _public_members(mod):
-            if inspect.isclass(obj):
-                classes.append((name, obj))
-            elif inspect.isfunction(obj):
-                functions.append((name, obj))
-
-        if classes:
-            lines.extend(["### Classes", ""])
-            for name, cls in classes:
-                lines.extend(_render_class(name, cls))
-
-        if functions:
-            lines.extend(["### Functions", ""])
-            for name, fn in functions:
-                sig = _signature(fn)
-                doc = _first_para(fn) or "(no description)"
-                lines.append(f"- **`{name}{sig}`** - {doc}")
-            lines.append("")
-
+    for name in PUBLIC_MODULES:
+        lines.extend(_render_module(name))
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -148,8 +192,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    repo_root = Path(__file__).resolve().parents[1]
-    target = repo_root / "docs" / "API.md"
+    target = _root() / "docs" / "API.md"
     content = generate()
 
     if args.check:
