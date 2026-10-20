@@ -6,36 +6,38 @@
 Public modules and functions in the NNDS pipeline. This file is the
 single source of truth for what NNDS exposes to callers.
 
+Generated from the source AST, not by importing the modules, so the
+output is identical regardless of which optional dependencies are
+installed in the environment that runs the generator.
+
 ## `src.pipeline.traffic_analyzer`
 
 Traffic analyzer: BEV calibration, speed estimation, PET event extraction.
 
 ### Classes
 
-#### `CompleteTrafficAnalyzer(bev_width: 'int' = 800, bev_height: 'int' = 800)`
+#### `WorldPoint`
+
+#### `CompleteTrafficAnalyzer`
 
 BEV calibration + speed estimation helper.
 
-- **`calibrate(self, pixel_points, world_points_approx, ransac_threshold: 'float' = 5.0, ransac_confidence: 'float' = 0.99, ransac_max_iters: 'int' = 5000)`** - (no description)
-- **`estimate_speed(self, pixel_positions, frame_times, fps: 'float' = 30.0)`** - (no description)
+- **`calibrate(self, pixel_points, world_points_approx, ransac_threshold: float = 5.0, ransac_confidence: float = 0.99, ransac_max_iters: int = 5000)`** - (no description)
+- **`estimate_speed(self, pixel_positions, frame_times, fps: float = 30.0)`** - (no description)
 - **`generate_report(self, speed_results)`** - (no description)
 - **`pixel_to_world(self, pixel_point)`** - (no description)
 - **`save_calibration(self, path)`** - (no description)
 - **`validate_bev(self)`** - (no description)
 
-#### `WorldPoint(t: 'float', x: 'float', y: 'float') -> None`
-
-WorldPoint(t: 'float', x: 'float', y: 'float')
-
 ### Functions
 
 - **`interactive_detector(frame, model)`** - (no description)
 - **`main()`** - (no description)
-- **`parse_args(argv=None)`** - (no description)
+- **`parse_args(argv = None)`** - (no description)
 - **`run_demo()`** - (no description)
 - **`run_pipeline(args)`** - Execute the video-to-PET pipeline from parsed CLI args.
-- **`run_video_to_pet(video_path, bev_config_path='configs/bev_config.json', grid_config_path='configs/GITI_grid_config.json', sam3_weights_path='sam3.pt', out_csv_path='outputs/petevents_bev.csv', pet_threshold=2.0, max_frames=None, detector='uvh-coco-fused', rtdetr_weights_path='rtdetr-l.pt', yolo_weights_path='data/models/yolo11n.pt', uvh_model_path='data/models/uvh26.pt', coco_person_model_path='data/models/yolo11n.pt', uvh_conf=0.2, coco_person_conf=0.2, imgsz=1280, person_suppress_overlap=0.35, device='auto', backend='auto', max_frame_gap=5, max_spatial_jump=30.0, prediction_tolerance=80.0, video_source=None, time_of_day_label=None, gate_config_path='configs/gate_config.yaml', show_progress: 'bool' = True)`** - (no description)
-- **`run_video_to_pet_fixed(video_path, bev_config_path='configs/bev_config.json', grid_config_path='configs/GITI_grid_config.json', sam3_weights_path='sam3.pt', out_csv_path='outputs/petevents_bev_fixed.csv', pet_threshold=2.0, max_frames=None)`** - (no description)
+- **`run_video_to_pet(video_path, bev_config_path = 'configs/bev_config.json', grid_config_path = 'configs/GITI_grid_config.json', sam3_weights_path = 'sam3.pt', out_csv_path = 'outputs/petevents_bev.csv', pet_threshold = 2.0, max_frames = None, detector = 'uvh-coco-fused', rtdetr_weights_path = 'rtdetr-l.pt', yolo_weights_path = 'data/models/yolo11n.pt', uvh_model_path = 'data/models/uvh26.pt', coco_person_model_path = 'data/models/yolo11n.pt', uvh_conf = 0.2, coco_person_conf = 0.2, imgsz = 1280, person_suppress_overlap = 0.35, device = 'auto', backend = 'auto', max_frame_gap = 5, max_spatial_jump = 30.0, prediction_tolerance = 80.0, video_source = None, time_of_day_label = None, gate_config_path = 'configs/gate_config.yaml', show_progress: bool = True)`** - (no description)
+- **`run_video_to_pet_fixed(video_path, bev_config_path = 'configs/bev_config.json', grid_config_path = 'configs/GITI_grid_config.json', sam3_weights_path = 'sam3.pt', out_csv_path = 'outputs/petevents_bev_fixed.csv', pet_threshold = 2.0, max_frames = None)`** - (no description)
 
 ## `src.pipeline.custom_tracker`
 
@@ -43,22 +45,22 @@ Custom motion-based multi-object tracker with appearance disambiguation.
 
 ### Classes
 
-#### `CustomTracker(max_age=60, min_hits=1, iou_threshold=0.2, log_overlaps=False, overlap_log_path='outputs/tracking_overlap_debug.log', reid_encoder=None)`
+#### `Detection`
 
-Kalman + Hungarian tracker with appearance matching.
-
-- **`update(self, detections, frame_img=None, frame=None)`** - Update tracks with new detections; returns dict det_index -> track_id.
-
-#### `Detection(frame: int, x1: float, y1: float, x2: float, y2: float, cx: float, cy: float, cls_id: int, cls_name: str, conf: float, source: str, hist: numpy.ndarray | None = None, embedding: numpy.ndarray | None = None) -> None`
-
-Detection(frame: int, x1: float, y1: float, x2: float, y2: float, cx: float, cy: float, cls_id: int, cls_name: str, conf: float, source: str, hist: numpy.ndarray | None = None, embedding: numpy.ndarray | None = None)
-
-#### `KalmanTrack(det: src.pipeline.custom_tracker.Detection, track_id: int)`
+#### `KalmanTrack`
 
 Kalman filter state for a single object.
 
+- **`box(self)`** - (no description)
+- **`center(self)`** - (no description)
 - **`predict(self)`** - (no description)
-- **`update(self, det: src.pipeline.custom_tracker.Detection)`** - (no description)
+- **`update(self, det: Detection)`** - (no description)
+
+#### `CustomTracker`
+
+Kalman + Hungarian tracker with appearance matching.
+
+- **`update(self, detections, frame_img = None, frame = None)`** - Update tracks with new detections; returns dict det_index -> track_id.
 
 ## `src.pipeline.preflight`
 
@@ -66,23 +68,22 @@ Preflight validation for the traffic analyzer pipeline.
 
 ### Classes
 
-#### `PreflightReport(checks: 'list' = <factory>, problems: 'list' = <factory>) -> None`
+#### `PreflightReport`
 
-PreflightReport(checks: 'list' = <factory>, problems: 'list' = <factory>)
-
-- **`add(self, name: 'str', ok: 'bool', detail: 'str', fix: 'str' = '') -> 'None'`** - (no description)
-- **`to_dict(self) -> 'dict'`** - (no description)
+- **`add(self, name: str, ok: bool, detail: str, fix: str = '') -> None`** - (no description)
+- **`ok(self) -> bool`** - (no description)
+- **`to_dict(self) -> dict`** - (no description)
 
 ### Functions
 
-- **`main() -> 'int'`** - (no description)
-- **`run_checks(video: 'str | None' = None, uvh_model: 'str | None' = None, yolo_weights: 'str | None' = None, rtdetr_weights: 'str | None' = None, sam3_weights: 'str | None' = None, bev_config: 'str | None' = None, grid_config: 'str | None' = None, gate_config: 'str | None' = None, out_csv: 'str' = 'outputs/petevents_bev.csv', device: 'str' = 'auto', detector: 'str' = 'uvh-coco-fused') -> 'PreflightReport'`** - (no description)
+- **`main() -> int`** - (no description)
+- **`run_checks(video: str | None = None, uvh_model: str | None = None, yolo_weights: str | None = None, rtdetr_weights: str | None = None, sam3_weights: str | None = None, bev_config: str | None = None, grid_config: str | None = None, gate_config: str | None = None, out_csv: str = 'outputs/petevents_bev.csv', device: str = 'auto', detector: str = 'uvh-coco-fused') -> PreflightReport`** - (no description)
 
 ## `src.pipeline.reid_encoder`
 
 ### Classes
 
-#### `ReIDEncoder(device='cpu')`
+#### `ReIDEncoder`
 
 Lightweight appearance encoder using MobileNetV3-Small pretrained on ImageNet.
 
@@ -90,68 +91,24 @@ Lightweight appearance encoder using MobileNetV3-Small pretrained on ImageNet.
 
 ## `src.pipeline.rt_detr_detector`
 
-**(import failed: `ModuleNotFoundError: No module named 'ultralytics'`)**
+### Classes
+
+#### `Detection`
+
+#### `RTDetrDetector`
+
+- **`detect(self, frame_bgr: np.ndarray, conf: float = 0.25) -> list[Detection]`** - (no description)
 
 ## `src.pipeline.tracking_state`
 
 ### Classes
 
-#### `TrackState(*values)`
+#### `TrackState`
 
-str(object='') -> str str(bytes_or_buffer[, encoding[, errors]]) -> str
-
-- **`capitalize(self, /)`** - Return a capitalized version of the string.
-- **`casefold(self, /)`** - Return a version of the string suitable for caseless comparisons.
-- **`center(self, width, fillchar=' ', /)`** - Return a centered string of length width.
-- **`count(...)`** - Return the number of non-overlapping occurrences of substring sub in string S[start:end].
-- **`encode(self, /, encoding='utf-8', errors='strict')`** - Encode the string using the codec registered for encoding.
-- **`endswith(...)`** - Return True if the string ends with the specified suffix, False otherwise.
-- **`expandtabs(self, /, tabsize=8)`** - Return a copy where all tab characters are expanded using spaces.
-- **`find(...)`** - Return the lowest index in S where substring sub is found, such that sub is contained within S[start:end].
-- **`format(self, /, *args, **kwargs)`** - Return a formatted version of the string, using substitutions from args and kwargs. The substitutions are identified by braces ('{' and '}').
-- **`format_map(self, mapping, /)`** - Return a formatted version of the string, using substitutions from mapping. The substitutions are identified by braces ('{' and '}').
-- **`index(...)`** - Return the lowest index in S where substring sub is found, such that sub is contained within S[start:end].
-- **`isalnum(self, /)`** - Return True if the string is an alpha-numeric string, False otherwise.
-- **`isalpha(self, /)`** - Return True if the string is an alphabetic string, False otherwise.
-- **`isascii(self, /)`** - Return True if all characters in the string are ASCII, False otherwise.
-- **`isdecimal(self, /)`** - Return True if the string is a decimal string, False otherwise.
-- **`isdigit(self, /)`** - Return True if the string is a digit string, False otherwise.
-- **`isidentifier(self, /)`** - Return True if the string is a valid Python identifier, False otherwise.
-- **`islower(self, /)`** - Return True if the string is a lowercase string, False otherwise.
-- **`isnumeric(self, /)`** - Return True if the string is a numeric string, False otherwise.
-- **`isprintable(self, /)`** - Return True if all characters in the string are printable, False otherwise.
-- **`isspace(self, /)`** - Return True if the string is a whitespace string, False otherwise.
-- **`istitle(self, /)`** - Return True if the string is a title-cased string, False otherwise.
-- **`isupper(self, /)`** - Return True if the string is an uppercase string, False otherwise.
-- **`join(self, iterable, /)`** - Concatenate any number of strings.
-- **`ljust(self, width, fillchar=' ', /)`** - Return a left-justified string of length width.
-- **`lower(self, /)`** - Return a copy of the string converted to lowercase.
-- **`lstrip(self, chars=None, /)`** - Return a copy of the string with leading whitespace removed.
-- **`maketrans(...)`** - Return a translation table usable for str.translate().
-- **`partition(self, sep, /)`** - Partition the string into three parts using the given separator.
-- **`removeprefix(self, prefix, /)`** - Return a str with the given prefix string removed if present.
-- **`removesuffix(self, suffix, /)`** - Return a str with the given suffix string removed if present.
-- **`replace(self, old, new, /, count=-1)`** - Return a copy with all occurrences of substring old replaced by new.
-- **`rfind(...)`** - Return the highest index in S where substring sub is found, such that sub is contained within S[start:end].
-- **`rindex(...)`** - Return the highest index in S where substring sub is found, such that sub is contained within S[start:end].
-- **`rjust(self, width, fillchar=' ', /)`** - Return a right-justified string of length width.
-- **`rpartition(self, sep, /)`** - Partition the string into three parts using the given separator.
-- **`rsplit(self, /, sep=None, maxsplit=-1)`** - Return a list of the substrings in the string, using sep as the separator string.
-- **`rstrip(self, chars=None, /)`** - Return a copy of the string with trailing whitespace removed.
-- **`split(self, /, sep=None, maxsplit=-1)`** - Return a list of the substrings in the string, using sep as the separator string.
-- **`splitlines(self, /, keepends=False)`** - Return a list of the lines in the string, breaking at line boundaries.
-- **`startswith(...)`** - Return True if the string starts with the specified prefix, False otherwise.
-- **`strip(self, chars=None, /)`** - Return a copy of the string with leading and trailing whitespace removed.
-- **`swapcase(self, /)`** - Convert uppercase characters to lowercase and lowercase characters to uppercase.
-- **`title(self, /)`** - Return a version of the string where each word is titlecased.
-- **`translate(self, table, /)`** - Replace each character in the string using the given translation table.
-- **`upper(self, /)`** - Return a copy of the string converted to uppercase.
-- **`zfill(self, width, /)`** - Pad a numeric string with zeros on the left, to fill a field of the given width.
-
-#### `TrackStateMachine(initial_state: src.pipeline.tracking_state.TrackState = <TrackState.DETECTED: 'DETECTED'>) -> None`
+#### `TrackStateMachine`
 
 - **`can_transition(self, new_state)`** - (no description)
-- **`transition(self, new_state: src.pipeline.tracking_state.TrackState) -> None`** - (no description)
+- **`transition(self, new_state: TrackState) -> None`** - (no description)
 
 ## `src.core.contracts`
 
@@ -159,234 +116,30 @@ Production data contracts for NNDS simplified PET outputs.
 
 ### Classes
 
-#### `ConflictRateSummary(*, count: Annotated[int, Ge(ge=0)], percentage: Annotated[float, Ge(ge=0), Le(le=100)], per_1000_events: Annotated[float, Ge(ge=0)]) -> None`
-
-!!! abstract "Usage Documentation" [Models](../concepts/models.md)
-
-- **`construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - (no description)
-- **`copy(self, *, include: 'AbstractSetIntStr | MappingIntStrAny | None' = None, exclude: 'AbstractSetIntStr | MappingIntStrAny | None' = None, update: 'Dict[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - Returns a copy of the model.
-- **`dict(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False) -> 'Dict[str, Any]'`** - (no description)
-- **`from_orm(obj: 'Any') -> 'Self'`** - (no description)
-- **`json(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, encoder: 'Callable[[Any], Any] | None' = PydanticUndefined, models_as_dict: 'bool' = PydanticUndefined, **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`model_construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - Creates a new instance of the `Model` class with validated data.
-- **`model_copy(self, *, update: 'Mapping[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - !!! abstract "Usage Documentation" [`model_copy`](../concepts/models.md#model-copy)
-- **`model_dump(self, *, mode: "Literal['json', 'python'] | str" = 'python', include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'Dict[str, Any]'`** - !!! abstract "Usage Documentation" [`model_dump`](../concepts/serialization.md#python-mode)
-- **`model_dump_json(self, *, indent: 'int | None' = None, ensure_ascii: 'bool' = False, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'str'`** - !!! abstract "Usage Documentation" [`model_dump_json`](../concepts/serialization.md#json-mode)
-- **`model_json_schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', schema_generator: 'type[GenerateJsonSchema]' = <class 'pydantic.json_schema.GenerateJsonSchema'>, mode: 'JsonSchemaMode' = 'validation', *, union_format: "Literal['any_of', 'primitive_type_array']" = 'any_of') -> 'Dict[str, Any]'`** - Generates a JSON schema for a model class.
-- **`model_parametrized_name(params: 'tuple[TypeForm[Any], ...]') -> 'str'`** - Compute the class name for parametrizations of generic classes.
-- **`model_post_init(self, context: 'Any', /) -> 'None'`** - Override this method to perform additional initialization after `__init__` and `model_construct`. This is useful if you want to do some validation that requires the entire model to be initialized.
-- **`model_rebuild(*, force: 'bool' = False, raise_errors: 'bool' = True, _parent_namespace_depth: 'int' = 2, _types_namespace: 'MappingNamespace | None' = None) -> 'bool | None'`** - Try to rebuild the pydantic-core schema for the model.
-- **`model_validate(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, from_attributes: 'bool | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate a pydantic model instance.
-- **`model_validate_json(json_data: 'str | bytes | bytearray', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - !!! abstract "Usage Documentation" [JSON Parsing](../concepts/json.md#json-parsing)
-- **`model_validate_strings(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate the given object with string data against the Pydantic model.
-- **`parse_file(path: 'str | Path', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`parse_obj(obj: 'Any') -> 'Self'`** - (no description)
-- **`parse_raw(b: 'str | bytes', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}') -> 'Dict[str, Any]'`** - (no description)
-- **`schema_json(*, by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`update_forward_refs(**localns: 'Any') -> 'None'`** - (no description)
-- **`validate(value: 'Any') -> 'Self'`** - (no description)
-
-#### `PETEventRecord(*, event_id: Annotated[int, Ge(ge=0)], pet: Annotated[float, Ge(ge=0)], frame: Annotated[int, Ge(ge=0)], track_a: int, track_b: int, conflict_type: Literal['crossing', 'head_on', 'rear_end', 'side_swipe', 'other'], grid_cell: str, track_a_entry_frame: int | None = None, track_a_exit_frame: int | None = None, track_a_exit_time_sec: float | None = None, track_b_entry_frame: int | None = None, track_b_entry_time_sec: float | None = None, track_b_exit_frame: int | None = None, site: Literal['GITI', 'MRC'], time_of_day_label: str | None = None, gate_a_entry: str | None = None, gate_b_entry: str | None = None, first_track_id: int | None = None, second_track_id: int | None = None, first_exit_frame: int | None = None, first_exit_time_sec: float | None = None, second_entry_frame: int | None = None, second_entry_time_sec: float | None = None, pet_frames: int | None = None, pet_s: float | None = None, occupancy_relation: Optional[Literal['a_to_b', 'b_to_a']] = None) -> None`
-
-!!! abstract "Usage Documentation" [Models](../concepts/models.md)
+#### `PETEventRecord`
 
 - **`check_pet_positive(self)`** - (no description)
 - **`check_track_order(self)`** - (no description)
-- **`construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - (no description)
-- **`copy(self, *, include: 'AbstractSetIntStr | MappingIntStrAny | None' = None, exclude: 'AbstractSetIntStr | MappingIntStrAny | None' = None, update: 'Dict[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - Returns a copy of the model.
-- **`dict(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False) -> 'Dict[str, Any]'`** - (no description)
-- **`from_orm(obj: 'Any') -> 'Self'`** - (no description)
-- **`json(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, encoder: 'Callable[[Any], Any] | None' = PydanticUndefined, models_as_dict: 'bool' = PydanticUndefined, **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`model_construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - Creates a new instance of the `Model` class with validated data.
-- **`model_copy(self, *, update: 'Mapping[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - !!! abstract "Usage Documentation" [`model_copy`](../concepts/models.md#model-copy)
-- **`model_dump(self, *, mode: "Literal['json', 'python'] | str" = 'python', include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'Dict[str, Any]'`** - !!! abstract "Usage Documentation" [`model_dump`](../concepts/serialization.md#python-mode)
-- **`model_dump_json(self, *, indent: 'int | None' = None, ensure_ascii: 'bool' = False, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'str'`** - !!! abstract "Usage Documentation" [`model_dump_json`](../concepts/serialization.md#json-mode)
-- **`model_json_schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', schema_generator: 'type[GenerateJsonSchema]' = <class 'pydantic.json_schema.GenerateJsonSchema'>, mode: 'JsonSchemaMode' = 'validation', *, union_format: "Literal['any_of', 'primitive_type_array']" = 'any_of') -> 'Dict[str, Any]'`** - Generates a JSON schema for a model class.
-- **`model_parametrized_name(params: 'tuple[TypeForm[Any], ...]') -> 'str'`** - Compute the class name for parametrizations of generic classes.
-- **`model_post_init(self, context: 'Any', /) -> 'None'`** - Override this method to perform additional initialization after `__init__` and `model_construct`. This is useful if you want to do some validation that requires the entire model to be initialized.
-- **`model_rebuild(*, force: 'bool' = False, raise_errors: 'bool' = True, _parent_namespace_depth: 'int' = 2, _types_namespace: 'MappingNamespace | None' = None) -> 'bool | None'`** - Try to rebuild the pydantic-core schema for the model.
-- **`model_validate(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, from_attributes: 'bool | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate a pydantic model instance.
-- **`model_validate_json(json_data: 'str | bytes | bytearray', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - !!! abstract "Usage Documentation" [JSON Parsing](../concepts/json.md#json-parsing)
-- **`model_validate_strings(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate the given object with string data against the Pydantic model.
-- **`parse_file(path: 'str | Path', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`parse_obj(obj: 'Any') -> 'Self'`** - (no description)
-- **`parse_raw(b: 'str | bytes', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}') -> 'Dict[str, Any]'`** - (no description)
-- **`schema_json(*, by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`update_forward_refs(**localns: 'Any') -> 'None'`** - (no description)
-- **`validate(value: 'Any') -> 'Self'`** - (no description)
 
-#### `PETSummaryBasicStats(*, count: Annotated[int, Ge(ge=0)], mean: float, std: float | None = None, sem: float | None = None, min: float, q25: float, median: float, q75: float, max: float, iqr: float, cv: float | None = None, skew: float | None = None, kurtosis: float | None = None, ci_mean_lower: float | None = None, ci_mean_upper: float | None = None, ci_level: float | None = None, p1: float, p5: float, p10: float, p90: float, p95: float, p99: float) -> None`
+#### `RiskLevelSummary`
 
-!!! abstract "Usage Documentation" [Models](../concepts/models.md)
+#### `ConflictRateSummary`
 
-- **`construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - (no description)
-- **`copy(self, *, include: 'AbstractSetIntStr | MappingIntStrAny | None' = None, exclude: 'AbstractSetIntStr | MappingIntStrAny | None' = None, update: 'Dict[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - Returns a copy of the model.
-- **`dict(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False) -> 'Dict[str, Any]'`** - (no description)
-- **`from_orm(obj: 'Any') -> 'Self'`** - (no description)
-- **`json(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, encoder: 'Callable[[Any], Any] | None' = PydanticUndefined, models_as_dict: 'bool' = PydanticUndefined, **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`model_construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - Creates a new instance of the `Model` class with validated data.
-- **`model_copy(self, *, update: 'Mapping[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - !!! abstract "Usage Documentation" [`model_copy`](../concepts/models.md#model-copy)
-- **`model_dump(self, *, mode: "Literal['json', 'python'] | str" = 'python', include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'Dict[str, Any]'`** - !!! abstract "Usage Documentation" [`model_dump`](../concepts/serialization.md#python-mode)
-- **`model_dump_json(self, *, indent: 'int | None' = None, ensure_ascii: 'bool' = False, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'str'`** - !!! abstract "Usage Documentation" [`model_dump_json`](../concepts/serialization.md#json-mode)
-- **`model_json_schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', schema_generator: 'type[GenerateJsonSchema]' = <class 'pydantic.json_schema.GenerateJsonSchema'>, mode: 'JsonSchemaMode' = 'validation', *, union_format: "Literal['any_of', 'primitive_type_array']" = 'any_of') -> 'Dict[str, Any]'`** - Generates a JSON schema for a model class.
-- **`model_parametrized_name(params: 'tuple[TypeForm[Any], ...]') -> 'str'`** - Compute the class name for parametrizations of generic classes.
-- **`model_post_init(self, context: 'Any', /) -> 'None'`** - Override this method to perform additional initialization after `__init__` and `model_construct`. This is useful if you want to do some validation that requires the entire model to be initialized.
-- **`model_rebuild(*, force: 'bool' = False, raise_errors: 'bool' = True, _parent_namespace_depth: 'int' = 2, _types_namespace: 'MappingNamespace | None' = None) -> 'bool | None'`** - Try to rebuild the pydantic-core schema for the model.
-- **`model_validate(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, from_attributes: 'bool | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate a pydantic model instance.
-- **`model_validate_json(json_data: 'str | bytes | bytearray', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - !!! abstract "Usage Documentation" [JSON Parsing](../concepts/json.md#json-parsing)
-- **`model_validate_strings(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate the given object with string data against the Pydantic model.
-- **`parse_file(path: 'str | Path', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`parse_obj(obj: 'Any') -> 'Self'`** - (no description)
-- **`parse_raw(b: 'str | bytes', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}') -> 'Dict[str, Any]'`** - (no description)
-- **`schema_json(*, by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`update_forward_refs(**localns: 'Any') -> 'None'`** - (no description)
-- **`validate(value: 'Any') -> 'Self'`** - (no description)
+#### `PETSummaryRiskSummary`
 
-#### `PETSummaryRiskSummary(*, critical: src.core.contracts.RiskLevelSummary, serious: src.core.contracts.RiskLevelSummary, moderate: src.core.contracts.RiskLevelSummary, safe: src.core.contracts.RiskLevelSummary, conflict_rate: src.core.contracts.ConflictRateSummary) -> None`
+#### `PETSummaryBasicStats`
 
-!!! abstract "Usage Documentation" [Models](../concepts/models.md)
-
-- **`construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - (no description)
-- **`copy(self, *, include: 'AbstractSetIntStr | MappingIntStrAny | None' = None, exclude: 'AbstractSetIntStr | MappingIntStrAny | None' = None, update: 'Dict[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - Returns a copy of the model.
-- **`dict(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False) -> 'Dict[str, Any]'`** - (no description)
-- **`from_orm(obj: 'Any') -> 'Self'`** - (no description)
-- **`json(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, encoder: 'Callable[[Any], Any] | None' = PydanticUndefined, models_as_dict: 'bool' = PydanticUndefined, **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`model_construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - Creates a new instance of the `Model` class with validated data.
-- **`model_copy(self, *, update: 'Mapping[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - !!! abstract "Usage Documentation" [`model_copy`](../concepts/models.md#model-copy)
-- **`model_dump(self, *, mode: "Literal['json', 'python'] | str" = 'python', include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'Dict[str, Any]'`** - !!! abstract "Usage Documentation" [`model_dump`](../concepts/serialization.md#python-mode)
-- **`model_dump_json(self, *, indent: 'int | None' = None, ensure_ascii: 'bool' = False, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'str'`** - !!! abstract "Usage Documentation" [`model_dump_json`](../concepts/serialization.md#json-mode)
-- **`model_json_schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', schema_generator: 'type[GenerateJsonSchema]' = <class 'pydantic.json_schema.GenerateJsonSchema'>, mode: 'JsonSchemaMode' = 'validation', *, union_format: "Literal['any_of', 'primitive_type_array']" = 'any_of') -> 'Dict[str, Any]'`** - Generates a JSON schema for a model class.
-- **`model_parametrized_name(params: 'tuple[TypeForm[Any], ...]') -> 'str'`** - Compute the class name for parametrizations of generic classes.
-- **`model_post_init(self, context: 'Any', /) -> 'None'`** - Override this method to perform additional initialization after `__init__` and `model_construct`. This is useful if you want to do some validation that requires the entire model to be initialized.
-- **`model_rebuild(*, force: 'bool' = False, raise_errors: 'bool' = True, _parent_namespace_depth: 'int' = 2, _types_namespace: 'MappingNamespace | None' = None) -> 'bool | None'`** - Try to rebuild the pydantic-core schema for the model.
-- **`model_validate(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, from_attributes: 'bool | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate a pydantic model instance.
-- **`model_validate_json(json_data: 'str | bytes | bytearray', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - !!! abstract "Usage Documentation" [JSON Parsing](../concepts/json.md#json-parsing)
-- **`model_validate_strings(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate the given object with string data against the Pydantic model.
-- **`parse_file(path: 'str | Path', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`parse_obj(obj: 'Any') -> 'Self'`** - (no description)
-- **`parse_raw(b: 'str | bytes', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}') -> 'Dict[str, Any]'`** - (no description)
-- **`schema_json(*, by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`update_forward_refs(**localns: 'Any') -> 'None'`** - (no description)
-- **`validate(value: 'Any') -> 'Self'`** - (no description)
-
-#### `PETUncertaintyContract(*, nominal_pet: Annotated[float, Ge(ge=0)], uncertainty_std: Annotated[float, Ge(ge=0)], error_sources: dict[str, float]) -> None`
-
-!!! abstract "Usage Documentation" [Models](../concepts/models.md)
+#### `PETUncertaintyContract`
 
 - **`check_error_sources(self)`** - (no description)
-- **`construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - (no description)
-- **`copy(self, *, include: 'AbstractSetIntStr | MappingIntStrAny | None' = None, exclude: 'AbstractSetIntStr | MappingIntStrAny | None' = None, update: 'Dict[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - Returns a copy of the model.
-- **`dict(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False) -> 'Dict[str, Any]'`** - (no description)
-- **`from_orm(obj: 'Any') -> 'Self'`** - (no description)
-- **`json(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, encoder: 'Callable[[Any], Any] | None' = PydanticUndefined, models_as_dict: 'bool' = PydanticUndefined, **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`model_construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - Creates a new instance of the `Model` class with validated data.
-- **`model_copy(self, *, update: 'Mapping[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - !!! abstract "Usage Documentation" [`model_copy`](../concepts/models.md#model-copy)
-- **`model_dump(self, *, mode: "Literal['json', 'python'] | str" = 'python', include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'Dict[str, Any]'`** - !!! abstract "Usage Documentation" [`model_dump`](../concepts/serialization.md#python-mode)
-- **`model_dump_json(self, *, indent: 'int | None' = None, ensure_ascii: 'bool' = False, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'str'`** - !!! abstract "Usage Documentation" [`model_dump_json`](../concepts/serialization.md#json-mode)
-- **`model_json_schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', schema_generator: 'type[GenerateJsonSchema]' = <class 'pydantic.json_schema.GenerateJsonSchema'>, mode: 'JsonSchemaMode' = 'validation', *, union_format: "Literal['any_of', 'primitive_type_array']" = 'any_of') -> 'Dict[str, Any]'`** - Generates a JSON schema for a model class.
-- **`model_parametrized_name(params: 'tuple[TypeForm[Any], ...]') -> 'str'`** - Compute the class name for parametrizations of generic classes.
-- **`model_post_init(self, context: 'Any', /) -> 'None'`** - Override this method to perform additional initialization after `__init__` and `model_construct`. This is useful if you want to do some validation that requires the entire model to be initialized.
-- **`model_rebuild(*, force: 'bool' = False, raise_errors: 'bool' = True, _parent_namespace_depth: 'int' = 2, _types_namespace: 'MappingNamespace | None' = None) -> 'bool | None'`** - Try to rebuild the pydantic-core schema for the model.
-- **`model_validate(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, from_attributes: 'bool | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate a pydantic model instance.
-- **`model_validate_json(json_data: 'str | bytes | bytearray', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - !!! abstract "Usage Documentation" [JSON Parsing](../concepts/json.md#json-parsing)
-- **`model_validate_strings(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate the given object with string data against the Pydantic model.
-- **`parse_file(path: 'str | Path', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`parse_obj(obj: 'Any') -> 'Self'`** - (no description)
-- **`parse_raw(b: 'str | bytes', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}') -> 'Dict[str, Any]'`** - (no description)
-- **`schema_json(*, by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`update_forward_refs(**localns: 'Any') -> 'None'`** - (no description)
-- **`validate(value: 'Any') -> 'Self'`** - (no description)
 
-#### `RiskLevelSummary(*, count: Annotated[int, Ge(ge=0)], percentage: Annotated[float, Ge(ge=0), Le(le=100)]) -> None`
-
-!!! abstract "Usage Documentation" [Models](../concepts/models.md)
-
-- **`construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - (no description)
-- **`copy(self, *, include: 'AbstractSetIntStr | MappingIntStrAny | None' = None, exclude: 'AbstractSetIntStr | MappingIntStrAny | None' = None, update: 'Dict[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - Returns a copy of the model.
-- **`dict(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False) -> 'Dict[str, Any]'`** - (no description)
-- **`from_orm(obj: 'Any') -> 'Self'`** - (no description)
-- **`json(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, encoder: 'Callable[[Any], Any] | None' = PydanticUndefined, models_as_dict: 'bool' = PydanticUndefined, **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`model_construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - Creates a new instance of the `Model` class with validated data.
-- **`model_copy(self, *, update: 'Mapping[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - !!! abstract "Usage Documentation" [`model_copy`](../concepts/models.md#model-copy)
-- **`model_dump(self, *, mode: "Literal['json', 'python'] | str" = 'python', include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'Dict[str, Any]'`** - !!! abstract "Usage Documentation" [`model_dump`](../concepts/serialization.md#python-mode)
-- **`model_dump_json(self, *, indent: 'int | None' = None, ensure_ascii: 'bool' = False, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'str'`** - !!! abstract "Usage Documentation" [`model_dump_json`](../concepts/serialization.md#json-mode)
-- **`model_json_schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', schema_generator: 'type[GenerateJsonSchema]' = <class 'pydantic.json_schema.GenerateJsonSchema'>, mode: 'JsonSchemaMode' = 'validation', *, union_format: "Literal['any_of', 'primitive_type_array']" = 'any_of') -> 'Dict[str, Any]'`** - Generates a JSON schema for a model class.
-- **`model_parametrized_name(params: 'tuple[TypeForm[Any], ...]') -> 'str'`** - Compute the class name for parametrizations of generic classes.
-- **`model_post_init(self, context: 'Any', /) -> 'None'`** - Override this method to perform additional initialization after `__init__` and `model_construct`. This is useful if you want to do some validation that requires the entire model to be initialized.
-- **`model_rebuild(*, force: 'bool' = False, raise_errors: 'bool' = True, _parent_namespace_depth: 'int' = 2, _types_namespace: 'MappingNamespace | None' = None) -> 'bool | None'`** - Try to rebuild the pydantic-core schema for the model.
-- **`model_validate(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, from_attributes: 'bool | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate a pydantic model instance.
-- **`model_validate_json(json_data: 'str | bytes | bytearray', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - !!! abstract "Usage Documentation" [JSON Parsing](../concepts/json.md#json-parsing)
-- **`model_validate_strings(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate the given object with string data against the Pydantic model.
-- **`parse_file(path: 'str | Path', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`parse_obj(obj: 'Any') -> 'Self'`** - (no description)
-- **`parse_raw(b: 'str | bytes', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}') -> 'Dict[str, Any]'`** - (no description)
-- **`schema_json(*, by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`update_forward_refs(**localns: 'Any') -> 'None'`** - (no description)
-- **`validate(value: 'Any') -> 'Self'`** - (no description)
-
-#### `StatisticalTestResultContract(*, test: str, alpha: float | None = None, passed: bool | None = None, warnings: list[str] = <factory>, errors: list[str] = <factory>, type: str | None = None, statistics: dict[str, typing.Any] = <factory>, test_statistics: dict[str, typing.Any] = <factory>, assumptions: dict[str, typing.Any] = <factory>, summary: str | None = None) -> None`
-
-!!! abstract "Usage Documentation" [Models](../concepts/models.md)
+#### `UQAnalysisContract`
 
 - **`check_passed_consistency(self)`** - (no description)
-- **`construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - (no description)
-- **`copy(self, *, include: 'AbstractSetIntStr | MappingIntStrAny | None' = None, exclude: 'AbstractSetIntStr | MappingIntStrAny | None' = None, update: 'Dict[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - Returns a copy of the model.
-- **`dict(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False) -> 'Dict[str, Any]'`** - (no description)
-- **`from_orm(obj: 'Any') -> 'Self'`** - (no description)
-- **`json(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, encoder: 'Callable[[Any], Any] | None' = PydanticUndefined, models_as_dict: 'bool' = PydanticUndefined, **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`model_construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - Creates a new instance of the `Model` class with validated data.
-- **`model_copy(self, *, update: 'Mapping[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - !!! abstract "Usage Documentation" [`model_copy`](../concepts/models.md#model-copy)
-- **`model_dump(self, *, mode: "Literal['json', 'python'] | str" = 'python', include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'Dict[str, Any]'`** - !!! abstract "Usage Documentation" [`model_dump`](../concepts/serialization.md#python-mode)
-- **`model_dump_json(self, *, indent: 'int | None' = None, ensure_ascii: 'bool' = False, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'str'`** - !!! abstract "Usage Documentation" [`model_dump_json`](../concepts/serialization.md#json-mode)
-- **`model_json_schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', schema_generator: 'type[GenerateJsonSchema]' = <class 'pydantic.json_schema.GenerateJsonSchema'>, mode: 'JsonSchemaMode' = 'validation', *, union_format: "Literal['any_of', 'primitive_type_array']" = 'any_of') -> 'Dict[str, Any]'`** - Generates a JSON schema for a model class.
-- **`model_parametrized_name(params: 'tuple[TypeForm[Any], ...]') -> 'str'`** - Compute the class name for parametrizations of generic classes.
-- **`model_post_init(self, context: 'Any', /) -> 'None'`** - Override this method to perform additional initialization after `__init__` and `model_construct`. This is useful if you want to do some validation that requires the entire model to be initialized.
-- **`model_rebuild(*, force: 'bool' = False, raise_errors: 'bool' = True, _parent_namespace_depth: 'int' = 2, _types_namespace: 'MappingNamespace | None' = None) -> 'bool | None'`** - Try to rebuild the pydantic-core schema for the model.
-- **`model_validate(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, from_attributes: 'bool | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate a pydantic model instance.
-- **`model_validate_json(json_data: 'str | bytes | bytearray', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - !!! abstract "Usage Documentation" [JSON Parsing](../concepts/json.md#json-parsing)
-- **`model_validate_strings(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate the given object with string data against the Pydantic model.
-- **`parse_file(path: 'str | Path', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`parse_obj(obj: 'Any') -> 'Self'`** - (no description)
-- **`parse_raw(b: 'str | bytes', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}') -> 'Dict[str, Any]'`** - (no description)
-- **`schema_json(*, by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`update_forward_refs(**localns: 'Any') -> 'None'`** - (no description)
-- **`validate(value: 'Any') -> 'Self'`** - (no description)
 
-#### `UQAnalysisContract(*, metric_name: str, passed: bool, warnings: list[str] = <factory>, errors: list[str] = <factory>, method: str) -> None`
-
-!!! abstract "Usage Documentation" [Models](../concepts/models.md)
+#### `StatisticalTestResultContract`
 
 - **`check_passed_consistency(self)`** - (no description)
-- **`construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - (no description)
-- **`copy(self, *, include: 'AbstractSetIntStr | MappingIntStrAny | None' = None, exclude: 'AbstractSetIntStr | MappingIntStrAny | None' = None, update: 'Dict[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - Returns a copy of the model.
-- **`dict(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False) -> 'Dict[str, Any]'`** - (no description)
-- **`from_orm(obj: 'Any') -> 'Self'`** - (no description)
-- **`json(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, encoder: 'Callable[[Any], Any] | None' = PydanticUndefined, models_as_dict: 'bool' = PydanticUndefined, **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`model_construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - Creates a new instance of the `Model` class with validated data.
-- **`model_copy(self, *, update: 'Mapping[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - !!! abstract "Usage Documentation" [`model_copy`](../concepts/models.md#model-copy)
-- **`model_dump(self, *, mode: "Literal['json', 'python'] | str" = 'python', include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'Dict[str, Any]'`** - !!! abstract "Usage Documentation" [`model_dump`](../concepts/serialization.md#python-mode)
-- **`model_dump_json(self, *, indent: 'int | None' = None, ensure_ascii: 'bool' = False, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'str'`** - !!! abstract "Usage Documentation" [`model_dump_json`](../concepts/serialization.md#json-mode)
-- **`model_json_schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', schema_generator: 'type[GenerateJsonSchema]' = <class 'pydantic.json_schema.GenerateJsonSchema'>, mode: 'JsonSchemaMode' = 'validation', *, union_format: "Literal['any_of', 'primitive_type_array']" = 'any_of') -> 'Dict[str, Any]'`** - Generates a JSON schema for a model class.
-- **`model_parametrized_name(params: 'tuple[TypeForm[Any], ...]') -> 'str'`** - Compute the class name for parametrizations of generic classes.
-- **`model_post_init(self, context: 'Any', /) -> 'None'`** - Override this method to perform additional initialization after `__init__` and `model_construct`. This is useful if you want to do some validation that requires the entire model to be initialized.
-- **`model_rebuild(*, force: 'bool' = False, raise_errors: 'bool' = True, _parent_namespace_depth: 'int' = 2, _types_namespace: 'MappingNamespace | None' = None) -> 'bool | None'`** - Try to rebuild the pydantic-core schema for the model.
-- **`model_validate(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, from_attributes: 'bool | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate a pydantic model instance.
-- **`model_validate_json(json_data: 'str | bytes | bytearray', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - !!! abstract "Usage Documentation" [JSON Parsing](../concepts/json.md#json-parsing)
-- **`model_validate_strings(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate the given object with string data against the Pydantic model.
-- **`parse_file(path: 'str | Path', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`parse_obj(obj: 'Any') -> 'Self'`** - (no description)
-- **`parse_raw(b: 'str | bytes', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}') -> 'Dict[str, Any]'`** - (no description)
-- **`schema_json(*, by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`update_forward_refs(**localns: 'Any') -> 'None'`** - (no description)
-- **`validate(value: 'Any') -> 'Self'`** - (no description)
 
 ## `src.core.reasoning`
 
@@ -394,179 +147,28 @@ Reasoning-oriented data contracts and state machine for NNDS.
 
 ### Classes
 
-#### `Detection(*, frame: Annotated[int, Ge(ge=0)], x1: float, y1: float, x2: float, y2: float, cx: float, cy: float, cls_id: int, cls_name: str, conf: Annotated[float, Ge(ge=0), Le(le=1)], source: str) -> None`
+#### `WorldPoint`
 
-!!! abstract "Usage Documentation" [Models](../concepts/models.md)
+#### `Trajectory`
+
+- **`points_must_be_ordered(self)`** - (no description)
+
+#### `Detection`
 
 - **`check_box_valid(self)`** - (no description)
-- **`construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - (no description)
-- **`copy(self, *, include: 'AbstractSetIntStr | MappingIntStrAny | None' = None, exclude: 'AbstractSetIntStr | MappingIntStrAny | None' = None, update: 'Dict[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - Returns a copy of the model.
-- **`dict(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False) -> 'Dict[str, Any]'`** - (no description)
-- **`from_orm(obj: 'Any') -> 'Self'`** - (no description)
-- **`json(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, encoder: 'Callable[[Any], Any] | None' = PydanticUndefined, models_as_dict: 'bool' = PydanticUndefined, **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`model_construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - Creates a new instance of the `Model` class with validated data.
-- **`model_copy(self, *, update: 'Mapping[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - !!! abstract "Usage Documentation" [`model_copy`](../concepts/models.md#model-copy)
-- **`model_dump(self, *, mode: "Literal['json', 'python'] | str" = 'python', include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'Dict[str, Any]'`** - !!! abstract "Usage Documentation" [`model_dump`](../concepts/serialization.md#python-mode)
-- **`model_dump_json(self, *, indent: 'int | None' = None, ensure_ascii: 'bool' = False, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'str'`** - !!! abstract "Usage Documentation" [`model_dump_json`](../concepts/serialization.md#json-mode)
-- **`model_json_schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', schema_generator: 'type[GenerateJsonSchema]' = <class 'pydantic.json_schema.GenerateJsonSchema'>, mode: 'JsonSchemaMode' = 'validation', *, union_format: "Literal['any_of', 'primitive_type_array']" = 'any_of') -> 'Dict[str, Any]'`** - Generates a JSON schema for a model class.
-- **`model_parametrized_name(params: 'tuple[TypeForm[Any], ...]') -> 'str'`** - Compute the class name for parametrizations of generic classes.
-- **`model_post_init(self, context: 'Any', /) -> 'None'`** - Override this method to perform additional initialization after `__init__` and `model_construct`. This is useful if you want to do some validation that requires the entire model to be initialized.
-- **`model_rebuild(*, force: 'bool' = False, raise_errors: 'bool' = True, _parent_namespace_depth: 'int' = 2, _types_namespace: 'MappingNamespace | None' = None) -> 'bool | None'`** - Try to rebuild the pydantic-core schema for the model.
-- **`model_validate(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, from_attributes: 'bool | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate a pydantic model instance.
-- **`model_validate_json(json_data: 'str | bytes | bytearray', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - !!! abstract "Usage Documentation" [JSON Parsing](../concepts/json.md#json-parsing)
-- **`model_validate_strings(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate the given object with string data against the Pydantic model.
-- **`parse_file(path: 'str | Path', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`parse_obj(obj: 'Any') -> 'Self'`** - (no description)
-- **`parse_raw(b: 'str | bytes', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}') -> 'Dict[str, Any]'`** - (no description)
-- **`schema_json(*, by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`update_forward_refs(**localns: 'Any') -> 'None'`** - (no description)
-- **`validate(value: 'Any') -> 'Self'`** - (no description)
 
-#### `PETEvent(*, event_id: int, pet: Annotated[float, Ge(ge=0)], frame: Annotated[int, Ge(ge=0)], track_a: Annotated[int, Ge(ge=0)], track_b: Annotated[int, Ge(ge=0)], conflict_type: Literal['crossing', 'head_on', 'rear_end', 'side_swipe', 'other'], grid_cell: str, track_a_exit_frame: int, track_b_entry_frame: int, site: str) -> None`
+#### `PETEvent`
 
-!!! abstract "Usage Documentation" [Models](../concepts/models.md)
-
-- **`construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - (no description)
-- **`copy(self, *, include: 'AbstractSetIntStr | MappingIntStrAny | None' = None, exclude: 'AbstractSetIntStr | MappingIntStrAny | None' = None, update: 'Dict[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - Returns a copy of the model.
-- **`dict(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False) -> 'Dict[str, Any]'`** - (no description)
 - **`distinct_tracks(self)`** - (no description)
-- **`from_orm(obj: 'Any') -> 'Self'`** - (no description)
-- **`json(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, encoder: 'Callable[[Any], Any] | None' = PydanticUndefined, models_as_dict: 'bool' = PydanticUndefined, **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`model_construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - Creates a new instance of the `Model` class with validated data.
-- **`model_copy(self, *, update: 'Mapping[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - !!! abstract "Usage Documentation" [`model_copy`](../concepts/models.md#model-copy)
-- **`model_dump(self, *, mode: "Literal['json', 'python'] | str" = 'python', include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'Dict[str, Any]'`** - !!! abstract "Usage Documentation" [`model_dump`](../concepts/serialization.md#python-mode)
-- **`model_dump_json(self, *, indent: 'int | None' = None, ensure_ascii: 'bool' = False, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'str'`** - !!! abstract "Usage Documentation" [`model_dump_json`](../concepts/serialization.md#json-mode)
-- **`model_json_schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', schema_generator: 'type[GenerateJsonSchema]' = <class 'pydantic.json_schema.GenerateJsonSchema'>, mode: 'JsonSchemaMode' = 'validation', *, union_format: "Literal['any_of', 'primitive_type_array']" = 'any_of') -> 'Dict[str, Any]'`** - Generates a JSON schema for a model class.
-- **`model_parametrized_name(params: 'tuple[TypeForm[Any], ...]') -> 'str'`** - Compute the class name for parametrizations of generic classes.
-- **`model_post_init(self, context: 'Any', /) -> 'None'`** - Override this method to perform additional initialization after `__init__` and `model_construct`. This is useful if you want to do some validation that requires the entire model to be initialized.
-- **`model_rebuild(*, force: 'bool' = False, raise_errors: 'bool' = True, _parent_namespace_depth: 'int' = 2, _types_namespace: 'MappingNamespace | None' = None) -> 'bool | None'`** - Try to rebuild the pydantic-core schema for the model.
-- **`model_validate(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, from_attributes: 'bool | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate a pydantic model instance.
-- **`model_validate_json(json_data: 'str | bytes | bytearray', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - !!! abstract "Usage Documentation" [JSON Parsing](../concepts/json.md#json-parsing)
-- **`model_validate_strings(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate the given object with string data against the Pydantic model.
-- **`parse_file(path: 'str | Path', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`parse_obj(obj: 'Any') -> 'Self'`** - (no description)
-- **`parse_raw(b: 'str | bytes', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}') -> 'Dict[str, Any]'`** - (no description)
-- **`schema_json(*, by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`update_forward_refs(**localns: 'Any') -> 'None'`** - (no description)
-- **`validate(value: 'Any') -> 'Self'`** - (no description)
 
-#### `TrackingState(*values)`
+#### `TrackingState`
 
-Enum where members are also (and must be) strings
-
-- **`capitalize(self, /)`** - Return a capitalized version of the string.
-- **`casefold(self, /)`** - Return a version of the string suitable for caseless comparisons.
-- **`center(self, width, fillchar=' ', /)`** - Return a centered string of length width.
-- **`count(...)`** - Return the number of non-overlapping occurrences of substring sub in string S[start:end].
-- **`encode(self, /, encoding='utf-8', errors='strict')`** - Encode the string using the codec registered for encoding.
-- **`endswith(...)`** - Return True if the string ends with the specified suffix, False otherwise.
-- **`expandtabs(self, /, tabsize=8)`** - Return a copy where all tab characters are expanded using spaces.
-- **`find(...)`** - Return the lowest index in S where substring sub is found, such that sub is contained within S[start:end].
-- **`format(self, /, *args, **kwargs)`** - Return a formatted version of the string, using substitutions from args and kwargs. The substitutions are identified by braces ('{' and '}').
-- **`format_map(self, mapping, /)`** - Return a formatted version of the string, using substitutions from mapping. The substitutions are identified by braces ('{' and '}').
-- **`index(...)`** - Return the lowest index in S where substring sub is found, such that sub is contained within S[start:end].
-- **`isalnum(self, /)`** - Return True if the string is an alpha-numeric string, False otherwise.
-- **`isalpha(self, /)`** - Return True if the string is an alphabetic string, False otherwise.
-- **`isascii(self, /)`** - Return True if all characters in the string are ASCII, False otherwise.
-- **`isdecimal(self, /)`** - Return True if the string is a decimal string, False otherwise.
-- **`isdigit(self, /)`** - Return True if the string is a digit string, False otherwise.
-- **`isidentifier(self, /)`** - Return True if the string is a valid Python identifier, False otherwise.
-- **`islower(self, /)`** - Return True if the string is a lowercase string, False otherwise.
-- **`isnumeric(self, /)`** - Return True if the string is a numeric string, False otherwise.
-- **`isprintable(self, /)`** - Return True if all characters in the string are printable, False otherwise.
-- **`isspace(self, /)`** - Return True if the string is a whitespace string, False otherwise.
-- **`istitle(self, /)`** - Return True if the string is a title-cased string, False otherwise.
-- **`isupper(self, /)`** - Return True if the string is an uppercase string, False otherwise.
-- **`join(self, iterable, /)`** - Concatenate any number of strings.
-- **`ljust(self, width, fillchar=' ', /)`** - Return a left-justified string of length width.
-- **`lower(self, /)`** - Return a copy of the string converted to lowercase.
-- **`lstrip(self, chars=None, /)`** - Return a copy of the string with leading whitespace removed.
-- **`maketrans(...)`** - Return a translation table usable for str.translate().
-- **`partition(self, sep, /)`** - Partition the string into three parts using the given separator.
-- **`removeprefix(self, prefix, /)`** - Return a str with the given prefix string removed if present.
-- **`removesuffix(self, suffix, /)`** - Return a str with the given suffix string removed if present.
-- **`replace(self, old, new, /, count=-1)`** - Return a copy with all occurrences of substring old replaced by new.
-- **`rfind(...)`** - Return the highest index in S where substring sub is found, such that sub is contained within S[start:end].
-- **`rindex(...)`** - Return the highest index in S where substring sub is found, such that sub is contained within S[start:end].
-- **`rjust(self, width, fillchar=' ', /)`** - Return a right-justified string of length width.
-- **`rpartition(self, sep, /)`** - Partition the string into three parts using the given separator.
-- **`rsplit(self, /, sep=None, maxsplit=-1)`** - Return a list of the substrings in the string, using sep as the separator string.
-- **`rstrip(self, chars=None, /)`** - Return a copy of the string with trailing whitespace removed.
-- **`split(self, /, sep=None, maxsplit=-1)`** - Return a list of the substrings in the string, using sep as the separator string.
-- **`splitlines(self, /, keepends=False)`** - Return a list of the lines in the string, breaking at line boundaries.
-- **`startswith(...)`** - Return True if the string starts with the specified prefix, False otherwise.
-- **`strip(self, chars=None, /)`** - Return a copy of the string with leading and trailing whitespace removed.
-- **`swapcase(self, /)`** - Convert uppercase characters to lowercase and lowercase characters to uppercase.
-- **`title(self, /)`** - Return a version of the string where each word is titlecased.
-- **`translate(self, table, /)`** - Replace each character in the string using the given translation table.
-- **`upper(self, /)`** - Return a copy of the string converted to uppercase.
-- **`zfill(self, width, /)`** - Pad a numeric string with zeros on the left, to fill a field of the given width.
-
-#### `TrackingStateMachine(initial_state: 'TrackingState' = <TrackingState.DETECTED: 'DETECTED'>)`
+#### `TrackingStateMachine`
 
 Explicit state machine for a tracked object's lifecycle.
 
-- **`can_transition(self, new_state: 'TrackingState') -> 'bool'`** - (no description)
-- **`transition(self, new_state: 'TrackingState') -> 'None'`** - (no description)
-
-#### `Trajectory(*, track_id: Annotated[int, Ge(ge=0)], points: Annotated[list[src.core.reasoning.WorldPoint], MinLen(min_length=2)], actor_type: str | None = None, source: str | None = None) -> None`
-
-!!! abstract "Usage Documentation" [Models](../concepts/models.md)
-
-- **`construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - (no description)
-- **`copy(self, *, include: 'AbstractSetIntStr | MappingIntStrAny | None' = None, exclude: 'AbstractSetIntStr | MappingIntStrAny | None' = None, update: 'Dict[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - Returns a copy of the model.
-- **`dict(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False) -> 'Dict[str, Any]'`** - (no description)
-- **`from_orm(obj: 'Any') -> 'Self'`** - (no description)
-- **`json(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, encoder: 'Callable[[Any], Any] | None' = PydanticUndefined, models_as_dict: 'bool' = PydanticUndefined, **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`model_construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - Creates a new instance of the `Model` class with validated data.
-- **`model_copy(self, *, update: 'Mapping[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - !!! abstract "Usage Documentation" [`model_copy`](../concepts/models.md#model-copy)
-- **`model_dump(self, *, mode: "Literal['json', 'python'] | str" = 'python', include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'Dict[str, Any]'`** - !!! abstract "Usage Documentation" [`model_dump`](../concepts/serialization.md#python-mode)
-- **`model_dump_json(self, *, indent: 'int | None' = None, ensure_ascii: 'bool' = False, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'str'`** - !!! abstract "Usage Documentation" [`model_dump_json`](../concepts/serialization.md#json-mode)
-- **`model_json_schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', schema_generator: 'type[GenerateJsonSchema]' = <class 'pydantic.json_schema.GenerateJsonSchema'>, mode: 'JsonSchemaMode' = 'validation', *, union_format: "Literal['any_of', 'primitive_type_array']" = 'any_of') -> 'Dict[str, Any]'`** - Generates a JSON schema for a model class.
-- **`model_parametrized_name(params: 'tuple[TypeForm[Any], ...]') -> 'str'`** - Compute the class name for parametrizations of generic classes.
-- **`model_post_init(self, context: 'Any', /) -> 'None'`** - Override this method to perform additional initialization after `__init__` and `model_construct`. This is useful if you want to do some validation that requires the entire model to be initialized.
-- **`model_rebuild(*, force: 'bool' = False, raise_errors: 'bool' = True, _parent_namespace_depth: 'int' = 2, _types_namespace: 'MappingNamespace | None' = None) -> 'bool | None'`** - Try to rebuild the pydantic-core schema for the model.
-- **`model_validate(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, from_attributes: 'bool | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate a pydantic model instance.
-- **`model_validate_json(json_data: 'str | bytes | bytearray', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - !!! abstract "Usage Documentation" [JSON Parsing](../concepts/json.md#json-parsing)
-- **`model_validate_strings(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate the given object with string data against the Pydantic model.
-- **`parse_file(path: 'str | Path', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`parse_obj(obj: 'Any') -> 'Self'`** - (no description)
-- **`parse_raw(b: 'str | bytes', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`points_must_be_ordered(self)`** - (no description)
-- **`schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}') -> 'Dict[str, Any]'`** - (no description)
-- **`schema_json(*, by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`update_forward_refs(**localns: 'Any') -> 'None'`** - (no description)
-- **`validate(value: 'Any') -> 'Self'`** - (no description)
-
-#### `WorldPoint(*, t: Annotated[float, Ge(ge=0)], x: Annotated[float, Ge(ge=0)], y: Annotated[float, Ge(ge=0)]) -> None`
-
-!!! abstract "Usage Documentation" [Models](../concepts/models.md)
-
-- **`construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - (no description)
-- **`copy(self, *, include: 'AbstractSetIntStr | MappingIntStrAny | None' = None, exclude: 'AbstractSetIntStr | MappingIntStrAny | None' = None, update: 'Dict[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - Returns a copy of the model.
-- **`dict(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False) -> 'Dict[str, Any]'`** - (no description)
-- **`from_orm(obj: 'Any') -> 'Self'`** - (no description)
-- **`json(self, *, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, by_alias: 'bool' = False, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, encoder: 'Callable[[Any], Any] | None' = PydanticUndefined, models_as_dict: 'bool' = PydanticUndefined, **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`model_construct(_fields_set: 'set[str] | None' = None, **values: 'Any') -> 'Self'`** - Creates a new instance of the `Model` class with validated data.
-- **`model_copy(self, *, update: 'Mapping[str, Any] | None' = None, deep: 'bool' = False) -> 'Self'`** - !!! abstract "Usage Documentation" [`model_copy`](../concepts/models.md#model-copy)
-- **`model_dump(self, *, mode: "Literal['json', 'python'] | str" = 'python', include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'Dict[str, Any]'`** - !!! abstract "Usage Documentation" [`model_dump`](../concepts/serialization.md#python-mode)
-- **`model_dump_json(self, *, indent: 'int | None' = None, ensure_ascii: 'bool' = False, include: 'IncEx | None' = None, exclude: 'IncEx | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, exclude_unset: 'bool' = False, exclude_defaults: 'bool' = False, exclude_none: 'bool' = False, exclude_computed_fields: 'bool' = False, round_trip: 'bool' = False, warnings: "bool | Literal['none', 'warn', 'error']" = True, fallback: 'Callable[[Any], Any] | None' = None, serialize_as_any: 'bool' = False, polymorphic_serialization: 'bool | None' = None) -> 'str'`** - !!! abstract "Usage Documentation" [`model_dump_json`](../concepts/serialization.md#json-mode)
-- **`model_json_schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', schema_generator: 'type[GenerateJsonSchema]' = <class 'pydantic.json_schema.GenerateJsonSchema'>, mode: 'JsonSchemaMode' = 'validation', *, union_format: "Literal['any_of', 'primitive_type_array']" = 'any_of') -> 'Dict[str, Any]'`** - Generates a JSON schema for a model class.
-- **`model_parametrized_name(params: 'tuple[TypeForm[Any], ...]') -> 'str'`** - Compute the class name for parametrizations of generic classes.
-- **`model_post_init(self, context: 'Any', /) -> 'None'`** - Override this method to perform additional initialization after `__init__` and `model_construct`. This is useful if you want to do some validation that requires the entire model to be initialized.
-- **`model_rebuild(*, force: 'bool' = False, raise_errors: 'bool' = True, _parent_namespace_depth: 'int' = 2, _types_namespace: 'MappingNamespace | None' = None) -> 'bool | None'`** - Try to rebuild the pydantic-core schema for the model.
-- **`model_validate(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, from_attributes: 'bool | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate a pydantic model instance.
-- **`model_validate_json(json_data: 'str | bytes | bytearray', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - !!! abstract "Usage Documentation" [JSON Parsing](../concepts/json.md#json-parsing)
-- **`model_validate_strings(obj: 'Any', *, strict: 'bool | None' = None, extra: 'ExtraValues | None' = None, context: 'Any | None' = None, by_alias: 'bool | None' = None, by_name: 'bool | None' = None) -> 'Self'`** - Validate the given object with string data against the Pydantic model.
-- **`parse_file(path: 'str | Path', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`parse_obj(obj: 'Any') -> 'Self'`** - (no description)
-- **`parse_raw(b: 'str | bytes', *, content_type: 'str | None' = None, encoding: 'str' = 'utf8', proto: 'DeprecatedParseProtocol | None' = None, allow_pickle: 'bool' = False) -> 'Self'`** - (no description)
-- **`schema(by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}') -> 'Dict[str, Any]'`** - (no description)
-- **`schema_json(*, by_alias: 'bool' = True, ref_template: 'str' = '#/$defs/{model}', **dumps_kwargs: 'Any') -> 'str'`** - (no description)
-- **`update_forward_refs(**localns: 'Any') -> 'None'`** - (no description)
-- **`validate(value: 'Any') -> 'Self'`** - (no description)
+- **`can_transition(self, new_state: TrackingState) -> bool`** - (no description)
+- **`transition(self, new_state: TrackingState) -> None`** - (no description)
 
 ### Functions
 
@@ -576,51 +178,50 @@ Explicit state machine for a tracked object's lifecycle.
 
 ### Classes
 
-#### `DiffusionDatasetLike(*args, **kwargs)`
+#### `WorldPoint`
 
-Interface for a dataset that can feed the diffusion model.
+#### `Trajectory`
 
-#### `PETDataFrameLike(*args, **kwargs)`
+- **`duration(self) -> float`** - (no description)
 
-Minimal interface that PET analysis / viz code expects from a PET dataset. This lets you use pandas.DataFrame, polars.DataFrame, etc.
+#### `PETEvent`
 
-- **`to_pandas(self) -> 'pd.DataFrame'`** - (no description)
-
-#### `PETEvent(event_id: 'int', pet: 'float', track_a: 'int', track_b: 'int', conflict_type: 'str', world_traj_i: 'Trajectory', world_traj_j: 'Trajectory', frame: 'int | None' = None, metadata: 'Mapping[str, Any]' = <factory>) -> None`
-
-PETEvent(event_id: 'int', pet: 'float', track_a: 'int', track_b: 'int', conflict_type: 'str', world_traj_i: 'Trajectory', world_traj_j: 'Trajectory', frame: 'int | None' = None, metadata: 'Mapping[str, Any]' = <factory>)
-
-#### `Trajectory(track_id: 'int', points: 'tuple[WorldPoint, ...]', actor_type: 'str | None' = None, source: 'str | None' = None) -> None`
-
-Trajectory(track_id: 'int', points: 'tuple[WorldPoint, ...]', actor_type: 'str | None' = None, source: 'str | None' = None)
-
-#### `TrajectoryBatch(inputs: 'Any', targets: 'Any', meta: 'Mapping[str, Any]', fps: 'float') -> None`
+#### `TrajectoryBatch`
 
 Canonical representation for diffusion model training / sampling. Shapes are *logical* here; code can store them as np.ndarray or torch.Tensor.
 
-#### `WorldPoint(t: 'float', x: 'float', y: 'float') -> None`
+- **`batch_size(self) -> int`** - (no description)
+- **`input_length(self) -> int`** - (no description)
+- **`target_length(self) -> int`** - (no description)
 
-WorldPoint(t: 'float', x: 'float', y: 'float')
+#### `PETDataFrameLike`
+
+Minimal interface that PET analysis / viz code expects from a PET dataset. This lets you use pandas.DataFrame, polars.DataFrame, etc.
+
+- **`columns(self) -> Any`** - (no description)
+- **`to_pandas(self) -> pd.DataFrame`** - (no description)
+
+#### `DiffusionDatasetLike`
+
+Interface for a dataset that can feed the diffusion model.
 
 ## `src.core.validation`
 
 ### Classes
 
-#### `ValidationMetrics(mean_error: 'float', max_error: 'float', rmse: 'float', inlier_ratio: 'float | None' = None, num_samples: 'int | None' = None) -> None`
-
-ValidationMetrics(mean_error: 'float', max_error: 'float', rmse: 'float', inlier_ratio: 'float | None' = None, num_samples: 'int | None' = None)
+#### `ValidationMetrics`
 
 ### Functions
 
-- **`compute_error_metrics(errors: 'Sequence[float] | np.ndarray') -> 'ValidationMetrics'`** - (no description)
-- **`validate_bev_result(result: 'dict[str, Any]') -> 'None'`** - (no description)
-- **`validate_numeric_array(name: 'str', value: 'Any', ndim: 'int | None' = None) -> 'np.ndarray'`** - (no description)
+- **`compute_error_metrics(errors: Sequence[float] | np.ndarray) -> ValidationMetrics`** - (no description)
+- **`validate_bev_result(result: dict[str, Any]) -> None`** - (no description)
+- **`validate_numeric_array(name: str, value: Any, ndim: int | None = None) -> np.ndarray`** - (no description)
 
 ## `src.bev.bev_mapper`
 
 ### Classes
 
-#### `BEVMapper(H_pixel_to_world, bev_bounds, bev_resolution)`
+#### `BEVMapper`
 
 Bird's Eye View mapper for converting between pixel, world, and BEV coordinates.
 
@@ -630,7 +231,7 @@ Bird's Eye View mapper for converting between pixel, world, and BEV coordinates.
 
 ### Functions
 
-- **`compute_homography_dlt(src_points: numpy.ndarray, dst_points: numpy.ndarray) -> numpy.ndarray`** - Compute homography matrix using Direct Linear Transform (DLT).
+- **`compute_homography_dlt(src_points: np.ndarray, dst_points: np.ndarray) -> np.ndarray`** - Compute homography matrix using Direct Linear Transform (DLT).
 - **`main()`** - (no description)
 - **`test_with_real_calibration(calib_json: str = 'configs/giti_calibration_points.json', bev_json: str = 'configs/bev_config.json', pixel_error_std: float = 0.5)`** - Test BEV mapper with actual calibration points.
 
@@ -640,8 +241,8 @@ Seed management for reproducibility.
 
 ### Functions
 
-- **`get_seed() -> 'int'`** - Return the seed currently set for reproducibility.
-- **`set_seed(seed: 'int' = 42, *, deterministic_torch: 'bool' = True) -> 'None'`** - Set random seed for Python, NumPy, and PyTorch.
+- **`get_seed() -> int`** - Return the seed currently set for reproducibility.
+- **`set_seed(seed: int = 42, *, deterministic_torch: bool = True) -> None`** - Set random seed for Python, NumPy, and PyTorch.
 
 ## `src.utils.checkpoint`
 
@@ -649,7 +250,7 @@ Checkpoint loading with a safe-first fallback.
 
 ### Functions
 
-- **`load_checkpoint_safe(path: 'Union[str, Path]', *, map_location: 'Union[str, torch.device]' = 'cpu') -> 'Any'`** - Load a PyTorch checkpoint, preferring `weights_only=True`.
+- **`load_checkpoint_safe(path: Union[str, Path], *, map_location: Union[str, torch.device] = 'cpu') -> Any`** - Load a PyTorch checkpoint, preferring `weights_only=True`.
 
 ## `src.utils.duration_parser`
 
