@@ -45,6 +45,21 @@ def _has_informational_flag(argv: list[str]) -> bool:
     return any(a in _INFORMATIONAL_FLAGS for a in argv)
 
 
+def _get_flag_value(argv: list[str], flag: str) -> str | None:
+    """Return the value of `flag` in `argv`, supporting both CLI forms.
+
+    ``--flag value`` and ``--flag=value`` are both accepted (mirroring
+    argparse). Returns None if the flag is absent.
+    """
+    prefix = flag + "="
+    for i, arg in enumerate(argv):
+        if arg == flag and i + 1 < len(argv):
+            return argv[i + 1]
+        if arg.startswith(prefix):
+            return arg[len(prefix) :]
+    return None
+
+
 def ensure_models_if_needed() -> None:
     """Run scripts/ensure_models.py unless skipped or unneeded.
 
@@ -89,20 +104,15 @@ def _maybe_estimate_time_of_day() -> None:
     while "--auto-time-of-day" in sys.argv:
         sys.argv.remove("--auto-time-of-day")
 
-    # User supplied an explicit label; don't override.
-    if "--time-of-day" in sys.argv:
+    # User supplied an explicit label; don't override. _get_flag_value
+    # handles both `--time-of-day morning` and `--time-of-day=morning`.
+    if _get_flag_value(sys.argv, "--time-of-day") is not None:
         return
 
-    video_arg_idx = None
-    for i, arg in enumerate(sys.argv):
-        if arg == "--video" and i + 1 < len(sys.argv):
-            video_arg_idx = i + 1
-            break
-    if video_arg_idx is None:
+    video_path = _get_flag_value(sys.argv, "--video")
+    if video_path is None:
         print("[run_pipeline] --video not found; cannot auto-estimate time-of-day.")
         return
-
-    video_path = sys.argv[video_arg_idx]
     estimator = REPO_ROOT / "scripts" / "estimate_time_of_day.py"
     if not estimator.exists():
         print(f"[run_pipeline] estimator not found at {estimator}; skipping.")
