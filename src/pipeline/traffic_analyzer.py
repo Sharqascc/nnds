@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import logging
 import math
 import re
+import sys
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
@@ -241,6 +243,31 @@ def _extract_events(result):
     return list(events) if events else []
 
 
+_EVENT_COLUMNS = [
+    "pet",
+    "frame",
+    "track_a",
+    "track_b",
+    "conflict_type",
+    "grid_cell",
+    "track_a_entry_frame",
+    "track_a_exit_frame",
+    "track_b_entry_frame",
+    "track_b_exit_frame",
+    "track_a_exit_time_sec",
+    "track_b_entry_time_sec",
+    "track_b_exit_time_sec",
+    "world_traj_i",
+    "world_traj_j",
+    "traj_a_json",
+    "traj_b_json",
+    "video_source",
+    "time_of_day_label",
+    "gate_a_entry",
+    "gate_b_entry",
+]
+
+
 def _events_to_dataframe(events):
     rows = []
     for event in events:
@@ -268,6 +295,8 @@ def _events_to_dataframe(events):
             "gate_b_entry": _get(event, "gate_b_entry"),
         }
         rows.append(row)
+    if not rows:
+        return pd.DataFrame(columns=_EVENT_COLUMNS)
     return pd.DataFrame(rows)
 
 
@@ -515,79 +544,324 @@ def interactive_detector(frame, model):
     return detections
 
 
-def parse_args(argv=None):
-    parser = argparse.ArgumentParser(description="Traffic analyzer")
-    parser.add_argument("--demo", action="store_true")
-    parser.add_argument("--video", type=str, default=None)
-    parser.add_argument("--out-csv", dest="out_csv", type=str, default=None)
-    parser.add_argument("--pet-threshold", dest="pet_threshold", type=float, default=2.0)
-    parser.add_argument("--detector", type=str, default="uvh-coco-fused")
-    parser.add_argument("--bev-config", dest="bev_config", type=str, default=None)
-    parser.add_argument("--grid-config", dest="grid_config", type=str, default=None)
-    parser.add_argument("--max-gap", dest="max_gap", type=int, default=5)
-    parser.add_argument("--max-frames", dest="max_frames", type=int, default=None)
-    parser.add_argument(
-        "--max-jump",
-        dest="max_jump",
-        type=float,
-        default=30.0,
-        help="Maximum inter-frame spatial jump (pixels) when splitting tracks",
+def _version_string() -> str:
+    """Compose the --version string: package version + git revision."""
+    import subprocess
+
+    try:
+        from importlib.metadata import version as pkg_version
+
+        pkg = pkg_version("nnds")
+    except Exception:
+        pkg = "dev"
+    # If git is unavailable or the checkout has no revision info, fall back
+    # to "unknown". Not a failure condition — it only affects the version string.
+    rev = "unknown"
+    with contextlib.suppress(Exception):
+        rev = (
+            subprocess.run(
+                ["git", "rev-parse", "--short", "HEAD"],
+                capture_output=True,
+                text=True,
+                timeout=2,
+            ).stdout.strip()
+            or "unknown"
+        )
+    return f"traffic_analyzer {pkg} (revision {rev})"
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    """Build the CLI parser for `nnds`. All flags documented and grouped."""
+    epilog = (
+        "examples:\n"
+        "  # Fast sanity check (no model weights required)\n"
+        "  nnds --demo\n"
+        "\n"
+        "  # Verify environment and models for a specific video\n"
+        "  nnds --self-check --video path/to/video.mp4\n"
+        "\n"
+        "  # Full pipeline run with UVH + COCO person detector\n"
+        "  nnds --video path/to/video.mp4 --detector uvh-coco-fused \\\n"
+        "       --uvh-model data/models/uvh26.pt \\\n"
+        "       --coco-person-model data/models/yolo11n.pt\n"
+        "\n"
+        "Documentation: https://github.com/Sharqascc/nnds"
     )
-    parser.add_argument(
-        "--device",
-        type=str,
-        default="auto",
-        help="Inference device: auto, cpu, cuda, mps",
+    parser = argparse.ArgumentParser(
+        prog="nnds",
+        description=(
+            "NNDS: detect vehicles and pedestrians, track them, project to "
+            "bird's-eye view, and compute PET (post-encroachment time) "
+            "safety events."
+        ),
+        epilog=epilog,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument(
-        "--video-source",
-        dest="video_source",
+
+    modes = parser.add_argument_group("modes (mutually exclusive)")
+    modes.add_argument(
+        "--demo",
+        action="store_true",
+        help="run a self-contained demo on a built-in clip (no weights required)",
+    )
+    modes.add_argument(
+        "--self-check",
+        action="store_true",
+        help="run preflight checks (video present, models loadable, configs parseable) and exit",
+    )
+    modes.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="run preflight without executing the pipeline (alias of --self-check for clarity)",
+    )
+    modes.add_argument(
+        "--version",
+        action="version",
+        version=_version_string(),
+        help="print package version and git revision, then exit",
+    )
+
+    inp = parser.add_argument_group("input")
+    inp.add_argument(
+        "--video",
         type=str,
         default=None,
-        help="Site / source name recorded in each PET event",
+        metavar="PATH",
+        help="path to the input video file (mp4 / avi). Required unless a mode flag is set.",
     )
-    parser.add_argument(
-        "--gate-config",
-        dest="gate_config",
+    inp.add_argument(
+        "--max-frames",
+        dest="max_frames",
+        type=int,
+        default=None,
+        metavar="N",
+        help="stop after N frames (default: process entire video)",
+    )
+
+    det = parser.add_argument_group("detector and models")
+    det.add_argument(
+        "--detector",
         type=str,
-        default="configs/gate_config.yaml",
-        help="YAML file describing entry/exit gates",
+        default="uvh-coco-fused",
+        choices=sorted({"uvh-coco-fused", "yolo-cpu", "sam3", "rtdetr"}),
+        help=(
+            "detector backend: uvh-coco-fused (default), yolo-cpu, sam3, rtdetr. "
+            "rtdetr is accepted here but the video pipeline for it is not yet implemented."
+        ),
     )
-    parser.add_argument(
-        "--no-progress",
-        dest="no_progress",
-        action="store_true",
-        help="Disable tqdm progress bars",
-    )
-    parser.add_argument("--sam3-weights", dest="sam3_weights", type=str, default="sam3.pt")
-    parser.add_argument(
-        "--yolo-weights",
-        dest="yolo_weights",
+    det.add_argument(
+        "--uvh-model",
+        dest="uvh_model",
         type=str,
-        default="data/models/yolo11n.pt",
+        default="data/models/uvh26.pt",
+        metavar="PATH",
+        help="UVH-26 detector weights (used with --detector uvh-coco-fused)",
     )
-    parser.add_argument("--uvh-model", dest="uvh_model", type=str, default="data/models/uvh26.pt")
-    parser.add_argument(
+    det.add_argument(
         "--coco-person-model",
         dest="coco_person_model",
         type=str,
         default="data/models/yolo11n.pt",
+        metavar="PATH",
+        help="COCO person-class YOLO weights (used with --detector uvh-coco-fused)",
     )
-    parser.add_argument("--rtdetr-weights", dest="rtdetr_weights", type=str, default="rtdetr-l.pt")
-    return parser.parse_args(argv)
+    det.add_argument(
+        "--yolo-weights",
+        dest="yolo_weights",
+        type=str,
+        default="data/models/yolo11n.pt",
+        metavar="PATH",
+        help="YOLO weights for the CPU backend (--detector yolo-cpu)",
+    )
+    det.add_argument(
+        "--sam3-weights",
+        dest="sam3_weights",
+        type=str,
+        default="sam3.pt",
+        metavar="PATH",
+        help="SAM3 weights for --detector sam3",
+    )
+    det.add_argument(
+        "--rtdetr-weights",
+        dest="rtdetr_weights",
+        type=str,
+        default="rtdetr-l.pt",
+        metavar="PATH",
+        help="RT-DETR weights for --detector rtdetr (experimental)",
+    )
+    det.add_argument(
+        "--device",
+        type=str,
+        default="auto",
+        choices=["auto", "cpu", "cuda", "mps"],
+        help="inference device (auto picks cuda if available, else cpu)",
+    )
+
+    cfg = parser.add_argument_group("configs")
+    cfg.add_argument(
+        "--bev-config",
+        dest="bev_config",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="bird's-eye-view calibration JSON (default: configs/bev_config.json)",
+    )
+    cfg.add_argument(
+        "--grid-config",
+        dest="grid_config",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="spatial grid config JSON (default: configs/GITI_grid_config.json)",
+    )
+    cfg.add_argument(
+        "--gate-config",
+        dest="gate_config",
+        type=str,
+        default="configs/gate_config.yaml",
+        metavar="PATH",
+        help="entry/exit gate definitions for gate counting",
+    )
+
+    trk = parser.add_argument_group("tracking")
+    trk.add_argument(
+        "--max-gap",
+        dest="max_gap",
+        type=int,
+        default=5,
+        metavar="FRAMES",
+        help="max consecutive missing frames before a track is split (default: 5)",
+    )
+    trk.add_argument(
+        "--max-jump",
+        dest="max_jump",
+        type=float,
+        default=30.0,
+        metavar="PIXELS",
+        help="max inter-frame spatial jump when splitting tracks (default: 30)",
+    )
+
+    out = parser.add_argument_group("output and metadata")
+    out.add_argument(
+        "--out-csv",
+        dest="out_csv",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="output PET events CSV (default: outputs/petevents_bev.csv)",
+    )
+    out.add_argument(
+        "--pet-threshold",
+        dest="pet_threshold",
+        type=float,
+        default=2.0,
+        metavar="SECONDS",
+        help="max PET value (seconds) to report as a conflict (default: 2.0)",
+    )
+    out.add_argument(
+        "--video-source",
+        dest="video_source",
+        type=str,
+        default=None,
+        metavar="NAME",
+        help="site / source name recorded in each PET event (e.g. GITI, MRC)",
+    )
+    out.add_argument(
+        "--time-of-day",
+        dest="time_of_day",
+        type=str,
+        default=None,
+        metavar="LABEL",
+        help="time-of-day label recorded in each PET event (e.g. morning, evening)",
+    )
+    out.add_argument(
+        "--no-progress",
+        dest="no_progress",
+        action="store_true",
+        help="suppress tqdm progress bars (useful in scripts and CI logs)",
+    )
+
+    return parser
+
+
+def parse_args(argv=None):
+    return _build_parser().parse_args(argv)
 
 
 def main():
     logging.basicConfig(level=logging.INFO)
+
+    # argparse handles --version and --help natively (action="version" and
+    # the built-in help action both exit 0 before parse_args returns).
     args = parse_args()
+
+    # --self-check and --dry-run: run preflight and exit.
+    if getattr(args, "self_check", False) or getattr(args, "dry_run", False):
+        from importlib import import_module
+
+        # Try installed-package name first (src-layout installs as pipeline.*),
+        # then the source-tree name, then legacy bare name. Previously only
+        # the last two were tried, so an installed `nnds --self-check` failed
+        # with ModuleNotFoundError before printing anything.
+        preflight = None
+        for candidate in ("pipeline.preflight", "src.pipeline.preflight", "preflight"):
+            try:
+                preflight = import_module(candidate)
+                break
+            except ModuleNotFoundError:
+                continue
+        if preflight is None:
+            raise SystemExit(
+                "ERROR: could not locate preflight module "
+                "(tried pipeline.preflight, src.pipeline.preflight, preflight)"
+            )
+
+        # Resolve default config paths the same way run_pipeline() does. The
+        # raw args are None for bev/grid/out when the user did not pass them,
+        # which used to reach preflight where Path(None) raised TypeError.
+        # Also: the default gate config is YAML; preflight was parsing JSON.
+        report = preflight.run_checks(
+            video=args.video,
+            uvh_model=args.uvh_model,
+            yolo_weights=args.yolo_weights,
+            coco_person_model=args.coco_person_model,
+            rtdetr_weights=args.rtdetr_weights,
+            sam3_weights=args.sam3_weights,
+            bev_config=args.bev_config or "configs/bev_config.json",
+            grid_config=args.grid_config or "configs/GITI_grid_config.json",
+            gate_config=args.gate_config or "configs/gate_config.yaml",
+            out_csv=args.out_csv or "outputs/petevents_bev.csv",
+            device=args.device,
+            detector=args.detector,
+        )
+        import json as _json
+
+        print(_json.dumps(report.to_dict(), indent=2))
+        raise SystemExit(0 if report.ok else 1)
+
     if getattr(args, "demo", False):
         run_demo()
         return
+
     video = getattr(args, "video", None)
     if not video:
-        raise SystemExit("--video is required unless --demo is used")
+        raise SystemExit(
+            "--video is required. Try --demo for a sample run, or "
+            "--self-check to verify your environment."
+        )
     if not Path(str(video)).exists():
         raise SystemExit(f"Video file not found: {video}")
+
+    # RT-DETR is accepted by argparse (parser compatibility) but the video
+    # pipeline for it is unimplemented. Reject up front with a clear message;
+    # previously run_video_to_pet raised NotImplementedError after loading
+    # models, wasting ~30s. Exception type and prefix preserved for tests.
+    if args.detector == "rtdetr":
+        raise NotImplementedError(
+            "RT-DETR video pipeline is not implemented. "
+            "Use --detector uvh-coco-fused, yolo-cpu, or sam3 instead."
+        )
+
     run_pipeline(args)
 
 

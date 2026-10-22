@@ -9,6 +9,7 @@ import torch
 from scipy.stats import wasserstein_distance
 
 from src.diffusion.complete_ddpm import LinearNoiseScheduler, TrajectoryUNet1D
+from src.utils.checkpoint import load_checkpoint_safe
 
 
 def load_position_data_subset(csv_path, Th=16, max_events=200):
@@ -40,7 +41,7 @@ def evaluate_position_ddpm(
     num_steps=50,
     dt=0.1,
 ):
-    ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    ckpt = load_checkpoint_safe(checkpoint_path, map_location="cpu")
     targets, conds = load_position_data_subset(csv_path, Th=Th, max_events=max_events)
     mean = ckpt["mean"]
     std = ckpt["std"]
