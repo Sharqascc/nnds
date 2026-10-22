@@ -7,6 +7,7 @@ on:
       - ".github/workflows/cli-end-to-end.yml"
       - "src/pipeline/traffic_analyzer.py"
       - "src/pipeline/preflight.py"
+      - "src/analysis/grid_trajectory/uvh_coco_fused_grid_pet.py"
 
 permissions:
   contents: read
@@ -66,7 +67,7 @@ jobs:
             --yolo-weights data/models/yolo11n.pt \
             --bev-config configs/bev_config.json \
             --grid-config configs/GITI_grid_config.json \
-            --gate-config configs/gate_config.yaml \
+            --gate-config configs/sites/giti/gate_config.yaml \
             --out-csv /tmp/selfcheck.csv \
             --device cpu \
             --detector uvh-coco-fused
@@ -83,7 +84,7 @@ jobs:
             --yolo-weights data/models/yolo11n.pt \
             --bev-config configs/bev_config.json \
             --grid-config configs/GITI_grid_config.json \
-            --gate-config configs/gate_config.yaml \
+            --gate-config configs/sites/giti/gate_config.yaml \
             --device cpu \
             --max-frames 400
 
