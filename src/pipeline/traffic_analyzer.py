@@ -644,7 +644,10 @@ def _build_parser() -> argparse.ArgumentParser:
         type=str,
         default="uvh-coco-fused",
         choices=sorted({"uvh-coco-fused", "yolo-cpu", "sam3", "rtdetr"}),
-        help="detector backend: uvh-coco-fused (default), yolo-cpu, sam3, rtdetr",
+        help=(
+            "detector backend: uvh-coco-fused (default), yolo-cpu, sam3, rtdetr. "
+            "rtdetr is accepted here but the video pipeline for it is not yet implemented."
+        ),
     )
     det.add_argument(
         "--uvh-model",
@@ -796,22 +799,40 @@ def main():
     if getattr(args, "self_check", False) or getattr(args, "dry_run", False):
         from importlib import import_module
 
-        try:
-            preflight = import_module("src.pipeline.preflight")
-        except ModuleNotFoundError:
-            preflight = import_module("preflight")
+        # Try installed-package name first (src-layout installs as pipeline.*),
+        # then the source-tree name, then legacy bare name. Previously only
+        # the last two were tried, so an installed `nnds --self-check` failed
+        # with ModuleNotFoundError before printing anything.
+        preflight = None
+        for candidate in ("pipeline.preflight", "src.pipeline.preflight", "preflight"):
+            try:
+                preflight = import_module(candidate)
+                break
+            except ModuleNotFoundError:
+                continue
+        if preflight is None:
+            raise SystemExit(
+                "ERROR: could not locate preflight module "
+                "(tried pipeline.preflight, src.pipeline.preflight, preflight)"
+            )
+
+        # Resolve default config paths the same way run_pipeline() does. The
+        # raw args are None for bev/grid/out when the user did not pass them,
+        # which used to reach preflight where Path(None) raised TypeError.
+        # Also: the default gate config is YAML; preflight was parsing JSON.
         report = preflight.run_checks(
-            video=getattr(args, "video", None),
-            uvh_model=getattr(args, "uvh_model", None),
-            yolo_weights=getattr(args, "yolo_weights", None),
-            rtdetr_weights=getattr(args, "rtdetr_weights", None),
-            sam3_weights=getattr(args, "sam3_weights", None),
-            bev_config=getattr(args, "bev_config", None),
-            grid_config=getattr(args, "grid_config", None),
-            gate_config=getattr(args, "gate_config", None),
-            out_csv=getattr(args, "out_csv", "outputs/petevents_bev.csv"),
-            device=getattr(args, "device", "auto"),
-            detector=getattr(args, "detector", "uvh-coco-fused"),
+            video=args.video,
+            uvh_model=args.uvh_model,
+            yolo_weights=args.yolo_weights,
+            coco_person_model=args.coco_person_model,
+            rtdetr_weights=args.rtdetr_weights,
+            sam3_weights=args.sam3_weights,
+            bev_config=args.bev_config or "configs/bev_config.json",
+            grid_config=args.grid_config or "configs/GITI_grid_config.json",
+            gate_config=args.gate_config or "configs/gate_config.yaml",
+            out_csv=args.out_csv or "outputs/petevents_bev.csv",
+            device=args.device,
+            detector=args.detector,
         )
         import json as _json
 
@@ -830,6 +851,17 @@ def main():
         )
     if not Path(str(video)).exists():
         raise SystemExit(f"Video file not found: {video}")
+
+    # RT-DETR is accepted by argparse (parser compatibility) but the video
+    # pipeline for it is unimplemented. Reject up front with a clear message;
+    # previously run_video_to_pet raised NotImplementedError after loading
+    # models, wasting ~30s. Exception type and prefix preserved for tests.
+    if args.detector == "rtdetr":
+        raise NotImplementedError(
+            "RT-DETR video pipeline is not implemented. "
+            "Use --detector uvh-coco-fused, yolo-cpu, or sam3 instead."
+        )
+
     run_pipeline(args)
 
 
