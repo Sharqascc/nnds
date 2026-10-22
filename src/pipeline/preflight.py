@@ -143,9 +143,22 @@ def _check_device(r: PreflightReport, requested: str) -> None:
 
 
 def _check_ffmpeg(r: PreflightReport) -> None:
+    """Report ffmpeg availability as informational.
+
+    The fused detector (and the yolo-cpu and sam3 backends) all read video
+    through OpenCV, not ffmpeg. A missing ffmpeg does not block any of them,
+    so this check is a warning rather than a failure. Previously a missing
+    ffmpeg turned an otherwise-healthy report into `ok=False`, so
+    `--self-check` exited 1 on machines that can run the pipeline fine.
+    """
     path = shutil.which("ffmpeg")
     if path is None:
-        r.add("ffmpeg on PATH", False, "ffmpeg not found", "apt-get install -y ffmpeg")
+        r.add(
+            "ffmpeg on PATH",
+            True,
+            "not found (optional - OpenCV handles video reads)",
+            "install only if using a backend that shells out to ffmpeg",
+        )
     else:
         r.add("ffmpeg on PATH", True, path)
 
@@ -251,6 +264,19 @@ def run_checks(
                 MIN_WEIGHT_BYTES,
                 "ultralytics will auto-download on first use",
             )
+    if detector == "yolo-cpu":
+        # yolo-cpu requires weights (run_video_to_pet raises FileNotFoundError
+        # if the file is missing). Use the same default that run_pipeline
+        # supplies so a `--self-check` with no explicit --yolo-weights still
+        # verifies the file the run will actually use.
+        weights = yolo_weights or "data/models/yolo11n.pt"
+        _check_file(
+            r,
+            weights,
+            "yolo weights",
+            MIN_WEIGHT_BYTES,
+            "download yolo11n.pt from ultralytics assets",
+        )
     if detector == "rtdetr" and rtdetr_weights:
         _check_file(
             r,
