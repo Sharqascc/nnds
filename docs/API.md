@@ -77,7 +77,7 @@ Preflight validation for the traffic analyzer pipeline.
 ### Functions
 
 - **`main() -> int`** - (no description)
-- **`run_checks(video: str | None = None, uvh_model: str | None = None, yolo_weights: str | None = None, rtdetr_weights: str | None = None, sam3_weights: str | None = None, bev_config: str | None = None, grid_config: str | None = None, gate_config: str | None = None, out_csv: str = 'outputs/petevents_bev.csv', device: str = 'auto', detector: str = 'uvh-coco-fused') -> PreflightReport`** - (no description)
+- **`run_checks(video: str | None = None, uvh_model: str | None = None, yolo_weights: str | None = None, coco_person_model: str | None = None, rtdetr_weights: str | None = None, sam3_weights: str | None = None, bev_config: str | None = None, grid_config: str | None = None, gate_config: str | None = None, out_csv: str = 'outputs/petevents_bev.csv', device: str = 'auto', detector: str = 'uvh-coco-fused') -> PreflightReport`** - (no description)
 
 ## `src.pipeline.reid_encoder`
 
