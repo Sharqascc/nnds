@@ -38,6 +38,11 @@ GITI_VIDEO="$VIDEO_DIR/GITI_traffic_video.mp4"
 MRC_VIDEO="$VIDEO_DIR/MRC_traffic_video.mp4"
 MIN_VIDEO_BYTES=1048576
 
+# Export resolved paths so the Python heredoc uses exactly the files
+# this script preflighted. Previously NNDS_VIDEO_DIR changed the check
+# paths but the jobs hardcoded data/sample_data.
+export GITI_VIDEO MRC_VIDEO
+
 check_video() {
     local path="$1"
     if [[ ! -f "$path" ]]; then
@@ -89,6 +94,8 @@ repo = Path('.')
 max_frames = int(os.environ.get('MAX_FRAMES', '300'))
 device = os.environ.get('DEVICE', 'cpu')
 giti_only = os.environ.get('GITI_ONLY', '0') == '1'
+giti_video = os.environ['GITI_VIDEO']
+mrc_video = os.environ['MRC_VIDEO']
 
 def run_site(args):
     site, video, bev, grid, gate, out = args
@@ -112,20 +119,22 @@ def run_site(args):
         print(f"[{site}] FAILED (rc={r.returncode}): {r.stderr[-500:]}", flush=True)
     return site, r.returncode, out
 
+# Output filenames include the effective frame count so a shorter run
+# cannot overwrite or masquerade as a longer one.
 jobs = [
-    ('GITI', repo/'data/sample_data/GITI_traffic_video.mp4',
+    ('GITI', Path(giti_video),
      repo/'configs/sites/giti/bev_config.json',
      repo/'configs/sites/giti/grid_config.json',
      repo/'configs/sites/giti/gate_config.yaml',
-     repo/'outputs/giti_full_300_parallel.csv'),
+     repo/f'outputs/giti_full_{max_frames}_parallel.csv'),
 ]
 if not giti_only:
     jobs.append(
-        ('MRC', repo/'data/sample_data/MRC_traffic_video.mp4',
+        ('MRC', Path(mrc_video),
          repo/'configs/sites/mrc/bev_config.json',
          repo/'configs/sites/mrc/grid_config.json',
          repo/'configs/sites/mrc/gate_config.yaml',
-         repo/'outputs/mrc_full_300_parallel.csv')
+         repo/f'outputs/mrc_full_{max_frames}_parallel.csv')
     )
 
 with multiprocessing.Pool(processes=len(jobs)) as pool:
@@ -174,8 +183,15 @@ with open(repo/'outputs/reproducibility_manifest.json', 'w') as fp:
 print("Manifest saved.", flush=True)
 PYEOF
 
+# Completion listing: only report files this run actually produced.
+# A stale MRC output from an earlier session must not be listed when
+# --giti-only is set.
 echo "✅ Reproduction complete."
-for out in outputs/giti_full_300_parallel.csv outputs/mrc_full_300_parallel.csv; do
+COMPLETION_OUTPUTS=("outputs/giti_full_${MAX_FRAMES}_parallel.csv")
+if (( GITI_ONLY == 0 )); then
+    COMPLETION_OUTPUTS+=("outputs/mrc_full_${MAX_FRAMES}_parallel.csv")
+fi
+for out in "${COMPLETION_OUTPUTS[@]}"; do
     if [[ -f "$out" ]]; then
         echo "   - $out"
     fi
