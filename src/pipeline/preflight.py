@@ -15,7 +15,9 @@ Or import:
 from __future__ import annotations
 
 import json
+import os
 import shutil
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -63,6 +65,26 @@ def _check_file(r: PreflightReport, path: str, name: str, min_bytes: int, fix: s
     r.add(name, True, f"{path} ({size / 1e6:.1f} MB)")
 
 
+def _parse_config_text(text: str, suffix: str) -> None:
+    """Parse config text as JSON or YAML depending on file extension."""
+    suffix = suffix.lower()
+    if suffix in (".yaml", ".yml"):
+        import yaml as _yaml
+
+        _yaml.safe_load(text)
+        return
+    if suffix == ".json":
+        json.loads(text)
+        return
+    # Unknown extension - try JSON then YAML.
+    try:
+        json.loads(text)
+    except json.JSONDecodeError:
+        import yaml as _yaml
+
+        _yaml.safe_load(text)
+
+
 def _check_config(r: PreflightReport, path: str | None, name: str) -> None:
     if path is None:
         r.add(name, True, "not provided (optional)")
@@ -72,13 +94,13 @@ def _check_config(r: PreflightReport, path: str | None, name: str) -> None:
         r.add(name, False, f"missing: {path}", "check the config path or omit the flag")
         return
     try:
-        json.loads(p.read_text())
+        _parse_config_text(p.read_text(), p.suffix)
         r.add(name, True, f"{path} parsed")
     except Exception as e:
         r.add(
             name,
             False,
-            f"{path} not valid JSON: {e}",
+            f"{path} not valid JSON/YAML: {e}",
             "restore from git: git checkout <sha> -- <path>",
         )
 
@@ -91,6 +113,11 @@ def _check_device(r: PreflightReport, requested: str) -> None:
         return
     r.add("torch available", True, f"torch {torch.__version__}")
     cuda = torch.cuda.is_available()
+    try:
+        mps = torch.backends.mps.is_available()
+    except (AttributeError, ImportError):
+        mps = False
+
     if requested == "cuda" and not cuda:
         r.add(
             "device cuda",
@@ -98,8 +125,19 @@ def _check_device(r: PreflightReport, requested: str) -> None:
             "cuda requested but not available",
             "use --device auto or --device cpu",
         )
+    elif requested == "mps" and not mps:
+        # Pre-existing bug: only "cuda" was validated; every other device
+        # name (including mps on Linux/Windows) passed silently.
+        r.add(
+            "device mps",
+            False,
+            "mps requested but not available (requires macOS + Apple Silicon)",
+            "use --device auto or --device cpu",
+        )
     elif requested == "auto":
-        r.add("device auto", True, "cuda" if cuda else "cpu")
+        r.add("device auto", True, "cuda" if cuda else ("mps" if mps else "cpu"))
+    elif requested == "cpu":
+        r.add("device cpu", True, "ok")
     else:
         r.add(f"device {requested}", True, "ok")
 
@@ -112,12 +150,41 @@ def _check_ffmpeg(r: PreflightReport) -> None:
         r.add("ffmpeg on PATH", True, path)
 
 
-def _check_outdir(r: PreflightReport, path: str) -> None:
+def _check_outdir(r: PreflightReport, path: str | None) -> None:
+    """Verify the output path parent directory is writable.
+
+    Two pre-existing bugs fixed here:
+
+    1. ``p.parent.touch(exist_ok=True)`` called touch() on a directory, which
+       is not a write test. The new implementation writes a temp file inside
+       the directory, then deletes it.
+    2. ``mkdir()`` was outside the ``try`` block, so permission errors there
+       propagated as exceptions instead of reported failed checks.
+
+    Paths containing ``..`` are rejected (SonarCloud path-traversal finding).
+    A legitimate ``--out-csv`` is either a relative path within the working
+    tree or an absolute path the caller fully controls.
+    """
+    if not path:
+        r.add("output dir writable", True, "no output path provided; skipped")
+        return
     p = Path(path)
-    p.parent.mkdir(parents=True, exist_ok=True)
+    if ".." in p.parts:
+        r.add(
+            "output dir writable",
+            False,
+            f"refusing path with '..': {path}",
+            "use a relative path without '..' (e.g. outputs/pet.csv) "
+            "or an absolute path to a writable directory",
+        )
+        return
+    parent = p.parent if p.parent != Path("") else Path(".")
     try:
-        p.parent.touch(exist_ok=True)
-        r.add("output dir writable", True, str(p.parent))
+        parent.mkdir(parents=True, exist_ok=True)
+        fd, probe = tempfile.mkstemp(prefix=".preflight-probe-", dir=str(parent))
+        os.close(fd)
+        os.unlink(probe)
+        r.add("output dir writable", True, str(parent))
     except Exception as e:
         r.add("output dir writable", False, str(e), "check directory permissions")
 
@@ -135,6 +202,7 @@ def run_checks(
     video: str | None = None,
     uvh_model: str | None = None,
     yolo_weights: str | None = None,
+    coco_person_model: str | None = None,
     rtdetr_weights: str | None = None,
     sam3_weights: str | None = None,
     bev_config: str | None = None,
@@ -162,7 +230,20 @@ def run_checks(
             _check_file(
                 r, uvh_model, "uvh model", MIN_WEIGHT_BYTES, "download from HF: iisc-aim/UVH-26"
             )
-        if yolo_weights:
+        # `uvh-coco-fused` uses --coco-person-model, not --yolo-weights.
+        # They default to the same file, but a user who overrides only one
+        # was getting a check against the wrong path. Prefer
+        # coco_person_model when set; keep yolo_weights as a fallback for
+        # callers using the older argument.
+        if coco_person_model:
+            _check_file(
+                r,
+                coco_person_model,
+                "coco person model",
+                MIN_WEIGHT_BYTES,
+                "ultralytics will auto-download on first use",
+            )
+        elif yolo_weights:
             _check_file(
                 r,
                 yolo_weights,
@@ -208,6 +289,7 @@ def main() -> int:
     ap.add_argument("--video")
     ap.add_argument("--uvh-model")
     ap.add_argument("--yolo-weights")
+    ap.add_argument("--coco-person-model")
     ap.add_argument("--rtdetr-weights")
     ap.add_argument("--sam3-weights")
     ap.add_argument("--bev-config")
@@ -222,6 +304,7 @@ def main() -> int:
         video=args.video,
         uvh_model=args.uvh_model,
         yolo_weights=args.yolo_weights,
+        coco_person_model=args.coco_person_model,
         rtdetr_weights=args.rtdetr_weights,
         sam3_weights=args.sam3_weights,
         bev_config=args.bev_config,
