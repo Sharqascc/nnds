@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import os
 
+import pytest
+
 # Hypothesis profiles: different scales for different execution contexts.
 #
 #   ci       (default)  50 examples  - pre-push, local developer runs
@@ -46,3 +48,19 @@ def pytest_collection_modifyitems(config, items):
         fspath = str(item.fspath)
         if fspath.endswith("_property.py") or "property_based" in fspath:
             item.add_marker(pytest.mark.property)
+
+
+@pytest.fixture
+def seeded_rng():
+    """Yield a scoped numpy Generator so tests do not touch global RNG state.
+
+    Usage:
+        def test_foo(seeded_rng):
+            x = seeded_rng.normal(size=10)
+
+    The default seed is fixed (1234) so failing tests are reproducible.
+    Override per test by constructing your own default_rng(seed).
+    """
+    import numpy as np
+
+    return np.random.default_rng(1234)

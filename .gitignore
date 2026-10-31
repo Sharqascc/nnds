@@ -63,3 +63,14 @@ mutants/
 !data/reviews/**
 !data/reviews/**/*.csv
 !data/reviews/**/*.md
+
+# Additional model-weight extensions (security / repo-size hygiene)
+*.bin
+*.pkl
+*.safetensors
+*.ckpt
+*.h5
+*.tflite
+*.mlmodel
+*.gguf
+*.msgpack
