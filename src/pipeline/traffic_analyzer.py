@@ -751,6 +751,17 @@ def _build_parser() -> argparse.ArgumentParser:
         help="output PET events CSV (default: outputs/petevents_bev.csv)",
     )
     out.add_argument(
+        "--out-video",
+        dest="out_video",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help=(
+            "optional annotated MP4 that renders grid, gates, tracked boxes, "
+            "and PET events over the input video"
+        ),
+    )
+    out.add_argument(
         "--pet-threshold",
         dest="pet_threshold",
         type=float,
@@ -786,6 +797,37 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def parse_args(argv=None):
     return _build_parser().parse_args(argv)
+
+
+def _render_video(args) -> None:
+    """Post-pipeline: render annotated MP4 from the CSVs the run produced."""
+    from src.analysis.visualization.render_full_video import render_full_video
+
+    out_csv_path = args.out_csv or "outputs/petevents_bev.csv"
+    det_csv_path = out_csv_path.replace(".csv", "_detections.csv")
+    detections_csv = det_csv_path if Path(det_csv_path).exists() else None
+
+    print(f"\nRendering video → {args.out_video}")
+    try:
+        summary = render_full_video(
+            video_path=str(args.video),
+            events_csv=out_csv_path,
+            detections_csv=detections_csv,
+            grid_config=args.grid_config,
+            gate_config=args.gate_config,
+            out_path=args.out_video,
+            max_frames=args.max_frames,
+        )
+    except Exception as e:
+        print(f"\n❌ Video render failed: {e}", file=sys.stderr)
+        print(f"   CSV was written to {out_csv_path}", file=sys.stderr)
+        raise SystemExit(1) from e
+
+    print(
+        f"✅ Video written → {summary['out_path']} "
+        f"({summary['frames_written']} frames, "
+        f"{summary['events_drawn']} events annotated)"
+    )
 
 
 def main():
@@ -863,6 +905,13 @@ def main():
         )
 
     run_pipeline(args)
+
+    # Optional post-processing step: annotated MP4. Runs after the CSV is
+    # written, so a render failure does not lose the primary output. The
+    # numeric stage markers ([1/5] … [5/5]) belong to the backend and are
+    # unchanged; the render prints its own line.
+    if getattr(args, "out_video", None):
+        _render_video(args)
 
 
 if __name__ == "__main__":
