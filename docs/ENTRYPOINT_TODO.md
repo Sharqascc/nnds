@@ -101,7 +101,9 @@ Listed for reference only. **Do not work on these without explicit go-ahead.**
 - No new third-party dependencies.
 - No new CLI flags in Phase 1.
 - No changes to the tracker, PET math, gate geometry, or metrics.
-- No visualization in the pipeline (it is Option A: separate feature later).
+- No visualization inside the numeric stage markers. The `--out-video` render is a
+  post-pipeline step that runs after the CSV is written; it does not touch
+  `stages.stage(...)` calls or the backend's numbering.
 
 ---
 
@@ -112,3 +114,4 @@ _Update this section as items are completed. One line per merged PR._
 | Date | Item | PR | Notes |
 |---|---|---|---|
 | 2026-10-31 | TODO created | — | Stage count = 6 (verified against source) |
+| 2026-11-04 | `--out-video` flag + render module | (this PR) | Adds `--out-video PATH`; renders grid/gates/tracks/PET over the run's video. Post-pipeline step; no backend stage labels changed. |
