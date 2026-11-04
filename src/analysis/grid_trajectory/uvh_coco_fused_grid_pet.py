@@ -867,7 +867,7 @@ def run_uvh_coco_fused_grid_pet(
     max_frames_diff = int(pet_threshold * fps) + 5  # temporal padding
     spatial_pad = 50.0  # pixel padding for bounding box check
 
-    stages.stage(4, "Compute PET", f"threshold={pet_threshold}s tracks={len(track_items)}")
+    stages.stage(4, "Grid, Gate & PET", f"threshold={pet_threshold}s tracks={len(track_items)}")
     track_pbar = tqdm(
         range(len(track_items)),
         desc="Checking track pairs",
