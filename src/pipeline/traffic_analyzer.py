@@ -361,18 +361,17 @@ def _import_either(rel_path: str) -> Any:
     *before* loading, so the module's own transitive `from src.X import Y`
     statements resolve.
     """
-    import importlib
 
     last_err: Exception | None = None
     for candidate in (rel_path, f"src.{rel_path}"):
         if not candidate.startswith("src."):
             _ensure_src_namespace()
         try:
-            return importlib.import_module(candidate)
+            return __import__(candidate, fromlist=["*"])
         except ModuleNotFoundError as e:
             last_err = e
             continue
-    raise ImportError(
+    raise ModuleNotFoundError(
         f"could not import {rel_path!r} from installed or src-layout path"
     ) from last_err
 
@@ -507,10 +506,11 @@ def run_video_to_pet_fixed(
     sam3_mod = _import_either("analysis.grid_trajectory.sam3_grid_pet")
 
     result = sam3_mod.run_sam3_grid_pet(
-        video_path=str(video_path),
-        bev_config_path=str(bev_config_path),
-        grid_config_path=str(grid_config_path),
-        sam3_weights_path=str(sam3_weights_path),
+        project_root=str(Path.cwd()),
+        video_rel_path=str(Path(video_path).resolve()),
+        sam3_rel_path=str(Path(sam3_weights_path).resolve()),
+        grid_rel_path=str(Path(grid_config_path).resolve()),
+        bev_rel_path=str(Path(bev_config_path).resolve()),
         pet_threshold=pet_threshold,
         max_frames=max_frames,
     )
