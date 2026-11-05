@@ -45,6 +45,9 @@ def test_every_script_flag_is_accepted_by_cli():
         "--config-file",
         "--help",
         "--version",  # not passed by this script but guardrails
+        # Script-level flags, not forwarded to the CLI:
+        "--preflight-only",
+        "--giti-only",
     }
     missing = sorted(f for f in script_flags if f not in cli_flags and f not in SHELL_ONLY)
     assert not missing, (

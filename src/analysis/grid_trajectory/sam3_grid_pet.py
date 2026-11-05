@@ -202,6 +202,12 @@ def run_sam3_grid_pet(
 
     Returns:
         SAM3GridPETResult with raw PET events, summary stats, and timing.
+
+    This backend does not print numbered progress stages. Those stages
+    describe the canonical `uvh-coco-fused` pipeline (see
+    `docs/ENTRYPOINT_TODO.md`); alternative backends produce the same
+    output CSV schema but with their own per-frame progress reporting.
+
     """
     start_time = time.time()
 

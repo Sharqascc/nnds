@@ -29,7 +29,9 @@ skips: ['B404', 'B603', 'B607']
 # (B110/B105/B404/B603/B607 are LOW and suppressed either by skip or nosec.)
 severity: medium
 
+# `scripts/` is intentionally NOT excluded: the SAST step in ci.yml scans it
+# (see the `bandit -r src/ paper/analysis/ scripts/` command). Findings in
+# that directory are handled per-site with `# nosec <RULE>` and a rationale.
 exclude_dirs:
   - 'tests'
-  - 'scripts'
   - 'docs'

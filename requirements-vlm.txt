@@ -1,4 +1,10 @@
-transformers
-accelerate
-pillow
-torch
+# VLM (optional) dependencies pinned to the exact versions used in CI.
+#
+# See src/vlm/requirements.txt for the rationale; these are optional and not
+# required for the core pipeline. Torch is pinned here as well so the VLM
+# install cannot drift the torch version that the main install picks.
+
+transformers==5.20.1
+accelerate==1.15.0
+pillow==12.3.0
+torch==2.14.1

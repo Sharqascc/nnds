@@ -6,6 +6,25 @@ from src.pipeline import traffic_analyzer
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# ---------------------------------------------------------------------------
+# Assertion policy for user-facing messages
+# ---------------------------------------------------------------------------
+# Tests in this file exercise the CLI, whose messages are user-facing text that
+# is expected to improve over time. Asserting on exact wording means every UX
+# improvement breaks a test — that is a bug in the test, not the message.
+#
+# Rule: assert on the SEMANTIC CONTENT of a message, not its exact phrasing.
+# For an error that means checking that the message (a) names the missing/offending
+# input, and (b) points the user at a way forward. Both are stable contracts;
+# the exact wording is not.
+#
+# Good:  assert "--video" in msg and "--demo" in msg
+# Bad:   assert "video is required unless --demo is used" in msg
+#
+# Non-CLI tests that assert on function return values or exit codes are not
+# covered by this policy — only human-readable message text is.
+# ---------------------------------------------------------------------------
+
 
 # ---------------------------
 # Helpers
@@ -42,9 +61,17 @@ def test_main_requires_video_without_demo(monkeypatch):
     with pytest.raises(SystemExit) as exc:
         traffic_analyzer.main()
 
-    # Non-zero exit code and helpful message
+    # Non-zero exit code and helpful message.
     assert exc.value.code != 0
-    assert "video is required unless --demo is used" in str(exc.value)
+    msg = str(exc.value)
+    # Semantic checks (see the policy comment at the top of this file):
+    #   * the message names the missing input
+    #   * the message points at at least one alternative that does not need it
+    # Both are the stable contract; the exact wording may change.
+    assert "--video" in msg, f"message must name the missing flag, got: {msg!r}"
+    assert any(alt in msg for alt in ("--demo", "--self-check", "--dry-run")), (
+        f"message must point at a way forward, got: {msg!r}"
+    )
 
 
 def test_main_demo_runs(monkeypatch):
