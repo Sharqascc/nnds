@@ -483,7 +483,7 @@ def test_run_video_to_pet_sam3_import_error(tmp_path):
     original_import = builtins.__import__
 
     def fake_import(name, *args, **kwargs):
-        if name == "src.analysis.grid_trajectory.sam3_grid_pet":
+        if name.endswith("analysis.grid_trajectory.sam3_grid_pet"):
             raise ModuleNotFoundError("mock sam3 missing")
         return original_import(name, *args, **kwargs)
 
@@ -507,7 +507,7 @@ def test_run_video_to_pet_uvh_coco_import_error(tmp_path):
     original_import = builtins.__import__
 
     def fake_import(name, *args, **kwargs):
-        if name == "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet":
+        if name.endswith("analysis.grid_trajectory.uvh_coco_fused_grid_pet"):
             raise ModuleNotFoundError("mock fused missing")
         return original_import(name, *args, **kwargs)
 
