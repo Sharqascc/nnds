@@ -12,6 +12,7 @@ import sys
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import cv2
 import numpy as np
@@ -316,6 +317,66 @@ def _write_events_to_csv(events, out_csv_path):
 # ---------------------------------------------------------------------------
 
 
+def _ensure_src_namespace() -> None:
+    """Make `src.<pkg>` importable even though the package is src-layout.
+
+    `pip install -e .` puts `pipeline`, `analysis`, `bev`, ... at the top of
+    sys.path (via the .pth file); the repository's internal modules still do
+    `from src.pipeline.custom_tracker import ...`. This registers a synthetic
+    `src` package whose `__path__` points at wherever those top-level
+    packages live, so `import src.pipeline.custom_tracker` resolves cleanly
+    after an editable or wheel install.
+    """
+    import importlib.util
+    import sys
+    import types
+    from pathlib import Path
+
+    existing = sys.modules.get("src")
+    if existing is not None and getattr(existing, "_nnds_alias", False):
+        return
+
+    parent: Path | None = None
+    for candidate in ("pipeline", "analysis", "bev", "core", "utils"):
+        spec = importlib.util.find_spec(candidate)
+        if spec and spec.submodule_search_locations:
+            parent = Path(next(iter(spec.submodule_search_locations))).parent
+            break
+    if parent is None:
+        return
+
+    src_pkg = types.ModuleType("src")
+    src_pkg.__path__ = [str(parent)]
+    src_pkg._nnds_alias = True  # type: ignore[attr-defined]
+    sys.modules["src"] = src_pkg
+
+
+def _import_either(rel_path: str) -> Any:
+    """Import by relative path, trying installed layout and src-layout.
+
+    The package ships in src-layout (`pip install -e .` puts `analysis`,
+    `pipeline`, ... at the top level of sys.path). The repo's internal
+    modules use `from src.X import Y` everywhere. This function loads the
+    module via the installed layout and ensures the `src.*` alias exists
+    *before* loading, so the module's own transitive `from src.X import Y`
+    statements resolve.
+    """
+    import importlib
+
+    last_err: Exception | None = None
+    for candidate in (rel_path, f"src.{rel_path}"):
+        if not candidate.startswith("src."):
+            _ensure_src_namespace()
+        try:
+            return importlib.import_module(candidate)
+        except ModuleNotFoundError as e:
+            last_err = e
+            continue
+    raise ImportError(
+        f"could not import {rel_path!r} from installed or src-layout path"
+    ) from last_err
+
+
 _SUPPORTED_DETECTORS = {"sam3", "yolo-cpu", "uvh-coco-fused", "rtdetr"}
 
 
@@ -356,10 +417,7 @@ def run_video_to_pet(
         )
 
     if detector == "sam3":
-        sam3_mod = __import__(
-            "src.analysis.grid_trajectory.sam3_grid_pet",
-            fromlist=["run_sam3_grid_pet"],
-        )
+        sam3_mod = _import_either("analysis.grid_trajectory.sam3_grid_pet")
 
         # sam3_grid_pet has no `sam3_weights_path`/`video_path` kwargs; it
         # takes a project_root plus paths resolved as `root / rel_path`.
@@ -383,10 +441,7 @@ def run_video_to_pet(
     elif detector == "yolo-cpu":
         if not Path(str(yolo_weights_path)).exists():
             raise FileNotFoundError(f"YOLO weights not found: {yolo_weights_path}")
-        yolo_mod = __import__(
-            "src.analysis.grid_trajectory.yolo_cpu_grid_pet",
-            fromlist=["run_yolo_cpu_grid_pet"],
-        )
+        yolo_mod = _import_either("analysis.grid_trajectory.yolo_cpu_grid_pet")
 
         result = yolo_mod.run_yolo_cpu_grid_pet(
             video_path=str(video_path),
@@ -402,10 +457,7 @@ def run_video_to_pet(
             raise FileNotFoundError(f"COCO person model not found: {coco_person_model_path}")
         if not Path(str(uvh_model_path)).exists():
             raise FileNotFoundError(f"UVH model not found: {uvh_model_path}")
-        uvh_mod = __import__(
-            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet",
-            fromlist=["run_uvh_coco_fused_grid_pet"],
-        )
+        uvh_mod = _import_either("analysis.grid_trajectory.uvh_coco_fused_grid_pet")
 
         result = uvh_mod.run_uvh_coco_fused_grid_pet(
             video_path=str(video_path),
@@ -452,10 +504,7 @@ def run_video_to_pet_fixed(
     pet_threshold=2.0,
     max_frames=None,
 ):
-    sam3_mod = __import__(
-        "src.analysis.grid_trajectory.sam3_grid_pet",
-        fromlist=["run_sam3_grid_pet"],
-    )
+    sam3_mod = _import_either("analysis.grid_trajectory.sam3_grid_pet")
 
     result = sam3_mod.run_sam3_grid_pet(
         video_path=str(video_path),
@@ -801,7 +850,7 @@ def parse_args(argv=None):
 
 def _render_video(args) -> None:
     """Post-pipeline: render annotated MP4 from the CSVs the run produced."""
-    from src.analysis.visualization.render_full_video import render_full_video
+    render_full_video = _import_either("analysis.visualization.render_full_video").render_full_video
 
     out_csv_path = args.out_csv or "outputs/petevents_bev.csv"
     det_csv_path = out_csv_path.replace(".csv", "_detections.csv")
