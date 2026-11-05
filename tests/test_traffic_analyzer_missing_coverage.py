@@ -30,7 +30,7 @@ def test_yolo_cpu_import_error(tmp_path):
     original_import = __import__
 
     def mock_import(name, *args, **kwargs):
-        if name == "src.analysis.grid_trajectory.yolo_cpu_grid_pet":
+        if name.endswith("analysis.grid_trajectory.yolo_cpu_grid_pet"):
             raise ModuleNotFoundError(
                 "No module named 'src.analysis.grid_trajectory.yolo_cpu_grid_pet'"
             )
@@ -174,7 +174,7 @@ def test_run_video_to_pet_fixed_import_error(monkeypatch):
     original_import = __import__
 
     def mock_import(name, *args, **kwargs):
-        if name == "src.analysis.grid_trajectory.sam3_grid_pet":
+        if name.endswith("analysis.grid_trajectory.sam3_grid_pet"):
             raise ModuleNotFoundError(
                 "No module named 'src.analysis.grid_trajectory.sam3_grid_pet'"
             )
