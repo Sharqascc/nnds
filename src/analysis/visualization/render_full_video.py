@@ -27,6 +27,8 @@ import cv2
 import numpy as np
 import pandas as pd
 
+from src.analysis import _stages as stages
+
 log = logging.getLogger(__name__)
 
 try:
@@ -205,6 +207,11 @@ def render_full_video(
     src_fps = fps or cap.get(cv2.CAP_PROP_FPS) or 30.0
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+    if total_frames < 0:
+        total_frames = 0
+    if max_frames is not None and total_frames > 0:
+        total_frames = min(total_frames, max_frames)
 
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore[attr-defined]
     writer = cv2.VideoWriter(str(op), fourcc, float(src_fps), (w, h))
@@ -237,6 +244,7 @@ def render_full_video(
                 frame = _draw_event_annotations(frame, es)
             writer.write(frame)
             frames_written += 1
+            stages.progress(frames_written, total_frames, "render", every=log_every, stage_num=0)
             if log_every and frames_written % log_every == 0:
                 log.info(
                     "[viz] frames=%d events=%d dets=%d", frames_written, events_drawn, dets_drawn
