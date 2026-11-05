@@ -557,7 +557,7 @@ def run_uvh_coco_fused_grid_pet(
     )
 
     total_iters = total_frames if max_frames is None else min(total_frames, max_frames)
-    stages.begin(5, header=f"NNDS - {Path(video_path).name}")
+    stages.begin(5, header=f"NNDS - {Path(video_path).name}", quiet=not show_progress)
     stages.stage(1, "Setup", f"backend={'openvino' if use_openvino else 'pytorch'} device={device}")
     stages.stage(2, "Detect + Track", f"max_frames={total_iters}")
     pbar = tqdm(
@@ -701,6 +701,7 @@ def run_uvh_coco_fused_grid_pet(
             pass
         frame_idx += 1
         pbar.update(1)
+        stages.progress(frame_idx, total_iters, "Detect+Track")
 
         # === INTERACTIVE PAUSE ===
         if interactive and frame_idx % 20 == 0:
@@ -875,6 +876,7 @@ def run_uvh_coco_fused_grid_pet(
         disable=not show_progress,
     )
     for i in track_pbar:
+        stages.progress(i + 1, len(track_items), "PET pairs")
         track_a_id, pts_a = track_items[i]
         meta_a = track_meta[track_a_id]
         for j in range(i + 1, len(track_items)):
