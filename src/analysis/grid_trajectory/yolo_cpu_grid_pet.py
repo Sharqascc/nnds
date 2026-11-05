@@ -87,6 +87,12 @@ def run_yolo_cpu_grid_pet(
     conf: float = 0.25,
     pet_threshold: float = 2.0,
 ) -> dict[str, Any]:
+    """Backend progress reporting note.
+    This backend does not print numbered progress stages. Those stages
+    describe the canonical `uvh-coco-fused` pipeline (see
+    `docs/ENTRYPOINT_TODO.md`); alternative backends produce the same
+    output CSV schema but with their own per-frame progress reporting.
+    """
     video_path = str(Path(video_path).resolve())
     weights_path = str(Path(weights_path).resolve())
     output_csv_path = str(Path(output_csv_path).resolve())
