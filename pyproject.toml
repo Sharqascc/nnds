@@ -49,7 +49,8 @@ dev = [
 ]
 
 [project.scripts]
-# MEP: user-facing CLI; imported by src/pipeline/__init__.py.
+# MEP: user-facing CLI. Invoked via console script; src/pipeline
+# intentionally re-exports nothing (see its docstring).
 nnds = "pipeline.traffic_analyzer:main"
 # Wrapper around nnds: preflight, seeding, dispatch.
 nnds-run = "scripts.run_pipeline:main"
