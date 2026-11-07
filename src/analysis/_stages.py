@@ -18,6 +18,23 @@ from __future__ import annotations
 
 import time
 
+# ---------------------------------------------------------------------------
+# Canonical stage list — the single reference for numbering.
+#
+# Phase 1 of docs/ENTRYPOINT_TODO.md: every grid-PET backend that emits
+# stage(N, ...) lines must use the same 6-stage numbering, drawn from this
+# tuple. A backend that performs fewer stages declares its own stage_set
+# (per-backend constant) rather than re-numbering.
+# ---------------------------------------------------------------------------
+CANONICAL_STAGES: tuple[str, ...] = (
+    "Setup",
+    "Detect + Track (fused per frame)",
+    "Index & Split Tracks",
+    "Grid + Gate Assignment",
+    "PET Event Computation",
+    "Write Outputs",
+)
+
 _TOTAL: int | None = None
 _START: float | None = None
 _QUIET: bool = False
