@@ -42,8 +42,7 @@ def test_class_name_to_id_keys_all_mapped_in_class_colors():
     )
 
     missing = sorted(
-        name for name in CLASS_NAME_TO_ID
-        if str(name).strip().lower() not in CLASS_COLORS
+        name for name in CLASS_NAME_TO_ID if str(name).strip().lower() not in CLASS_COLORS
     )
     assert not missing, (
         f"CLASS_NAME_TO_ID keys with no colour in CLASS_COLORS: "
