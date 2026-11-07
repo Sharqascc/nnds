@@ -28,6 +28,7 @@ import numpy as np
 import pandas as pd
 
 from src.analysis import _stages as stages
+from src.analysis.visualization.class_colors import color_for, label_for
 
 log = logging.getLogger(__name__)
 
@@ -65,7 +66,11 @@ def _load_detections(csv_path: Path) -> dict[int, list[dict[str, Any]]]:
             tid = int(tid)
         except (TypeError, ValueError):
             tid = -1
-        cls = str(row.get("cls_name", row.get("class", row.get("Class", ""))))
+        # Prefer the canonical "class_name" column written by
+        # uvh_coco_fused_grid_pet; fall back to older column names.
+        cls = str(
+            row.get("class_name", row.get("cls_name", row.get("class", row.get("Class", ""))))
+        ).strip()
         out.setdefault(frame, []).append({"track_id": tid, "bbox": bbox, "class": cls})
     return out
 
@@ -145,21 +150,21 @@ def _draw_gates(frame: np.ndarray, cfg_path: str | None) -> np.ndarray:
 
 
 def _draw_detections(frame: np.ndarray, dets: list[dict[str, Any]]) -> np.ndarray:
+    """Draw bounding boxes and labels coloured by vehicle / road-user class.
+
+    Colours come from class_colors (single source of truth). Known classes
+    get a fixed colour everywhere; unknown classes fall back to a track-id
+    palette so nothing is invisible.
+    """
     for det in dets:
         x1, y1, x2, y2 = det["bbox"]
-        tid = det["track_id"]
-        color = _PALETTE[tid % len(_PALETTE)] if tid >= 0 else (200, 200, 200)
+        tid = det.get("track_id", -1)
+        cls = det.get("class", "")
+        color = color_for(cls, tid)
         cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-        label = f"#{tid}" if tid >= 0 else (det.get("class") or "?")
+        txt = label_for(cls, tid)
         cv2.putText(
-            frame,
-            str(label),
-            (x1, max(y1 - 6, 12)),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
-            color,
-            1,
-            cv2.LINE_AA,
+            frame, txt, (x1, max(y1 - 6, 12)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA
         )
     return frame
 
@@ -200,6 +205,13 @@ def render_full_video(
 
     events_by_frame = _load_events(Path(events_csv))
     dets_by_frame = _load_detections(Path(detections_csv)) if detections_csv else {}
+    if dets_by_frame:
+        from collections import Counter as _Counter
+
+        _cls_counts = _Counter(
+            d["class"] or "(unknown)" for ds in dets_by_frame.values() for d in ds
+        )
+        log.info("[viz] classes: %s", dict(_cls_counts.most_common()))
 
     cap = cv2.VideoCapture(str(vp))
     if not cap.isOpened():
