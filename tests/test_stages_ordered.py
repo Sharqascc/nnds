@@ -93,3 +93,39 @@ def test_begin_total_matches_highest_stage(path: str):
         f"{path}: begin({total}) but highest stage is {max(nums)}; "
         f"[n/total] denominator would be wrong"
     )
+
+
+def _stage_calls(tree: ast.AST) -> list[tuple[int, int, str]]:
+    """(lineno, N, name) for every stages.stage(N, name, ...) call."""
+    out: list[tuple[int, int, str]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        f = node.func
+        if not (isinstance(f, ast.Attribute) and f.attr == "stage"):
+            continue
+        if not (isinstance(f.value, ast.Name) and f.value.id == "stages"):
+            continue
+        if len(node.args) < 2:
+            continue
+        n, name = node.args[0], node.args[1]
+        if (isinstance(n, ast.Constant) and isinstance(n.value, int)
+                and isinstance(name, ast.Constant) and isinstance(name.value, str)):
+            out.append((node.lineno, n.value, name.value))
+    out.sort()
+    return out
+
+
+@pytest.mark.parametrize("path", BACKENDS)
+def test_stage_names_match_canonical(path: str):
+    """Every stage(N, name, ...) call uses CANONICAL_STAGES[N-1] as its name."""
+    from src.analysis._stages import CANONICAL_STAGES
+    calls = _stage_calls(_parse(path))
+    if not calls:
+        pytest.skip(f"{path} does not yet emit stages — see TODO Phase 1")
+    for lineno, n, name in calls:
+        expected = CANONICAL_STAGES[n - 1]
+        assert name == expected, (
+            f"{path}:{lineno} stage({n}, {name!r}, ...) does not match "
+            f"CANONICAL_STAGES[{n-1}] = {expected!r}"
+        )
