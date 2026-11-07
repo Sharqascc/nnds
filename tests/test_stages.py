@@ -37,16 +37,25 @@ def test_stage_before_begin_does_not_crash():
     assert "[1/?]" in buf.getvalue()
 
 
-def test_pipeline_file_calls_five_stages():
-    """The UVH-COCO pipeline should emit exactly five numbered stages.
+def test_pipeline_file_calls_all_canonical_stages():
+    """The UVH-COCO pipeline should emit every stage in CANONICAL_STAGES.
 
-    This guards against a future refactor dropping or duplicating a boundary.
+    Count-agnostic by design: if CANONICAL_STAGES grows or shrinks, this
+    test follows. The number 6 is not hardcoded here — see
+    ``src/analysis/_stages.CANONICAL_STAGES`` for the source of truth.
     """
     from pathlib import Path
 
+    from src.analysis._stages import CANONICAL_STAGES
+
     src = Path("src/analysis/grid_trajectory/uvh_coco_fused_grid_pet.py").read_text()
-    # each stage call is `stages.stage(N, ...)` with N in 1..5
-    for n in range(1, 6):
-        assert f"stages.stage({n}," in src, f"stage {n} missing from pipeline file"
-    assert "stages.begin(" in src
+    total = len(CANONICAL_STAGES)
+    for n in range(1, total + 1):
+        assert f"stages.stage({n}," in src, (
+            f"stage {n}/{total} missing from pipeline file; "
+            f"CANONICAL_STAGES has {total} entries"
+        )
+    assert f"stages.begin({total}," in src, (
+        f"begin() total does not match len(CANONICAL_STAGES)={total}"
+    )
     assert "stages.done(" in src
