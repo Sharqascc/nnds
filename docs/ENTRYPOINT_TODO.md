@@ -54,7 +54,9 @@ The reviewer feedback that locked this in:
 
 - [x] **Grep for old `/5` references.** Search entire repo (`src/`, `scripts/`, `tests/`, `docs/`) for `[1/5]` through `[5/5]` strings and update to the new `/6` form. Prevent docs/tests from asserting against stale numbers. Done in commit `c3b6cc18` (the only remaining `[1/5]`/`[5/5]` strings are inside this TODO itself, in the description of this very task).
 
-- [ ] **Local pre-push gate (manual, before opening PR):** `compileall` + `ruff check` + `ruff format --check` + `bash -n` + `yaml.safe_load` + the three entry-point test files (`test_stages_ordered.py`, `test_cli_contract.py`, `test_entrypoint_wrapper_fixes.py`). **Refuse to push if any fails.**
+- [ ] **Local pre-push gate (manual, before opening PR):** `compileall` + `ruff check` + `ruff format --check` + `bash -n` + `yaml.safe_load` + the three entry-point test files (`test_stages_ordered.py`, `test_cli_contract.py`, `test_entrypoint_wrapper_fixes.py`) **plus** the stage-related test files that assert on the real backend (`test_stages.py`, `test_stages_progress.py`). **Refuse to push if any fails.**
+
+  > **2026-11-07 lesson:** the initial gate omitted `test_stages.py`, whose `test_pipeline_file_calls_five_stages` hardcoded `range(1, 6)`. The uvh relabel legitimately added `stage(6, ...)`; CI caught the resulting failure (SonarCloud + two CI runs) but the local gate did not. Fixed in commit `4c43a253` by making the test count-agnostic via `CANONICAL_STAGES`. The lesson is not just "add the file to the gate" — it is "gate the tests that hardcode the thing you are changing."
 
 - [ ] **Open PR, wait for CI green, merge.**
 
