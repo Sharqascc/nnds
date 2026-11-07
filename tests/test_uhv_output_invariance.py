@@ -81,13 +81,12 @@ def _normalized_source(body: str) -> str:
 def _git_show(ref: str, path: str) -> str:
     r = subprocess.run(
         ["git", "show", f"{ref}:{path}"],
-        capture_output=True, text=True, cwd=REPO,
+        capture_output=True,
+        text=True,
+        cwd=REPO,
     )
     if r.returncode != 0:
-        pytest.skip(
-            f"git show {ref}:{path} failed (shallow clone?): "
-            f"{r.stderr.strip()[:200]}"
-        )
+        pytest.skip(f"git show {ref}:{path} failed (shallow clone?): {r.stderr.strip()[:200]}")
     return r.stdout
 
 
@@ -95,12 +94,10 @@ def _assert_equal(a: str, b: str, label: str) -> None:
     if a == b:
         return
     a_lines, b_lines = a.splitlines(), b.splitlines()
-    for i, (la, lb) in enumerate(zip(a_lines, b_lines)):
+    for i, (la, lb) in enumerate(zip(a_lines, b_lines, strict=False)):
         if la != lb:
             raise AssertionError(
-                f"{label}: normalized AST differs at line {i + 1}:\n"
-                f"  base: {la!r}\n"
-                f"  head: {lb!r}"
+                f"{label}: normalized AST differs at line {i + 1}:\n  base: {la!r}\n  head: {lb!r}"
             )
     raise AssertionError(
         f"{label}: normalized AST differs in length "
@@ -143,8 +140,7 @@ def test_stages_helper_function_bodies_unchanged():
     head_bodies = _bodies(head_tree)
 
     assert set(base_bodies) == set(head_bodies) == STAGE_FUNC_BODIES, (
-        f"stages.py function set changed: base={sorted(base_bodies)} "
-        f"head={sorted(head_bodies)}"
+        f"stages.py function set changed: base={sorted(base_bodies)} head={sorted(head_bodies)}"
     )
     for name in STAGE_FUNC_BODIES:
         _assert_equal(base_bodies[name], head_bodies[name], f"stages.{name}")

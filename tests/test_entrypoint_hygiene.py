@@ -71,6 +71,7 @@ def test_run_pipeline_module_does_not_load_heavy_modules():
     heavy = r.stdout.strip().split("HEAVY=", 1)[1]
     assert heavy == "", f"run_pipeline pulled in heavy modules at import: {heavy}"
 
+
 def test_mep_is_traffic_analyzer():
     """The MEP is src/pipeline/traffic_analyzer.py (console script `nnds`).
 
@@ -104,7 +105,5 @@ def test_mep_is_traffic_analyzer():
         "print('OK')"
     )
     r = _run_probe(code)
-    assert r.returncode == 0, (
-        f"src.pipeline.traffic_analyzer failed to import: {r.stderr}"
-    )
+    assert r.returncode == 0, f"src.pipeline.traffic_analyzer failed to import: {r.stderr}"
     assert "OK" in r.stdout, r.stdout

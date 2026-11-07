@@ -111,8 +111,12 @@ def _stage_calls(tree: ast.AST) -> list[tuple[int, int, str]]:
         if len(node.args) < 2:
             continue
         n, name = node.args[0], node.args[1]
-        if (isinstance(n, ast.Constant) and isinstance(n.value, int)
-                and isinstance(name, ast.Constant) and isinstance(name.value, str)):
+        if (
+            isinstance(n, ast.Constant)
+            and isinstance(n.value, int)
+            and isinstance(name, ast.Constant)
+            and isinstance(name.value, str)
+        ):
             out.append((node.lineno, n.value, name.value))
     out.sort()
     return out
@@ -122,6 +126,7 @@ def _stage_calls(tree: ast.AST) -> list[tuple[int, int, str]]:
 def test_stage_names_match_canonical(path: str):
     """Every stage(N, name, ...) call uses CANONICAL_STAGES[N-1] as its name."""
     from src.analysis._stages import CANONICAL_STAGES
+
     calls = _stage_calls(_parse(path))
     if not calls:
         pytest.skip(f"{path} does not yet emit stages — see TODO Phase 1/3")
@@ -129,5 +134,5 @@ def test_stage_names_match_canonical(path: str):
         expected = CANONICAL_STAGES[n - 1]
         assert name == expected, (
             f"{path}:{lineno} stage({n}, {name!r}, ...) does not match "
-            f"CANONICAL_STAGES[{n-1}] = {expected!r}"
+            f"CANONICAL_STAGES[{n - 1}] = {expected!r}"
         )
