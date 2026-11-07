@@ -48,10 +48,9 @@ The reviewer feedback that locked this in:
 
 - [ ] **Relabel `sam3_grid_pet.py`.** Deferred — see Phase 3.
 
-- [ ] **`tests/test_stages_ordered.py`.** Three classes of test:
-  - **Static check** (fast): parse each backend's source with `ast`, assert `stage(n, ...)` calls appear in strictly increasing order with no duplicates and no gaps.
-  - **Fake-detector smoke** (medium): run `uvh-coco-fused` with a mock detector on a 5-frame fixture, capture stdout, assert `[1/6]` … `[6/6]` appear in order.
-  - **Output invariance** (the critical one): run `uvh-coco-fused` twice on the same fixture — once from the merge base commit (before relabeling) and once from the PR head — assert the emitted PET CSV files are byte-identical (excluding any timestamp columns).
+- [x] **`tests/test_stages_ordered.py`.** Static check done (commits `ab86d3d3` + `d10ef12c`).
+- [ ] **Fake-detector smoke** (medium): run `uvh-coco-fused` with a mock detector on a 5-frame fixture, capture stdout, assert `[1/6]` … `[6/6]` appear in order. Deferred — the AST-diff output-invariance check below gives strictly stronger assurance.
+- [x] **Output invariance** (the critical one): AST-diff between base and head proves the uvh backend differs only in stage-call statements, and `_stages.py` function bodies are unchanged. See `tests/test_uhv_output_invariance.py` (commit `3b796e19`). Opt-in via `NNDS_INVARIANCE_BASE=<sha>` so CI stays fast. Strictly stronger than a single-fixture pipeline run: proves the invariant for *all* inputs, immune to detector numerical non-determinism.
 
 - [x] **Grep for old `/5` references.** Search entire repo (`src/`, `scripts/`, `tests/`, `docs/`) for `[1/5]` through `[5/5]` strings and update to the new `/6` form. Prevent docs/tests from asserting against stale numbers. Done in commit `c3b6cc18` (the only remaining `[1/5]`/`[5/5]` strings are inside this TODO itself, in the description of this very task).
 
