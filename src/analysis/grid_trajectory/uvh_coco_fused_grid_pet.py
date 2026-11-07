@@ -1107,6 +1107,9 @@ def run_uvh_coco_fused_grid_pet(
     pet_df.to_csv(output_csv_path, index=False)
 
     print(f"[UVH-COCO] detections_csv={detections_csv} rows={len(det_df)}")
+    if "class_name" in det_df.columns:
+        _cls_counts = det_df["class_name"].value_counts().to_dict()
+        print(f"[UVH-COCO] classes={_cls_counts}", flush=True)
     print(f"[UVH-COCO] pet_csv={output_csv_path} rows={len(pet_df)}")
     print(f"[UVH-COCO] fps={fps:.3f} valid_tracks={len(valid_tracks)}")
 
