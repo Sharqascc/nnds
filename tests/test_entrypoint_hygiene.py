@@ -74,13 +74,13 @@ def test_run_pipeline_module_does_not_load_heavy_modules():
 def test_mep_is_traffic_analyzer():
     """The MEP is src/pipeline/traffic_analyzer.py (console script `nnds`).
 
-    Guards against accidental rename/move that would break
-    src/pipeline/__init__.py, the 9 test files importing its public
-    surface, and the nnds console script. The module file itself is
-    never touched by MEP-formalization changes — only documented.
+    Guards against accidental rename/move of the module or reassignment of
+    the `nnds` console script — both of which would break every caller of
+    the CLI (including the 9 test files that import its public surface).
 
-    The two assertions below cover the only non-test consumer
-    (src/pipeline/__init__.py) and the console-script entry point.
+    Note: src/pipeline/__init__.py intentionally re-exports nothing (see
+    its docstring). There is no production `import src.pipeline` consumer
+    of the MEP; the only entry is the `nnds` console script.
     """
     import tomllib
 
@@ -94,8 +94,17 @@ def test_mep_is_traffic_analyzer():
     )
     assert (REPO / "src" / "pipeline" / "traffic_analyzer.py").is_file()
 
-    init_py = (REPO / "src" / "pipeline" / "__init__.py").read_text()
-    assert "from src.pipeline.traffic_analyzer import parse_args" in init_py, (
-        "src/pipeline/__init__.py no longer imports parse_args from the MEP "
-        "— either the MEP moved or __init__.py was refactored; verify both."
+    # Runtime check: the MEP module must expose `main` (console entry) and
+    # `parse_args` (test surface). Subprocess so we don't pull cv2/pandas
+    # into the pytest interpreter — matches this file's isolation style.
+    code = (
+        "from src.pipeline.traffic_analyzer import main, parse_args; "
+        "assert callable(main); "
+        "assert callable(parse_args); "
+        "print('OK')"
     )
+    r = _run_probe(code)
+    assert r.returncode == 0, (
+        f"src.pipeline.traffic_analyzer failed to import: {r.stderr}"
+    )
+    assert "OK" in r.stdout, r.stdout
