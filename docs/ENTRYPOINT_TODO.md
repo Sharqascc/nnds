@@ -4,7 +4,7 @@
 
 **Created:** 2026-10-31
 **Branch:** `feature/pipeline-to-metric-schemas`
-**Scope:** `src/analysis/_stages.py`, three grid-PET backends, entry-point tests, entry-point pre-push gate.
+**Scope:** `src/analysis/_stages.py`, uvh grid-PET backend, entry-point tests, entry-point pre-push gate. (yolo/sam3 backends deferred — see Phase 3.)
 **MEP (main entry point):** `src/pipeline/traffic_analyzer.py` (console script `nnds`). `scripts/run_pipeline.py` (`nnds-run`) is a preflight/dispatch wrapper around it, not the MEP.
 
 ---
@@ -43,11 +43,11 @@ The reviewer feedback that locked this in:
 - [ ] **Canonical stage list in `src/analysis/_stages.py`.**
   Replace the free-form `begin(total, header)` signature with a canonical ordered tuple of stage names. Add a per-backend `stage_set` so each backend declares which stages it actually performs. This prevents the string drift that made `yolo-cpu` and `sam3` silent in the first place.
 
-- [ ] **Relabel `uvh_coco_fused_grid_pet.py`.** 6 stage calls, sequentially numbered. Existing `stages.stage(N, ...)` calls updated to the new API. No logic around them changes.
+- [x] **Relabel `uvh_coco_fused_grid_pet.py`.** 6 stage calls, sequentially numbered. Existing `stages.stage(N, ...)` calls updated to the new API. No logic around them changes. Done in commits `efd48449` + `d10ef12c` (6/6 stages match CANONICAL_STAGES).
 
-- [ ] **Relabel `yolo_cpu_grid_pet.py`.** Only the stages it actually performs. Inspect its structure first, add only the truthful stage boundaries. Probably 3–4 of the 6.
+- [ ] **Relabel `yolo_cpu_grid_pet.py`.** Deferred — see Phase 3.
 
-- [ ] **Relabel `sam3_grid_pet.py`.** Same treatment as `yolo_cpu_grid_pet.py`.
+- [ ] **Relabel `sam3_grid_pet.py`.** Deferred — see Phase 3.
 
 - [ ] **`tests/test_stages_ordered.py`.** Three classes of test:
   - **Static check** (fast): parse each backend's source with `ast`, assert `stage(n, ...)` calls appear in strictly increasing order with no duplicates and no gaps.
@@ -89,6 +89,9 @@ This phase is its own PR. It is **not** bundled with Phase 1.
 ## Phase 3 — Deferred (not part of this work)
 
 Listed for reference only. **Do not work on these without explicit go-ahead.**
+
+- [ ] **Relabel `yolo_cpu_grid_pet.py`.** ~3–4 truthful stages. Inspect its structure first.
+- [ ] **Relabel `sam3_grid_pet.py`.** Same treatment as `yolo_cpu_grid_pet.py`.
 
 - [ ] **Decouple detection from tracking** (reviewer 2's proposal). Requires a golden-master test: run fused vs. decoupled on the same fixture, compare outputs exactly. Large, multi-day. Only if the pipeline owner asks.
 - [ ] **`--visualize` flag** (Option A's "separate feature later"). Renders grid + gates on output video. Separately testable.
