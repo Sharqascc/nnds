@@ -117,3 +117,4 @@ _Update this section as items are completed. One line per merged PR._
 |---|---|---|---|
 | 2026-10-31 | TODO created | — | Stage count = 6 (verified against source) |
 | 2026-11-04 | `--out-video` flag + render module | (this PR) | Adds `--out-video PATH`; renders grid/gates/tracks/PET over the run's video. Post-pipeline step; no backend stage labels changed. |
+| 2026-11-07 | Phase 1: 6-stage relabel + CANONICAL_STAGES + MEP designation | feature/entrypoint-stages | uvh now emits 6/6 stages matching `CANONICAL_STAGES`; output invariance proven by AST-diff (`3b796e19`), zero non-stage AST change vs base. MEP formalized as `src/pipeline/traffic_analyzer.py` with guard test (`585a77e0`). Pre-push gate passes. yolo/sam3 relabel deferred to Phase 3. |
