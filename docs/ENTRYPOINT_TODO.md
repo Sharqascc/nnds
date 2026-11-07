@@ -40,8 +40,7 @@ The reviewer feedback that locked this in:
 
 ### Work items (PR 1 — one branch, one PR)
 
-- [ ] **Canonical stage list in `src/analysis/_stages.py`.**
-  Replace the free-form `begin(total, header)` signature with a canonical ordered tuple of stage names. Add a per-backend `stage_set` so each backend declares which stages it actually performs. This prevents the string drift that made `yolo-cpu` and `sam3` silent in the first place.
+- [x] **Canonical stage list in `src/analysis/_stages.py`.** `CANONICAL_STAGES` tuple added in commit `307c1523`. (Two originally-scoped sub-items deferred to Phase 3: the `begin(total, header)` signature rewrite — kept backward-compatible because tests pass `total` positionally — and the per-backend `stage_set` — no longer needed while uvh is the only in-scope backend.)
 
 - [x] **Relabel `uvh_coco_fused_grid_pet.py`.** 6 stage calls, sequentially numbered. Existing `stages.stage(N, ...)` calls updated to the new API. No logic around them changes. Done in commits `efd48449` + `d10ef12c` (6/6 stages match CANONICAL_STAGES).
 
@@ -54,7 +53,7 @@ The reviewer feedback that locked this in:
   - **Fake-detector smoke** (medium): run `uvh-coco-fused` with a mock detector on a 5-frame fixture, capture stdout, assert `[1/6]` … `[6/6]` appear in order.
   - **Output invariance** (the critical one): run `uvh-coco-fused` twice on the same fixture — once from the merge base commit (before relabeling) and once from the PR head — assert the emitted PET CSV files are byte-identical (excluding any timestamp columns).
 
-- [ ] **Grep for old `/5` references.** Search entire repo (`src/`, `scripts/`, `tests/`, `docs/`) for `[1/5]` through `[5/5]` strings and update to the new `/6` form. Prevent docs/tests from asserting against stale numbers.
+- [x] **Grep for old `/5` references.** Search entire repo (`src/`, `scripts/`, `tests/`, `docs/`) for `[1/5]` through `[5/5]` strings and update to the new `/6` form. Prevent docs/tests from asserting against stale numbers. Done in commit `c3b6cc18` (the only remaining `[1/5]`/`[5/5]` strings are inside this TODO itself, in the description of this very task).
 
 - [ ] **Local pre-push gate (manual, before opening PR):** `compileall` + `ruff check` + `ruff format --check` + `bash -n` + `yaml.safe_load` + the three entry-point test files (`test_stages_ordered.py`, `test_cli_contract.py`, `test_entrypoint_wrapper_fixes.py`). **Refuse to push if any fails.**
 
