@@ -21,8 +21,10 @@ REPO = Path(__file__).resolve().parents[1]
 
 BACKENDS = (
     "src/analysis/grid_trajectory/uvh_coco_fused_grid_pet.py",
-    "src/analysis/grid_trajectory/yolo_cpu_grid_pet.py",
-    "src/analysis/grid_trajectory/sam3_grid_pet.py",
+    # yolo_cpu_grid_pet.py and sam3_grid_pet.py are deferred per
+    # docs/ENTRYPOINT_TODO.md Phase 3. Their stage labeling is out of
+    # scope for this PR. When their relabel work begins, add each path
+    # back here — the parametrized tests below already cover them.
 )
 
 
@@ -72,7 +74,7 @@ def test_stage_numbers_strictly_increasing(path: str):
     """stage(N) calls appear in source order, strictly increasing, no gaps."""
     nums = [n for _, n in _stage_numbers(_parse(path))]
     if not nums:
-        pytest.skip(f"{path} does not yet emit stages — see TODO Phase 1")
+        pytest.skip(f"{path} does not yet emit stages — see TODO Phase 1/3")
     assert nums == sorted(nums), f"{path}: stage numbers out of order: {nums}"
     assert len(nums) == len(set(nums)), f"{path}: duplicate stage numbers: {nums}"
     assert nums == list(range(1, len(nums) + 1)), (
@@ -86,7 +88,7 @@ def test_begin_total_matches_highest_stage(path: str):
     tree = _parse(path)
     nums = [n for _, n in _stage_numbers(tree)]
     if not nums:
-        pytest.skip(f"{path} does not yet emit stages — see TODO Phase 1")
+        pytest.skip(f"{path} does not yet emit stages — see TODO Phase 1/3")
     total = _begin_total(tree)
     assert total is not None, f"{path}: begin(...) call missing"
     assert total == max(nums), (
@@ -122,7 +124,7 @@ def test_stage_names_match_canonical(path: str):
     from src.analysis._stages import CANONICAL_STAGES
     calls = _stage_calls(_parse(path))
     if not calls:
-        pytest.skip(f"{path} does not yet emit stages — see TODO Phase 1")
+        pytest.skip(f"{path} does not yet emit stages — see TODO Phase 1/3")
     for lineno, n, name in calls:
         expected = CANONICAL_STAGES[n - 1]
         assert name == expected, (
