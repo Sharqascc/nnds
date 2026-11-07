@@ -1,0 +1,95 @@
+"""Static check: stage numbering in the three grid-PET backends.
+
+Phase 1 of docs/ENTRYPOINT_TODO.md. Fast lane: pure AST, no module imports,
+no fixtures. Asserts the *current* state is internally consistent — stage
+numbers appear in source order, strictly increasing, and begin(N) agrees
+with max(stage(N)). Does not (yet) assert the count is 6 — that check
+arrives with the uvh relabel, once all three backends use CANONICAL_STAGES.
+
+Backends that do not yet emit stages skip rather than fail, so this test
+can land *before* the relabel without blocking the branch.
+"""
+
+from __future__ import annotations
+
+import ast
+from pathlib import Path
+
+import pytest
+
+REPO = Path(__file__).resolve().parents[1]
+
+BACKENDS = (
+    "src/analysis/grid_trajectory/uvh_coco_fused_grid_pet.py",
+    "src/analysis/grid_trajectory/yolo_cpu_grid_pet.py",
+    "src/analysis/grid_trajectory/sam3_grid_pet.py",
+)
+
+
+def _parse(path: str) -> ast.AST:
+    return ast.parse((REPO / path).read_text())
+
+
+def _stage_numbers(tree: ast.AST) -> list[tuple[int, int]]:
+    """(lineno, N) for every stages.stage(N, ...) call, in source order."""
+    out: list[tuple[int, int]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        f = node.func
+        if not (isinstance(f, ast.Attribute) and f.attr == "stage"):
+            continue
+        if not (isinstance(f.value, ast.Name) and f.value.id == "stages"):
+            continue
+        if not node.args:
+            continue
+        n = node.args[0]
+        if isinstance(n, ast.Constant) and isinstance(n.value, int):
+            out.append((node.lineno, n.value))
+    out.sort()
+    return out
+
+
+def _begin_total(tree: ast.AST) -> int | None:
+    """First positional int argument to stages.begin(N, ...), if any."""
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        f = node.func
+        if not (isinstance(f, ast.Attribute) and f.attr == "begin"):
+            continue
+        if not (isinstance(f.value, ast.Name) and f.value.id == "stages"):
+            continue
+        if node.args and isinstance(node.args[0], ast.Constant):
+            v = node.args[0].value
+            if isinstance(v, int):
+                return v
+    return None
+
+
+@pytest.mark.parametrize("path", BACKENDS)
+def test_stage_numbers_strictly_increasing(path: str):
+    """stage(N) calls appear in source order, strictly increasing, no gaps."""
+    nums = [n for _, n in _stage_numbers(_parse(path))]
+    if not nums:
+        pytest.skip(f"{path} does not yet emit stages — see TODO Phase 1")
+    assert nums == sorted(nums), f"{path}: stage numbers out of order: {nums}"
+    assert len(nums) == len(set(nums)), f"{path}: duplicate stage numbers: {nums}"
+    assert nums == list(range(1, len(nums) + 1)), (
+        f"{path}: stage numbers must be 1..{len(nums)} with no gaps, got {nums}"
+    )
+
+
+@pytest.mark.parametrize("path", BACKENDS)
+def test_begin_total_matches_highest_stage(path: str):
+    """begin(N) must agree with max(stage(N)) — else [n/total] is wrong."""
+    tree = _parse(path)
+    nums = [n for _, n in _stage_numbers(tree)]
+    if not nums:
+        pytest.skip(f"{path} does not yet emit stages — see TODO Phase 1")
+    total = _begin_total(tree)
+    assert total is not None, f"{path}: begin(...) call missing"
+    assert total == max(nums), (
+        f"{path}: begin({total}) but highest stage is {max(nums)}; "
+        f"[n/total] denominator would be wrong"
+    )
