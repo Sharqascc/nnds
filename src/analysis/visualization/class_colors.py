@@ -49,6 +49,11 @@ CLASS_COLORS: dict[str, tuple[int, int, int]] = {
     "bike": OKABE_ITO_BGR["vermillion"],
     "auto": OKABE_ITO_BGR["reddish_purple"],
     "person": OKABE_ITO_BGR["yellow"],
+    # Other CLASS_NAME_TO_ID names — pipeline-visible class names that
+    # are not covered by the raw-detector aliases below.
+    "pedestrian": OKABE_ITO_BGR["yellow"],      # CLASS_NAME_TO_ID: 0 (same class as person)
+    "motorcycle": OKABE_ITO_BGR["vermillion"],  # CLASS_NAME_TO_ID: 3 (same class as bike)
+    "bicycle":    OKABE_ITO_BGR["blue"],        # CLASS_NAME_TO_ID: 1 (distinct class)
     # Raw detector names -> same colour as their normalised class
     "hatchback": OKABE_ITO_BGR["sky_blue"],
     "sedan": OKABE_ITO_BGR["sky_blue"],
