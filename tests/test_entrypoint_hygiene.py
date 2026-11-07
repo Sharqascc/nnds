@@ -70,3 +70,32 @@ def test_run_pipeline_module_does_not_load_heavy_modules():
     assert r.returncode == 0, f"probe failed: {r.stderr}"
     heavy = r.stdout.strip().split("HEAVY=", 1)[1]
     assert heavy == "", f"run_pipeline pulled in heavy modules at import: {heavy}"
+
+def test_mep_is_traffic_analyzer():
+    """The MEP is src/pipeline/traffic_analyzer.py (console script `nnds`).
+
+    Guards against accidental rename/move that would break
+    src/pipeline/__init__.py, the 9 test files importing its public
+    surface, and the nnds console script. The module file itself is
+    never touched by MEP-formalization changes — only documented.
+
+    The two assertions below cover the only non-test consumer
+    (src/pipeline/__init__.py) and the console-script entry point.
+    """
+    import tomllib
+
+    pyproject = tomllib.loads((REPO / "pyproject.toml").read_text())
+    scripts = pyproject["project"]["scripts"]
+
+    assert scripts["nnds"] == "pipeline.traffic_analyzer:main", (
+        f"MEP drifted: `nnds` -> {scripts['nnds']!r}. "
+        f"Update docs/ENTRYPOINT_TODO.md and dependent modules before "
+        f"changing this."
+    )
+    assert (REPO / "src" / "pipeline" / "traffic_analyzer.py").is_file()
+
+    init_py = (REPO / "src" / "pipeline" / "__init__.py").read_text()
+    assert "from src.pipeline.traffic_analyzer import parse_args" in init_py, (
+        "src/pipeline/__init__.py no longer imports parse_args from the MEP "
+        "— either the MEP moved or __init__.py was refactored; verify both."
+    )
