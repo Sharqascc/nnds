@@ -64,3 +64,53 @@ def test_demo_csv_world_traj_format():
         assert all(isinstance(v, str) and v.startswith("track_") for v in non_null), (
             f"Invalid {col} values"
         )
+
+
+def test_uvh_backend_populates_all_time_sec_columns():
+    """Every _time_sec column the CLI CSV declares must be populated by uvh.
+
+    Regression guard for the bug where track_b_exit_time_sec was requested
+    by traffic_analyzer._events_to_dataframe but never written by
+    uvh_coco_fused_grid_pet.run_uvh_coco_fused_grid_pet, so pandas filled
+    it with NaN on every event.
+
+    Static AST check: proves the row dict and the columns list agree.
+    """
+    import ast
+    from pathlib import Path
+
+    src = Path(__file__).resolve().parents[1] / (
+        "src/analysis/grid_trajectory/uvh_coco_fused_grid_pet.py"
+    )
+    tree = ast.parse(src.read_text())
+
+    # Every key in the pet-event dict literal
+    dict_keys: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Dict):
+            continue
+        keys = [k.value for k in node.keys if isinstance(k, ast.Constant)]
+        if "track_b_exit_time_sec" in keys or "track_a_exit_time_sec" in keys:
+            dict_keys.update(k for k in keys if isinstance(k, str))
+
+    # Every column declared in pd.DataFrame(columns=[...])
+    columns: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if not (isinstance(node.func, ast.Attribute) and node.func.attr == "DataFrame"):
+            continue
+        for kw in node.keywords:
+            if kw.arg == "columns" and isinstance(kw.value, ast.List):
+                for elt in kw.value.elts:
+                    if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                        columns.add(elt.value)
+
+    # The three _time_sec fields the CLI actually wants
+    required = {"track_a_exit_time_sec", "track_b_entry_time_sec", "track_b_exit_time_sec"}
+    assert required.issubset(dict_keys), (
+        f"uvh row dict missing _time_sec fields: {required - dict_keys}"
+    )
+    assert required.issubset(columns), (
+        f"uvh columns list missing _time_sec fields: {required - columns}"
+    )
