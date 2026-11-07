@@ -5,6 +5,7 @@
 **Created:** 2026-10-31
 **Branch:** `feature/pipeline-to-metric-schemas`
 **Scope:** `src/analysis/_stages.py`, three grid-PET backends, entry-point tests, entry-point pre-push gate.
+**MEP (main entry point):** `src/pipeline/traffic_analyzer.py` (console script `nnds`). `scripts/run_pipeline.py` (`nnds-run`) is a preflight/dispatch wrapper around it, not the MEP.
 
 ---
 
