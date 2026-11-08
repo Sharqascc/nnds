@@ -34,8 +34,8 @@ The reviewer feedback that locked this in:
 | 1 | Setup |
 | 2 | Detect + Track (fused per frame) |
 | 3 | Index & Split Tracks |
-| 4 | Grid + Gate Assignment |
-| 5 | PET Event Computation |
+| 4 | Grid Assignment |
+| 5 | Gate + PET Event Computation |
 | 6 | Write Outputs |
 
 ### Work items (PR 1 — one branch, one PR)

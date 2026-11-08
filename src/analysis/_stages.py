@@ -30,8 +30,8 @@ CANONICAL_STAGES: tuple[str, ...] = (
     "Setup",
     "Detect + Track (fused per frame)",
     "Index & Split Tracks",
-    "Grid + Gate Assignment",
-    "PET Event Computation",
+    "Grid Assignment",
+    "Gate + PET Event Computation",
     "Write Outputs",
 )
 

@@ -838,7 +838,7 @@ def run_uvh_coco_fused_grid_pet(
     )
     track_items = list(valid_tracks.items())
 
-    stages.stage(4, "Grid + Gate Assignment", f"tracks={len(track_items)}")
+    stages.stage(4, "Grid Assignment", f"tracks={len(track_items)}")
 
     # Precompute track metadata for fast temporal/spatial pruning
     track_meta = {}
@@ -871,7 +871,7 @@ def run_uvh_coco_fused_grid_pet(
     spatial_pad = 50.0  # pixel padding for bounding box check
 
     stages.stage(
-        5, "PET Event Computation", f"threshold={pet_threshold}s tracks={len(track_items)}"
+        5, "Gate + PET Event Computation", f"threshold={pet_threshold}s tracks={len(track_items)}"
     )
     track_pbar = tqdm(
         range(len(track_items)),

@@ -83,13 +83,19 @@ def test_mep_is_traffic_analyzer():
     its docstring). There is no production `import src.pipeline` consumer
     of the MEP; the only entry is the `nnds` console script.
     """
-    import tomllib
+    import re
 
-    pyproject = tomllib.loads((REPO / "pyproject.toml").read_text())
-    scripts = pyproject["project"]["scripts"]
+    pyproject_text = (REPO / "pyproject.toml").read_text()
+    m = re.search(
+        r'^\s*nnds\s*=\s*"([^"]+)"\s*$',
+        pyproject_text,
+        re.MULTILINE,
+    )
+    assert m, "nnds entry missing from pyproject.toml [project.scripts]"
+    target = m.group(1)
 
-    assert scripts["nnds"] == "pipeline.traffic_analyzer:main", (
-        f"MEP drifted: `nnds` -> {scripts['nnds']!r}. "
+    assert target == "pipeline.traffic_analyzer:main", (
+        f"MEP drifted: `nnds` -> {target!r}. "
         f"Update docs/ENTRYPOINT_TODO.md and dependent modules before "
         f"changing this."
     )

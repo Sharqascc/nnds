@@ -86,7 +86,16 @@ def _git_show(ref: str, path: str) -> str:
         cwd=REPO,
     )
     if r.returncode != 0:
-        pytest.skip(f"git show {ref}:{path} failed (shallow clone?): {r.stderr.strip()[:200]}")
+        # Called only when BASE_SHA was explicitly set (both tests skip when
+        # it is None), so a failed git show means the user asked for the
+        # invariance check but the base is wrong/unavailable. Fail loudly
+        # instead of skipping — skipping would let CI pass without running
+        # the check that was explicitly requested.
+        pytest.fail(
+            f"git show {ref}:{path} failed but NNDS_INVARIANCE_BASE={BASE_SHA} "
+            f"was set (typo, shallow clone, or missing ref): "
+            f"{r.stderr.strip()[:300]}"
+        )
     return r.stdout
 
 
