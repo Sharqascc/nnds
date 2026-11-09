@@ -104,19 +104,19 @@ The 300-frame run executed PR #76 as it currently stands. The stage-name discrep
 
 The column is non-NaN. Is it correct?
 
-- [ ] Every row in `/tmp/final_run_pet.csv`:
+- [x] Every row in `/tmp/final_run_pet.csv`:
       `|track_b_exit_time_sec - track_b_exit_frame / fps| < 1e-3`.
-- [ ] Confirm the same `fps` value is used across all rows (no row
+- [x] Confirm the same `fps` value is used across all rows (no row
       uses a stale or per-row computed fps).
-- [ ] Confirm `track_b_exit_time_sec` corresponds to the **second actor's**
+- [x] Confirm `track_b_exit_time_sec` corresponds to the **second actor's**
       exit frame, not accidentally the first actor's (`track_a_exit_time_sec`
       should differ from `track_b_exit_time_sec` unless the two actors
       coincidentally share a timing).
-- [ ] Check no fallback values are used when a track is missing or
+- [x] Check no fallback values are used when a track is missing or
       incomplete (e.g., no `-1`, no `0.0` placeholder unless the frame
       really is frame 0).
 
-**Verdict recorded in the Progress Log below.**
+**Verdict: PASS.** 12/12 rows satisfy the arithmetic identity `track_b_exit_time_sec == track_b_exit_frame / fps`. The derived fps is **30.007530** on every row (zero variance) — the run output printed `fps=30.008`, which is the rounded display value; the actual computation uses 30.007530 consistently. Second-actor verification passes on every row: `track_b_exit_frame >= track_b_entry_frame`, `track_b_exit_time_sec != track_a_exit_time_sec`, and `track_b_exit_frame` is within `traj_b`'s frame range on all 12 events. No placeholder values (`-1`, `0.0`, `-999`, `999`). `tail_after_exit` varies from 0 to 256, confirming that `_entry_exit_frames` finds the window when the track's center point is inside the 20-pixel conflict box, not the track's whole span — expected and correct.
 
 ---
 
@@ -246,4 +246,6 @@ Prerequisite: Phase 0 verdict is clean.
 |---|---|---|---|
 | 2026-11-09 | Plan created | — | This document |
 | 2026-11-09 | Phase 0 | PASS | Runtime stage strings match PR #76 head `89a2e101c105`. Local merge tree HEAD `57d4364`. Prior discrepancy was comparison against an older PR description; `89a2e10` renamed labels. |
+| 2026-11-09 | Phase 1 | PASS | 12/12 arithmetic, 12/12 second-actor, 0 fallbacks. fps=30.007530 exact across all rows.  |
+| 2026-11-09 | Phase 2 | starting | Gate-count audit from CSV + gate config |
 | 2026-11-09 | PR #76 description | updated | Added explicit stage-label table matching runtime output; noted `89a2e10` inclusion. |
