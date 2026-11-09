@@ -37,16 +37,52 @@ def test_stage_before_begin_does_not_crash():
     assert "[1/?]" in buf.getvalue()
 
 
-def test_pipeline_file_calls_five_stages():
-    """The UVH-COCO pipeline should emit exactly five numbered stages.
+def test_pipeline_file_calls_all_canonical_stages():
+    """The UVH-COCO pipeline emits stages 1..N, N = len(CANONICAL_STAGES).
 
-    This guards against a future refactor dropping or duplicating a boundary.
+    AST-based, not substring: ``ruff format`` may rewrap a long
+    ``stages.stage(N, ...)`` call across multiple lines, breaking a naive
+    ``f"stages.stage({n}," in src`` check (this is exactly what happened in
+    commit 4b5e55f — the call for stage 5 was reformatted multi-line).
+    ``tests/test_stages_ordered.py`` covers the same invariant from a
+    different angle; both files exercise it independently.
     """
+    import ast
     from pathlib import Path
 
+    from src.analysis._stages import CANONICAL_STAGES
+
     src = Path("src/analysis/grid_trajectory/uvh_coco_fused_grid_pet.py").read_text()
-    # each stage call is `stages.stage(N, ...)` with N in 1..5
-    for n in range(1, 6):
-        assert f"stages.stage({n}," in src, f"stage {n} missing from pipeline file"
-    assert "stages.begin(" in src
-    assert "stages.done(" in src
+    tree = ast.parse(src)
+    total = len(CANONICAL_STAGES)
+
+    stage_nums: list[int] = []
+    begin_total: int | None = None
+    has_done = False
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        f = node.func
+        if not (
+            isinstance(f, ast.Attribute)
+            and isinstance(f.value, ast.Name)
+            and f.value.id == "stages"
+        ):
+            continue
+        if f.attr == "stage" and node.args and isinstance(node.args[0], ast.Constant):
+            v = node.args[0].value
+            if isinstance(v, int):
+                stage_nums.append(v)
+        elif f.attr == "begin" and node.args and isinstance(node.args[0], ast.Constant):
+            v = node.args[0].value
+            if isinstance(v, int):
+                begin_total = v
+        elif f.attr == "done":
+            has_done = True
+
+    stage_nums.sort()
+    assert stage_nums == list(range(1, total + 1)), (
+        f"pipeline stages should be 1..{total}, got {stage_nums}"
+    )
+    assert begin_total == total, f"begin({begin_total}) should equal len(CANONICAL_STAGES)={total}"
+    assert has_done, "stages.done(...) missing"

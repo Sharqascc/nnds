@@ -29,6 +29,29 @@ def test_every_pipeline_class_has_a_color():
         assert cls in CLASS_COLORS, f"pipeline class {cls!r} has no colour"
 
 
+def test_class_name_to_id_keys_all_mapped_in_class_colors():
+    """Contract: every key in CLASS_NAME_TO_ID must have a colour.
+
+    CLASS_NAME_TO_ID maps class names -> integer IDs (values are ints,
+    not names). The class names the pipeline can write into the
+    class_name column of the detections CSV are its *keys* — those
+    are what must be present in CLASS_COLORS (directly or via alias).
+    """
+    from src.analysis.grid_trajectory.uvh_coco_fused_grid_pet import (
+        CLASS_NAME_TO_ID,
+    )
+
+    missing = sorted(
+        name for name in CLASS_NAME_TO_ID if str(name).strip().lower() not in CLASS_COLORS
+    )
+    assert not missing, (
+        f"CLASS_NAME_TO_ID keys with no colour in CLASS_COLORS: "
+        f"{missing}. Add them to CLASS_COLORS in class_colors.py "
+        f"(aliasing to an existing normalised class is fine — see "
+        f"hatchback/sedan/etc.)."
+    )
+
+
 def test_classes_get_distinct_colors():
     """All primary classes have visibly different colours."""
     classes = ["car", "truck", "bus", "bike", "auto", "person"]

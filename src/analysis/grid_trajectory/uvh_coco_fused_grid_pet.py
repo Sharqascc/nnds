@@ -557,9 +557,9 @@ def run_uvh_coco_fused_grid_pet(
     )
 
     total_iters = total_frames if max_frames is None else min(total_frames, max_frames)
-    stages.begin(5, header=f"NNDS - {Path(video_path).name}", quiet=not show_progress)
+    stages.begin(6, header=f"NNDS - {Path(video_path).name}", quiet=not show_progress)
     stages.stage(1, "Setup", f"backend={'openvino' if use_openvino else 'pytorch'} device={device}")
-    stages.stage(2, "Detect + Track", f"max_frames={total_iters}")
+    stages.stage(2, "Detect + Track (fused per frame)", f"max_frames={total_iters}")
     pbar = tqdm(
         total=total_iters, desc="Processing frames", unit="frame", disable=not show_progress
     )
@@ -732,7 +732,7 @@ def run_uvh_coco_fused_grid_pet(
                 break
 
     pbar.close()
-    stages.stage(3, "Index tracks")
+    stages.stage(3, "Index & Split Tracks")
     print(f"[UVH-COCO] backend={'openvino' if use_openvino else 'pytorch'} device={device}")
     print(
         f"[UVH-COCO] ✅ Frame processing finished ({frame_idx} frames). Initializing track indexing...",
@@ -838,6 +838,8 @@ def run_uvh_coco_fused_grid_pet(
     )
     track_items = list(valid_tracks.items())
 
+    stages.stage(4, "Grid Assignment", f"tracks={len(track_items)}")
+
     # Precompute track metadata for fast temporal/spatial pruning
     track_meta = {}
     for tid, pts in valid_tracks.items():
@@ -868,7 +870,9 @@ def run_uvh_coco_fused_grid_pet(
     max_frames_diff = int(pet_threshold * fps) + 5  # temporal padding
     spatial_pad = 50.0  # pixel padding for bounding box check
 
-    stages.stage(4, "Grid, Gate & PET", f"threshold={pet_threshold}s tracks={len(track_items)}")
+    stages.stage(
+        5, "Gate + PET Event Computation", f"threshold={pet_threshold}s tracks={len(track_items)}"
+    )
     track_pbar = tqdm(
         range(len(track_items)),
         desc="Checking track pairs",
@@ -1047,6 +1051,7 @@ def run_uvh_coco_fused_grid_pet(
                         "track_b_entry_frame": int(b_entry),
                         "track_b_entry_time_sec": float(b_entry / fps),
                         "track_b_exit_frame": int(b_exit),
+                        "track_b_exit_time_sec": float(b_exit / fps),
                         "world_traj_i": f"track_{first_id}",
                         "world_traj_j": f"track_{second_id}",
                         "traj_a_json": _track_to_json(
@@ -1093,6 +1098,7 @@ def run_uvh_coco_fused_grid_pet(
             "track_b_entry_frame",
             "track_b_entry_time_sec",
             "track_b_exit_frame",
+            "track_b_exit_time_sec",
             "world_traj_i",
             "world_traj_j",
             "traj_a_json",
@@ -1103,7 +1109,7 @@ def run_uvh_coco_fused_grid_pet(
             "gate_b_entry",
         ],
     )
-    stages.stage(5, "Write outputs", str(output_csv_path))
+    stages.stage(6, "Write Outputs", str(output_csv_path))
     pet_df.to_csv(output_csv_path, index=False)
 
     print(f"[UVH-COCO] detections_csv={detections_csv} rows={len(det_df)}")

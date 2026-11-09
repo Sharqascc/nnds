@@ -4,7 +4,8 @@
 
 **Created:** 2026-10-31
 **Branch:** `feature/pipeline-to-metric-schemas`
-**Scope:** `src/analysis/_stages.py`, three grid-PET backends, entry-point tests, entry-point pre-push gate.
+**Scope:** `src/analysis/_stages.py`, uvh grid-PET backend, entry-point tests, entry-point pre-push gate. (yolo/sam3 backends deferred — see Phase 3.)
+**MEP (main entry point):** `src/pipeline/traffic_analyzer.py` (console script `nnds`). `scripts/run_pipeline.py` (`nnds-run`) is a preflight/dispatch wrapper around it, not the MEP.
 
 ---
 
@@ -33,29 +34,29 @@ The reviewer feedback that locked this in:
 | 1 | Setup |
 | 2 | Detect + Track (fused per frame) |
 | 3 | Index & Split Tracks |
-| 4 | Grid + Gate Assignment |
-| 5 | PET Event Computation |
+| 4 | Grid Assignment |
+| 5 | Gate + PET Event Computation |
 | 6 | Write Outputs |
 
 ### Work items (PR 1 — one branch, one PR)
 
-- [ ] **Canonical stage list in `src/analysis/_stages.py`.**
-  Replace the free-form `begin(total, header)` signature with a canonical ordered tuple of stage names. Add a per-backend `stage_set` so each backend declares which stages it actually performs. This prevents the string drift that made `yolo-cpu` and `sam3` silent in the first place.
+- [x] **Canonical stage list in `src/analysis/_stages.py`.** `CANONICAL_STAGES` tuple added in commit `307c1523`. (Two originally-scoped sub-items deferred to Phase 3: the `begin(total, header)` signature rewrite — kept backward-compatible because tests pass `total` positionally — and the per-backend `stage_set` — no longer needed while uvh is the only in-scope backend.)
 
-- [ ] **Relabel `uvh_coco_fused_grid_pet.py`.** 6 stage calls, sequentially numbered. Existing `stages.stage(N, ...)` calls updated to the new API. No logic around them changes.
+- [x] **Relabel `uvh_coco_fused_grid_pet.py`.** 6 stage calls, sequentially numbered. Existing `stages.stage(N, ...)` calls updated to the new API. No logic around them changes. Done in commits `efd48449` + `d10ef12c` (6/6 stages match CANONICAL_STAGES).
 
-- [ ] **Relabel `yolo_cpu_grid_pet.py`.** Only the stages it actually performs. Inspect its structure first, add only the truthful stage boundaries. Probably 3–4 of the 6.
+- [ ] **Relabel `yolo_cpu_grid_pet.py`.** Deferred — see Phase 3.
 
-- [ ] **Relabel `sam3_grid_pet.py`.** Same treatment as `yolo_cpu_grid_pet.py`.
+- [ ] **Relabel `sam3_grid_pet.py`.** Deferred — see Phase 3.
 
-- [ ] **`tests/test_stages_ordered.py`.** Three classes of test:
-  - **Static check** (fast): parse each backend's source with `ast`, assert `stage(n, ...)` calls appear in strictly increasing order with no duplicates and no gaps.
-  - **Fake-detector smoke** (medium): run `uvh-coco-fused` with a mock detector on a 5-frame fixture, capture stdout, assert `[1/6]` … `[6/6]` appear in order.
-  - **Output invariance** (the critical one): run `uvh-coco-fused` twice on the same fixture — once from the merge base commit (before relabeling) and once from the PR head — assert the emitted PET CSV files are byte-identical (excluding any timestamp columns).
+- [x] **`tests/test_stages_ordered.py`.** Static check done (commits `ab86d3d3` + `d10ef12c`).
+- [ ] **Fake-detector smoke** (medium): run `uvh-coco-fused` with a mock detector on a 5-frame fixture, capture stdout, assert `[1/6]` … `[6/6]` appear in order. Deferred — the AST-diff output-invariance check below gives strictly stronger assurance.
+- [x] **Output invariance** (the critical one): AST-diff between base and head proves the uvh backend differs only in stage-call statements, and `_stages.py` function bodies are unchanged. See `tests/test_uhv_output_invariance.py` (commit `3b796e19`). Opt-in via `NNDS_INVARIANCE_BASE=<sha>` so CI stays fast. Strictly stronger than a single-fixture pipeline run: proves the invariant for *all* inputs, immune to detector numerical non-determinism.
 
-- [ ] **Grep for old `/5` references.** Search entire repo (`src/`, `scripts/`, `tests/`, `docs/`) for `[1/5]` through `[5/5]` strings and update to the new `/6` form. Prevent docs/tests from asserting against stale numbers.
+- [x] **Grep for old `/5` references.** Search entire repo (`src/`, `scripts/`, `tests/`, `docs/`) for `[1/5]` through `[5/5]` strings and update to the new `/6` form. Prevent docs/tests from asserting against stale numbers. Done in commit `c3b6cc18` (the only remaining `[1/5]`/`[5/5]` strings are inside this TODO itself, in the description of this very task).
 
-- [ ] **Local pre-push gate (manual, before opening PR):** `compileall` + `ruff check` + `ruff format --check` + `bash -n` + `yaml.safe_load` + the three entry-point test files (`test_stages_ordered.py`, `test_cli_contract.py`, `test_entrypoint_wrapper_fixes.py`). **Refuse to push if any fails.**
+- [ ] **Local pre-push gate (manual, before opening PR):** `compileall` + `ruff check` + `ruff format --check` + `bash -n` + `yaml.safe_load` + the three entry-point test files (`test_stages_ordered.py`, `test_cli_contract.py`, `test_entrypoint_wrapper_fixes.py`) **plus** the stage-related test files that assert on the real backend (`test_stages.py`, `test_stages_progress.py`). **Refuse to push if any fails.**
+
+  > **2026-11-07 lesson:** the initial gate omitted `test_stages.py`, whose `test_pipeline_file_calls_five_stages` hardcoded `range(1, 6)`. The uvh relabel legitimately added `stage(6, ...)`; CI caught the resulting failure (SonarCloud + two CI runs) but the local gate did not. Fixed in commit `4c43a253` by making the test count-agnostic via `CANONICAL_STAGES`. The lesson is not just "add the file to the gate" — it is "gate the tests that hardcode the thing you are changing."
 
 - [ ] **Open PR, wait for CI green, merge.**
 
@@ -89,6 +90,9 @@ This phase is its own PR. It is **not** bundled with Phase 1.
 
 Listed for reference only. **Do not work on these without explicit go-ahead.**
 
+- [ ] **Relabel `yolo_cpu_grid_pet.py`.** ~3–4 truthful stages. Inspect its structure first.
+- [ ] **Relabel `sam3_grid_pet.py`.** Same treatment as `yolo_cpu_grid_pet.py`.
+
 - [ ] **Decouple detection from tracking** (reviewer 2's proposal). Requires a golden-master test: run fused vs. decoupled on the same fixture, compare outputs exactly. Large, multi-day. Only if the pipeline owner asks.
 - [ ] **`--visualize` flag** (Option A's "separate feature later"). Renders grid + gates on output video. Separately testable.
 - [ ] **Resolve PR #49 threads and merge the release** (blocked on the 89-thread cleanup + `KNOWN_ISSUES.md`, independent of this TODO).
@@ -115,3 +119,4 @@ _Update this section as items are completed. One line per merged PR._
 |---|---|---|---|
 | 2026-10-31 | TODO created | — | Stage count = 6 (verified against source) |
 | 2026-11-04 | `--out-video` flag + render module | (this PR) | Adds `--out-video PATH`; renders grid/gates/tracks/PET over the run's video. Post-pipeline step; no backend stage labels changed. |
+| 2026-11-07 | Phase 1: 6-stage relabel + CANONICAL_STAGES + MEP designation | feature/entrypoint-stages | uvh now emits 6/6 stages matching `CANONICAL_STAGES`; output invariance proven by AST-diff (`3b796e19`), zero non-stage AST change vs base. MEP formalized as `src/pipeline/traffic_analyzer.py` with guard test (`585a77e0`). Pre-push gate passes. yolo/sam3 relabel deferred to Phase 3. |
