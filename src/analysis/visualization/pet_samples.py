@@ -313,6 +313,15 @@ def _place_ring_pair(
     if dist >= min_separation:
         return a_pos, b_pos
     offset = int((min_separation - dist) / 2 + 6)
+    # Ensure post-adjustment separation >= min_separation.
+    # When dx dominates dy, the naive formula above under-shoots: pushing
+    # vertically by 2*offset doesn't add enough to the (already large) dx
+    # component. Compute the minimum offset that satisfies the invariant.
+    import math
+
+    required_dy_mag = math.sqrt(max(0.0, min_separation * min_separation - dx * dx))
+    offset_safe = max(1, math.ceil((dy + required_dy_mag) / 2))
+    offset = max(offset, offset_safe)
     return (a_pos[0], a_pos[1] - offset), (b_pos[0], b_pos[1] + offset)
 
 
