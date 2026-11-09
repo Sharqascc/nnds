@@ -114,3 +114,101 @@ def test_uvh_backend_populates_all_time_sec_columns():
     assert required.issubset(columns), (
         f"uvh columns list missing _time_sec fields: {required - columns}"
     )
+
+
+def test_events_to_dataframe_propagates_b_exit_time_sec():
+    """_events_to_dataframe must propagate track_b_exit_time_sec end-to-end.
+
+    Regression guard for the PR #78 bug: the uvh backend populates the
+    field, but _events_to_dataframe must also carry it through to the
+    output DataFrame. If either side drops it, the CLI CSV column
+    becomes NaN again (which was the original bug).
+    """
+    from src.pipeline.traffic_analyzer import _events_to_dataframe
+
+    fps = 30.00853
+    event = {
+        "pet": 0.5,
+        "frame": 100,
+        "track_a": 1,
+        "track_b": 2,
+        "conflict_type": "side_swipe",
+        "grid_cell": "CELL_A",
+        "track_a_entry_frame": 80,
+        "track_a_exit_frame": 95,
+        "track_b_entry_frame": 100,
+        "track_b_exit_frame": 150,
+        "track_a_exit_time_sec": 95 / fps,
+        "track_b_entry_time_sec": 100 / fps,
+        "track_b_exit_time_sec": 150 / fps,
+        "world_traj_i": "track_1",
+        "world_traj_j": "track_2",
+        "traj_a_json": "[]",
+        "traj_b_json": "[]",
+        "video_source": "test.mp4",
+        "time_of_day_label": "unknown",
+        "gate_a_entry": "unknown",
+        "gate_b_entry": "unknown",
+    }
+    df = _events_to_dataframe([event])
+    assert "track_b_exit_time_sec" in df.columns, (
+        "_events_to_dataframe dropped track_b_exit_time_sec from the output"
+    )
+    assert not df["track_b_exit_time_sec"].isna().any(), (
+        "track_b_exit_time_sec is NaN despite being present in the input event"
+    )
+    assert abs(df["track_b_exit_time_sec"].iloc[0] - (150 / fps)) < 1e-6, (
+        f"track_b_exit_time_sec = {df['track_b_exit_time_sec'].iloc[0]}, expected {150 / fps}"
+    )
+
+
+def test_uvh_backend_computes_b_exit_time_sec_with_fps_divisor():
+    """AST: track_b_exit_time_sec must be computed as float(b_exit / fps).
+
+    The existing existence-only AST test catches field deletion, but not
+    a wrong divisor (e.g., float(b_exit / 60.0) or float(b_exit / 25.0)
+    instead of / fps). This locks the exact arithmetic expression, so
+    any future refactor that changes the formula will fail here.
+    """
+    import ast
+    from pathlib import Path
+
+    src = Path(__file__).resolve().parents[1] / (
+        "src/analysis/grid_trajectory/uvh_coco_fused_grid_pet.py"
+    )
+    tree = ast.parse(src.read_text())
+
+    found = False
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Dict):
+            continue
+        for k, v in zip(node.keys, node.values, strict=True):
+            if isinstance(k, ast.Constant) and k.value == "track_b_exit_time_sec":
+                found = True
+                # Expected shape: float(b_exit / fps)
+                assert isinstance(v, ast.Call), (
+                    f"track_b_exit_time_sec: expected float(...), got {ast.unparse(v)}"
+                )
+                assert isinstance(v.func, ast.Name) and v.func.id == "float", (
+                    f"expected float(...) call, got {ast.unparse(v.func)}"
+                )
+                assert len(v.args) == 1, (
+                    f"expected exactly 1 positional arg to float(), got {len(v.args)}"
+                )
+                inner = v.args[0]
+                assert isinstance(inner, ast.BinOp) and isinstance(inner.op, ast.Div), (
+                    f"expected division expression, got {ast.unparse(inner)}"
+                )
+                assert isinstance(inner.left, ast.Name) and inner.left.id == "b_exit", (
+                    f"expected b_exit as numerator, got {ast.unparse(inner.left)}"
+                )
+                assert isinstance(inner.right, ast.Name) and inner.right.id == "fps", (
+                    f"expected fps as divisor, got {ast.unparse(inner.right)}"
+                )
+                break
+        if found:
+            break
+    assert found, (
+        "track_b_exit_time_sec not found in any dict literal in "
+        "uvh_coco_fused_grid_pet.py — the PR #78 fix is missing"
+    )
