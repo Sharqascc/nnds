@@ -3,16 +3,16 @@
 Post-pipeline helper: reads a PET events CSV, detections CSV, and the
 source video, then writes N annotated JPGs for the N lowest-PET events.
 
-Each image contains:
-  - Source video frame background
-  - Grid overlay with the specific conflict cell highlighted (cyan)
-  - Both tracks' trajectories as coloured polylines
-  - Bounding boxes for both tracks at the conflict frame
-  - Yellow ring at closest-approach point
-  - Ring markers at the first actor's exit point (red) and second actor's
-    entry point (blue) — the PET gap window
-  - Info panel: sample number, CSV row, frame, PET (with arithmetic),
-    conflict type, grid cell, track pair, entry/exit frames, frame gap
+Publication-quality styling:
+  - Localized grid drawn ONLY within N cells of the conflict cell, at
+    15% opacity, gray (not neon), coarser spacing (every 2 cells).
+  - Cell highlight drawn AFTER the grid as a solid cyan border with a
+    light fill — never hidden under the mesh.
+  - Track-ID labels use collision resolution: when boxes overlap, labels
+    are offset vertically so none overlap. All labels have a dark badge.
+  - Trajectories carry an arrowhead showing direction of travel.
+  - Info panel is a rounded semi-transparent card with title / PET
+    arithmetic / structured metadata — not a bare text dump on the road.
 
 Called from ``traffic_analyzer.main()`` when ``--samples N`` is passed.
 """
@@ -27,12 +27,31 @@ import cv2
 import numpy as np
 import pandas as pd
 
+# ── Palette ──────────────────────────────────────────────────────────────
 _COLOR_A = (0, 0, 255)  # track A — red
 _COLOR_B = (255, 100, 0)  # track B — blue
-_COLOR_MARK = (0, 255, 255)  # intersection — yellow
-_COLOR_GRID_CELL = (255, 255, 0)  # highlighted cell — cyan
+_COLOR_MARK = (0, 255, 255)  # intersection ring — yellow
+_COLOR_GRID_CELL = (255, 255, 0)  # conflict cell — cyan
+_COLOR_GRID_LINE = (140, 140, 140)  # subtle gray
 _COLOR_WHITE = (255, 255, 255)
 _COLOR_BLACK = (0, 0, 0)
+_COLOR_PANEL_BG = (30, 30, 30)
+_COLOR_PANEL_BORDER = (100, 100, 100)
+_COLOR_PANEL_TEXT = (225, 225, 225)
+_COLOR_PANEL_TITLE = (255, 255, 255)
+
+# ── Style constants ──────────────────────────────────────────────────────
+_GRID_ALPHA = 0.15
+_GRID_LINE_THICKNESS = 1
+_GRID_SKIP = 2  # draw every Nth cell boundary
+_LOCAL_RADIUS_CELLS = 4  # grid drawn within +/- N cells of conflict
+_LABEL_SCALE = 0.55
+_LABEL_THICKNESS = 2
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Parsers
+# ══════════════════════════════════════════════════════════════════════════
 
 
 def _parse_traj(traj_json: Any) -> list[tuple[float, float, float]]:
@@ -60,10 +79,8 @@ def _load_detections_lookup(
         try:
             frame = int(row["frame"])
             tid = int(row["track_id"])
-            x1 = int(row["x1"])
-            y1 = int(row["y1"])
-            x2 = int(row["x2"])
-            y2 = int(row["y2"])
+            x1, y1 = int(row["x1"]), int(row["y1"])
+            x2, y2 = int(row["x2"]), int(row["y2"])
         except (KeyError, ValueError, TypeError):
             continue
         out.setdefault(frame, {})[tid] = (x1, y1, x2, y2)
@@ -82,30 +99,79 @@ def _try_load_grid(grid_config_path: str | Path | None):
         return None
 
 
-def _draw_grid_cell_overlay(frame: np.ndarray, grid, cell_id: str | None) -> np.ndarray:
-    """Draw full grid + highlight the specific conflict cell (cyan)."""
+# ══════════════════════════════════════════════════════════════════════════
+# Drawing helpers
+# ══════════════════════════════════════════════════════════════════════════
+
+
+def _draw_localized_grid(
+    frame: np.ndarray,
+    grid,
+    conflict_cell: str | None,
+    *,
+    radius_cells: int = _LOCAL_RADIUS_CELLS,
+    alpha: float = _GRID_ALPHA,
+    skip: int = _GRID_SKIP,
+) -> np.ndarray:
+    """Draw grid lines only within a small radius around the conflict cell.
+
+    Much less visually intrusive than a full-frame mesh — the reviewer's
+    "moire" complaint comes from a 25-pixel mesh across the whole frame
+    at bright yellow. This version draws ~9x9 cells at 15% alpha in gray.
+    """
     if grid is None:
         return frame
     try:
-        frame = grid.draw_overlay(frame, alpha=0.3)
+        bounds = grid.get_cell_bounds(conflict_cell) if conflict_cell else None
+    except Exception:
+        bounds = None
+    if bounds is None:
+        return frame
+
+    x1, y1, x2, y2 = bounds
+    cs = int(grid.cell_size)
+    r = radius_cells * cs
+
+    roi_x1 = max(int(grid.x_min), x1 - r)
+    roi_x2 = min(int(grid.x_max), x2 + r)
+    roi_y1 = max(int(grid.y_min), y1 - r)
+    roi_y2 = min(int(grid.y_max), y2 + r)
+
+    overlay = frame.copy()
+    step = cs * max(1, skip)
+
+    x_start = int(grid.x_min) + ((roi_x1 - int(grid.x_min)) // step) * step
+    for x in range(x_start, roi_x2 + 1, step):
+        cv2.line(overlay, (x, roi_y1), (x, roi_y2), _COLOR_GRID_LINE, _GRID_LINE_THICKNESS)
+    y_start = int(grid.y_min) + ((roi_y1 - int(grid.y_min)) // step) * step
+    for y in range(y_start, roi_y2 + 1, step):
+        cv2.line(overlay, (roi_x1, y), (roi_x2, y), _COLOR_GRID_LINE, _GRID_LINE_THICKNESS)
+
+    return cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0)
+
+
+def _draw_cell_highlight(
+    frame: np.ndarray,
+    grid,
+    cell_id: str | None,
+    *,
+    alpha: float = 0.18,
+    border_thickness: int = 3,
+) -> np.ndarray:
+    """Draw a solid cyan border + light fill on the conflict cell."""
+    if grid is None or not cell_id or cell_id == "unknown":
+        return frame
+    try:
+        bounds = grid.get_cell_bounds(cell_id)
     except Exception:
         return frame
-    if cell_id and cell_id != "unknown":
-        try:
-            center = grid.get_cell_center(cell_id)
-            if center:
-                cx, cy = int(center[0]), int(center[1])
-                half = int(grid.cell_size) // 2
-                overlay = frame.copy()
-                cv2.rectangle(
-                    overlay, (cx - half, cy - half), (cx + half, cy + half), _COLOR_GRID_CELL, -1
-                )
-                frame = cv2.addWeighted(overlay, 0.25, frame, 0.75, 0)
-                cv2.rectangle(
-                    frame, (cx - half, cy - half), (cx + half, cy + half), _COLOR_GRID_CELL, 2
-                )
-        except Exception:
-            pass
+    if bounds is None:
+        return frame
+    x1, y1, x2, y2 = bounds
+    overlay = frame.copy()
+    cv2.rectangle(overlay, (x1, y1), (x2, y2), _COLOR_GRID_CELL, -1)
+    frame = cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0)
+    cv2.rectangle(frame, (x1, y1), (x2, y2), _COLOR_GRID_CELL, border_thickness)
     return frame
 
 
@@ -126,7 +192,30 @@ def _find_intersection_point(
     return best_xy
 
 
-def _draw_polyline(
+def _draw_arrowhead(
+    frame: np.ndarray,
+    p_from: tuple[int, int],
+    p_to: tuple[int, int],
+    color: tuple[int, int, int],
+    size: int = 14,
+) -> None:
+    """Draw a triangular arrowhead at p_to, pointing in direction p_from→p_to."""
+    dx, dy = p_to[0] - p_from[0], p_to[1] - p_from[1]
+    length = (dx * dx + dy * dy) ** 0.5
+    if length < 1:
+        return
+    ux, uy = dx / length, dy / length
+    px, py = -uy, ux
+    tip = p_to
+    base_x = tip[0] - ux * size
+    base_y = tip[1] - uy * size
+    left = (int(base_x + px * size * 0.6), int(base_y + py * size * 0.6))
+    right = (int(base_x - px * size * 0.6), int(base_y - py * size * 0.6))
+    pts = np.array([(int(tip[0]), int(tip[1])), left, right], dtype=np.int32)
+    cv2.fillPoly(frame, [pts], color)
+
+
+def _draw_polyline_with_arrow(
     frame: np.ndarray,
     points: list[tuple[float, float]],
     color: tuple[int, int, int],
@@ -134,30 +223,80 @@ def _draw_polyline(
     pts = [(int(p[0]), int(p[1])) for p in points]
     for i in range(len(pts) - 1):
         cv2.line(frame, pts[i], pts[i + 1], color, 2)
+    if len(pts) >= 2:
+        _draw_arrowhead(frame, pts[-2], pts[-1], color)
 
 
-def _draw_bbox(
+def _draw_badge_label(
+    frame: np.ndarray,
+    text: str,
+    x: int,
+    y: int,
+    color: tuple[int, int, int],
+) -> tuple[int, int, int, int]:
+    """Draw text with a filled colored badge background. Returns box (x1,y1,x2,y2)."""
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    (tw, th), _ = cv2.getTextSize(text, font, _LABEL_SCALE, _LABEL_THICKNESS)
+    pad = 4
+    x1, y1 = x, y - th - 2 * pad
+    x2, y2 = x + tw + 2 * pad, y
+    cv2.rectangle(frame, (x1, y1), (x2, y2), color, -1)
+    cv2.putText(frame, text, (x + pad, y - pad), font, _LABEL_SCALE, _COLOR_WHITE, _LABEL_THICKNESS)
+    return (x1, y1, x2, y2)
+
+
+def _draw_bbox_with_label(
     frame: np.ndarray,
     bbox: tuple[int, int, int, int],
     color: tuple[int, int, int],
     label: str,
-) -> None:
+    existing_labels: list[tuple[int, int, int, int]],
+) -> tuple[int, int, int, int]:
+    """Draw bbox + label above it, avoiding overlap with existing labels."""
     x1, y1, x2, y2 = bbox
     cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
     font = cv2.FONT_HERSHEY_SIMPLEX
-    (tw, th), _ = cv2.getTextSize(label, font, 0.7, 2)
-    cv2.rectangle(frame, (x1, y1 - th - 10), (x1 + tw + 8, y1), color, -1)
-    cv2.putText(frame, label, (x1 + 4, y1 - 6), font, 0.7, _COLOR_WHITE, 2)
+    (tw, th), _ = cv2.getTextSize(label, font, _LABEL_SCALE, _LABEL_THICKNESS)
+    pad = 4
+    box_h = th + 2 * pad
+
+    # Try candidate positions, avoiding overlap
+    candidates = [
+        (x1, y1 - 2),
+        (x1, y1 - box_h - 4),
+        (x2 - tw - 2 * pad, y1 - 2),
+        (x2 - tw - 2 * pad, y1 - box_h - 4),
+        (x1, y2 + box_h + 2),
+        (x2 - tw - 2 * pad, y2 + box_h + 2),
+    ]
+    chosen_x = x1
+    chosen_y = y1 - 2
+    for cx, cy in candidates:
+        proposed = (cx, cy - box_h, cx + tw + 2 * pad, cy)
+        overlaps = any(
+            not (
+                proposed[2] < ex[0]
+                or proposed[0] > ex[2]
+                or proposed[3] < ex[1]
+                or proposed[1] > ex[3]
+            )
+            for ex in existing_labels
+        )
+        if not overlaps:
+            chosen_x = cx
+            chosen_y = cy
+            break
+    return _draw_badge_label(frame, label, chosen_x, chosen_y, color)
 
 
-def _mark_frame_point(
+def _draw_frame_point_label(
     frame: np.ndarray,
     traj: list[tuple[float, float, float]],
     target_frame: int | None,
     color: tuple[int, int, int],
     label: str,
+    existing_labels: list[tuple[int, int, int, int]],
 ) -> bool:
-    """Draw a ring at the trajectory point that occurs at ``target_frame``."""
     if target_frame is None:
         return False
     for p in traj:
@@ -165,35 +304,115 @@ def _mark_frame_point(
             x, y = int(p[0]), int(p[1])
             cv2.circle(frame, (x, y), 12, color, 3)
             cv2.circle(frame, (x, y), 4, color, -1)
-            w = frame.shape[1]
-            lx = x + 16 if x < w - 240 else x - 220
-            cv2.putText(frame, label, (lx, y + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.55, color, 2)
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            (tw, th), _ = cv2.getTextSize(label, font, _LABEL_SCALE, _LABEL_THICKNESS)
+            pad = 4
+            box_h = th + 2 * pad
+            h_img, w_img = frame.shape[:2]
+            candidates = [
+                (x + 16, y + 5),
+                (x - tw - 2 * pad - 16, y + 5),
+                (x + 16, y - box_h),
+                (x - tw - 2 * pad - 16, y - box_h),
+                (x + 16, y + box_h + 16),
+                (x - tw - 2 * pad - 16, y + box_h + 16),
+            ]
+            chosen = (x + 16, y + 5)
+            for cx, cy in candidates:
+                if cx < 0 or cx + tw + 2 * pad > w_img or cy < box_h or cy > h_img:
+                    continue
+                proposed = (cx, cy - box_h, cx + tw + 2 * pad, cy)
+                overlaps = any(
+                    not (
+                        proposed[2] < ex[0]
+                        or proposed[0] > ex[2]
+                        or proposed[3] < ex[1]
+                        or proposed[1] > ex[3]
+                    )
+                    for ex in existing_labels
+                )
+                if not overlaps:
+                    chosen = (cx, cy)
+                    break
+            _draw_badge_label(frame, label, chosen[0], chosen[1], color)
             return True
     return False
 
 
-def _draw_info_panel(frame: np.ndarray, lines: list[str]) -> np.ndarray:
+# ══════════════════════════════════════════════════════════════════════════
+# HUD panel
+# ══════════════════════════════════════════════════════════════════════════
+
+
+def _draw_hud_panel(
+    frame: np.ndarray,
+    title: str,
+    sections: list[tuple[str, list[str]]],
+) -> np.ndarray:
+    """Rounded semi-transparent HUD with title, sections (label → lines)."""
     font = cv2.FONT_HERSHEY_SIMPLEX
-    font_scale = 0.65
-    thickness = 2
-    pad = 10
-    line_h = 28
-    text_w = max(
-        (cv2.getTextSize(l, font, font_scale, thickness)[0][0] for l in lines), default=100
-    )
-    panel_w = text_w + 2 * pad
-    panel_h = len(lines) * line_h + 2 * pad
+    title_scale = 0.72
+    label_scale = 0.58
+    body_scale = 0.55
+    pad = 18
+    section_gap = 6
+    line_h = 22
+
+    # Measure
+    (title_w, title_h), _ = cv2.getTextSize(title, font, title_scale, 2)
+    max_w = title_w
+    total_h = pad + title_h + 10
+    for sec_label, sec_lines in sections:
+        (lw, lh), _ = cv2.getTextSize(sec_label, font, label_scale, 1)
+        max_w = max(max_w, lw)
+        total_h += section_gap + lh
+        for line in sec_lines:
+            (bw, _), _ = cv2.getTextSize(line, font, body_scale, 1)
+            max_w = max(max_w, bw)
+            total_h += line_h
+    panel_w = max_w + 2 * pad
+    panel_h = total_h + pad
+
+    x0, y0 = 14, 14
     overlay = frame.copy()
-    cv2.rectangle(overlay, (10, 10), (10 + panel_w, 10 + panel_h), _COLOR_BLACK, -1)
-    frame = cv2.addWeighted(overlay, 0.75, frame, 0.25, 0)
-    for i, line in enumerate(lines):
-        y = 10 + pad + (i + 1) * line_h - 8
-        cv2.putText(frame, line, (10 + pad, y), font, font_scale, _COLOR_WHITE, thickness)
+    cv2.rectangle(overlay, (x0, y0), (x0 + panel_w, y0 + panel_h), _COLOR_PANEL_BG, -1)
+    cv2.rectangle(overlay, (x0, y0), (x0 + panel_w, y0 + panel_h), _COLOR_PANEL_BORDER, 1)
+    frame = cv2.addWeighted(overlay, 0.82, frame, 0.18, 0)
+
+    # Title
+    ty = y0 + pad + title_h
+    cv2.putText(frame, title, (x0 + pad, ty), font, title_scale, _COLOR_PANEL_TITLE, 2)
+    cy = ty + 10
+
+    for sec_label, sec_lines in sections:
+        cy += section_gap
+        cv2.putText(
+            frame,
+            sec_label,
+            (int(x0 + pad), int(cy + label_scale * 18)),
+            font,
+            label_scale,
+            _COLOR_PANEL_BORDER,
+            1,
+        )
+        cy += int(label_scale * 18) + 4
+        for line in sec_lines:
+            cv2.putText(
+                frame,
+                line,
+                (int(x0 + pad + 6), int(cy + body_scale * 18)),
+                font,
+                body_scale,
+                _COLOR_PANEL_TEXT,
+                1,
+            )
+            cy += line_h
     return frame
 
 
-def _fmt_opt(v, fmt: str, default: str = "?") -> str:
-    return default if v is None else fmt.format(v)
+# ══════════════════════════════════════════════════════════════════════════
+# Main per-event renderer
+# ══════════════════════════════════════════════════════════════════════════
 
 
 def _render_one_sample(
@@ -225,58 +444,70 @@ def _render_one_sample(
     if not ret or frame is None:
         return None
 
-    # 1. Grid overlay + cell highlight (bottom layer)
-    frame = _draw_grid_cell_overlay(frame, grid, grid_cell)
+    # 1. Grid (localized, dim) — then cell highlight on top
+    frame = _draw_localized_grid(frame, grid, grid_cell)
+    frame = _draw_cell_highlight(frame, grid, grid_cell)
 
-    # Trajectories
+    # 2. Trajectories with arrowheads
     if len(traj_a) >= 2:
-        _draw_polyline(frame, [(p[0], p[1]) for p in traj_a], _COLOR_A)
+        _draw_polyline_with_arrow(frame, [(p[0], p[1]) for p in traj_a], _COLOR_A)
     if len(traj_b) >= 2:
-        _draw_polyline(frame, [(p[0], p[1]) for p in traj_b], _COLOR_B)
+        _draw_polyline_with_arrow(frame, [(p[0], p[1]) for p in traj_b], _COLOR_B)
 
-    # Intersection marker (yellow ring)
+    # 3. Intersection ring (thicker)
     ip = _find_intersection_point(traj_a, traj_b)
     if ip:
         cx, cy = int(ip[0]), int(ip[1])
-        cv2.circle(frame, (cx, cy), 18, _COLOR_MARK, 3)
+        cv2.circle(frame, (cx, cy), 18, _COLOR_MARK, 4)
         cv2.circle(frame, (cx, cy), 6, _COLOR_MARK, -1)
 
-    # 3. Entry/exit frame markers (the PET gap window)
-    _mark_frame_point(
-        frame, traj_a, a_exit_frame, _COLOR_A, f"A out f={_fmt_opt(a_exit_frame, '{}', '?')}"
-    )
-    _mark_frame_point(
-        frame, traj_b, b_entry_frame, _COLOR_B, f"B in f={_fmt_opt(b_entry_frame, '{}', '?')}"
-    )
-
-    # Bounding boxes
+    # 4. Bounding boxes + collision-resolved labels
+    existing_labels: list[tuple[int, int, int, int]] = []
     if bbox_a:
-        _draw_bbox(frame, bbox_a, _COLOR_A, f"T{track_a}")
+        bb = _draw_bbox_with_label(frame, bbox_a, _COLOR_A, f"T{track_a}", existing_labels)
+        existing_labels.append(bb)
     if bbox_b:
-        _draw_bbox(frame, bbox_b, _COLOR_B, f"T{track_b}")
+        bb = _draw_bbox_with_label(frame, bbox_b, _COLOR_B, f"T{track_b}", existing_labels)
+        existing_labels.append(bb)
 
-    # 2 + 4. Info panel with event ID, CSV row, PET arithmetic
-    lines = [
-        f"Sample {event_idx + 1}/{total_events}   CSV row {csv_row}",
-        f"Frame: {frame_idx}    PET: {pet_val:.3f}s",
-    ]
+    # 5. Entry/exit markers with collision-resolved labels
+    a_label = f"A out f={a_exit_frame}" if a_exit_frame is not None else "A out f=?"
+    b_label = f"B in f={b_entry_frame}" if b_entry_frame is not None else "B in f=?"
+    _draw_frame_point_label(frame, traj_a, a_exit_frame, _COLOR_A, a_label, existing_labels)
+    _draw_frame_point_label(frame, traj_b, b_entry_frame, _COLOR_B, b_label, existing_labels)
+
+    # 6. HUD panel
+    title = f"PET Sample {event_idx + 1}/{total_events}  ·  CSV row {csv_row}"
+    timing_lines = [f"PET = {pet_val:.3f}s"]
     if a_exit_time is not None and b_entry_time is not None:
-        lines.append(f"  = B_in({b_entry_time:.2f}s) - A_out({a_exit_time:.2f}s)")
-    else:
-        lines.append("  = t_B_entry - t_A_exit")
-    lines.append(f"Grid: {grid_cell or 'unknown'}    Type: {conflict_type or 'unknown'}")
-    lines.append(f"Tracks: T{track_a} <-> T{track_b}")
-    if a_exit_frame is not None or b_entry_frame is not None:
-        lines.append(
-            f"A out: f={_fmt_opt(a_exit_frame, '{}', '?')}    "
-            f"B in: f={_fmt_opt(b_entry_frame, '{}', '?')}"
-        )
+        timing_lines.append(f"  = B_in({b_entry_time:.2f}s) − A_out({a_exit_time:.2f}s)")
     if a_exit_frame is not None and b_entry_frame is not None:
-        gap = int(b_entry_frame) - int(a_exit_frame)
-        lines.append(f"Gap: frames {a_exit_frame} -> {b_entry_frame}  ({gap}f)")
-
-    frame = _draw_info_panel(frame, lines)
+        timing_lines.append(
+            f"  = f{b_entry_frame} − f{a_exit_frame}  "
+            f"({int(b_entry_frame) - int(a_exit_frame)} frames)"
+        )
+    metadata_lines = [
+        f"Frame: {frame_idx}",
+        f"Grid:  {grid_cell}",
+        f"Type:  {conflict_type}",
+        f"Pair:  T{track_a} ↔ T{track_b}",
+        f"A out: f={a_exit_frame if a_exit_frame is not None else '?'}",
+        f"B in:  f={b_entry_frame if b_entry_frame is not None else '?'}",
+    ]
+    frame = _draw_hud_panel(
+        frame,
+        title,
+        [
+            ("TIMING", timing_lines),
+            ("CONTEXT", metadata_lines),
+        ],
+    )
     return frame
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Public API
+# ══════════════════════════════════════════════════════════════════════════
 
 
 def render_pet_samples(
@@ -287,20 +518,7 @@ def render_pet_samples(
     n: int = 5,
     grid_config_path: str | Path | None = None,
 ) -> list[Path]:
-    """Render the N lowest-PET events as annotated JPG samples.
-
-    Args:
-        events_csv: path to the PET events CSV.
-        detections_csv: path to the matching detections CSV.
-        video_path: path to the source video.
-        out_dir: directory to write images into.
-        n: number of samples (default 5).
-        grid_config_path: optional path to grid config JSON. If provided,
-            the conflict cell is highlighted in the sample images.
-
-    Returns:
-        List of written paths, ordered by ascending PET value.
-    """
+    """Render the N lowest-PET events as annotated JPG samples."""
     events_csv = Path(events_csv)
     detections_csv = Path(detections_csv)
     video_path = Path(video_path)
@@ -328,7 +546,7 @@ def render_pet_samples(
         )
         .sort_values("_pet", ascending=True)
         .head(n)
-        .reset_index()  # preserves original CSV row in "index" column
+        .reset_index()
     )
 
     det_lookup = _load_detections_lookup(detections_csv)
@@ -351,10 +569,10 @@ def render_pet_samples(
         bbox_a = frame_dets.get(ta)
         bbox_b = frame_dets.get(tb)
 
-        def _get_int(v):
+        def _gi(v):
             return None if pd.isna(v) else int(v)
 
-        def _get_float(v):
+        def _gf(v):
             return None if pd.isna(v) else float(v)
 
         img = _render_one_sample(
@@ -373,10 +591,10 @@ def render_pet_samples(
             event_idx=rank,
             total_events=total_events,
             csv_row=csv_row,
-            a_exit_frame=_get_int(row.get("track_a_exit_frame")),
-            b_entry_frame=_get_int(row.get("track_b_entry_frame")),
-            a_exit_time=_get_float(row.get("track_a_exit_time_sec")),
-            b_entry_time=_get_float(row.get("track_b_entry_time_sec")),
+            a_exit_frame=_gi(row.get("track_a_exit_frame")),
+            b_entry_frame=_gi(row.get("track_b_entry_frame")),
+            a_exit_time=_gf(row.get("track_a_exit_time_sec")),
+            b_entry_time=_gf(row.get("track_b_entry_time_sec")),
         )
         if img is None:
             print(f"[pet_samples] skip event {rank}: frame {frame_idx} unreadable")

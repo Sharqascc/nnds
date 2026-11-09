@@ -417,3 +417,192 @@ def test_cli_passes_grid_config_to_samples(monkeypatch, tmp_path):
     traffic_analyzer._render_samples(A())
     assert captured.get("grid_config_path") == "some/grid.json"
     assert captured.get("n") == 3
+
+
+# ── Tests for publication-quality enhancements ────────────────────────────
+
+
+class _FakeGrid:
+    """Minimal grid stub for testing drawing helpers without a config file."""
+
+    def __init__(self, x_min=0, y_min=0, x_max=800, y_max=600, cell_size=25):
+        self.x_min = x_min
+        self.y_min = y_min
+        self.x_max = x_max
+        self.y_max = y_max
+        self.cell_size = cell_size
+
+    def get_cell_bounds(self, cell_id):
+        # Parse "CELL_<col>_<row>"
+        try:
+            parts = cell_id.split("_")
+            col_letter, row_num = parts[1], int(parts[2])
+            col_idx = ord(col_letter.upper()) - ord("A")
+            row_idx = row_num - 1
+            x1 = self.x_min + col_idx * self.cell_size
+            y1 = self.y_min + row_idx * self.cell_size
+            return (x1, y1, x1 + self.cell_size, y1 + self.cell_size)
+        except (IndexError, ValueError, AttributeError):
+            return None
+
+    def get_cell_center(self, cell_id):
+        b = self.get_cell_bounds(cell_id)
+        return None if b is None else ((b[0] + b[2]) // 2, (b[1] + b[3]) // 2)
+
+
+def test_draw_localized_grid_only_touches_roi():
+    """Grid draws only within ~radius_cells of the conflict cell."""
+    from src.analysis.visualization.pet_samples import _draw_localized_grid
+
+    grid = _FakeGrid(x_max=1000, y_max=800, cell_size=50)
+    frame = np.zeros((800, 1000, 3), dtype=np.uint8)
+    before = frame.copy()
+    out = _draw_localized_grid(frame, grid, "CELL_E_5", radius_cells=2, alpha=0.5)
+
+    # Conflict cell: E (col idx 4) * 50 = x 200..250, row 5 → y 200..250
+    # ROI: +/- 2 cells = +/-100 px → x [100, 350], y [100, 350]
+    # Pixels far outside ROI must be unchanged
+    assert np.array_equal(out[:50, :50], before[:50, :50]), "top-left corner should be unchanged"
+    assert np.array_equal(out[700:, 900:], before[700:, 900:]), (
+        "bottom-right corner should be unchanged"
+    )
+    # Pixels inside ROI should differ (grid lines drawn)
+    roi_diff = np.any(out[100:350, 100:350] != before[100:350, 100:350], axis=-1).sum()
+    assert roi_diff > 0, "ROI should show grid lines"
+
+
+def test_draw_localized_grid_noop_when_grid_none():
+    from src.analysis.visualization.pet_samples import _draw_localized_grid
+
+    frame = np.zeros((100, 100, 3), dtype=np.uint8)
+    before = frame.copy()
+    out = _draw_localized_grid(frame, None, "CELL_A_1")
+    assert np.array_equal(out, before)
+
+
+def test_draw_localized_grid_noop_when_cell_unknown():
+    from src.analysis.visualization.pet_samples import _draw_localized_grid
+
+    grid = _FakeGrid()
+    frame = np.zeros((200, 200, 3), dtype=np.uint8)
+    before = frame.copy()
+    out = _draw_localized_grid(frame, grid, "unknown")
+    assert np.array_equal(out, before)
+
+
+def test_draw_cell_highlight_border_present():
+    """Cell highlight must set cyan pixels at the border."""
+    from src.analysis.visualization.pet_samples import (
+        _COLOR_GRID_CELL,
+        _draw_cell_highlight,
+    )
+
+    grid = _FakeGrid(cell_size=50)
+    frame = np.zeros((400, 400, 3), dtype=np.uint8)
+    out = _draw_cell_highlight(frame, grid, "CELL_B_2")
+
+    # CELL_B_2 = col 1 (x 50..100), row 1 (y 50..100)
+    # Border pixels at top edge should be exactly the cyan color
+    top_border_pixel = out[50, 75]  # (y=50, x=75)
+    assert tuple(int(c) for c in top_border_pixel) == _COLOR_GRID_CELL, (
+        f"border should be cyan, got {top_border_pixel}"
+    )
+
+
+def test_draw_cell_highlight_noop_without_grid():
+    from src.analysis.visualization.pet_samples import _draw_cell_highlight
+
+    frame = np.zeros((100, 100, 3), dtype=np.uint8)
+    before = frame.copy()
+    out = _draw_cell_highlight(frame, None, "CELL_A_1")
+    assert np.array_equal(out, before)
+
+
+def test_arrowhead_marks_end_of_polyline():
+    """Arrowhead must set pixels near the endpoint in the trajectory color."""
+    from src.analysis.visualization.pet_samples import (
+        _COLOR_A,
+        _draw_polyline_with_arrow,
+    )
+
+    frame = np.zeros((200, 200, 3), dtype=np.uint8)
+    before = frame.copy()
+    points = [(20, 20), (80, 80), (140, 140)]
+    _draw_polyline_with_arrow(frame, points, _COLOR_A)
+
+    # Line pixels along the path should be red
+    line_px = frame[80, 80]
+    assert tuple(int(c) for c in line_px) == _COLOR_A, "polyline should be red"
+
+    # Arrowhead should thicken the region near the tip (140,140)
+    # Count non-black pixels in a 20-px box around tip
+    tip_box = frame[130:150, 130:150]
+    non_black = np.any(tip_box != 0, axis=-1).sum()
+    assert non_black > 20, f"arrowhead should add width near tip, got {non_black} px"
+
+
+def test_hud_panel_renders_with_all_sections():
+    """HUD panel should draw text without errors and never crash."""
+    from src.analysis.visualization.pet_samples import _draw_hud_panel
+
+    frame = np.zeros((600, 800, 3), dtype=np.uint8)
+    out = _draw_hud_panel(
+        frame,
+        "PET Sample 1/5  ·  CSV row 3",
+        [
+            ("TIMING", ["PET = 0.500s", "  = B_in(5.00s) − A_out(4.50s)"]),
+            ("CONTEXT", ["Frame: 144", "Grid: CELL_A_1", "Type: side_swipe"]),
+        ],
+    )
+    # Panel region should be non-zero (text drawn)
+    assert out[10:300, 10:500].sum() > 0
+    assert out.shape == frame.shape
+
+
+def test_hud_panel_handles_empty_sections():
+    from src.analysis.visualization.pet_samples import _draw_hud_panel
+
+    frame = np.zeros((400, 400, 3), dtype=np.uint8)
+    out = _draw_hud_panel(frame, "Title", [])
+    assert out.shape == frame.shape
+
+
+def test_bbox_labels_do_not_overlap():
+    """Two overlapping bboxes should place their labels in different positions."""
+    from src.analysis.visualization.pet_samples import _COLOR_A, _COLOR_B, _draw_bbox_with_label
+
+    frame = np.zeros((400, 400, 3), dtype=np.uint8)
+    existing = []
+    # Two bboxes at nearly the same position (simulating the reviewer's
+    # T119/T130 overlap case)
+    bb1 = _draw_bbox_with_label(frame, (100, 100, 200, 200), _COLOR_A, "T119", existing)
+    existing.append(bb1)
+    bb2 = _draw_bbox_with_label(frame, (105, 105, 205, 205), _COLOR_B, "T130", existing)
+    existing.append(bb2)
+
+    # Check labels don't overlap
+    def _overlap(a, b):
+        return not (a[2] < b[0] or a[0] > b[2] or a[3] < b[1] or a[1] > b[3])
+
+    assert not _overlap(bb1, bb2), (
+        f"labels overlap: {bb1} vs {bb2}. Collision resolution should have offset one."
+    )
+
+
+def test_render_pet_samples_end_to_end_still_works(
+    synthetic_video,
+    synthetic_detections,
+    synthetic_events,
+    tmp_path,
+):
+    """Full pipeline still works after the styling rewrite."""
+    paths = render_pet_samples(
+        events_csv=synthetic_events,
+        detections_csv=synthetic_detections,
+        video_path=synthetic_video,
+        out_dir=tmp_path / "samples",
+        n=2,
+    )
+    assert len(paths) == 2
+    for p in paths:
+        assert p.stat().st_size > 3000
