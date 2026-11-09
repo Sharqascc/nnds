@@ -71,21 +71,32 @@ Specifically, in the previous report:
 
 The run printed labels. Which commit printed them?
 
-- [ ] Fetch `uvh_coco_fused_grid_pet.py` from `feature/entrypoint-stages`,
+- [x] Fetch `uvh_coco_fused_grid_pet.py` from `feature/entrypoint-stages`,
       `fix/pet-track-b-exit-time-sec`, and `freeze/class-colors` via API.
       Extract every `stages.stage(N, name, ...)` call via AST.
       Record `begin(N)` for each.
-- [ ] Fetch the local merge tree at `/content/final_run`. Record `HEAD`
+- [x] Fetch the local merge tree at `/content/final_run`. Record `HEAD`
       SHA, `git log --oneline -5`, branches containing HEAD.
-- [ ] Extract stage calls from the local merge tree file. Compare against
+- [x] Extract stage calls from the local merge tree file. Compare against
       every ref above.
-- [ ] Fetch PR #76 title + body. Record every stage name the description
+- [x] Fetch PR #76 title + body. Record every stage name the description
       mentions.
-- [ ] **Decision:** if local tree matches `feature/entrypoint-stages`,
+- [x] **Decision:** if local tree matches `feature/entrypoint-stages`,
       the runtime output reflects PR #76 as-merged. If they differ,
       diagnose the checkout (stale? partial merge? different file path?).
 
-**Verdict recorded in the Progress Log below.**
+**Verdict: PASS.** Local merge tree at `/content/final_run` (HEAD `57d4364`) stage strings match `feature/entrypoint-stages` head `89a2e101c105` exactly. Both emit:
+
+```
+stage(1, 'Setup')
+stage(2, 'Detect + Track (fused per frame)')
+stage(3, 'Index & Split Tracks')
+stage(4, 'Grid Assignment')
+stage(5, 'Gate + PET Event Computation')
+stage(6, 'Write Outputs')
+```
+
+The 300-frame run executed PR #76 as it currently stands. The stage-name discrepancy noted in earlier reporting was caused by comparing runtime output to an older PR description; commit `89a2e10` (CodeRabbit review fixes on PR #76) renamed the labels to their current values, which are more accurate (`Gate + PET Event Computation` reflects that gate attribution happens inside the PET stage).
 
 ---
 
@@ -234,3 +245,5 @@ Prerequisite: Phase 0 verdict is clean.
 | Date | Phase | Result | Evidence |
 |---|---|---|---|
 | 2026-11-09 | Plan created | — | This document |
+| 2026-11-09 | Phase 0 | PASS | Runtime stage strings match PR #76 head `89a2e101c105`. Local merge tree HEAD `57d4364`. Prior discrepancy was comparison against an older PR description; `89a2e10` renamed labels. |
+| 2026-11-09 | PR #76 description | updated | Added explicit stage-label table matching runtime output; noted `89a2e10` inclusion. |
