@@ -253,3 +253,167 @@ def test_cli_flag_accepts_n():
 
     args = parse_args(["--video", "dummy.mp4", "--samples", "7"])
     assert args.samples == 7
+
+
+# ── New tests for the 4 enhancements (grid, event ID, entry/exit, PET) ──
+
+
+def test_renders_with_grid_config_when_available(
+    synthetic_video,
+    synthetic_detections,
+    synthetic_events,
+    tmp_path,
+):
+    """If the repo's grid config exists, rendering with it should succeed."""
+    from pathlib import Path as _P
+
+    repo_root = _P(__file__).resolve().parents[1]
+    grid_cfg = repo_root / "configs" / "GITI_grid_config.json"
+    if not grid_cfg.exists():
+        pytest.skip("GITI grid config not present in this checkout")
+    paths = render_pet_samples(
+        events_csv=synthetic_events,
+        detections_csv=synthetic_detections,
+        video_path=synthetic_video,
+        out_dir=tmp_path / "samples",
+        n=2,
+        grid_config_path=str(grid_cfg),
+    )
+    assert len(paths) == 2
+    for p in paths:
+        assert p.exists() and p.stat().st_size > 3000
+
+
+def test_renders_with_invalid_grid_config_gracefully(
+    synthetic_video,
+    synthetic_detections,
+    synthetic_events,
+    tmp_path,
+):
+    """Invalid grid config must not crash; images still produced."""
+    bad_cfg = tmp_path / "bad_grid.json"
+    bad_cfg.write_text("{ not valid json")
+    paths = render_pet_samples(
+        events_csv=synthetic_events,
+        detections_csv=synthetic_detections,
+        video_path=synthetic_video,
+        out_dir=tmp_path / "samples",
+        n=2,
+        grid_config_path=str(bad_cfg),
+    )
+    assert len(paths) == 2
+
+
+def test_renders_without_grid_config(
+    synthetic_video,
+    synthetic_detections,
+    synthetic_events,
+    tmp_path,
+):
+    """Explicit None grid_config_path: no overlay, still renders."""
+    paths = render_pet_samples(
+        events_csv=synthetic_events,
+        detections_csv=synthetic_detections,
+        video_path=synthetic_video,
+        out_dir=tmp_path / "samples",
+        n=2,
+        grid_config_path=None,
+    )
+    assert len(paths) == 2
+
+
+def test_renders_when_all_entry_exit_fields_nan(
+    synthetic_video,
+    synthetic_detections,
+    tmp_path,
+):
+    """Events with NaN in all entry/exit fields still render (panel omits lines)."""
+    events = tmp_path / "events.csv"
+    row = _event_row(0.5, 3)
+    row["track_a_exit_frame"] = float("nan")
+    row["track_b_entry_frame"] = float("nan")
+    row["track_a_exit_time_sec"] = float("nan")
+    row["track_b_entry_time_sec"] = float("nan")
+    pd.DataFrame([row]).to_csv(events, index=False)
+    paths = render_pet_samples(
+        events_csv=events,
+        detections_csv=synthetic_detections,
+        video_path=synthetic_video,
+        out_dir=tmp_path / "samples",
+        n=5,
+    )
+    assert len(paths) == 1
+    assert paths[0].stat().st_size > 3000
+
+
+def test_renders_when_entry_exit_fields_present(
+    synthetic_video,
+    synthetic_detections,
+    synthetic_events,
+    tmp_path,
+):
+    """Events with real entry/exit fields trigger marker + panel lines."""
+    paths = render_pet_samples(
+        events_csv=synthetic_events,
+        detections_csv=synthetic_detections,
+        video_path=synthetic_video,
+        out_dir=tmp_path / "samples",
+        n=2,
+    )
+    assert len(paths) == 2
+
+
+def test_renders_with_custom_pet_arithmetic_columns(
+    synthetic_video,
+    synthetic_detections,
+    tmp_path,
+):
+    """When both times present, panel shows arithmetic; image size grows."""
+    events = tmp_path / "events.csv"
+    row = _event_row(0.5, 3)
+    row["track_a_exit_time_sec"] = 4.5
+    row["track_b_entry_time_sec"] = 5.0
+    pd.DataFrame([row]).to_csv(events, index=False)
+    paths = render_pet_samples(
+        events_csv=events,
+        detections_csv=synthetic_detections,
+        video_path=synthetic_video,
+        out_dir=tmp_path / "samples",
+        n=1,
+    )
+    assert len(paths) == 1
+
+
+def test_cli_passes_grid_config_to_samples(monkeypatch, tmp_path):
+    """traffic_analyzer._render_samples passes args.grid_config through."""
+    from src.pipeline import traffic_analyzer
+
+    captured = {}
+
+    class FakeModule:
+        def render_pet_samples(self, **kwargs):
+            captured.update(kwargs)
+            return []
+
+    # Fake _import_either
+    monkeypatch.setattr(
+        traffic_analyzer,
+        "_import_either",
+        lambda name: FakeModule(),
+    )
+
+    # Build minimal args
+    class A:
+        out_csv = str(tmp_path / "pet.csv")
+        video = str(tmp_path / "v.mp4")
+        samples = 3
+        grid_config = "some/grid.json"
+
+    # Create the "CSVs" so the existence check passes
+    (tmp_path / "pet.csv").write_text("pet,frame,track_a,track_b\n")
+    (tmp_path / "pet_detections.csv").write_text("frame,track_id,x1,y1,x2,y2\n")
+    (tmp_path / "v.mp4").write_bytes(b"x")
+
+    traffic_analyzer._render_samples(A())
+    assert captured.get("grid_config_path") == "some/grid.json"
+    assert captured.get("n") == 3

@@ -924,6 +924,7 @@ def _render_samples(args) -> None:
             video_path=args.video,
             out_dir=out_dir,
             n=args.samples,
+            grid_config_path=getattr(args, "grid_config", None),
         )
         if paths:
             print(f"✅ {len(paths)} samples written to {out_dir}")
