@@ -480,6 +480,21 @@ def _draw_hud_panel(
 # ══════════════════════════════════════════════════════════════════════════
 
 
+def _sanitize_single_line(value) -> str:
+    """Coerce to single-line string for HUD display.
+
+    Uses str.splitlines() to split on *every* character Python considers
+    a line break (\n, \r, \r\n, \v, \f, \x1c, \x1d, \x1e, \x85,
+    \u2028, \u2029) and rejoins with single spaces. A naive
+    .replace("\n", " ").replace("\r", " ") misses the exotic ones — a
+    property test with st.text() surfaced '\x1e' (record separator) as a
+    concrete counterexample.
+    """
+    if value is None:
+        return ""
+    return " ".join(str(value).splitlines()).strip()
+
+
 def _build_metadata_lines(
     video_source: str,
     frame_idx: int,
@@ -501,11 +516,14 @@ def _build_metadata_lines(
     """
     a_frame_s = str(a_mark_frame) if a_mark_frame is not None else "?"
     b_frame_s = str(b_mark_frame) if b_mark_frame is not None else "?"
+    video_safe = _sanitize_single_line(video_source) or "?"
+    grid_safe = _sanitize_single_line(grid_cell)
+    type_safe = _sanitize_single_line(conflict_type)
     return [
-        f"Video: {video_source or '?'}",
+        f"Video: {video_safe}",
         f"Frame: {frame_idx}",
-        f"Grid:  {grid_cell}",
-        f"Type:  {conflict_type}",
+        f"Grid:  {grid_safe}",
+        f"Type:  {type_safe}",
         f"Pair:  T{track_a} ↔ T{track_b}",
         f"{a_mark_label}: f={a_frame_s}",
         f"{b_mark_label}: f={b_frame_s}",
