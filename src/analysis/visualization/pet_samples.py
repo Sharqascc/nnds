@@ -316,6 +316,44 @@ def _place_ring_pair(
     return (a_pos[0], a_pos[1] - offset), (b_pos[0], b_pos[1] + offset)
 
 
+def _frame_point(
+    traj: list[tuple[float, float, float]],
+    frame_idx: int | None,
+) -> tuple[int, int] | None:
+    """Return (x, y) at frame_idx within a trajectory, or None."""
+    if frame_idx is None:
+        return None
+    for p in traj:
+        if int(p[2]) == int(frame_idx):
+            return (int(p[0]), int(p[1]))
+    return None
+
+
+def _branch_frames(
+    a_entry: int | None,
+    a_exit: int | None,
+    b_entry: int | None,
+    b_exit: int | None,
+) -> tuple[int | None, int | None, str, str]:
+    """Return (a_frame, b_frame, a_label, b_label) for the PET-defining pair.
+
+    The PET value is computed via one of two branches:
+      A) A clears first, then B enters:  pet = (b_entry - a_exit) / fps
+      B) B clears first, then A enters:  pet = (a_entry - b_exit) / fps
+
+    The markers and the panel must reflect the *actual* pair used,
+    otherwise the display is nonsense (e.g. showing b_entry=25 while
+    a_exit=105 implies B entered 80 frames before A exited, which is
+    the opposite of a PET gap).
+    """
+    if a_exit is not None and b_entry is not None and int(a_exit) < int(b_entry):
+        return a_exit, b_entry, "A out", "B in"
+    if b_exit is not None and a_entry is not None and int(b_exit) < int(a_entry):
+        return a_entry, b_exit, "A in", "B out"
+    # Overlap or unknown — fall back to A_out/B_in as best guess
+    return a_exit, b_entry, "A out", "B in"
+
+
 def _draw_frame_point_label(
     frame: np.ndarray,
     traj: list[tuple[float, float, float]],
@@ -467,6 +505,7 @@ def _render_one_sample(
     b_exit_frame: int | None = None,
     a_entry_time: float | None = None,
     b_exit_time: float | None = None,
+    video_source: str = "",
 ) -> np.ndarray | None:
     cap = cv2.VideoCapture(str(video_path))
     cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
@@ -501,22 +540,20 @@ def _render_one_sample(
         bb = _draw_bbox_with_label(frame, bbox_b, _COLOR_B, f"T{track_b}", existing_labels)
         existing_labels.append(bb)
 
-    # 5. Entry/exit markers with ring NMS
-    a_pt = b_pt = None
-    if a_exit_frame is not None:
-        for p in traj_a:
-            if int(p[2]) == int(a_exit_frame):
-                a_pt = (int(p[0]), int(p[1]))
-                break
-    if b_entry_frame is not None:
-        for p in traj_b:
-            if int(p[2]) == int(b_entry_frame):
-                b_pt = (int(p[0]), int(p[1]))
-                break
+    # 5. Entry/exit markers — branch-aware positions/labels
+    a_mark_frame, b_mark_frame, a_mark_label, b_mark_label = _branch_frames(
+        a_entry_frame, a_exit_frame, b_entry_frame, b_exit_frame
+    )
+    a_pt = _frame_point(traj_a, a_mark_frame)
+    b_pt = _frame_point(traj_b, b_mark_frame)
     a_pt, b_pt = _place_ring_pair(a_pt, b_pt, min_separation=30.0)
 
-    a_label = f"A out f={a_exit_frame}" if a_exit_frame is not None else "A out f=?"
-    b_label = f"B in f={b_entry_frame}" if b_entry_frame is not None else "B in f=?"
+    a_label = (
+        f"{a_mark_label} f={a_mark_frame}" if a_mark_frame is not None else f"{a_mark_label} f=?"
+    )
+    b_label = (
+        f"{b_mark_label} f={b_mark_frame}" if b_mark_frame is not None else f"{b_mark_label} f=?"
+    )
     if a_pt:
         cv2.circle(frame, a_pt, 12, _COLOR_A, 3)
         cv2.circle(frame, a_pt, 4, _COLOR_A, -1)
@@ -562,13 +599,15 @@ def _render_one_sample(
         timing_lines.append("  (see CSV for branch)")
 
     metadata_lines = [
-        f"Frame: {frame_idx}",
-        f"Grid:  {grid_cell}",
-        f"Type:  {conflict_type}",
-        f"Pair:  T{track_a} ↔ T{track_b}",
-        f"A out: f={a_exit_frame if a_exit_frame is not None else '?'}",
-        f"B in:  f={b_entry_frame if b_entry_frame is not None else '?'}",
+        f"Video: {video_source or '?'}"
+        f"Frame: {frame_idx}"
+        f"Grid:  {grid_cell}"
+        f"Type:  {conflict_type}"
+        f"Pair:  T{track_a} ↔ T{track_b}"
+        f"{a_mark_label}: f={a_mark_frame if a_mark_frame is not None else '?'}"
+        f"{b_mark_label}: f={b_mark_frame if b_mark_frame is not None else '?'}"
     ]
+
     frame = _draw_hud_panel(
         frame,
         title,
@@ -674,6 +713,7 @@ def render_pet_samples(
             b_exit_frame=_gi(row.get("track_b_exit_frame")),
             a_entry_time=_gf(row.get("track_a_entry_time_sec")),
             b_exit_time=_gf(row.get("track_b_exit_time_sec")),
+            video_source=str(row.get("video_source", "") or ""),
         )
         if img is None:
             print(f"[pet_samples] skip event {rank}: frame {frame_idx} unreadable")

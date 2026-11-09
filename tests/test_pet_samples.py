@@ -726,3 +726,131 @@ def test_overlap_case_no_crash(
         n=1,
     )
     assert len(paths) == 1
+
+
+# ── Tests for branch-aware labels and video_source ──────────────────────
+
+
+def test_branch_frames_a_first():
+    """A_exit < B_entry → labels A out / B in."""
+    from src.analysis.visualization.pet_samples import _branch_frames
+
+    a_frame, b_frame, a_label, b_label = _branch_frames(
+        a_entry=10,
+        a_exit=25,
+        b_entry=40,
+        b_exit=60,
+    )
+    assert a_frame == 25
+    assert b_frame == 40
+    assert a_label == "A out"
+    assert b_label == "B in"
+
+
+def test_branch_frames_b_first():
+    """B_exit < A_entry → labels A in / B out."""
+    from src.analysis.visualization.pet_samples import _branch_frames
+
+    a_frame, b_frame, a_label, b_label = _branch_frames(
+        a_entry=80,
+        a_exit=105,
+        b_entry=25,
+        b_exit=43,
+    )
+    assert a_frame == 80
+    assert b_frame == 43
+    assert a_label == "A in"
+    assert b_label == "B out"
+
+
+def test_branch_frames_overlap():
+    """Neither branch → fall back to A out / B in."""
+    from src.analysis.visualization.pet_samples import _branch_frames
+
+    # a_exit=30 > b_entry=20 AND b_exit=40 > a_entry=10 (overlap)
+    _a_frame, _b_frame, a_label, b_label = _branch_frames(
+        a_entry=10,
+        a_exit=30,
+        b_entry=20,
+        b_exit=40,
+    )
+    assert a_label == "A out"
+    assert b_label == "B in"
+
+
+def test_branch_frames_with_none():
+    """Missing values → fall back gracefully."""
+    from src.analysis.visualization.pet_samples import _branch_frames
+
+    _a_frame, _b_frame, a_label, b_label = _branch_frames(
+        a_entry=None,
+        a_exit=None,
+        b_entry=None,
+        b_exit=None,
+    )
+    assert a_label == "A out"
+    assert b_label == "B in"
+
+
+def test_frame_point_finds_existing():
+    from src.analysis.visualization.pet_samples import _frame_point
+
+    traj = [(100.0, 200.0, 5.0), (110.0, 210.0, 6.0), (120.0, 220.0, 7.0)]
+    assert _frame_point(traj, 6) == (110, 210)
+
+
+def test_frame_point_returns_none_for_missing():
+    from src.analysis.visualization.pet_samples import _frame_point
+
+    traj = [(100.0, 200.0, 5.0), (110.0, 210.0, 6.0)]
+    assert _frame_point(traj, 99) is None
+    assert _frame_point(traj, None) is None
+
+
+def test_render_with_video_source_column(
+    synthetic_video,
+    synthetic_detections,
+    tmp_path,
+):
+    """CSV with video_source column — image renders without crash."""
+    events = tmp_path / "events.csv"
+    row = _event_row(0.5, 3)
+    row["video_source"] = "GITI_traffic_video"
+    pd.DataFrame([row]).to_csv(events, index=False)
+    paths = render_pet_samples(
+        events_csv=events,
+        detections_csv=synthetic_detections,
+        video_path=synthetic_video,
+        out_dir=tmp_path / "samples",
+        n=1,
+    )
+    assert len(paths) == 1
+
+
+def test_render_branch_b_event_end_to_end(
+    synthetic_video,
+    synthetic_detections,
+    tmp_path,
+):
+    """Branch B event (B clears first) renders with correct branch labels."""
+    events = tmp_path / "events.csv"
+    row = _event_row(0.5, 3)
+    # Branch B: b_exit < a_entry
+    row["track_a_entry_frame"] = 15
+    row["track_a_entry_time_sec"] = 15 / 30.0
+    row["track_a_exit_frame"] = 20
+    row["track_a_exit_time_sec"] = 20 / 30.0
+    row["track_b_entry_frame"] = 0
+    row["track_b_entry_time_sec"] = 0.0
+    row["track_b_exit_frame"] = 5
+    row["track_b_exit_time_sec"] = 5 / 30.0
+    row["video_source"] = "test"
+    pd.DataFrame([row]).to_csv(events, index=False)
+    paths = render_pet_samples(
+        events_csv=events,
+        detections_csv=synthetic_detections,
+        video_path=synthetic_video,
+        out_dir=tmp_path / "samples",
+        n=1,
+    )
+    assert len(paths) == 1
