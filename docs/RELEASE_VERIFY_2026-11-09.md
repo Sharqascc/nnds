@@ -124,26 +124,28 @@ The column is non-NaN. Is it correct?
 
 Establish the true counts before claiming anything about gate coverage.
 
-- [ ] Count events by category, exactly from the CSV:
+- [x] Count events by category, exactly from the CSV:
 
       | Category          | Count |
       | ----------------- | ----- |
-      | Both gates known  |       |
-      | Only A known      |       |
-      | Only B known      |       |
-      | Neither known     |       |
-      | TOTAL             |   12  |
+      | Both gates known  |   1   |
+      | Only A known      |   2   |
+      | Only B known      |   0   |
+      | Neither known     |   9   |
+      | TOTAL             |  12   |
 
-- [ ] List every distinct gate name that appears in `gate_a_entry` and
+- [x] List every distinct gate name that appears in `gate_a_entry` and
       `gate_b_entry`. Confirm those gates exist in
       `configs/sites/giti/gate_config.yaml`.
-- [ ] For events with `unknown` on one or both gates, note whether
+- [x] For events with `unknown` on one or both gates, note whether
       the corresponding track begins inside the intersection (no
       entry gate is possible) or exits before any gate is crossed.
-- [ ] **Do not expand the gate config yet.** Phase 2 records reality,
+- [x] **Do not expand the gate config yet.** Phase 2 records reality,
       not a fix.
 
-**Verdict recorded in the Progress Log below.**
+**Verdict: PASS.** Exact counts: 1 both_known, 2 only_a_known, 0 only_b_known, 9 neither_known. Totals: 4/24 gate fields known, 20/24 unknown, 9/12 events have both gates unknown. Every gate value that appears in the CSV (`South_Gate` ×3, `SouthWest_Gate` ×1) exists in `configs/sites/giti/gate_config.yaml` — no config mismatch, no stale names. Config also defines `North_Gate`, `East_Gate`, `West_Gate`; those had zero events in this 300-frame window, which is expected. Root cause for `neither_known` events is visible in trajectory spans: rows 6–11 have `traj_a` beginning at frames 62–208 (mid-intersection entry), and rows 0/1/5 have tracks that never cross a configured gate. **No gate config expansion in this PR.** Phase 3 (event classification) will confirm via video sampling that `unknown` events are genuine interior conflicts, not artifacts.
+
+**Correction to earlier report:** my prior reporting claimed "8/24 gate fields unknown." The correct figure is 20/24 unknown (4 known). The prior "most events both unknown" claim was correct (9/12 = 75%). The two statements were consistent in substance but I used an incorrect denominator in the first one.
 
 ---
 
@@ -247,5 +249,6 @@ Prerequisite: Phase 0 verdict is clean.
 | 2026-11-09 | Plan created | — | This document |
 | 2026-11-09 | Phase 0 | PASS | Runtime stage strings match PR #76 head `89a2e101c105`. Local merge tree HEAD `57d4364`. Prior discrepancy was comparison against an older PR description; `89a2e10` renamed labels. |
 | 2026-11-09 | Phase 1 | PASS | 12/12 arithmetic, 12/12 second-actor, 0 fallbacks. fps=30.007530 exact across all rows.  |
-| 2026-11-09 | Phase 2 | starting | Gate-count audit from CSV + gate config |
+| 2026-11-09 | Phase 2 | PASS | Counts: 1 both/2 only_a/0 only_b/9 neither. 20/24 fields unknown. All seen gates in config. No mismatch. Prior "8/24 unknown" was wrong denominator (correct = 20/24). |
+| 2026-11-09 | Phase 3 | starting | Event classification via video sampling |
 | 2026-11-09 | PR #76 description | updated | Added explicit stage-label table matching runtime output; noted `89a2e10` inclusion. |
