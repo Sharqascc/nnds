@@ -811,6 +811,18 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     out.add_argument(
+        "--samples",
+        dest="samples",
+        type=int,
+        default=0,
+        metavar="N",
+        help=(
+            "optional: write N annotated sample PET-pair images showing the "
+            "N lowest-PET events with bounding boxes, trajectories, grid "
+            "cells, and PET values (default: 0 = off)"
+        ),
+    )
+    out.add_argument(
         "--pet-threshold",
         dest="pet_threshold",
         type=float,
@@ -877,6 +889,49 @@ def _render_video(args) -> None:
         f"({summary['frames_written']} frames, "
         f"{summary['events_drawn']} events annotated)"
     )
+
+
+def _render_samples(args) -> None:
+    """Post-pipeline: write N sample PET-pair images for the N lowest-PET events."""
+    try:
+        render_pet_samples = _import_either("analysis.visualization.pet_samples").render_pet_samples
+    except Exception as exc:
+        print(f"\n⚠️  pet_samples unavailable: {exc}", file=sys.stderr)
+        return
+
+    out_csv_path = args.out_csv or "outputs/petevents_bev.csv"
+    det_csv_path = out_csv_path.replace(".csv", "_detections.csv")
+    out_dir = str(Path(out_csv_path).parent / "samples")
+
+    if not Path(out_csv_path).exists():
+        print(
+            f"\n⚠️  cannot render samples: {out_csv_path} missing",
+            file=sys.stderr,
+        )
+        return
+    if not Path(det_csv_path).exists():
+        print(
+            f"\n⚠️  cannot render samples: {det_csv_path} missing",
+            file=sys.stderr,
+        )
+        return
+
+    print(f"\nRendering {args.samples} sample PET images -> {out_dir}")
+    try:
+        paths = render_pet_samples(
+            events_csv=out_csv_path,
+            detections_csv=det_csv_path,
+            video_path=args.video,
+            out_dir=out_dir,
+            n=args.samples,
+        )
+        if paths:
+            print(f"✅ {len(paths)} samples written to {out_dir}")
+        else:
+            print("   (no samples produced)")
+    except Exception as exc:
+        print(f"\n❌ Sample rendering failed: {exc}", file=sys.stderr)
+        print(f"   CSV was written to {out_csv_path}", file=sys.stderr)
 
 
 def main():
@@ -961,6 +1016,9 @@ def main():
     # unchanged; the render prints its own line.
     if getattr(args, "out_video", None):
         _render_video(args)
+
+    if getattr(args, "samples", 0) > 0:
+        _render_samples(args)
 
 
 if __name__ == "__main__":
