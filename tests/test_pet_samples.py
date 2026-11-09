@@ -606,3 +606,123 @@ def test_render_pet_samples_end_to_end_still_works(
     assert len(paths) == 2
     for p in paths:
         assert p.stat().st_size > 3000
+
+
+# ── Tests for v2 refinements ──────────────────────────────────────────────
+
+
+def test_polyline_breaks_on_large_jump():
+    """A trajectory edge > max_gap_px should NOT be drawn (ID-switch guard)."""
+    from src.analysis.visualization.pet_samples import (
+        _COLOR_A,
+        _draw_polyline_with_arrow,
+    )
+
+    frame = np.zeros((300, 2000, 3), dtype=np.uint8)
+    points = [(100, 100), (150, 100), (1500, 100), (1550, 100)]
+    _draw_polyline_with_arrow(frame, points, _COLOR_A, max_gap_px=250)
+
+    mid_x, mid_y = 800, 100
+    assert np.all(frame[mid_y, mid_x] == 0), "large jump edge should be skipped"
+    seg_mid = 125
+    assert not np.all(frame[100, seg_mid] == 0), "short edge should be drawn"
+
+
+def test_ring_pair_placement_separates_close_rings():
+    from src.analysis.visualization.pet_samples import _place_ring_pair
+
+    a, b = _place_ring_pair((100, 100), (110, 100), min_separation=30.0)
+    dist = ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5
+    assert dist >= 30.0
+
+
+def test_ring_pair_placement_noop_when_far():
+    from src.analysis.visualization.pet_samples import _place_ring_pair
+
+    a, b = _place_ring_pair((100, 100), (300, 300), min_separation=30.0)
+    assert a == (100, 100) and b == (300, 300)
+
+
+def test_ring_pair_placement_handles_none():
+    from src.analysis.visualization.pet_samples import _place_ring_pair
+
+    a, b = _place_ring_pair(None, (100, 100))
+    assert a is None
+    a, b = _place_ring_pair((100, 100), None)
+    assert b is None
+    a, b = _place_ring_pair(None, None)
+    assert a is None and b is None
+
+
+def test_branch_a_arithmetic_no_crash(
+    synthetic_video,
+    synthetic_detections,
+    tmp_path,
+):
+    events = tmp_path / "events.csv"
+    row = _event_row(0.5, 3)
+    row["track_a_exit_frame"] = 10
+    row["track_a_exit_time_sec"] = 10 / 30.0
+    row["track_b_entry_frame"] = 25
+    row["track_b_entry_time_sec"] = 25 / 30.0
+    row["track_a_entry_frame"] = 2
+    row["track_a_entry_time_sec"] = 2 / 30.0
+    row["track_b_exit_frame"] = 30
+    row["track_b_exit_time_sec"] = 30 / 30.0
+    pd.DataFrame([row]).to_csv(events, index=False)
+    paths = render_pet_samples(
+        events_csv=events,
+        detections_csv=synthetic_detections,
+        video_path=synthetic_video,
+        out_dir=tmp_path / "s",
+        n=1,
+    )
+    assert len(paths) == 1
+
+
+def test_branch_b_arithmetic_no_crash(
+    synthetic_video,
+    synthetic_detections,
+    tmp_path,
+):
+    events = tmp_path / "events.csv"
+    row = _event_row(0.5, 3)
+    row["track_b_exit_frame"] = 5
+    row["track_b_exit_time_sec"] = 5 / 30.0
+    row["track_a_entry_frame"] = 15
+    row["track_a_entry_time_sec"] = 15 / 30.0
+    row["track_a_exit_frame"] = 20
+    row["track_a_exit_time_sec"] = 20 / 30.0
+    row["track_b_entry_frame"] = 0
+    row["track_b_entry_time_sec"] = 0.0
+    pd.DataFrame([row]).to_csv(events, index=False)
+    paths = render_pet_samples(
+        events_csv=events,
+        detections_csv=synthetic_detections,
+        video_path=synthetic_video,
+        out_dir=tmp_path / "s",
+        n=1,
+    )
+    assert len(paths) == 1
+
+
+def test_overlap_case_no_crash(
+    synthetic_video,
+    synthetic_detections,
+    tmp_path,
+):
+    events = tmp_path / "events.csv"
+    row = _event_row(0.5, 3)
+    row["track_a_entry_frame"] = 2
+    row["track_a_exit_frame"] = 30
+    row["track_b_entry_frame"] = 10
+    row["track_b_exit_frame"] = 20
+    pd.DataFrame([row]).to_csv(events, index=False)
+    paths = render_pet_samples(
+        events_csv=events,
+        detections_csv=synthetic_detections,
+        video_path=synthetic_video,
+        out_dir=tmp_path / "s",
+        n=1,
+    )
+    assert len(paths) == 1

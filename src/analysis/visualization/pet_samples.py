@@ -219,11 +219,21 @@ def _draw_polyline_with_arrow(
     frame: np.ndarray,
     points: list[tuple[float, float]],
     color: tuple[int, int, int],
+    max_gap_px: float = 250.0,
 ) -> None:
+    """Draw polyline but break at large jumps (tracker ID switches)."""
     pts = [(int(p[0]), int(p[1])) for p in points]
+    if len(pts) < 2:
+        return
     for i in range(len(pts) - 1):
+        dx = pts[i + 1][0] - pts[i][0]
+        dy = pts[i + 1][1] - pts[i][1]
+        if (dx * dx + dy * dy) ** 0.5 > max_gap_px:
+            continue
         cv2.line(frame, pts[i], pts[i + 1], color, 2)
-    if len(pts) >= 2:
+    dx = pts[-1][0] - pts[-2][0]
+    dy = pts[-1][1] - pts[-2][1]
+    if (dx * dx + dy * dy) ** 0.5 <= max_gap_px:
         _draw_arrowhead(frame, pts[-2], pts[-1], color)
 
 
@@ -287,6 +297,23 @@ def _draw_bbox_with_label(
             chosen_y = cy
             break
     return _draw_badge_label(frame, label, chosen_x, chosen_y, color)
+
+
+def _place_ring_pair(
+    a_pos: tuple[int, int] | None,
+    b_pos: tuple[int, int] | None,
+    min_separation: float = 30.0,
+) -> tuple[tuple[int, int] | None, tuple[int, int] | None]:
+    """If two ring centers are within min_separation, push apart vertically."""
+    if a_pos is None or b_pos is None:
+        return a_pos, b_pos
+    dx = a_pos[0] - b_pos[0]
+    dy = a_pos[1] - b_pos[1]
+    dist = (dx * dx + dy * dy) ** 0.5
+    if dist >= min_separation:
+        return a_pos, b_pos
+    offset = int((min_separation - dist) / 2 + 6)
+    return (a_pos[0], a_pos[1] - offset), (b_pos[0], b_pos[1] + offset)
 
 
 def _draw_frame_point_label(
@@ -436,6 +463,10 @@ def _render_one_sample(
     b_entry_frame: int | None = None,
     a_exit_time: float | None = None,
     b_entry_time: float | None = None,
+    a_entry_frame: int | None = None,
+    b_exit_frame: int | None = None,
+    a_entry_time: float | None = None,
+    b_exit_time: float | None = None,
 ) -> np.ndarray | None:
     cap = cv2.VideoCapture(str(video_path))
     cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
@@ -470,22 +501,66 @@ def _render_one_sample(
         bb = _draw_bbox_with_label(frame, bbox_b, _COLOR_B, f"T{track_b}", existing_labels)
         existing_labels.append(bb)
 
-    # 5. Entry/exit markers with collision-resolved labels
+    # 5. Entry/exit markers with ring NMS
+    a_pt = b_pt = None
+    if a_exit_frame is not None:
+        for p in traj_a:
+            if int(p[2]) == int(a_exit_frame):
+                a_pt = (int(p[0]), int(p[1]))
+                break
+    if b_entry_frame is not None:
+        for p in traj_b:
+            if int(p[2]) == int(b_entry_frame):
+                b_pt = (int(p[0]), int(p[1]))
+                break
+    a_pt, b_pt = _place_ring_pair(a_pt, b_pt, min_separation=30.0)
+
     a_label = f"A out f={a_exit_frame}" if a_exit_frame is not None else "A out f=?"
     b_label = f"B in f={b_entry_frame}" if b_entry_frame is not None else "B in f=?"
-    _draw_frame_point_label(frame, traj_a, a_exit_frame, _COLOR_A, a_label, existing_labels)
-    _draw_frame_point_label(frame, traj_b, b_entry_frame, _COLOR_B, b_label, existing_labels)
+    if a_pt:
+        cv2.circle(frame, a_pt, 12, _COLOR_A, 3)
+        cv2.circle(frame, a_pt, 4, _COLOR_A, -1)
+        _draw_badge_label(frame, a_label, a_pt[0] + 16, a_pt[1] + 5, _COLOR_A)
+    if b_pt:
+        cv2.circle(frame, b_pt, 12, _COLOR_B, 3)
+        cv2.circle(frame, b_pt, 4, _COLOR_B, -1)
+        _draw_badge_label(frame, b_label, b_pt[0] + 16, b_pt[1] + 5, _COLOR_B)
 
     # 6. HUD panel
     title = f"PET Sample {event_idx + 1}/{total_events}  ·  CSV row {csv_row}"
     timing_lines = [f"PET = {pet_val:.3f}s"]
-    if a_exit_time is not None and b_entry_time is not None:
+    # Determine which branch computed PET and show the correct formula.
+    # Branch A (standard): A clears first, then B enters → (B_entry - A_exit)
+    # Branch B: B clears first, then A enters → (A_entry - B_exit)
+    shown_arith = False
+    if (
+        a_exit_frame is not None
+        and b_entry_frame is not None
+        and a_exit_time is not None
+        and b_entry_time is not None
+        and int(a_exit_frame) < int(b_entry_frame)
+    ):
+        frames = int(b_entry_frame) - int(a_exit_frame)
         timing_lines.append(f"  = B_in({b_entry_time:.2f}s) − A_out({a_exit_time:.2f}s)")
-    if a_exit_frame is not None and b_entry_frame is not None:
-        timing_lines.append(
-            f"  = f{b_entry_frame} − f{a_exit_frame}  "
-            f"({int(b_entry_frame) - int(a_exit_frame)} frames)"
-        )
+        timing_lines.append(f"  = f{b_entry_frame} − f{a_exit_frame}  ({frames}f)")
+        shown_arith = True
+    elif (
+        a_entry_frame is not None
+        and b_exit_frame is not None
+        and a_entry_time is not None
+        and b_exit_time is not None
+        and int(b_exit_frame) < int(a_entry_frame)
+    ):
+        frames = int(a_entry_frame) - int(b_exit_frame)
+        timing_lines.append(f"  = A_in({a_entry_time:.2f}s) − B_out({b_exit_time:.2f}s)")
+        timing_lines.append(f"  = f{a_entry_frame} − f{b_exit_frame}  ({frames}f)")
+        shown_arith = True
+    if not shown_arith:
+        a_out_s = f"f={a_exit_frame}" if a_exit_frame is not None else "?"
+        b_in_s = f"f={b_entry_frame}" if b_entry_frame is not None else "?"
+        timing_lines.append(f"  A_out {a_out_s}, B_in {b_in_s}")
+        timing_lines.append("  (see CSV for branch)")
+
     metadata_lines = [
         f"Frame: {frame_idx}",
         f"Grid:  {grid_cell}",
@@ -595,6 +670,10 @@ def render_pet_samples(
             b_entry_frame=_gi(row.get("track_b_entry_frame")),
             a_exit_time=_gf(row.get("track_a_exit_time_sec")),
             b_entry_time=_gf(row.get("track_b_entry_time_sec")),
+            a_entry_frame=_gi(row.get("track_a_entry_frame")),
+            b_exit_frame=_gi(row.get("track_b_exit_frame")),
+            a_entry_time=_gf(row.get("track_a_entry_time_sec")),
+            b_exit_time=_gf(row.get("track_b_exit_time_sec")),
         )
         if img is None:
             print(f"[pet_samples] skip event {rank}: frame {frame_idx} unreadable")
