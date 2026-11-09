@@ -234,14 +234,27 @@ PR #76 title+body were updated in Phase 0 (`89a2e10` diff confirmed the labels).
 
 ## Phase 6 — Post-merge verification
 
-- [ ] Fresh clone of the merged branch. Record SHA, config, video
+- [x] Fresh clone of the merged branch. Record SHA, config, video
       hash, FPS, library versions.
-- [ ] Re-run on the same 300-frame segment with the same config.
-- [ ] Confirm 12 events (or document the delta if not).
-- [ ] Confirm 0 NaN in `track_b_exit_time_sec`.
-- [ ] Confirm stage labels match the reconciled names.
+- [x] Re-run on the same 300-frame segment with the same config.
+- [x] Confirm 12 events (or document the delta if not).
+- [x] Confirm 0 NaN in `track_b_exit_time_sec`.
+- [x] Confirm stage labels match the reconciled names.
 - [ ] (Optional, only after Phase 0–5 clean) 1000-frame run for
       robustness — same config, record SHA.
+
+**Verdict: PASS.** Post-merge verification on `freeze/class-colors` at tip `6684abf89b7c8e4ee8cf96247c8e081da21c413d`:
+
+- **Both fixes present in merged tree** — `begin(6)`, stage labels `Grid Assignment` / `Gate + PET Event Computation`, and `track_b_exit_time_sec: float(b_exit / fps)` all confirmed via AST.
+- **300-frame run exit 0** in 456.9s (CPU).
+- **12 PET events** — identical to pre-merge count.
+- **0/12 NaN** in `track_b_exit_time_sec` — PR #78 fix holds on merged code.
+- **0/12 arithmetic mismatches** — `track_b_exit_time_sec == track_b_exit_frame / fps` on every row.
+- **Stage labels from merged source AST** exactly match the six canonical names, in order.
+
+**Verification bug in the first pass:** the initial regex-based label check used `\s{2,}` as a boundary, but labels longer than 18 chars (the width the `f"{name:<18}"` format pads to) have no interior padding, so the regex captured the detail column into the label. Re-verified against source AST — deterministic, no stdout parsing. Same class of error as the earlier SHA-prefix bug: the verification code, not the pipeline.
+
+**Optional 1000-frame robustness run deferred** — the current evidence (12 events, identical across pre-merge and post-merge, arithmetic exact, 0 NaN, labels correct) is sufficient for the release-verification scope. A larger-N robustness run belongs with the future geometry work (`docs/PET_ZONE_TODO_2026-11-09.md`) where ground-truth comparison is the point, not raw event count.
 
 ---
 
