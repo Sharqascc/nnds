@@ -118,3 +118,107 @@ def test_none_preservation(a_entry, a_exit, b_entry, b_exit):
         assert a_exit is None
     if b_frame is None:
         assert b_entry is None
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# _frame_point invariants
+# ═══════════════════════════════════════════════════════════════════════
+#
+# _frame_point(traj, frame_idx) returns the (x, y) coords of the first
+# point in `traj` whose int(truncated) frame equals int(frame_idx), or
+# None if no such point exists. It is used to place the A/B ring markers
+# on the sample image at the frame the branch logic selected.
+
+_COORD = st.floats(min_value=-10000, max_value=10000, allow_nan=False, allow_infinity=False)
+_FLOAT_FRAME = st.floats(min_value=0, max_value=10000, allow_nan=False, allow_infinity=False)
+_TRAJ_PT_INT = st.tuples(_COORD, _COORD, _FRAME)
+_TRAJ_PT_FLOAT = st.tuples(_COORD, _COORD, _FLOAT_FRAME)
+_TRAJ_INT = st.lists(_TRAJ_PT_INT, min_size=0, max_size=50)
+_TRAJ_FLOAT = st.lists(_TRAJ_PT_FLOAT, min_size=0, max_size=50)
+
+
+@pytest.mark.property
+@given(traj=_TRAJ_INT, frame=_FRAME_OR_NONE)
+def test_hit_iff_present(traj, frame):
+    """_frame_point returns non-None iff some point matches the frame."""
+    from src.analysis.visualization.pet_samples import _frame_point
+
+    if frame is None:
+        assert _frame_point(traj, frame) is None
+        return
+    has_match = any(int(p[2]) == int(frame) for p in traj)
+    result = _frame_point(traj, frame)
+    assert (result is not None) == has_match, (
+        f"traj={traj}, frame={frame}, has_match={has_match}, result={result}"
+    )
+
+
+@pytest.mark.property
+@given(traj=_TRAJ_INT, frame=_FRAME)
+def test_result_matches_first_matching_point(traj, frame):
+    """When multiple points share a frame, the FIRST one wins."""
+    from src.analysis.visualization.pet_samples import _frame_point
+
+    matches = [p for p in traj if int(p[2]) == frame]
+    result = _frame_point(traj, frame)
+    if not matches:
+        assert result is None
+    else:
+        first = matches[0]
+        assert result == (int(first[0]), int(first[1])), (
+            f"traj={traj}, frame={frame}, result={result}, "
+            f"expected first match {(int(first[0]), int(first[1]))}"
+        )
+
+
+@pytest.mark.property
+@given(traj=_TRAJ_INT)
+def test_none_frame_returns_none(traj):
+    """frame_idx=None always returns None regardless of trajectory."""
+    from src.analysis.visualization.pet_samples import _frame_point
+
+    assert _frame_point(traj, None) is None
+
+
+@pytest.mark.property
+@given(frame=_FRAME_OR_NONE)
+def test_empty_traj_returns_none(frame):
+    """Empty trajectory always returns None regardless of frame."""
+    from src.analysis.visualization.pet_samples import _frame_point
+
+    assert _frame_point([], frame) is None
+
+
+@pytest.mark.property
+@given(traj=_TRAJ_FLOAT, frame=_FRAME)
+def test_float_frames_truncated_for_comparison(traj, frame):
+    """Float frames are compared as int(p[2]) == int(frame_idx)."""
+    from src.analysis.visualization.pet_samples import _frame_point
+
+    # Query a frame that may match some truncated float
+    result = _frame_point(traj, frame)
+    # Whether None or non-None, verify the invariant: result is
+    # consistent with the truncation-based matching rule
+    has_match = any(int(p[2]) == int(frame) for p in traj)
+    assert (result is not None) == has_match
+
+
+@pytest.mark.property
+@given(
+    traj=st.lists(_TRAJ_PT_INT, min_size=1, max_size=20),
+    frame_offset=st.integers(min_value=0, max_value=10000),
+)
+def test_returned_coords_are_truncated_ints(traj, frame_offset):
+    """If not None, returned coords are int(x), int(y) of some trajectory point."""
+    from src.analysis.visualization.pet_samples import _frame_point
+
+    # Pick a frame that certainly exists in traj
+    target_frame = int(traj[0][2])
+    result = _frame_point(traj, target_frame)
+    assert result is not None
+    # Must be (int(x), int(y)) for some matching point
+    expected_coords = {(int(p[0]), int(p[1])) for p in traj if int(p[2]) == target_frame}
+    assert result in expected_coords
+    # Must be a tuple of ints (not floats, not numpy)
+    assert isinstance(result[0], int)
+    assert isinstance(result[1], int)
