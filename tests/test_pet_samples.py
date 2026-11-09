@@ -854,3 +854,167 @@ def test_render_branch_b_event_end_to_end(
         n=1,
     )
     assert len(paths) == 1
+
+
+# ── Metadata builder tests ──────────────────────────────────────────────
+# These catch the class of bug where missing commas between adjacent
+# f-strings silently concatenate the entire metadata list into one
+# unreadable line. They also assert exact labels for each branch.
+
+
+def test_build_metadata_lines_returns_seven_separate_items():
+    """Each logical line must be a separate list element."""
+    from src.analysis.visualization.pet_samples import _build_metadata_lines
+
+    lines = _build_metadata_lines(
+        video_source="test.mp4",
+        frame_idx=80,
+        grid_cell="CELL_AY_7",
+        conflict_type="side_swipe",
+        track_a=33,
+        track_b=28,
+        a_mark_frame=80,
+        a_mark_label="A in",
+        b_mark_frame=43,
+        b_mark_label="B out",
+    )
+    assert isinstance(lines, list)
+    assert len(lines) == 7, (
+        f"expected 7 separate lines, got {len(lines)}: {lines}. "
+        f"Missing commas between f-strings cause concatenation into one item."
+    )
+    # Each line must be its own logical unit
+    assert lines[0].startswith("Video:")
+    assert lines[1].startswith("Frame:")
+    assert lines[2].startswith("Grid:")
+    assert lines[3].startswith("Type:")
+    assert lines[4].startswith("Pair:")
+    assert lines[5].startswith("A in:")
+    assert lines[6].startswith("B out:")
+
+
+def test_build_metadata_lines_branch_b_exact_strings():
+    """Branch B: labels must be 'A in' / 'B out', frames 80 / 43."""
+    from src.analysis.visualization.pet_samples import _build_metadata_lines
+
+    lines = _build_metadata_lines(
+        video_source="GITI_traffic_video",
+        frame_idx=80,
+        grid_cell="CELL_AY_7",
+        conflict_type="side_swipe",
+        track_a=33,
+        track_b=28,
+        a_mark_frame=80,
+        a_mark_label="A in",
+        b_mark_frame=43,
+        b_mark_label="B out",
+    )
+    # Exact strings must appear
+    assert "A in: f=80" in lines, f"A in label missing: {lines}"
+    assert "B out: f=43" in lines, f"B out label missing: {lines}"
+    # Wrong labels must NOT appear
+    assert not any("A out" in line for line in lines), (
+        f"stale 'A out' in branch-B metadata: {lines}"
+    )
+    assert not any("B in:" in line for line in lines), f"stale 'B in' in branch-B metadata: {lines}"
+
+
+def test_build_metadata_lines_branch_a_exact_strings():
+    """Branch A: labels must be 'A out' / 'B in', frames 105 / 25."""
+    from src.analysis.visualization.pet_samples import _build_metadata_lines
+
+    lines = _build_metadata_lines(
+        video_source="GITI_traffic_video",
+        frame_idx=100,
+        grid_cell="CELL_XY_1",
+        conflict_type="rear_end",
+        track_a=10,
+        track_b=20,
+        a_mark_frame=105,
+        a_mark_label="A out",
+        b_mark_frame=25,
+        b_mark_label="B in",
+    )
+    assert "A out: f=105" in lines, f"A out missing: {lines}"
+    assert "B in: f=25" in lines, f"B in missing: {lines}"
+    assert not any("A in:" in line for line in lines), f"stale 'A in': {lines}"
+    assert not any("B out" in line for line in lines), f"stale 'B out': {lines}"
+
+
+def test_build_metadata_lines_missing_frames_use_question_mark():
+    """When mark_frame is None, the line shows f=? not f=None."""
+    from src.analysis.visualization.pet_samples import _build_metadata_lines
+
+    lines = _build_metadata_lines(
+        video_source="x.mp4",
+        frame_idx=10,
+        grid_cell="C1",
+        conflict_type="t1",
+        track_a=1,
+        track_b=2,
+        a_mark_frame=None,
+        a_mark_label="A out",
+        b_mark_frame=None,
+        b_mark_label="B in",
+    )
+    assert "A out: f=?" in lines
+    assert "B in: f=?" in lines
+    assert not any("f=None" in line for line in lines)
+
+
+def test_build_metadata_lines_empty_video_source():
+    """Empty video_source renders as '?' not 'Video: '."""
+    from src.analysis.visualization.pet_samples import _build_metadata_lines
+
+    lines = _build_metadata_lines(
+        video_source="",
+        frame_idx=1,
+        grid_cell="C1",
+        conflict_type="t",
+        track_a=1,
+        track_b=2,
+        a_mark_frame=1,
+        a_mark_label="A out",
+        b_mark_frame=2,
+        b_mark_label="B in",
+    )
+    assert lines[0] == "Video: ?", f"expected 'Video: ?', got {lines[0]!r}"
+
+
+def test_build_metadata_lines_full_branch_b_event_flow():
+    """End-to-end: _branch_frames → _build_metadata_lines for the bug event."""
+    from src.analysis.visualization.pet_samples import (
+        _branch_frames,
+        _build_metadata_lines,
+    )
+
+    # The exact event the user reported (frame 80, T33 × T28, PET 1.233)
+    a_frame, b_frame, a_label, b_label = _branch_frames(
+        a_entry=80,
+        a_exit=105,
+        b_entry=25,
+        b_exit=43,
+    )
+    # _branch_frames must resolve to branch B
+    assert a_frame == 80
+    assert b_frame == 43
+    assert a_label == "A in"
+    assert b_label == "B out"
+
+    # And the metadata lines must reflect those exactly
+    lines = _build_metadata_lines(
+        video_source="GITI_traffic_video",
+        frame_idx=80,
+        grid_cell="CELL_AY_7",
+        conflict_type="side_swipe",
+        track_a=33,
+        track_b=28,
+        a_mark_frame=a_frame,
+        a_mark_label=a_label,
+        b_mark_frame=b_frame,
+        b_mark_label=b_label,
+    )
+    assert "A in: f=80" in lines
+    assert "B out: f=43" in lines
+    assert not any("A out" in line for line in lines)
+    assert not any("B in:" in line for line in lines)

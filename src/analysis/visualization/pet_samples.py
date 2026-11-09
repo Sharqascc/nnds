@@ -480,6 +480,38 @@ def _draw_hud_panel(
 # ══════════════════════════════════════════════════════════════════════════
 
 
+def _build_metadata_lines(
+    video_source: str,
+    frame_idx: int,
+    grid_cell: str,
+    conflict_type: str,
+    track_a: int,
+    track_b: int,
+    a_mark_frame: int | None,
+    a_mark_label: str,
+    b_mark_frame: int | None,
+    b_mark_label: str,
+) -> list[str]:
+    """Build the CONTEXT panel lines for a PET sample image.
+
+    Extracted from ``_render_one_sample`` so the exact output strings can
+    be tested. Each entry must be a separate string; concatenating them
+    via missing commas (adjacent string literals) merges the whole panel
+    into one unreadable line.
+    """
+    a_frame_s = str(a_mark_frame) if a_mark_frame is not None else "?"
+    b_frame_s = str(b_mark_frame) if b_mark_frame is not None else "?"
+    return [
+        f"Video: {video_source or '?'}",
+        f"Frame: {frame_idx}",
+        f"Grid:  {grid_cell}",
+        f"Type:  {conflict_type}",
+        f"Pair:  T{track_a} ↔ T{track_b}",
+        f"{a_mark_label}: f={a_frame_s}",
+        f"{b_mark_label}: f={b_frame_s}",
+    ]
+
+
 def _render_one_sample(
     video_path: Path,
     frame_idx: int,
@@ -598,15 +630,18 @@ def _render_one_sample(
         timing_lines.append(f"  A_out {a_out_s}, B_in {b_in_s}")
         timing_lines.append("  (see CSV for branch)")
 
-    metadata_lines = [
-        f"Video: {video_source or '?'}"
-        f"Frame: {frame_idx}"
-        f"Grid:  {grid_cell}"
-        f"Type:  {conflict_type}"
-        f"Pair:  T{track_a} ↔ T{track_b}"
-        f"{a_mark_label}: f={a_mark_frame if a_mark_frame is not None else '?'}"
-        f"{b_mark_label}: f={b_mark_frame if b_mark_frame is not None else '?'}"
-    ]
+    metadata_lines = _build_metadata_lines(
+        video_source=video_source,
+        frame_idx=frame_idx,
+        grid_cell=grid_cell,
+        conflict_type=conflict_type,
+        track_a=track_a,
+        track_b=track_b,
+        a_mark_frame=a_mark_frame,
+        a_mark_label=a_mark_label,
+        b_mark_frame=b_mark_frame,
+        b_mark_label=b_mark_label,
+    )
 
     frame = _draw_hud_panel(
         frame,
