@@ -1047,6 +1047,7 @@ def run_uvh_coco_fused_grid_pet(
                         "track_b_entry_frame": int(b_entry),
                         "track_b_entry_time_sec": float(b_entry / fps),
                         "track_b_exit_frame": int(b_exit),
+                        "track_b_exit_time_sec": float(b_exit / fps),
                         "world_traj_i": f"track_{first_id}",
                         "world_traj_j": f"track_{second_id}",
                         "traj_a_json": _track_to_json(
@@ -1093,6 +1094,7 @@ def run_uvh_coco_fused_grid_pet(
             "track_b_entry_frame",
             "track_b_entry_time_sec",
             "track_b_exit_frame",
+            "track_b_exit_time_sec",
             "world_traj_i",
             "world_traj_j",
             "traj_a_json",
