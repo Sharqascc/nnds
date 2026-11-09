@@ -70,3 +70,46 @@ def test_run_pipeline_module_does_not_load_heavy_modules():
     assert r.returncode == 0, f"probe failed: {r.stderr}"
     heavy = r.stdout.strip().split("HEAVY=", 1)[1]
     assert heavy == "", f"run_pipeline pulled in heavy modules at import: {heavy}"
+
+
+def test_mep_is_traffic_analyzer():
+    """The MEP is src/pipeline/traffic_analyzer.py (console script `nnds`).
+
+    Guards against accidental rename/move of the module or reassignment of
+    the `nnds` console script — both of which would break every caller of
+    the CLI (including the 9 test files that import its public surface).
+
+    Note: src/pipeline/__init__.py intentionally re-exports nothing (see
+    its docstring). There is no production `import src.pipeline` consumer
+    of the MEP; the only entry is the `nnds` console script.
+    """
+    import re
+
+    pyproject_text = (REPO / "pyproject.toml").read_text()
+    m = re.search(
+        r'^\s*nnds\s*=\s*"([^"]+)"\s*$',
+        pyproject_text,
+        re.MULTILINE,
+    )
+    assert m, "nnds entry missing from pyproject.toml [project.scripts]"
+    target = m.group(1)
+
+    assert target == "pipeline.traffic_analyzer:main", (
+        f"MEP drifted: `nnds` -> {target!r}. "
+        f"Update docs/ENTRYPOINT_TODO.md and dependent modules before "
+        f"changing this."
+    )
+    assert (REPO / "src" / "pipeline" / "traffic_analyzer.py").is_file()
+
+    # Runtime check: the MEP module must expose `main` (console entry) and
+    # `parse_args` (test surface). Subprocess so we don't pull cv2/pandas
+    # into the pytest interpreter — matches this file's isolation style.
+    code = (
+        "from src.pipeline.traffic_analyzer import main, parse_args; "
+        "assert callable(main); "
+        "assert callable(parse_args); "
+        "print('OK')"
+    )
+    r = _run_probe(code)
+    assert r.returncode == 0, f"src.pipeline.traffic_analyzer failed to import: {r.stderr}"
+    assert "OK" in r.stdout, r.stdout

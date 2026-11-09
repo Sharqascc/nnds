@@ -957,7 +957,7 @@ def main():
 
     # Optional post-processing step: annotated MP4. Runs after the CSV is
     # written, so a render failure does not lose the primary output. The
-    # numeric stage markers ([1/5] … [5/5]) belong to the backend and are
+    # numeric stage markers ([1/6] … [6/6]) belong to the backend and are
     # unchanged; the render prints its own line.
     if getattr(args, "out_video", None):
         _render_video(args)
