@@ -12,7 +12,7 @@ installed in the environment that runs the generator.
 
 ## `src.pipeline.traffic_analyzer`
 
-Traffic analyzer: BEV calibration, speed estimation, PET event extraction.
+NNDS main entry point (MEP).
 
 ### Classes
 

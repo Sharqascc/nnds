@@ -1,4 +1,18 @@
-"""Traffic analyzer: BEV calibration, speed estimation, PET event extraction."""
+"""NNDS main entry point (MEP).
+
+Console command:
+    nnds
+
+Implementation:
+    src/pipeline/traffic_analyzer.py:main
+
+This module is the primary user-facing CLI for NNDS. It detects vehicles and
+pedestrians, tracks them, projects detections into bird's-eye view, and
+computes PET safety events.
+
+`nnds-run` (`scripts/run_pipeline.py`) is a separate preflight and dispatch
+wrapper around this MEP; it is not the MEP itself.
+"""
 
 from __future__ import annotations
 
@@ -644,6 +658,12 @@ def _build_parser() -> argparse.ArgumentParser:
     """Build the CLI parser for `nnds`. All flags documented and grouped."""
     epilog = (
         "examples:\n"
+        "  # Main entry point (MEP)\n"
+        "  nnds --video path/to/video.mp4 --detector uvh-coco-fused ...\n"
+        "\n"
+        "  # Optional wrapper that prepares models before dispatching to nnds\n"
+        "  nnds-run --video path/to/video.mp4 ...\n"
+        "\n"
         "  # Fast sanity check (no model weights required)\n"
         "  nnds --demo\n"
         "\n"
@@ -660,9 +680,9 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="nnds",
         description=(
-            "NNDS: detect vehicles and pedestrians, track them, project to "
-            "bird's-eye view, and compute PET (post-encroachment time) "
-            "safety events."
+            "NNDS main entry point (MEP): detect vehicles and pedestrians, "
+            "track them, project to bird's-eye view, and compute PET "
+            "(post-encroachment time) safety events."
         ),
         epilog=epilog,
         formatter_class=argparse.RawDescriptionHelpFormatter,

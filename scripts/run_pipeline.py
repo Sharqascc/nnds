@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 """
-Main entry point for the NNDS Intersection Safety Pipeline.
+Preflight and dispatch wrapper for the NNDS main entry point (MEP).
 
-Prepares model weights, applies the global seed, and dispatches to the
-analyzer in src/pipeline/traffic_analyzer.py (or the installed
-`pipeline.traffic_analyzer` module if this repository is pip-installed).
+Console command:
+    nnds-run
+
+MEP:
+    nnds
+    src/pipeline/traffic_analyzer.py:main
+
+This wrapper prepares model weights, applies the global seed, optionally
+estimates time of day, and dispatches to the MEP. It is not the MEP itself.
 
 Usage:
     python scripts/run_pipeline.py --video path/to/video.mp4 [options]
