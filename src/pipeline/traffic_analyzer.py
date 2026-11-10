@@ -969,7 +969,9 @@ def main(argv: list[str] | None = None) -> int:
     """
     logging.basicConfig(level=logging.INFO)
 
-    args = parse_args(argv)
+    # Preserve compatibility with tests and callers that replace
+    # `parse_args` with a zero-argument callable.
+    args = parse_args() if argv is None else parse_args(argv)
     _validate_args(args)
 
     if getattr(args, "self_check", False) or getattr(args, "dry_run", False):
