@@ -11,6 +11,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+
 from src.pipeline.traffic_analyzer import main
 
 REPO = Path(__file__).resolve().parents[1]
