@@ -1014,8 +1014,8 @@ def main(argv: list[str] | None = None) -> int:
 
 def _run_self_check(args: argparse.Namespace) -> int:
     """Run preflight checks and return the appropriate exit code."""
-    from importlib import import_module
     import json
+    from importlib import import_module
 
     preflight = None
     for candidate in ("pipeline.preflight", "src.pipeline.preflight", "preflight"):
