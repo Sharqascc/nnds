@@ -12,6 +12,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from src.pipeline.traffic_analyzer import main
+
 REPO = Path(__file__).resolve().parents[1]
 
 
@@ -115,3 +117,41 @@ def test_detector_choices_enforced():
     combined = r.stdout + r.stderr
     # argparse's choices error wording
     assert "invalid choice" in combined.lower() or "invalid" in combined.lower()
+
+
+def test_main_forwards_time_of_day(monkeypatch, tmp_path):
+    """Ensure --time-of-day reaches run_pipeline and is forwarded onward."""
+    import types
+
+    video_path = tmp_path / "video.mp4"
+    video_path.write_bytes(b"")
+    out_csv = tmp_path / "events.csv"
+
+    captured = {}
+
+    def fake_run_pipeline(args):
+        captured["time_of_day"] = args.time_of_day
+        captured["video"] = args.video
+        captured["out_csv"] = args.out_csv
+        return 0
+
+    monkeypatch.setattr(
+        "src.pipeline.traffic_analyzer.run_pipeline",
+        fake_run_pipeline,
+    )
+
+    exit_code = main(
+        [
+            "--video",
+            str(video_path),
+            "--out-csv",
+            str(out_csv),
+            "--time-of-day",
+            "morning",
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["time_of_day"] == "morning"
+    assert captured["video"] == str(video_path)
+    assert captured["out_csv"] == str(out_csv)
