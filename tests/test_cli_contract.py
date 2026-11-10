@@ -135,7 +135,7 @@ def test_main_forwards_time_of_day(monkeypatch, tmp_path):
         return 0
 
     monkeypatch.setattr(
-        "pipeline.traffic_analyzer.run_pipeline",
+        "src.pipeline.traffic_analyzer.run_pipeline",
         fake_run_pipeline,
     )
 
