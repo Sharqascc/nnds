@@ -526,13 +526,15 @@ def run_video_to_pet_fixed(
 def run_pipeline(args):
     """Execute the video-to-PET pipeline from parsed CLI args.
 
-    Restored after the a12d32e stub (see git log -p for context).
-    Forwards every CLI argument that maps to a run_video_to_pet kwarg.
+    Forwards every CLI argument that maps to a `run_video_to_pet` kwarg.
     """
     detector = str(getattr(args, "detector", "")).lower()
     if detector not in _SUPPORTED_DETECTORS:
         raise ValueError(f"Unsupported detector policy: {detector}")
-    g = lambda name, default=None: getattr(args, name, default)  # noqa: E731
+
+    def g(name, default=None):
+        return getattr(args, name, default)
+
     return run_video_to_pet(
         video_path=args.video,
         bev_config_path=g("bev_config") or "configs/bev_config.json",
@@ -550,9 +552,28 @@ def run_pipeline(args):
         max_frame_gap=g("max_gap", 5),
         max_spatial_jump=g("max_jump", 30.0),
         video_source=g("video_source"),
+        time_of_day_label=g("time_of_day"),
         gate_config_path=g("gate_config", "configs/gate_config.yaml"),
         show_progress=not g("no_progress", False),
     )
+
+
+def _validate_args(args: argparse.Namespace) -> None:
+    """Validate numeric CLI constraints before expensive pipeline setup."""
+    if getattr(args, "max_frames", None) is not None and args.max_frames < 1:
+        raise ValueError("--max-frames must be a positive integer.")
+
+    if getattr(args, "pet_threshold", 2.0) < 0:
+        raise ValueError("--pet-threshold must be non-negative.")
+
+    if getattr(args, "max_gap", 5) < 0:
+        raise ValueError("--max-gap must be non-negative.")
+
+    if getattr(args, "max_jump", 30.0) < 0:
+        raise ValueError("--max-jump must be non-negative.")
+
+    if getattr(args, "samples", 0) < 0:
+        raise ValueError("--samples must be non-negative.")
 
 
 def run_demo():
@@ -935,60 +956,30 @@ def _render_samples(args) -> None:
         print(f"   CSV was written to {out_csv_path}", file=sys.stderr)
 
 
-def main():
+def main(argv: list[str] | None = None) -> int:
+    """Run the NNDS video-to-PET CLI.
+
+    Args:
+        argv: Optional argument list. Defaults to `sys.argv[1:]`, matching
+            standard `argparse` behavior and making the CLI testable.
+
+    Returns:
+        Process exit code. Console-script entry points convert a returned
+        integer into the process exit code.
+    """
     logging.basicConfig(level=logging.INFO)
 
-    # argparse handles --version and --help natively (action="version" and
-    # the built-in help action both exit 0 before parse_args returns).
-    args = parse_args()
+    # Preserve compatibility with tests and callers that replace
+    # `parse_args` with a zero-argument callable.
+    args = parse_args() if argv is None else parse_args(argv)
+    _validate_args(args)
 
-    # --self-check and --dry-run: run preflight and exit.
     if getattr(args, "self_check", False) or getattr(args, "dry_run", False):
-        from importlib import import_module
-
-        # Try installed-package name first (src-layout installs as pipeline.*),
-        # then the source-tree name, then legacy bare name. Previously only
-        # the last two were tried, so an installed `nnds --self-check` failed
-        # with ModuleNotFoundError before printing anything.
-        preflight = None
-        for candidate in ("pipeline.preflight", "src.pipeline.preflight", "preflight"):
-            try:
-                preflight = import_module(candidate)
-                break
-            except ModuleNotFoundError:
-                continue
-        if preflight is None:
-            raise SystemExit(
-                "ERROR: could not locate preflight module "
-                "(tried pipeline.preflight, src.pipeline.preflight, preflight)"
-            )
-
-        # Resolve default config paths the same way run_pipeline() does. The
-        # raw args are None for bev/grid/out when the user did not pass them,
-        # which used to reach preflight where Path(None) raised TypeError.
-        # Also: the default gate config is YAML; preflight was parsing JSON.
-        report = preflight.run_checks(
-            video=args.video,
-            uvh_model=args.uvh_model,
-            yolo_weights=args.yolo_weights,
-            coco_person_model=args.coco_person_model,
-            rtdetr_weights=args.rtdetr_weights,
-            sam3_weights=args.sam3_weights,
-            bev_config=args.bev_config or "configs/bev_config.json",
-            grid_config=args.grid_config or "configs/GITI_grid_config.json",
-            gate_config=args.gate_config or "configs/gate_config.yaml",
-            out_csv=args.out_csv or "outputs/petevents_bev.csv",
-            device=args.device,
-            detector=args.detector,
-        )
-        import json as _json
-
-        print(_json.dumps(report.to_dict(), indent=2))
-        raise SystemExit(0 if report.ok else 1)
+        return _run_self_check(args)
 
     if getattr(args, "demo", False):
         run_demo()
-        return
+        return 0
 
     video = getattr(args, "video", None)
     if not video:
@@ -996,30 +987,69 @@ def main():
             "--video is required. Try --demo for a sample run, or "
             "--self-check to verify your environment."
         )
+
     if not Path(str(video)).exists():
         raise SystemExit(f"Video file not found: {video}")
 
-    # RT-DETR is accepted by argparse (parser compatibility) but the video
-    # pipeline for it is unimplemented. Reject up front with a clear message;
-    # previously run_video_to_pet raised NotImplementedError after loading
-    # models, wasting ~30s. Exception type and prefix preserved for tests.
+    # Preserve the existing early rejection: RT-DETR is parser-compatible
+    # but its video pipeline is not implemented.
     if args.detector == "rtdetr":
         raise NotImplementedError(
             "RT-DETR video pipeline is not implemented. "
             "Use --detector uvh-coco-fused, yolo-cpu, or sam3 instead."
         )
 
-    run_pipeline(args)
+    try:
+        run_pipeline(args)
+    except KeyboardInterrupt:
+        logging.getLogger(__name__).warning("Interrupted by user.")
+        return 130
 
-    # Optional post-processing step: annotated MP4. Runs after the CSV is
-    # written, so a render failure does not lose the primary output. The
-    # numeric stage markers ([1/6] … [6/6]) belong to the backend and are
-    # unchanged; the render prints its own line.
     if getattr(args, "out_video", None):
         _render_video(args)
 
     if getattr(args, "samples", 0) > 0:
         _render_samples(args)
+
+    return 0
+
+
+def _run_self_check(args: argparse.Namespace) -> int:
+    """Run preflight checks and return the appropriate exit code."""
+    import json
+    from importlib import import_module
+
+    preflight = None
+    for candidate in ("pipeline.preflight", "src.pipeline.preflight", "preflight"):
+        try:
+            preflight = import_module(candidate)
+            break
+        except ModuleNotFoundError:
+            continue
+
+    if preflight is None:
+        raise SystemExit(
+            "ERROR: could not locate preflight module "
+            "(tried pipeline.preflight, src.pipeline.preflight, preflight)"
+        )
+
+    report = preflight.run_checks(
+        video=args.video,
+        uvh_model=args.uvh_model,
+        yolo_weights=args.yolo_weights,
+        coco_person_model=args.coco_person_model,
+        rtdetr_weights=args.rtdetr_weights,
+        sam3_weights=args.sam3_weights,
+        bev_config=args.bev_config or "configs/bev_config.json",
+        grid_config=args.grid_config or "configs/GITI_grid_config.json",
+        gate_config=args.gate_config or "configs/gate_config.yaml",
+        out_csv=args.out_csv or "outputs/petevents_bev.csv",
+        device=args.device,
+        detector=args.detector,
+    )
+
+    print(json.dumps(report.to_dict(), indent=2))
+    return 0 if report.ok else 1
 
 
 if __name__ == "__main__":
