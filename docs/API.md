@@ -32,7 +32,7 @@ BEV calibration + speed estimation helper.
 ### Functions
 
 - **`interactive_detector(frame, model)`** - (no description)
-- **`main()`** - (no description)
+- **`main(argv: list[str] | None = None) -> int`** - Run the NNDS video-to-PET CLI.
 - **`parse_args(argv = None)`** - (no description)
 - **`run_demo()`** - (no description)
 - **`run_pipeline(args)`** - Execute the video-to-PET pipeline from parsed CLI args.
