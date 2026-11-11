@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 import numpy as np
 import pytest
-from datetime import timedelta
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
