@@ -419,6 +419,7 @@ def run_video_to_pet(
     time_of_day_label=None,
     gate_config_path="configs/gate_config.yaml",
     show_progress: bool = True,
+    backend_loader=None,
 ):
     if not Path(str(video_path)).exists():
         raise SystemExit(f"Video file not found: {video_path}")
@@ -429,82 +430,60 @@ def run_video_to_pet(
             f"Unsupported detector: {detector!r}. Supported: {sorted(_SUPPORTED_DETECTORS)}"
         )
 
-    if detector == "sam3":
-        sam3_mod = _import_either("analysis.grid_trajectory.sam3_grid_pet")
-
-        # sam3_grid_pet has no `sam3_weights_path`/`video_path` kwargs; it
-        # takes a project_root plus paths resolved as `root / rel_path`.
-        # Require the weights up front (matching yolo-cpu and uvh-coco-fused)
-        # instead of silently passing None into a function that can't accept it.
-        if not Path(str(sam3_weights_path)).exists():
-            raise FileNotFoundError(f"SAM3 weights not found: {sam3_weights_path}")
-
-        # `Path("/root") / Path("/abs/path")` returns the absolute path, so
-        # passing absolute paths here is safe and avoids cwd assumptions.
-        result = sam3_mod.run_sam3_grid_pet(
-            project_root=str(Path.cwd()),
-            video_rel_path=str(Path(video_path).resolve()),
-            sam3_rel_path=str(Path(sam3_weights_path).resolve()),
-            grid_rel_path=str(Path(grid_config_path).resolve()),
-            bev_rel_path=str(Path(bev_config_path).resolve()),
-            pet_threshold=pet_threshold,
-            max_frames=max_frames,
+    if detector != "uvh-coco-fused":
+        raise ValueError(
+            f"Unsupported detector: {detector!r}. "
+            "Only 'uvh-coco-fused' is supported."
         )
 
-    elif detector == "yolo-cpu":
-        if not Path(str(yolo_weights_path)).exists():
-            raise FileNotFoundError(f"YOLO weights not found: {yolo_weights_path}")
-        yolo_mod = _import_either("analysis.grid_trajectory.yolo_cpu_grid_pet")
-
-        result = yolo_mod.run_yolo_cpu_grid_pet(
-            video_path=str(video_path),
-            weights_path=str(yolo_weights_path),
-            output_csv_path=str(out_csv_path),
-            max_frames=max_frames,
-            imgsz=480,
-            conf=0.25,
+    if not Path(str(coco_person_model_path)).exists():
+        raise FileNotFoundError(
+            f"COCO person model not found: {coco_person_model_path}"
         )
 
-    elif detector == "uvh-coco-fused":
-        if not Path(str(coco_person_model_path)).exists():
-            raise FileNotFoundError(f"COCO person model not found: {coco_person_model_path}")
-        if not Path(str(uvh_model_path)).exists():
-            raise FileNotFoundError(f"UVH model not found: {uvh_model_path}")
-        uvh_mod = _import_either("analysis.grid_trajectory.uvh_coco_fused_grid_pet")
-
-        result = uvh_mod.run_uvh_coco_fused_grid_pet(
-            video_path=str(video_path),
-            bev_config_path=str(bev_config_path),
-            grid_config_path=str(grid_config_path),
-            output_csv_path=str(out_csv_path),
-            pet_threshold=pet_threshold,
-            max_frames=max_frames,
-            uvh_model_path=str(uvh_model_path),
-            coco_person_model_path=str(coco_person_model_path),
-            uvh_conf=uvh_conf,
-            coco_person_conf=coco_person_conf,
-            person_suppress_overlap=person_suppress_overlap,
-            imgsz=imgsz,
-            device=device,
-            backend=backend,
-            max_frame_gap=max_frame_gap,
-            max_spatial_jump=max_spatial_jump,
-            prediction_tolerance=prediction_tolerance,
-            video_source=video_source,
-            time_of_day_label=time_of_day_label,
-            gate_config_path=str(gate_config_path),
-            show_progress=show_progress,
+    if not Path(str(uvh_model_path)).exists():
+        raise FileNotFoundError(
+            f"UVH model not found: {uvh_model_path}"
         )
 
-    elif detector == "rtdetr":
-        if not Path(str(rtdetr_weights_path)).exists():
-            raise FileNotFoundError(f"RT-DETR weights not found: {rtdetr_weights_path}")
-        raise NotImplementedError("RT-DETR video pipeline is not implemented")
+    loader = backend_loader or _import_either
+    uvh_mod = loader(
+        "analysis.grid_trajectory.uvh_coco_fused_grid_pet"
+    )
 
-    else:
-        raise ValueError(f"Unsupported detector: {detector}")
+    result = uvh_mod.run_uvh_coco_fused_grid_pet(
+        video_path=str(video_path),
+        bev_config_path=str(bev_config_path),
+        grid_config_path=str(grid_config_path),
+        output_csv_path=str(out_csv_path),
+        pet_threshold=pet_threshold,
+        max_frames=max_frames,
+        uvh_model_path=str(uvh_model_path),
+        coco_person_model_path=str(coco_person_model_path),
+        uvh_conf=uvh_conf,
+        coco_person_conf=coco_person_conf,
+        person_suppress_overlap=person_suppress_overlap,
+        imgsz=imgsz,
+        device=device,
+        backend=backend,
+        max_frame_gap=max_frame_gap,
+        max_spatial_jump=max_spatial_jump,
+        prediction_tolerance=prediction_tolerance,
+        video_source=video_source,
+        time_of_day_label=time_of_day_label,
+        gate_config_path=str(gate_config_path),
+        show_progress=show_progress,
+    )
 
     events = _extract_events(result)
+
+    if not events:
+        warnings.warn(
+            "No PET events detected.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+
     return _write_events_to_csv(events, out_csv_path)
 
 

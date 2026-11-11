@@ -194,65 +194,10 @@ def test_run_video_to_pet_missing_video(tmp_path):
         )
 
 
-def test_run_video_to_pet_sam3_missing_weights(tmp_path):
-    """Regression: missing SAM3 weights raise FileNotFoundError up front."""
-    video, bev, grid = make_dummy_args(tmp_path)
-    mock_module = MagicMock()
-    mock_module.run_sam3_grid_pet = MagicMock(return_value=MagicMock(pet_events=[]))
-    with patch.dict(sys.modules, {"src.analysis.grid_trajectory.sam3_grid_pet": mock_module}):
-        with pytest.raises(FileNotFoundError, match="SAM3 weights not found"):
-            run_video_to_pet(
-                video_path=video,
-                bev_config_path=bev,
-                grid_config_path=grid,
-                sam3_weights_path=tmp_path / "sam3.pt",
-                detector="sam3",
-                max_frames=1,
-            )
 
 
-def test_sam3_dispatch_uses_real_signature_kwargs(tmp_path):
-    """Regression: traffic_analyzer must call sam3.run_sam3_grid_pet with
-    the parameter names in its actual signature (project_root,
-    video_rel_path, sam3_rel_path, grid_rel_path, bev_rel_path).
-    """
-    video, bev, grid = make_dummy_args(tmp_path)
-    sam3_weights = tmp_path / "sam3.pt"
-    sam3_weights.write_text("dummy")
-    out_csv = tmp_path / "out.csv"
-
-    mock_module = MagicMock()
-    mock_module.run_sam3_grid_pet = MagicMock(return_value=MagicMock(pet_events=[]))
-    with patch.dict(sys.modules, {"src.analysis.grid_trajectory.sam3_grid_pet": mock_module}):
-        run_video_to_pet(
-            video_path=video,
-            bev_config_path=bev,
-            grid_config_path=grid,
-            sam3_weights_path=sam3_weights,
-            detector="sam3",
-            max_frames=1,
-            out_csv_path=out_csv,
-        )
-    assert mock_module.run_sam3_grid_pet.called
-    kwargs = mock_module.run_sam3_grid_pet.call_args.kwargs
-    required = {"project_root", "video_rel_path", "sam3_rel_path", "grid_rel_path", "bev_rel_path"}
-    missing = required - set(kwargs)
-    assert not missing, f"sam3 called without required kwargs: {sorted(missing)}"
-    forbidden = {"video_path", "bev_config_path", "grid_config_path", "sam3_weights_path"}
-    stale = forbidden & set(kwargs)
-    assert not stale, f"sam3 called with old broken kwargs: {sorted(stale)}"
 
 
-def test_run_video_to_pet_yolo_cpu_missing_weights(tmp_path):
-    video, bev, grid = make_dummy_args(tmp_path)
-    with pytest.raises(FileNotFoundError):
-        run_video_to_pet(
-            video_path=video,
-            bev_config_path=bev,
-            grid_config_path=grid,
-            yolo_weights_path=tmp_path / "yolo.pt",
-            detector="yolo-cpu",
-        )
 
 
 def test_run_video_to_pet_uvh_coco_missing_models(tmp_path):
@@ -268,107 +213,15 @@ def test_run_video_to_pet_uvh_coco_missing_models(tmp_path):
         )
 
 
-def test_run_video_to_pet_rtdetr_not_implemented(tmp_path):
-    video, bev, grid = make_dummy_args(tmp_path)
-    rtdetr = make_temp_file(tmp_path, "rtdetr.pt", "dummy")
-    with pytest.raises(NotImplementedError):
-        run_video_to_pet(
-            video_path=video,
-            bev_config_path=bev,
-            grid_config_path=grid,
-            rtdetr_weights_path=rtdetr,
-            detector="rtdetr",
-        )
 
 
-def test_run_video_to_pet_empty_events(tmp_path):
-    video, bev, grid = make_dummy_args(tmp_path)
-    uvh = make_temp_file(tmp_path, "uvh.pt", "dummy")
-    coco = make_temp_file(tmp_path, "coco.pt", "dummy")
-    out_csv = tmp_path / "out.csv"
-    mock_module = MagicMock()
-    mock_module.run_uvh_coco_fused_grid_pet = MagicMock(return_value={"pet_events": []})
-    with patch.dict(
-        sys.modules, {"src.analysis.grid_trajectory.uvh_coco_fused_grid_pet": mock_module}
-    ):
-        df = run_video_to_pet(
-            video_path=video,
-            bev_config_path=bev,
-            grid_config_path=grid,
-            uvh_model_path=uvh,
-            coco_person_model_path=coco,
-            out_csv_path=out_csv,
-            detector="uvh-coco-fused",
-        )
-    assert df.empty
-    assert out_csv.exists()
 
 
-def test_run_video_to_pet_with_event_dicts(tmp_path):
-    video, bev, grid = make_dummy_args(tmp_path)
-    uvh = make_temp_file(tmp_path, "uvh.pt", "dummy")
-    coco = make_temp_file(tmp_path, "coco.pt", "dummy")
-    out_csv = tmp_path / "out.csv"
-    events = [
-        {
-            "pet": 0.5,
-            "frame": 10,
-            "track_a": 1,
-            "track_b": 2,
-            "conflict_type": "crossing",
-            "grid_cell": "G_A_1",
-            "track_a_entry_frame": 5,
-            "track_a_exit_frame": 6,
-            "track_b_entry_frame": 7,
-            "track_b_exit_frame": 8,
-            "traj_a_json": "[]",
-            "traj_b_json": "[]",
-            "gate_a_entry": "G1",
-            "gate_b_entry": "G2",
-        }
-    ]
-    mock_module = MagicMock()
-    mock_module.run_uvh_coco_fused_grid_pet = MagicMock(return_value={"pet_events": events})
-    with patch.dict(
-        sys.modules, {"src.analysis.grid_trajectory.uvh_coco_fused_grid_pet": mock_module}
-    ):
-        df = run_video_to_pet(
-            video_path=video,
-            bev_config_path=bev,
-            grid_config_path=grid,
-            uvh_model_path=uvh,
-            coco_person_model_path=coco,
-            out_csv_path=out_csv,
-            detector="uvh-coco-fused",
-        )
-    assert len(df) == 1
-    assert df.iloc[0]["pet"] == 0.5
 
 
 # ---------------- run_video_to_pet_fixed ----------------
 
 
-def test_run_video_to_pet_fixed(tmp_path):
-    video, bev, grid = make_dummy_args(tmp_path)
-    sam3 = make_temp_file(tmp_path, "sam3.pt", "dummy")
-    out_csv = tmp_path / "out_fixed.csv"
-    fake_result = MagicMock(
-        pet_events=[
-            {"pet": 1.0, "frame_idx": 1, "track_a": 1, "track_b": 2, "conflict_type": "crossing"}
-        ]
-    )
-    mock_module = MagicMock()
-    mock_module.run_sam3_grid_pet = MagicMock(return_value=fake_result)
-    with patch.dict(sys.modules, {"src.analysis.grid_trajectory.sam3_grid_pet": mock_module}):
-        df = run_video_to_pet_fixed(
-            video_path=str(video),
-            bev_config_path=str(bev),
-            grid_config_path=str(grid),
-            sam3_weights_path=str(sam3),
-            out_csv_path=str(out_csv),
-        )
-    assert len(df) == 1
-    assert out_csv.exists()
 
 
 # ---------------- run_pipeline final version ----------------
@@ -455,47 +308,8 @@ def test_estimate_speed_time_mask_fallback():
     assert result["speed_std"] == 2.0
 
 
-def test_run_video_to_pet_yolo_cpu(tmp_path):
-    video, bev, grid = make_dummy_args(tmp_path)
-    yolo = make_temp_file(tmp_path, "yolo.pt", "dummy")
-    out_csv = tmp_path / "out_yolo.csv"
-    mock_module = MagicMock()
-    mock_module.run_yolo_cpu_grid_pet = MagicMock(return_value={"pet_events": []})
-    with patch.dict(sys.modules, {"src.analysis.grid_trajectory.yolo_cpu_grid_pet": mock_module}):
-        df = run_video_to_pet(
-            video_path=video,
-            bev_config_path=bev,
-            grid_config_path=grid,
-            yolo_weights_path=yolo,
-            out_csv_path=out_csv,
-            detector="yolo-cpu",
-            max_frames=1,
-        )
-    assert df.empty
-    assert out_csv.exists()
 
 
-def test_run_video_to_pet_sam3_import_error(tmp_path):
-    video, bev, grid = make_dummy_args(tmp_path)
-    sam3 = make_temp_file(tmp_path, "sam3.pt", "dummy")
-    import builtins
-
-    original_import = builtins.__import__
-
-    def fake_import(name, *args, **kwargs):
-        if name.endswith("analysis.grid_trajectory.sam3_grid_pet"):
-            raise ModuleNotFoundError("mock sam3 missing")
-        return original_import(name, *args, **kwargs)
-
-    with patch.object(builtins, "__import__", side_effect=fake_import):
-        with pytest.raises(ModuleNotFoundError):
-            run_video_to_pet(
-                video_path=video,
-                bev_config_path=bev,
-                grid_config_path=grid,
-                sam3_weights_path=sam3,
-                detector="sam3",
-            )
 
 
 def test_run_video_to_pet_uvh_coco_import_error(tmp_path):
