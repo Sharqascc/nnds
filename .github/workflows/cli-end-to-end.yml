@@ -64,7 +64,7 @@ jobs:
           python -m src.pipeline.traffic_analyzer --self-check \
             --video data/sample_data/GITI_traffic_video.mp4 \
             --uvh-model data/models/uvh26.pt \
-            --yolo-weights data/models/yolo11n.pt \
+            --coco-person-model data/models/yolo11n.pt \
             --bev-config configs/bev_config.json \
             --grid-config configs/GITI_grid_config.json \
             --gate-config configs/sites/giti/gate_config.yaml \
