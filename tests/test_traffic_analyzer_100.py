@@ -122,22 +122,6 @@ def test_run_demo_full():
 # ---------------- run_video_to_pet missing branches ----------------
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # ---------------- main missing branches ----------------
 
 
@@ -170,8 +154,6 @@ def test_main_runs_pipeline(monkeypatch, tmp_path):
 
 
 # ---------------- run_video_to_pet_fixed success ----------------
-
-
 
 
 # ---------------- interactive_detector success ----------------

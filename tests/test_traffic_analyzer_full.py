@@ -194,12 +194,6 @@ def test_run_video_to_pet_missing_video(tmp_path):
         )
 
 
-
-
-
-
-
-
 def test_run_video_to_pet_uvh_coco_missing_models(tmp_path):
     video, bev, grid = make_dummy_args(tmp_path)
     with pytest.raises(FileNotFoundError):
@@ -213,15 +207,7 @@ def test_run_video_to_pet_uvh_coco_missing_models(tmp_path):
         )
 
 
-
-
-
-
-
-
 # ---------------- run_video_to_pet_fixed ----------------
-
-
 
 
 # ---------------- run_pipeline final version ----------------
@@ -306,10 +292,6 @@ def test_estimate_speed_time_mask_fallback():
     result = analyzer.estimate_speed(pixel, times)
     assert result["final_speed"] == 15.0
     assert result["speed_std"] == 2.0
-
-
-
-
 
 
 def test_run_video_to_pet_uvh_coco_import_error(tmp_path):

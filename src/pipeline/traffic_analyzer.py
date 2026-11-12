@@ -431,25 +431,16 @@ def run_video_to_pet(
         )
 
     if detector != "uvh-coco-fused":
-        raise ValueError(
-            f"Unsupported detector: {detector!r}. "
-            "Only 'uvh-coco-fused' is supported."
-        )
+        raise ValueError(f"Unsupported detector: {detector!r}. Only 'uvh-coco-fused' is supported.")
 
     if not Path(str(coco_person_model_path)).exists():
-        raise FileNotFoundError(
-            f"COCO person model not found: {coco_person_model_path}"
-        )
+        raise FileNotFoundError(f"COCO person model not found: {coco_person_model_path}")
 
     if not Path(str(uvh_model_path)).exists():
-        raise FileNotFoundError(
-            f"UVH model not found: {uvh_model_path}"
-        )
+        raise FileNotFoundError(f"UVH model not found: {uvh_model_path}")
 
     loader = backend_loader or _import_either
-    uvh_mod = loader(
-        "analysis.grid_trajectory.uvh_coco_fused_grid_pet"
-    )
+    uvh_mod = loader("analysis.grid_trajectory.uvh_coco_fused_grid_pet")
 
     result = uvh_mod.run_uvh_coco_fused_grid_pet(
         video_path=str(video_path),
@@ -713,9 +704,7 @@ def _build_parser() -> argparse.ArgumentParser:
         type=str,
         default="uvh-coco-fused",
         choices=sorted(_SUPPORTED_DETECTORS),
-        help=(
-            "detector backend: uvh-coco-fused (default)."
-        ),
+        help=("detector backend: uvh-coco-fused (default)."),
     )
     det.add_argument(
         "--uvh-model",
@@ -969,8 +958,7 @@ def main(argv: list[str] | None = None) -> int:
     # but its video pipeline is not implemented.
     if args.detector == "rtdetr":
         raise NotImplementedError(
-            "RT-DETR video pipeline is not implemented. "
-            "Use --detector uvh-coco-fused instead."
+            "RT-DETR video pipeline is not implemented. Use --detector uvh-coco-fused instead."
         )
 
     try:

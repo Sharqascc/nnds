@@ -21,8 +21,6 @@ def _create_dummy_file(path):
     return path
 
 
-
-
 def test_uvh_coco_missing_coco_person_model(tmp_path):
     video = _create_dummy_file(tmp_path / "video.mp4")
     bev = _create_dummy_file(tmp_path / "bev.json")
@@ -38,10 +36,6 @@ def test_uvh_coco_missing_coco_person_model(tmp_path):
             uvh_model_path=uvh,
             coco_person_model_path=tmp_path / "missing_coco.pt",
         )
-
-
-
-
 
 
 def test_main_logging_basic_config(monkeypatch):

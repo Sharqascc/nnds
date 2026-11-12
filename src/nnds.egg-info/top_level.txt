@@ -1,7 +1,2 @@
-analysis
-bev
-core
-diffusion
 pipeline
-utils
-vlm
+scripts

@@ -5,6 +5,7 @@ generate-pet-verification-video = scripts.generate_pet_verification_video:main
 generate-safety-report-groq = scripts.generate_safety_report_groq:main
 inspect-pet = scripts.inspect_pet:main
 nnds = pipeline.traffic_analyzer:main
+nnds-run = scripts.run_pipeline:main
 paired-ttest = scripts.paired_ttest:main
 tracking-report = scripts.tracking_report:main
 tracking-report-fast = scripts.tracking_report_fast:main

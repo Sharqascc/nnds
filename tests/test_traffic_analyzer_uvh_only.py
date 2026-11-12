@@ -9,9 +9,7 @@ import src.pipeline.traffic_analyzer as ta
 
 
 def _fake_uvh_module(return_value):
-    return SimpleNamespace(
-        run_uvh_coco_fused_grid_pet=mock.MagicMock(return_value=return_value)
-    )
+    return SimpleNamespace(run_uvh_coco_fused_grid_pet=mock.MagicMock(return_value=return_value))
 
 
 def _make_paths(tmp_path):

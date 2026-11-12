@@ -56,9 +56,7 @@ def authenticated_url() -> str:
         return REPO_URL
 
     parsed = urlparse(REPO_URL)
-    return (
-        f"https://x-access-token:{token}@{parsed.netloc}{parsed.path}"
-    )
+    return f"https://x-access-token:{token}@{parsed.netloc}{parsed.path}"
 
 
 def clone_or_update(branch: str) -> None:
@@ -189,19 +187,12 @@ def run_checks() -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Reproducibly prepare and verify NNDS in Colab."
-        )
-    )
+    parser = argparse.ArgumentParser(description=("Reproducibly prepare and verify NNDS in Colab."))
 
     parser.add_argument(
         "--branch",
         default=os.environ.get("NNDS_BRANCH", DEFAULT_BRANCH),
-        help=(
-            "Branch to clone or update. Defaults to NNDS_BRANCH, "
-            f"then {DEFAULT_BRANCH}."
-        ),
+        help=(f"Branch to clone or update. Defaults to NNDS_BRANCH, then {DEFAULT_BRANCH}."),
     )
 
     parser.add_argument(
@@ -225,10 +216,7 @@ def main() -> None:
     parser.add_argument(
         "--check",
         action="store_true",
-        help=(
-            "Run the CI-equivalent compile, Ruff, and pytest checks "
-            "after bootstrap."
-        ),
+        help=("Run the CI-equivalent compile, Ruff, and pytest checks after bootstrap."),
     )
 
     args = parser.parse_args()
