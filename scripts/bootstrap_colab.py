@@ -103,6 +103,41 @@ def clone_or_update(branch: str) -> None:
     )
 
 
+def configure_git_identity() -> None:
+    run(["git", "config", "user.name", "Sharqascc"], REPO_DIR)
+    run(
+        [
+            "git",
+            "config",
+            "user.email",
+            "Sharqascc@users.noreply.github.com",
+        ],
+        REPO_DIR,
+    )
+
+
+def ensure_git_lfs() -> None:
+    result = subprocess.run(
+        ["git", "lfs", "version"],
+        cwd=REPO_DIR,
+        capture_output=True,
+        text=True,
+    )
+
+    if result.returncode != 0:
+        run(
+            [
+                "bash",
+                "-lc",
+                "sudo apt-get update -qq && sudo apt-get install -y -qq git-lfs",
+            ],
+            REPO_DIR,
+        )
+
+    run(["git", "lfs", "install"], REPO_DIR)
+    run(["git", "lfs", "pull"], REPO_DIR)
+
+
 def install_package() -> None:
     run(
         [
@@ -222,6 +257,8 @@ def main() -> None:
     args = parser.parse_args()
 
     clone_or_update(args.branch)
+    configure_git_identity()
+    ensure_git_lfs()
 
     if not args.skip_install:
         install_package()
