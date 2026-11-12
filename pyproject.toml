@@ -89,6 +89,6 @@ omit = [
 ]
 
 [tool.setuptools]
-packages.find.include = ["*", "scripts"]
-packages.find.where = ["src"]
+package-dir = { "" = "src", "scripts" = "scripts" }
+packages = ["pipeline", "scripts"]
 
