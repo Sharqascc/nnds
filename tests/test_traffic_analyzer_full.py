@@ -361,10 +361,10 @@ def test_parse_args_video():
 
 def test_parse_args_detector():
     """Test parse_args with detector selection."""
-    sys.argv = ["traffic_analyzer.py", "--detector", "yolo-cpu"]
+    sys.argv = ["traffic_analyzer.py", "--detector", "uvh-coco-fused"]
     args = parse_args()
     assert args is not None
-    assert args.detector == "yolo-cpu"
+    assert args.detector == "uvh-coco-fused"
 
 
 def test_parse_args_default():

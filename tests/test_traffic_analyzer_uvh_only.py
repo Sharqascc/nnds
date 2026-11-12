@@ -36,7 +36,7 @@ def _make_paths(tmp_path):
 def test_unsupported_detector_fails_immediately(tmp_path):
     video, uvh, coco, bev, grid = _make_paths(tmp_path)
 
-    with pytest.raises(ValueError, match="Only 'uvh-coco-fused' is supported"):
+    with pytest.raises(ValueError, match="Unsupported detector: 'sam3'"):
         ta.run_video_to_pet(
             video_path=video,
             bev_config_path=bev,

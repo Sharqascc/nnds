@@ -390,7 +390,7 @@ def _import_either(rel_path: str) -> Any:
     ) from last_err
 
 
-_SUPPORTED_DETECTORS = {"sam3", "yolo-cpu", "uvh-coco-fused", "rtdetr"}
+_SUPPORTED_DETECTORS = {"uvh-coco-fused"}
 
 
 def run_video_to_pet(
@@ -712,10 +712,9 @@ def _build_parser() -> argparse.ArgumentParser:
         "--detector",
         type=str,
         default="uvh-coco-fused",
-        choices=sorted({"uvh-coco-fused", "yolo-cpu", "sam3", "rtdetr"}),
+        choices=sorted(_SUPPORTED_DETECTORS),
         help=(
-            "detector backend: uvh-coco-fused (default), yolo-cpu, sam3, rtdetr. "
-            "rtdetr is accepted here but the video pipeline for it is not yet implemented."
+            "detector backend: uvh-coco-fused (default)."
         ),
     )
     det.add_argument(
@@ -733,30 +732,6 @@ def _build_parser() -> argparse.ArgumentParser:
         default="data/models/yolo11n.pt",
         metavar="PATH",
         help="COCO person-class YOLO weights (used with --detector uvh-coco-fused)",
-    )
-    det.add_argument(
-        "--yolo-weights",
-        dest="yolo_weights",
-        type=str,
-        default="data/models/yolo11n.pt",
-        metavar="PATH",
-        help="YOLO weights for the CPU backend (--detector yolo-cpu)",
-    )
-    det.add_argument(
-        "--sam3-weights",
-        dest="sam3_weights",
-        type=str,
-        default="sam3.pt",
-        metavar="PATH",
-        help="SAM3 weights for --detector sam3",
-    )
-    det.add_argument(
-        "--rtdetr-weights",
-        dest="rtdetr_weights",
-        type=str,
-        default="rtdetr-l.pt",
-        metavar="PATH",
-        help="RT-DETR weights for --detector rtdetr (experimental)",
     )
     det.add_argument(
         "--device",
@@ -995,7 +970,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.detector == "rtdetr":
         raise NotImplementedError(
             "RT-DETR video pipeline is not implemented. "
-            "Use --detector uvh-coco-fused, yolo-cpu, or sam3 instead."
+            "Use --detector uvh-coco-fused instead."
         )
 
     try:
@@ -1035,10 +1010,7 @@ def _run_self_check(args: argparse.Namespace) -> int:
     report = preflight.run_checks(
         video=args.video,
         uvh_model=args.uvh_model,
-        yolo_weights=args.yolo_weights,
         coco_person_model=args.coco_person_model,
-        rtdetr_weights=args.rtdetr_weights,
-        sam3_weights=args.sam3_weights,
         bev_config=args.bev_config or "configs/bev_config.json",
         grid_config=args.grid_config or "configs/GITI_grid_config.json",
         gate_config=args.gate_config or "configs/gate_config.yaml",

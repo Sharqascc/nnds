@@ -162,7 +162,7 @@ def test_main_video_not_found(monkeypatch):
 def test_main_runs_pipeline(monkeypatch, tmp_path):
     video = _dummy_file(tmp_path / "video.mp4")
     monkeypatch.setattr(
-        sys, "argv", ["traffic_analyzer.py", "--video", str(video), "--detector", "sam3"]
+        sys, "argv", ["traffic_analyzer.py", "--video", str(video), "--detector", "uvh-coco-fused"]
     )
     with mock.patch("src.pipeline.traffic_analyzer.run_pipeline") as mock_run:
         main()
