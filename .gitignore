@@ -76,3 +76,4 @@ mutants/
 *.msgpack
 .test_refactor_backup/
 .unsupported_test_backup/
+paper/results/
