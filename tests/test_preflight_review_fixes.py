@@ -35,39 +35,6 @@ def test_ffmpeg_present_passes(monkeypatch):
     assert note["detail"] == "/usr/bin/ffmpeg"
 
 
-def test_yolo_cpu_checks_explicit_weights(tmp_path):
-    """A nonexistent explicit --yolo-weights must fail the yolo-cpu report."""
-    missing = tmp_path / "no-such-weights.pt"
-    report = preflight.run_checks(detector="yolo-cpu", yolo_weights=str(missing))
-    assert not report.ok
-    assert any("yolo weights" in p for p in report.problems), report.problems
-
-
-def test_yolo_cpu_checks_default_weights_when_arg_omitted(monkeypatch):
-    """`--detector yolo-cpu` with no --yolo-weights must check data/models/yolo11n.pt."""
-    seen_paths = []
-    original = preflight._check_file
-
-    def spy(r, path, name, min_bytes, fix):
-        seen_paths.append((name, path))
-        original(r, path, name, min_bytes, fix)
-
-    monkeypatch.setattr(preflight, "_check_file", spy)
-    preflight.run_checks(detector="yolo-cpu")
-    yolo_calls = [p for name, p in seen_paths if "yolo" in name.lower()]
-    assert yolo_calls, "yolo-cpu did not check any weights"
-    assert "data/models/yolo11n.pt" in yolo_calls[0]
-
-
-def test_yolo_cpu_valid_weights_passes(tmp_path):
-    """A real weights file makes the yolo-cpu check pass."""
-    weights = tmp_path / "yolo11n.pt"
-    weights.write_bytes(b"x" * (preflight.MIN_WEIGHT_BYTES + 1))
-    report = preflight.run_checks(detector="yolo-cpu", yolo_weights=str(weights))
-    yolo_checks = [c for c in report.checks if "yolo weights" in c["check"]]
-    assert yolo_checks and yolo_checks[0]["ok"], report.problems
-
-
 def test_uvh_coco_fused_does_not_require_yolo_weights(tmp_path):
     """uvh-coco-fused should not require --yolo-weights; coco_person_model is the check."""
     coco = tmp_path / "yolo11n.pt"

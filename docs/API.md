@@ -36,7 +36,7 @@ BEV calibration + speed estimation helper.
 - **`parse_args(argv = None)`** - (no description)
 - **`run_demo()`** - (no description)
 - **`run_pipeline(args)`** - Execute the video-to-PET pipeline from parsed CLI args.
-- **`run_video_to_pet(video_path, bev_config_path = 'configs/bev_config.json', grid_config_path = 'configs/GITI_grid_config.json', sam3_weights_path = 'sam3.pt', out_csv_path = 'outputs/petevents_bev.csv', pet_threshold = 2.0, max_frames = None, detector = 'uvh-coco-fused', rtdetr_weights_path = 'rtdetr-l.pt', yolo_weights_path = 'data/models/yolo11n.pt', uvh_model_path = 'data/models/uvh26.pt', coco_person_model_path = 'data/models/yolo11n.pt', uvh_conf = 0.2, coco_person_conf = 0.2, imgsz = 1280, person_suppress_overlap = 0.35, device = 'auto', backend = 'auto', max_frame_gap = 5, max_spatial_jump = 30.0, prediction_tolerance = 80.0, video_source = None, time_of_day_label = None, gate_config_path = 'configs/gate_config.yaml', show_progress: bool = True)`** - (no description)
+- **`run_video_to_pet(video_path, bev_config_path = 'configs/bev_config.json', grid_config_path = 'configs/GITI_grid_config.json', sam3_weights_path = 'sam3.pt', out_csv_path = 'outputs/petevents_bev.csv', pet_threshold = 2.0, max_frames = None, detector = 'uvh-coco-fused', rtdetr_weights_path = 'rtdetr-l.pt', yolo_weights_path = 'data/models/yolo11n.pt', uvh_model_path = 'data/models/uvh26.pt', coco_person_model_path = 'data/models/yolo11n.pt', uvh_conf = 0.2, coco_person_conf = 0.2, imgsz = 1280, person_suppress_overlap = 0.35, device = 'auto', backend = 'auto', max_frame_gap = 5, max_spatial_jump = 30.0, prediction_tolerance = 80.0, video_source = None, time_of_day_label = None, gate_config_path = 'configs/gate_config.yaml', show_progress: bool = True, backend_loader = None)`** - (no description)
 - **`run_video_to_pet_fixed(video_path, bev_config_path = 'configs/bev_config.json', grid_config_path = 'configs/GITI_grid_config.json', sam3_weights_path = 'sam3.pt', out_csv_path = 'outputs/petevents_bev_fixed.csv', pet_threshold = 2.0, max_frames = None)`** - (no description)
 
 ## `src.pipeline.custom_tracker`
@@ -77,7 +77,7 @@ Preflight validation for the traffic analyzer pipeline.
 ### Functions
 
 - **`main() -> int`** - (no description)
-- **`run_checks(video: str | None = None, uvh_model: str | None = None, yolo_weights: str | None = None, coco_person_model: str | None = None, rtdetr_weights: str | None = None, sam3_weights: str | None = None, bev_config: str | None = None, grid_config: str | None = None, gate_config: str | None = None, out_csv: str = 'outputs/petevents_bev.csv', device: str = 'auto', detector: str = 'uvh-coco-fused') -> PreflightReport`** - (no description)
+- **`run_checks(video: str | None = None, uvh_model: str | None = None, coco_person_model: str | None = None, bev_config: str | None = None, grid_config: str | None = None, gate_config: str | None = None, out_csv: str = 'outputs/petevents_bev.csv', device: str = 'auto', detector: str = 'uvh-coco-fused') -> PreflightReport`** - (no description)
 
 ## `src.pipeline.reid_encoder`
 

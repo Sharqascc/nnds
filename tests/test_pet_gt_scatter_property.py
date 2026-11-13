@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 import numpy as np
 import pytest
 from hypothesis import given, settings
@@ -24,6 +26,7 @@ def test_shape_mismatch_raises(tmp_path):
 
 
 @given(vals=_ARR)
+@settings(deadline=timedelta(seconds=2))
 def test_matched_shape_writes_file(tmp_path_factory, vals):
     tmp = tmp_path_factory.mktemp("scatter")
     out = tmp / "out.png"

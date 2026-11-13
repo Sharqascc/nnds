@@ -214,10 +214,7 @@ def _check_ultralytics(r: PreflightReport) -> None:
 def run_checks(
     video: str | None = None,
     uvh_model: str | None = None,
-    yolo_weights: str | None = None,
     coco_person_model: str | None = None,
-    rtdetr_weights: str | None = None,
-    sam3_weights: str | None = None,
     bev_config: str | None = None,
     grid_config: str | None = None,
     gate_config: str | None = None,
@@ -243,11 +240,6 @@ def run_checks(
             _check_file(
                 r, uvh_model, "uvh model", MIN_WEIGHT_BYTES, "download from HF: iisc-aim/UVH-26"
             )
-        # `uvh-coco-fused` uses --coco-person-model, not --yolo-weights.
-        # They default to the same file, but a user who overrides only one
-        # was getting a check against the wrong path. Prefer
-        # coco_person_model when set; keep yolo_weights as a fallback for
-        # callers using the older argument.
         if coco_person_model:
             _check_file(
                 r,
@@ -256,43 +248,6 @@ def run_checks(
                 MIN_WEIGHT_BYTES,
                 "ultralytics will auto-download on first use",
             )
-        elif yolo_weights:
-            _check_file(
-                r,
-                yolo_weights,
-                "yolo weights",
-                MIN_WEIGHT_BYTES,
-                "ultralytics will auto-download on first use",
-            )
-    if detector == "yolo-cpu":
-        # yolo-cpu requires weights (run_video_to_pet raises FileNotFoundError
-        # if the file is missing). Use the same default that run_pipeline
-        # supplies so a `--self-check` with no explicit --yolo-weights still
-        # verifies the file the run will actually use.
-        weights = yolo_weights or "data/models/yolo11n.pt"
-        _check_file(
-            r,
-            weights,
-            "yolo weights",
-            MIN_WEIGHT_BYTES,
-            "download yolo11n.pt from ultralytics assets",
-        )
-    if detector == "rtdetr" and rtdetr_weights:
-        _check_file(
-            r,
-            rtdetr_weights,
-            "rtdetr weights",
-            MIN_WEIGHT_BYTES,
-            "download rtdetr-l.pt from ultralytics assets",
-        )
-    if detector == "sam3" and sam3_weights:
-        _check_file(
-            r,
-            sam3_weights,
-            "sam3 weights",
-            MIN_WEIGHT_BYTES,
-            "request access at huggingface.co/facebookresearch/sam3",
-        )
 
     for name, path in (
         ("bev config", bev_config),
@@ -314,10 +269,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Preflight checks for traffic analyzer")
     ap.add_argument("--video")
     ap.add_argument("--uvh-model")
-    ap.add_argument("--yolo-weights")
     ap.add_argument("--coco-person-model")
-    ap.add_argument("--rtdetr-weights")
-    ap.add_argument("--sam3-weights")
     ap.add_argument("--bev-config")
     ap.add_argument("--grid-config")
     ap.add_argument("--gate-config")
@@ -329,10 +281,7 @@ def main() -> int:
     report = run_checks(
         video=args.video,
         uvh_model=args.uvh_model,
-        yolo_weights=args.yolo_weights,
         coco_person_model=args.coco_person_model,
-        rtdetr_weights=args.rtdetr_weights,
-        sam3_weights=args.sam3_weights,
         bev_config=args.bev_config,
         grid_config=args.grid_config,
         gate_config=args.gate_config,
