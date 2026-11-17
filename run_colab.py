@@ -106,6 +106,13 @@ def run_main_task(forwarded_args: Sequence[str]) -> None:
     if forwarded_args and forwarded_args[0] == "--":
         forwarded_args = forwarded_args[1:]
 
+    if not forwarded_args:
+        print(
+            "      No task arguments supplied; built-in demo will run in "
+            "the remaining-workflow stage."
+        )
+        return
+
     command = [
         sys.executable,
         "-m",
