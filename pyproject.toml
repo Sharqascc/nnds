@@ -30,8 +30,8 @@ dependencies = [
     "scikit-learn>=1.9.1,<1.10",
 ]
 
-[project.license]
-text = "MIT"
+license = "MIT"
+license-files = ["LICENSE"]
 
 [project.optional-dependencies]
 dev = [
