@@ -34,24 +34,19 @@ DETECTION_COLUMNS = [
     "source",
 ]
 PET_COLUMNS = [
-    "event_id",
     "pet",
-    "pet_time_based",
     "frame",
     "track_a",
     "track_b",
-    "orig_track_a",
-    "seg_a",
-    "orig_track_b",
-    "seg_b",
     "conflict_type",
     "grid_cell",
     "track_a_entry_frame",
     "track_a_exit_frame",
-    "track_a_exit_time_sec",
     "track_b_entry_frame",
-    "track_b_entry_time_sec",
     "track_b_exit_frame",
+    "track_a_exit_time_sec",
+    "track_b_entry_time_sec",
+    "track_b_exit_time_sec",
     "world_traj_i",
     "world_traj_j",
     "traj_a_json",
@@ -200,7 +195,7 @@ def validate_pet(pet_df, det_df, video_frames=1838, split_det_df=None):
         for idx, row in pet_df.iterrows():
             for col, label in [("traj_a_json", "Traj A"), ("traj_b_json", "Traj B")]:
                 problems.extend(
-                    validate_trajectory_json(row[col], f"Event {row['event_id']} {label}")
+                    validate_trajectory_json(row[col], f"Event {idx} {label}")
                 )
                 if idx > 5:
                     break
