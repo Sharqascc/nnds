@@ -1,0 +1,84 @@
+{
+  "test": "pet_closest_approach_box_contact_audit",
+  "audit_events": 114,
+  "mapped_measurable_events": 103,
+  "events_with_closest_approach": 97,
+  "overlap_by_verdict": [],
+  "iou_by_verdict": [
+    {
+      "verdict": "N",
+      "events": 67,
+      "measurable": 0,
+      "mean_iou": NaN,
+      "median_iou": NaN,
+      "min_iou": NaN,
+      "max_iou": NaN
+    },
+    {
+      "verdict": "Y",
+      "events": 30,
+      "measurable": 0,
+      "mean_iou": NaN,
+      "median_iou": NaN,
+      "min_iou": NaN,
+      "max_iou": NaN
+    }
+  ],
+  "iou_threshold_sensitivity": [
+    {
+      "min_box_iou": 0.0,
+      "retained_events": 0,
+      "true_positives": 0,
+      "false_positives": 0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    {
+      "min_box_iou": 0.05,
+      "retained_events": 0,
+      "true_positives": 0,
+      "false_positives": 0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    {
+      "min_box_iou": 0.1,
+      "retained_events": 0,
+      "true_positives": 0,
+      "false_positives": 0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    {
+      "min_box_iou": 0.2,
+      "retained_events": 0,
+      "true_positives": 0,
+      "false_positives": 0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    {
+      "min_box_iou": 0.3,
+      "retained_events": 0,
+      "true_positives": 0,
+      "false_positives": 0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    {
+      "min_box_iou": 0.5,
+      "retained_events": 0,
+      "true_positives": 0,
+      "false_positives": 0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    }
+  ],
+  "interpretation": "This examines whether detection boxes overlap at each event's closest same-frame approach. It is diagnostic only and does not modify the PET pipeline."
+}

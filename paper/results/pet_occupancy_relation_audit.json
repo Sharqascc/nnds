@@ -1,0 +1,65 @@
+{
+  "test": "pet_occupancy_relation_audit",
+  "audit_events": 114,
+  "mapped_measurable_events": 103,
+  "matched_events": 103,
+  "occupancy_relation_by_verdict": [
+    {
+      "verdict": "N",
+      "a_to_b": 24,
+      "b_to_a": 49
+    },
+    {
+      "verdict": "Y",
+      "a_to_b": 16,
+      "b_to_a": 14
+    }
+  ],
+  "pet_by_verdict": [
+    {
+      "verdict": "N",
+      "events": 73,
+      "mean_pet": 1.2462625110923855,
+      "median_pet": 1.2330238250771184,
+      "min_pet": 0.1666248412266376,
+      "max_pet": 1.999498094719652
+    },
+    {
+      "verdict": "Y",
+      "events": 30,
+      "mean_pet": 0.7209301463739187,
+      "median_pet": 0.6165119125385592,
+      "min_pet": 0.1666248412266376,
+      "max_pet": 1.8328732534930137
+    }
+  ],
+  "pet_s_by_verdict": [
+    {
+      "verdict": "N",
+      "events": 73,
+      "mean_pet_s": 1.2465753424657535,
+      "median_pet_s": 1.2333333333333334,
+      "min_pet_s": 0.1666666666666666,
+      "max_pet_s": 2.0
+    },
+    {
+      "verdict": "Y",
+      "events": 30,
+      "mean_pet_s": 0.7211111111111111,
+      "median_pet_s": 0.6166666666666667,
+      "min_pet_s": 0.1666666666666666,
+      "max_pet_s": 1.8333333333333333
+    }
+  ],
+  "pet_method_by_verdict": [
+    {
+      "verdict": "N",
+      "uvh-coco-fused-grid-pet": 73
+    },
+    {
+      "verdict": "Y",
+      "uvh-coco-fused-grid-pet": 30
+    }
+  ],
+  "interpretation": "PET is sequential by design. occupancy_relation distinguishes sequential passage from temporal overlap; compare its distribution between spurious and genuine audit verdicts."
+}

@@ -1,0 +1,61 @@
+{
+  "track_lengths": {
+    "n_unique_tracks": 83,
+    "track_length_min": 3,
+    "track_length_p25": 34.0,
+    "track_length_median": 126.0,
+    "track_length_p75": 247.5,
+    "track_length_max": 300,
+    "track_length_mean": 135.83132530120483,
+    "track_length_std": 102.7393261570633,
+    "short_tracks_le_10_frames": 9,
+    "short_tracks_le_30_frames": 19
+  },
+  "event_participation": {
+    "n_tracks_in_events": 81,
+    "events_per_track_max": 19,
+    "events_per_track_mean": 3.7777777777777777,
+    "tracks_in_1_event": 28,
+    "tracks_in_2_3_events": 20,
+    "tracks_in_4_10_events": 27,
+    "tracks_in_gt10_events": 6,
+    "top_5_hub_tracks": [
+      {
+        "track_id": 17000,
+        "n_events": 19
+      },
+      {
+        "track_id": 15000,
+        "n_events": 18
+      },
+      {
+        "track_id": 60000,
+        "n_events": 12
+      },
+      {
+        "track_id": 24000,
+        "n_events": 12
+      },
+      {
+        "track_id": 32000,
+        "n_events": 12
+      }
+    ]
+  },
+  "jump_stats_by_verdict": {
+    "Y": {
+      "n": 30,
+      "max_p95_median": 5.522246298902434,
+      "max_p99_median": 18.85200367471024,
+      "max_frac_median": 0.0091324200913242,
+      "max_jump_median": 46.39042982727277
+    },
+    "N": {
+      "n": 73,
+      "max_p95_median": 5.9526638254001725,
+      "max_p99_median": 28.360817405701575,
+      "max_frac_median": 0.0153846153846153,
+      "max_jump_median": 52.81292686647334
+    }
+  }
+}

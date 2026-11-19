@@ -1,0 +1,29 @@
+{
+  "test": "density_confounding",
+  "status": "blocked_insufficient_artifacts",
+  "conclusion": "True traffic-density confounding cannot be assessed from retained artifacts.",
+  "required_artifacts": [
+    "per-frame detections with site, frame, track_id, and class",
+    "or per-frame tracking states with site, frame, track_id, and class",
+    "or non-null PET trajectory JSON containing frame-level positions"
+  ],
+  "available_artifacts": {
+    "combined_screened_simplified_csv": {
+      "path": "outputs/combined_screened_simplified.csv",
+      "events": 187,
+      "trajectory_fields_non_null": false
+    },
+    "production_detection_csv": false,
+    "production_tracking_csv": false,
+    "production_trajectory_parquet_or_json": false
+  },
+  "proxy_analysis": {
+    "method": "local PET-event-density proxy",
+    "window_frames": 30,
+    "events_analyzed": 187,
+    "spearman_rho": -0.039976463126945076,
+    "spearman_p_value": 0.586977212645211,
+    "interpretation": "No detectable association between local PET-event clustering and PET value; this does not measure true traffic density."
+  },
+  "publication_rule": "Do not claim density-adjusted PET effects or rule out density confounding without per-frame exposure/density artifacts."
+}

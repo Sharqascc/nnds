@@ -1,0 +1,56 @@
+{
+  "n_unique_tracks": 83,
+  "track_lengths": {
+    "n_tracks": 83,
+    "min": 3,
+    "p25": 34.0,
+    "median": 126.0,
+    "p75": 247.5,
+    "max": 300,
+    "mean": 135.83132530120483,
+    "short_le_10": 9,
+    "short_le_30": 19
+  },
+  "gap_rate": {
+    "n_tracks": 83,
+    "mean": 0.20667030335217781,
+    "median": 0.1039426523297491,
+    "p90": 0.5742257742257741,
+    "max": 0.8875,
+    "tracks_with_any_gap": 69
+  },
+  "fragment_pairs": {
+    "n_fragment_pairs": 14,
+    "n_tracks_considered": 83,
+    "max_gap_frames": 15,
+    "max_distance_m": 1.5
+  },
+  "heading_instability": {
+    "frame_pairs": 11108,
+    "violations": 2161,
+    "violation_rate": 0.19454447245228665,
+    "threshold_deg": 45.0
+  },
+  "speed_plausibility": {
+    "n_samples": 11191,
+    "median_mps": 0.9941168047107752,
+    "p95_mps": 2.9534396477360514,
+    "max_mps": 63.29756768169635,
+    "implausible_count": 13,
+    "max_plausible_mps": 30.0
+  },
+  "robustness_dropout_10pct": {
+    "perturbation": "drop",
+    "n_trials_per_event": 10,
+    "n_events": 164,
+    "n_robust": 146,
+    "fraction_robust": 0.8902439024390244
+  },
+  "robustness_pixel_noise_1px": {
+    "perturbation": "noise",
+    "n_trials_per_event": 10,
+    "n_events": 164,
+    "n_robust": 157,
+    "fraction_robust": 0.9573170731707317
+  }
+}
