@@ -1,0 +1,10 @@
+{
+  "test": "density_confounding",
+  "status": "proxy_only_true_density_unavailable",
+  "method": "local PET-event-density proxy",
+  "window_frames": 30,
+  "events_analyzed": 187,
+  "spearman_rho": -0.039976463126945076,
+  "spearman_p_value": 0.586977212645211,
+  "interpretation": "No detectable association between local PET-event clustering and PET. This does not measure true traffic density or rule out density confounding."
+}

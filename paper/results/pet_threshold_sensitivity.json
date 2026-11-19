@@ -1,0 +1,104 @@
+{
+  "test": "pet_threshold_sensitivity",
+  "events_analyzed": 187,
+  "thresholds_s": [
+    1.0,
+    1.5,
+    2.0,
+    2.5,
+    3.0
+  ],
+  "results": [
+    {
+      "threshold_s": 1.0,
+      "GITI": {
+        "events": 153,
+        "events_below_threshold": 49,
+        "rate_below_threshold": 0.3202614379084967,
+        "mean_pet": 1.5638775947807295,
+        "median_pet": 1.5662735075303935
+      },
+      "MRC": {
+        "events": 34,
+        "events_below_threshold": 8,
+        "rate_below_threshold": 0.23529411764705882,
+        "mean_pet": 1.7044743123533441,
+        "median_pet": 1.599598664612224
+      },
+      "rate_difference_mrc_minus_giti": -0.08496732026143788
+    },
+    {
+      "threshold_s": 1.5,
+      "GITI": {
+        "events": 153,
+        "events_below_threshold": 73,
+        "rate_below_threshold": 0.477124183006536,
+        "mean_pet": 1.5638775947807295,
+        "median_pet": 1.5662735075303935
+      },
+      "MRC": {
+        "events": 34,
+        "events_below_threshold": 16,
+        "rate_below_threshold": 0.47058823529411764,
+        "mean_pet": 1.7044743123533441,
+        "median_pet": 1.599598664612224
+      },
+      "rate_difference_mrc_minus_giti": -0.006535947712418333
+    },
+    {
+      "threshold_s": 2.0,
+      "GITI": {
+        "events": 153,
+        "events_below_threshold": 103,
+        "rate_below_threshold": 0.673202614379085,
+        "mean_pet": 1.5638775947807295,
+        "median_pet": 1.5662735075303935
+      },
+      "MRC": {
+        "events": 34,
+        "events_below_threshold": 20,
+        "rate_below_threshold": 0.5882352941176471,
+        "mean_pet": 1.7044743123533441,
+        "median_pet": 1.599598664612224
+      },
+      "rate_difference_mrc_minus_giti": -0.08496732026143794
+    },
+    {
+      "threshold_s": 2.5,
+      "GITI": {
+        "events": 153,
+        "events_below_threshold": 127,
+        "rate_below_threshold": 0.8300653594771242,
+        "mean_pet": 1.5638775947807295,
+        "median_pet": 1.5662735075303935
+      },
+      "MRC": {
+        "events": 34,
+        "events_below_threshold": 24,
+        "rate_below_threshold": 0.7058823529411765,
+        "mean_pet": 1.7044743123533441,
+        "median_pet": 1.599598664612224
+      },
+      "rate_difference_mrc_minus_giti": -0.12418300653594772
+    },
+    {
+      "threshold_s": 3.0,
+      "GITI": {
+        "events": 153,
+        "events_below_threshold": 153,
+        "rate_below_threshold": 1.0,
+        "mean_pet": 1.5638775947807295,
+        "median_pet": 1.5662735075303935
+      },
+      "MRC": {
+        "events": 34,
+        "events_below_threshold": 34,
+        "rate_below_threshold": 1.0,
+        "mean_pet": 1.7044743123533441,
+        "median_pet": 1.599598664612224
+      },
+      "rate_difference_mrc_minus_giti": 0.0
+    }
+  ],
+  "interpretation": "Compare rate differences across thresholds; material changes indicate that the binary PET classification is threshold-sensitive."
+}

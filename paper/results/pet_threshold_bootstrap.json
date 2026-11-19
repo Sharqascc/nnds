@@ -1,0 +1,13 @@
+{
+  "test": "pet_threshold_bootstrap",
+  "threshold_s": 2.0,
+  "n_giti": 153,
+  "n_mrc": 34,
+  "observed_rate_difference_mrc_minus_giti": -0.08496732026143794,
+  "bootstrap_iterations": 10000,
+  "bootstrap_seed": 42,
+  "ci_95_lower": -0.2712418300653595,
+  "ci_95_upper": 0.09477124183006536,
+  "ci_includes_zero": true,
+  "interpretation": "If the 95% bootstrap interval includes zero, the site difference is not statistically distinguishable from no difference."
+}
