@@ -52,8 +52,8 @@ def _importable(name: str) -> bool:
         return False
 
 
-def install_requirements(*, install_dev: bool = False) -> None:
-    extras = ".[dev]" if install_dev else "."
+def install_requirements(*, install_dev: bool = True) -> None:
+    extras = ".[dev]"
 
     print(f"[1/5] Installing requirements: pip install -e {extras}")
 
@@ -95,9 +95,30 @@ def verify_installation() -> None:
     if not _importable(CLI_MODULE):
         raise RuntimeError(f"CLI module not importable: {CLI_MODULE}")
 
+    test_requirements = (
+        "pytest",
+        "pytest-cov",
+        "pytest-xdist",
+        "pytest-timeout",
+        "pytest-mock",
+        "hypothesis",
+    )
+
+    missing_test_requirements = [
+        requirement
+        for requirement in test_requirements
+        if _version(requirement) is None
+    ]
+
+    if missing_test_requirements:
+        raise RuntimeError(
+            "Missing test requirements: "
+            + ", ".join(missing_test_requirements)
+        )
+
     print(
         f"      Verified {PROJECT_NAME} {_version(PROJECT_NAME)}; "
-        "all runtime requirements installed."
+        "all runtime and test requirements installed."
     )
 
 
