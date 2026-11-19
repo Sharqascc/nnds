@@ -1,13 +1,38 @@
 {
   "test": "pet_threshold_bootstrap",
-  "threshold_s": 2.0,
   "n_giti": 153,
   "n_mrc": 34,
-  "observed_rate_difference_mrc_minus_giti": -0.08496732026143794,
   "bootstrap_iterations": 10000,
   "bootstrap_seed": 42,
-  "ci_95_lower": -0.2712418300653595,
-  "ci_95_upper": 0.09477124183006536,
-  "ci_includes_zero": true,
-  "interpretation": "If the 95% bootstrap interval includes zero, the site difference is not statistically distinguishable from no difference."
+  "results": [
+    {
+      "threshold_s": 1.0,
+      "observed_rate_difference_mrc_minus_giti": -0.08496732026143788,
+      "ci_95_lower": -0.24509803921568624,
+      "ci_95_upper": 0.08496732026143788,
+      "ci_includes_zero": true
+    },
+    {
+      "threshold_s": 1.5,
+      "observed_rate_difference_mrc_minus_giti": -0.006535947712418333,
+      "ci_95_lower": -0.196078431372549,
+      "ci_95_upper": 0.18300653594771243,
+      "ci_includes_zero": true
+    },
+    {
+      "threshold_s": 2.0,
+      "observed_rate_difference_mrc_minus_giti": -0.08496732026143794,
+      "ci_95_lower": -0.2679738562091504,
+      "ci_95_upper": 0.09477124183006547,
+      "ci_includes_zero": true
+    },
+    {
+      "threshold_s": 2.5,
+      "observed_rate_difference_mrc_minus_giti": -0.12418300653594772,
+      "ci_95_lower": -0.2973856209150326,
+      "ci_95_upper": 0.03594771241830064,
+      "ci_includes_zero": true
+    }
+  ],
+  "interpretation": "For each threshold, an interval including zero means the site difference is not statistically distinguishable from no difference."
 }
