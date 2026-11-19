@@ -1,0 +1,33 @@
+{
+  "test": "pet_resolution_assessment",
+  "events_analyzed": 187,
+  "summary": [
+    {
+      "site": "GITI",
+      "events": 153,
+      "fps_mean": 30.0,
+      "fps_min": 30.0,
+      "fps_max": 30.0,
+      "pet_frames_min": 5,
+      "pet_frames_median": 47.0,
+      "pet_frames_max": 90,
+      "unique_pet_values": 76,
+      "unique_pet_frames": 76,
+      "theoretical_frame_resolution_s": 0.03333333333333333
+    },
+    {
+      "site": "MRC",
+      "events": 34,
+      "fps_mean": 30.0,
+      "fps_min": 30.0,
+      "fps_max": 30.0,
+      "pet_frames_min": 4,
+      "pet_frames_median": 48.0,
+      "pet_frames_max": 90,
+      "unique_pet_values": 30,
+      "unique_pet_frames": 30,
+      "theoretical_frame_resolution_s": 0.03333333333333333
+    }
+  ],
+  "interpretation": "Compare effective frame resolution and the number of distinct PET-frame values between sites. Large differences may make PET comparisons resolution-limited."
+}
