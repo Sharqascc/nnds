@@ -2,7 +2,6 @@
 """Reproducible main entry point for NNDS in Colab."""
 
 from __future__ import annotations
-import time
 
 import argparse
 import importlib.metadata
@@ -11,6 +10,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Sequence
 
@@ -82,9 +82,7 @@ def verify_installation() -> None:
             missing.append(requirement)
 
     if missing:
-        raise RuntimeError(
-            "Missing runtime requirements: " + ", ".join(missing)
-        )
+        raise RuntimeError("Missing runtime requirements: " + ", ".join(missing))
 
     if _version(PROJECT_NAME) is None:
         raise RuntimeError(f"Project not installed: {PROJECT_NAME}")
@@ -105,16 +103,11 @@ def verify_installation() -> None:
     )
 
     missing_test_requirements = [
-        requirement
-        for requirement in test_requirements
-        if _version(requirement) is None
+        requirement for requirement in test_requirements if _version(requirement) is None
     ]
 
     if missing_test_requirements:
-        raise RuntimeError(
-            "Missing test requirements: "
-            + ", ".join(missing_test_requirements)
-        )
+        raise RuntimeError("Missing test requirements: " + ", ".join(missing_test_requirements))
 
     print(
         f"      Verified {PROJECT_NAME} {_version(PROJECT_NAME)}; "
@@ -147,9 +140,7 @@ def run_main_task(forwarded_args: Sequence[str]) -> None:
     completed = subprocess.run(command, cwd=REPO_ROOT, check=False)
 
     if completed.returncode != 0:
-        raise RuntimeError(
-            f"nnds failed with exit code {completed.returncode}."
-        )
+        raise RuntimeError(f"nnds failed with exit code {completed.returncode}.")
 
 
 def run_stage(name: str, command: list[str], optional_inputs: Sequence[Path] = ()) -> dict:
@@ -158,8 +149,7 @@ def run_stage(name: str, command: list[str], optional_inputs: Sequence[Path] = (
     missing = [path for path in optional_inputs if not path.exists()]
     if missing:
         print(
-            f"      Skipping {name}: missing input(s): "
-            + ", ".join(str(path) for path in missing)
+            f"      Skipping {name}: missing input(s): " + ", ".join(str(path) for path in missing)
         )
         return {
             "name": name,
@@ -191,25 +181,17 @@ def run_stage(name: str, command: list[str], optional_inputs: Sequence[Path] = (
         now = time.monotonic()
         if now - last_heartbeat >= 30:
             elapsed = int(now - started)
-            print(
-                f"      [{elapsed // 60:02d}:{elapsed % 60:02d}] "
-                f"Still running: {name}"
-            )
+            print(f"      [{elapsed // 60:02d}:{elapsed % 60:02d}] Still running: {name}")
             sys.stdout.flush()
             last_heartbeat = now
 
     return_code = process.wait()
     duration = time.monotonic() - started
 
-    print(
-        f"      Finished {name}: exit code {return_code}, "
-        f"duration {duration:.1f} seconds"
-    )
+    print(f"      Finished {name}: exit code {return_code}, duration {duration:.1f} seconds")
 
     if return_code != 0:
-        raise RuntimeError(
-            f"{name} failed with exit code {return_code}."
-        )
+        raise RuntimeError(f"{name} failed with exit code {return_code}.")
 
     return {
         "name": name,
@@ -224,9 +206,7 @@ def ensure_lfs_video(video_path: Path) -> None:
     """Ensure a Git LFS video is downloaded and is not just a pointer file."""
 
     if not video_path.exists():
-        raise FileNotFoundError(
-            f"Configured NNDS video does not exist: {video_path}"
-        )
+        raise FileNotFoundError(f"Configured NNDS video does not exist: {video_path}")
 
     # Git LFS pointer files are tiny text files beginning with this marker.
     try:
@@ -237,9 +217,7 @@ def ensure_lfs_video(video_path: Path) -> None:
     is_pointer = head.startswith(b"version https://git-lfs.github.com/spec/v1")
 
     if video_path.stat().st_size < 1024 or is_pointer:
-        print(
-            f"      Video appears to be a Git LFS pointer; pulling: {video_path}"
-        )
+        print(f"      Video appears to be a Git LFS pointer; pulling: {video_path}")
         commands = [
             ["apt-get", "update", "-qq"],
             ["apt-get", "install", "-y", "-qq", "git-lfs"],
@@ -279,10 +257,7 @@ def ensure_lfs_video(video_path: Path) -> None:
             "to its LFS storage."
         )
 
-    print(
-        f"      Video ready: {video_path} "
-        f"({video_path.stat().st_size / 1024 / 1024:.1f} MB)"
-    )
+    print(f"      Video ready: {video_path} ({video_path.stat().st_size / 1024 / 1024:.1f} MB)")
 
 
 def run_remaining_tasks(forwarded_args: Sequence[str] | None = None) -> None:
@@ -341,11 +316,7 @@ def run_remaining_tasks(forwarded_args: Sequence[str] | None = None) -> None:
                     "--pet",
                     str(pet_csv),
                     "--detections",
-                    str(
-                        pet_csv.with_name(
-                            pet_csv.stem + "_detections.csv"
-                        )
-                    ),
+                    str(pet_csv.with_name(pet_csv.stem + "_detections.csv")),
                     "--video-frames",
                     "1838",
                 ],
@@ -453,9 +424,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.path.insert(0, path)
 
     os.environ["PYTHONPATH"] = os.pathsep.join(
-        path
-        for path in (str(src_root), os.environ.get("PYTHONPATH", ""))
-        if path
+        path for path in (str(src_root), os.environ.get("PYTHONPATH", "")) if path
     )
 
     os.chdir(REPO_ROOT)

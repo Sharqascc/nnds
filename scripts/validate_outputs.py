@@ -194,9 +194,7 @@ def validate_pet(pet_df, det_df, video_frames=1838, split_det_df=None):
     if "traj_a_json" in pet_df.columns and "traj_b_json" in pet_df.columns:
         for idx, row in pet_df.iterrows():
             for col, label in [("traj_a_json", "Traj A"), ("traj_b_json", "Traj B")]:
-                problems.extend(
-                    validate_trajectory_json(row[col], f"Event {idx} {label}")
-                )
+                problems.extend(validate_trajectory_json(row[col], f"Event {idx} {label}"))
                 if idx > 5:
                     break
             if idx > 5:

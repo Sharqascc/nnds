@@ -94,12 +94,8 @@ def test_threshold_controls_collision_detection():
     vehicle_a = np.array([[0.0, 0.0], [1.0, 0.0]])
     vehicle_b = np.array([[10.0, 0.5], [9.0, 0.5]])
 
-    small_threshold = compute_ttc_seq(
-        vehicle_a, vehicle_b, dt=1.0, d_thresh=0.1
-    )
-    large_threshold = compute_ttc_seq(
-        vehicle_a, vehicle_b, dt=1.0, d_thresh=1.0
-    )
+    small_threshold = compute_ttc_seq(vehicle_a, vehicle_b, dt=1.0, d_thresh=0.1)
+    large_threshold = compute_ttc_seq(vehicle_a, vehicle_b, dt=1.0, d_thresh=1.0)
 
     assert small_threshold == [None]
     assert large_threshold == pytest.approx([5.0])
