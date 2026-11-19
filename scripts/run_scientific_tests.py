@@ -99,7 +99,7 @@ def threshold_sensitivity(df: pd.DataFrame) -> dict[str, object]:
 
 
 def threshold_bootstrap(df: pd.DataFrame) -> dict[str, object]:
-    threshold = 2.0
+    thresholds = [1.0, 1.5, 2.0, 2.5]
     rng = np.random.default_rng(BOOTSTRAP_SEED)
 
     giti = df.loc[df["site"] == "GITI", "pet"].to_numpy()
@@ -108,29 +108,38 @@ def threshold_bootstrap(df: pd.DataFrame) -> dict[str, object]:
     if len(giti) == 0 or len(mrc) == 0:
         raise SystemExit("Both GITI and MRC must contain at least one PET event.")
 
-    def difference() -> float:
-        giti_sample = rng.choice(giti, size=len(giti), replace=True)
-        mrc_sample = rng.choice(mrc, size=len(mrc), replace=True)
-        return float((mrc_sample < threshold).mean() - (giti_sample < threshold).mean())
+    results = []
+    for threshold in thresholds:
 
-    observed = float((mrc < threshold).mean() - (giti < threshold).mean())
-    samples = np.array([difference() for _ in range(BOOTSTRAP_ITERATIONS)])
-    lower, upper = np.quantile(samples, [0.025, 0.975])
+        def difference() -> float:
+            giti_sample = rng.choice(giti, size=len(giti), replace=True)
+            mrc_sample = rng.choice(mrc, size=len(mrc), replace=True)
+            return float((mrc_sample < threshold).mean() - (giti_sample < threshold).mean())
+
+        observed = float((mrc < threshold).mean() - (giti < threshold).mean())
+        samples = np.array([difference() for _ in range(BOOTSTRAP_ITERATIONS)])
+        lower, upper = np.quantile(samples, [0.025, 0.975])
+
+        results.append(
+            {
+                "threshold_s": threshold,
+                "observed_rate_difference_mrc_minus_giti": observed,
+                "ci_95_lower": float(lower),
+                "ci_95_upper": float(upper),
+                "ci_includes_zero": bool(lower <= 0.0 <= upper),
+            }
+        )
 
     return {
         "test": "pet_threshold_bootstrap",
-        "threshold_s": threshold,
         "n_giti": len(giti),
         "n_mrc": len(mrc),
-        "observed_rate_difference_mrc_minus_giti": observed,
         "bootstrap_iterations": BOOTSTRAP_ITERATIONS,
         "bootstrap_seed": BOOTSTRAP_SEED,
-        "ci_95_lower": float(lower),
-        "ci_95_upper": float(upper),
-        "ci_includes_zero": bool(lower <= 0.0 <= upper),
+        "results": results,
         "interpretation": (
-            "If the 95% bootstrap interval includes zero, the site difference is "
-            "not statistically distinguishable from no difference."
+            "For each threshold, an interval including zero means the site "
+            "difference is not statistically distinguishable from no difference."
         ),
     }
 
@@ -170,15 +179,16 @@ def main() -> int:
         print(f"Wrote {path}")
 
     bootstrap = outputs["pet_threshold_bootstrap.json"]
-    print(
-        "\nScientific-test summary:\n"
-        f"  PET threshold: {bootstrap['threshold_s']} s\n"
-        f"  Observed MRC-GITI rate difference: "
-        f"{bootstrap['observed_rate_difference_mrc_minus_giti']:.3f}\n"
-        f"  95% bootstrap CI: "
-        f"[{bootstrap['ci_95_lower']:.3f}, {bootstrap['ci_95_upper']:.3f}]\n"
-        f"  Includes zero: {bootstrap['ci_includes_zero']}"
-    )
+    print("\nScientific-test summary:")
+    for result in bootstrap["results"]:
+        print(
+            f"  PET threshold: {result['threshold_s']} s | "
+            f"MRC-GITI rate difference: "
+            f"{result['observed_rate_difference_mrc_minus_giti']:.3f} | "
+            f"95% CI: [{result['ci_95_lower']:.3f}, "
+            f"{result['ci_95_upper']:.3f}] | "
+            f"Includes zero: {result['ci_includes_zero']}"
+        )
     return 0
 
 
