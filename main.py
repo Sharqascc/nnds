@@ -406,6 +406,21 @@ def build_parser() -> argparse.ArgumentParser:
 
     parser.add_argument("--install-dev", action="store_true")
     parser.add_argument(
+        "--scientific-tests",
+        action="store_true",
+        help="Run reproducible PET scientific-validation tests and exit.",
+    )
+    parser.add_argument(
+        "--input",
+        default="outputs/combined_screened_simplified.csv",
+        help="PET CSV used by --scientific-tests.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        default="paper/results",
+        help="Output directory used by --scientific-tests.",
+    )
+    parser.add_argument(
         "cli_args",
         nargs="*",
         help="Arguments forwarded directly to the nnds CLI.",
@@ -431,6 +446,21 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     install_requirements(install_dev=args.install_dev)
     verify_installation()
+
+    if args.scientific_tests:
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "scripts" / "run_scientific_tests.py"),
+                "--input",
+                args.input,
+                "--output-dir",
+                args.output_dir,
+            ],
+            check=False,
+        )
+        return result.returncode
+
     run_main_task(args.cli_args)
     run_remaining_tasks()
     write_run_manifest()
