@@ -390,6 +390,8 @@ def _import_either(rel_path: str) -> Any:
     ) from last_err
 
 
+DEFAULT_VIDEO_PATH = "data/sample_data/GITI_traffic_video.mp4"
+
 _SUPPORTED_DETECTORS = {"sam3", "yolo-cpu", "uvh-coco-fused", "rtdetr"}
 
 
@@ -417,7 +419,7 @@ def run_video_to_pet(
     prediction_tolerance=80.0,
     video_source=None,
     time_of_day_label=None,
-    gate_config_path="configs/gate_config.yaml",
+    gate_config_path="configs/sites/giti/gate_config.yaml",
     show_progress: bool = True,
 ):
     if not Path(str(video_path)).exists():
@@ -715,9 +717,9 @@ def _build_parser() -> argparse.ArgumentParser:
     inp.add_argument(
         "--video",
         type=str,
-        default=None,
+        default=DEFAULT_VIDEO_PATH,
         metavar="PATH",
-        help="path to the input video file (mp4 / avi). Required unless a mode flag is set.",
+        help="input video file (mp4 / avi); defaults to the canonical GITI sample video.",
     )
     inp.add_argument(
         "--max-frames",
@@ -808,7 +810,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--gate-config",
         dest="gate_config",
         type=str,
-        default="configs/gate_config.yaml",
+        default="configs/sites/giti/gate_config.yaml",
         metavar="PATH",
         help="entry/exit gate definitions for gate counting",
     )
@@ -1062,7 +1064,7 @@ def _run_self_check(args: argparse.Namespace) -> int:
         sam3_weights=args.sam3_weights,
         bev_config=args.bev_config or "configs/bev_config.json",
         grid_config=args.grid_config or "configs/GITI_grid_config.json",
-        gate_config=args.gate_config or "configs/gate_config.yaml",
+        gate_config=args.gate_config or "configs/sites/giti/gate_config.yaml",
         out_csv=args.out_csv or "outputs/petevents_bev.csv",
         device=args.device,
         detector=args.detector,

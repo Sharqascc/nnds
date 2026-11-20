@@ -123,8 +123,8 @@ def run_main_task(forwarded_args: Sequence[str]) -> None:
 
     if not forwarded_args:
         print(
-            "      No task arguments supplied; built-in demo will run in "
-            "the remaining-workflow stage."
+            "      No task arguments supplied; the canonical GITI workflow "
+            "will run in the remaining-workflow stage."
         )
         return
 
@@ -292,7 +292,7 @@ def run_remaining_tasks(forwarded_args: Sequence[str] | None = None) -> None:
         *pipeline_args,
     ]
 
-    pet_csv = REPO_ROOT / "outputs" / "petevents_bev.csv"
+    pet_csv = REPO_ROOT / "outputs" / "pet_events" / "bev.csv"
     sample_video = default_video
     annotator_a = REPO_ROOT / "paper" / "annotations" / "workbook_annotator_A.csv"
     annotator_b = REPO_ROOT / "paper" / "annotations" / "workbook_annotator_B.csv"
@@ -404,7 +404,12 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
 
-    parser.add_argument("--install-dev", action="store_true")
+    parser.add_argument(
+        "--install-dev",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Install development dependencies (default: enabled).",
+    )
     parser.add_argument(
         "--scientific-tests",
         action="store_true",
@@ -461,7 +466,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return result.returncode
 
-    run_main_task(args.cli_args)
+    forwarded_args = args.cli_args
+
+    # A frame-limited invocation is a smoke test: run only the analyzer.
+    if any(arg == "--max-frames" or arg.startswith("--max-frames=") for arg in forwarded_args):
+        run_main_task(forwarded_args)
+        return 0
+
+    run_main_task(forwarded_args)
     run_remaining_tasks()
     write_run_manifest()
 
