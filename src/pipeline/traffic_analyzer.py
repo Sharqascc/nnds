@@ -717,9 +717,9 @@ def _build_parser() -> argparse.ArgumentParser:
     inp.add_argument(
         "--video",
         type=str,
-        default=DEFAULT_VIDEO_PATH,
+        default=None,
         metavar="PATH",
-        help="input video file (mp4 / avi); defaults to the canonical GITI sample video.",
+        help="path to the input video file (mp4 / avi). Required unless a mode flag is set.",
     )
     inp.add_argument(
         "--max-frames",
