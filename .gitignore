@@ -74,3 +74,4 @@ mutants/
 *.mlmodel
 *.gguf
 *.msgpack
+src/nnds.egg-info/

@@ -271,6 +271,7 @@ def _complete_pet_df():
             "track_a_exit_time_sec": [0.2],
             "track_b_entry_frame": [7],
             "track_b_entry_time_sec": [0.23],
+            "track_b_exit_time_sec": [0.27],
             "track_b_exit_frame": [8],
             "world_traj_i": [valid_traj],
             "world_traj_j": [valid_traj],

@@ -444,7 +444,7 @@ def run_uvh_coco_fused_grid_pet(
     prediction_tolerance: float = 80.0,
     video_source: str | None = None,
     time_of_day_label: str | None = None,
-    gate_config_path: str = "configs/gate_config.yaml",
+    gate_config_path: str = "configs/sites/giti/gate_config.yaml",
 ) -> dict[str, Any]:
     video_path = str(Path(video_path).resolve())
     uvh_model_path = str(Path(uvh_model_path).resolve())

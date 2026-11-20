@@ -1,0 +1,117 @@
+{
+  "test": "pet_same_frame_world_proximity_audit",
+  "audit_events": 114,
+  "mapped_measurable_events": 103,
+  "events_with_world_proximity": 97,
+  "summary_by_verdict": [
+    {
+      "verdict": "N",
+      "events": 67,
+      "measurable": 67,
+      "mean_distance_m": 1.4965757528511152,
+      "median_distance_m": 1.3170432517123545,
+      "min_distance_m": 0.0037434913110037976,
+      "max_distance_m": 4.645851687193603
+    },
+    {
+      "verdict": "Y",
+      "events": 30,
+      "measurable": 30,
+      "mean_distance_m": 0.572869521955703,
+      "median_distance_m": 0.5410020198274073,
+      "min_distance_m": 0.0025239440770536826,
+      "max_distance_m": 1.882282418156324
+    }
+  ],
+  "threshold_sensitivity": [
+    {
+      "max_same_frame_distance_m": 0.5,
+      "retained_events": 16,
+      "true_positives": 12,
+      "false_positives": 4,
+      "precision": 0.75,
+      "recall": 0.4,
+      "f1": 0.5217391304347827
+    },
+    {
+      "max_same_frame_distance_m": 1.0,
+      "retained_events": 49,
+      "true_positives": 28,
+      "false_positives": 21,
+      "precision": 0.5714285714285714,
+      "recall": 0.9333333333333333,
+      "f1": 0.7088607594936709
+    },
+    {
+      "max_same_frame_distance_m": 1.5,
+      "retained_events": 69,
+      "true_positives": 28,
+      "false_positives": 41,
+      "precision": 0.4057971014492754,
+      "recall": 0.9333333333333333,
+      "f1": 0.5656565656565656
+    },
+    {
+      "max_same_frame_distance_m": 2.0,
+      "retained_events": 84,
+      "true_positives": 30,
+      "false_positives": 54,
+      "precision": 0.35714285714285715,
+      "recall": 1.0,
+      "f1": 0.5263157894736842
+    },
+    {
+      "max_same_frame_distance_m": 2.5,
+      "retained_events": 89,
+      "true_positives": 30,
+      "false_positives": 59,
+      "precision": 0.33707865168539325,
+      "recall": 1.0,
+      "f1": 0.5042016806722689
+    },
+    {
+      "max_same_frame_distance_m": 3.0,
+      "retained_events": 92,
+      "true_positives": 30,
+      "false_positives": 62,
+      "precision": 0.32608695652173914,
+      "recall": 1.0,
+      "f1": 0.4918032786885246
+    },
+    {
+      "max_same_frame_distance_m": 4.0,
+      "retained_events": 94,
+      "true_positives": 30,
+      "false_positives": 64,
+      "precision": 0.3191489361702128,
+      "recall": 1.0,
+      "f1": 0.48387096774193555
+    },
+    {
+      "max_same_frame_distance_m": 5.0,
+      "retained_events": 97,
+      "true_positives": 30,
+      "false_positives": 67,
+      "precision": 0.30927835051546393,
+      "recall": 1.0,
+      "f1": 0.47244094488188976
+    }
+  ],
+  "site_summary": [
+    {
+      "site": "GITI",
+      "verdict": "N",
+      "events": 67,
+      "median_distance_m": 1.3170432517123545,
+      "mean_distance_m": 1.4965757528511152
+    },
+    {
+      "site": "GITI",
+      "verdict": "Y",
+      "events": 30,
+      "median_distance_m": 0.5410020198274073,
+      "mean_distance_m": 0.572869521955703
+    }
+  ],
+  "interpretation": "This measures the smallest bottom-center distance in BEV world coordinates during frames where both tracks are detected. It is diagnostic only and does not modify the PET pipeline."
+}

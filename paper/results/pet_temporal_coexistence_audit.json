@@ -1,0 +1,23 @@
+{
+  "test": "pet_temporal_coexistence_audit",
+  "audit_events": 114,
+  "mapped_measurable_events": 103,
+  "matched_events": 103,
+  "summary": [
+    {
+      "verdict": "N",
+      "events": 73,
+      "temporal_overlap_true": 0,
+      "temporal_overlap_false": 73,
+      "no_overlap_rate": 1.0
+    },
+    {
+      "verdict": "Y",
+      "events": 30,
+      "temporal_overlap_true": 0,
+      "temporal_overlap_false": 30,
+      "no_overlap_rate": 1.0
+    }
+  ],
+  "interpretation": "A high no-overlap rate among spurious events would indicate that PET is being computed for track pairs that do not coexist in time."
+}

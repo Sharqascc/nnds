@@ -1,0 +1,36 @@
+{
+  "test": "time_of_day_distribution",
+  "events_analyzed": 187,
+  "distribution": [
+    {
+      "site": "GITI",
+      "time_of_day_label": "unspecified",
+      "events": 153
+    },
+    {
+      "site": "MRC",
+      "time_of_day_label": "unspecified",
+      "events": 34
+    }
+  ],
+  "pet_summary": [
+    {
+      "site": "GITI",
+      "time_of_day_label": "unspecified",
+      "events": 153,
+      "pet_mean": 1.5638775947807295,
+      "pet_median": 1.5662735075303935,
+      "pet_below_2s": 103,
+      "pet_below_2s_rate": 0.673202614379085
+    },
+    {
+      "site": "MRC",
+      "time_of_day_label": "unspecified",
+      "events": 34,
+      "pet_mean": 1.704474312353344,
+      "pet_median": 1.599598664612224,
+      "pet_below_2s": 20,
+      "pet_below_2s_rate": 0.5882352941176471
+    }
+  ]
+}

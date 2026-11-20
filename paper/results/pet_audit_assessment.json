@@ -1,0 +1,20 @@
+{
+  "test": "pet_audit_integrity",
+  "status": "failed_precision_gate",
+  "source": "paper/results/pet_audit.json",
+  "audited_events": 114,
+  "measurable_events": 103,
+  "subresolution_events": 11,
+  "matched_genuine": 30,
+  "matched_spurious": 73,
+  "precision_measurable": 0.2912621359223301,
+  "precision_all_candidates": 0.2631578947368421,
+  "sampling_limitation": "The audited events were a consecutive early block, not a random sample.",
+  "conclusion": "PET event precision is too low for the current GITI-versus-MRC PET comparison to support quantitative safety claims.",
+  "required_before_safety_claims": [
+    "random or stratified audit across the full event set",
+    "reduction of spurious PET events",
+    "precision target appropriate for the intended claim",
+    "separate reporting of sub-resolution events"
+  ]
+}

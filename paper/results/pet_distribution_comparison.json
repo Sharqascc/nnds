@@ -1,0 +1,25 @@
+{
+  "test": "pet_distribution_comparison",
+  "events_analyzed": 187,
+  "giti": {
+    "events": 153,
+    "min": 0.1666248412266376,
+    "p25": 0.8997741426238431,
+    "median": 1.5662735075303935,
+    "p75": 2.266097840682272,
+    "max": 2.999247142079477,
+    "mean": 1.5638775947807295
+  },
+  "mrc": {
+    "events": 34,
+    "min": 0.1332998887176853,
+    "p25": 1.0414053806069166,
+    "median": 1.599598664612224,
+    "p75": 2.599347829994864,
+    "max": 2.99924749614792,
+    "mean": 1.7044743123533441
+  },
+  "mann_whitney_u": 2884.0,
+  "mann_whitney_p_value": 0.3223478726713571,
+  "interpretation": "A p-value above 0.05 means the two PET distributions are not statistically distinguishable with the available data."
+}
