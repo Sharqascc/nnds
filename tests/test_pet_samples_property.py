@@ -549,3 +549,105 @@ def test_verbatim_preserved_when_no_line_break(line_break):
         b_mark_label="B in",
     )
     assert lines[0] == "Video: a b", f"expected 'Video: a b', got {lines[0]!r}"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# _place_ring_pair invariants
+# ═══════════════════════════════════════════════════════════════════════
+#
+# _place_ring_pair separates two ring positions so their labels don't
+# overlap. Its documented contract is: if dist < min_separation, push
+# them apart so the post-adjustment distance is at least min_separation.
+#
+# The current implementation pushes only vertically. A property test
+# below (test_separation_after_adjustment) finds a real counterexample:
+# when dx dominates dy, the vertical push isn't enough and distance
+# decreases. Fixed by computing the required offset analytically.
+
+_PAIR_COORD = st.integers(min_value=-5000, max_value=5000)
+_PAIR = st.tuples(_PAIR_COORD, _PAIR_COORD)
+_PAIR_OR_NONE = st.one_of(st.none(), _PAIR)
+_MIN_SEP = st.floats(min_value=1.0, max_value=500.0, allow_nan=False, allow_infinity=False)
+
+
+@pytest.mark.property
+@given(a=_PAIR_OR_NONE, b=_PAIR_OR_NONE, min_sep=_MIN_SEP)
+def test_none_preservation(a, b, min_sep):
+    """If either input is None, both are returned unchanged."""
+    from src.analysis.visualization.pet_samples import _place_ring_pair
+
+    out_a, out_b = _place_ring_pair(a, b, min_sep)
+    if a is None:
+        assert out_a is None
+    if b is None:
+        assert out_b is None
+
+
+@pytest.mark.property
+@given(a=_PAIR, b=_PAIR, min_sep=_MIN_SEP)
+def test_noop_when_already_separated(a, b, min_sep):
+    """When already far enough apart, both positions are unchanged."""
+    from src.analysis.visualization.pet_samples import _place_ring_pair
+
+    dx = a[0] - b[0]
+    dy = a[1] - b[1]
+    dist = (dx * dx + dy * dy) ** 0.5
+    assume(dist >= min_sep)
+    out_a, out_b = _place_ring_pair(a, b, min_sep)
+    assert out_a == a
+    assert out_b == b
+
+
+@pytest.mark.property
+@given(a=_PAIR, b=_PAIR, min_sep=_MIN_SEP)
+def test_x_coordinates_preserved(a, b, min_sep):
+    """Only y-coordinates may change — x is untouched."""
+    from src.analysis.visualization.pet_samples import _place_ring_pair
+
+    out_a, out_b = _place_ring_pair(a, b, min_sep)
+    assert out_a[0] == a[0]
+    assert out_b[0] == b[0]
+
+
+@pytest.mark.property
+@given(a=_PAIR, b=_PAIR, min_sep=_MIN_SEP)
+def test_a_moves_up_b_moves_down(a, b, min_sep):
+    """a's y decreases (or stays), b's y increases (or stays)."""
+    from src.analysis.visualization.pet_samples import _place_ring_pair
+
+    out_a, out_b = _place_ring_pair(a, b, min_sep)
+    assert out_a[1] <= a[1], f"a should move up or stay: {a} -> {out_a}"
+    assert out_b[1] >= b[1], f"b should move down or stay: {b} -> {out_b}"
+
+
+@pytest.mark.property
+@given(a=_PAIR, b=_PAIR, min_sep=_MIN_SEP)
+def test_separation_after_adjustment(a, b, min_sep):
+    """After adjustment, distance between positions is at least min_separation.
+
+    This is the documented contract: the function's whole purpose is to
+    guarantee the rings don't overlap.
+    """
+    from src.analysis.visualization.pet_samples import _place_ring_pair
+
+    out_a, out_b = _place_ring_pair(a, b, min_sep)
+    if out_a is None or out_b is None:
+        return
+    dx = out_a[0] - out_b[0]
+    dy = out_a[1] - out_b[1]
+    new_dist = (dx * dx + dy * dy) ** 0.5
+    assert new_dist >= min_sep - 1e-9, (
+        f"separation invariant violated: input a={a}, b={b}, min_sep={min_sep}, "
+        f"output a={out_a}, b={out_b}, new_dist={new_dist:.4f} < {min_sep}"
+    )
+
+
+@pytest.mark.property
+@given(a=_PAIR, b=_PAIR, min_sep=_MIN_SEP)
+def test_deterministic(a, b, min_sep):
+    """Same input -> same output (no hidden state)."""
+    from src.analysis.visualization.pet_samples import _place_ring_pair
+
+    out1 = _place_ring_pair(a, b, min_sep)
+    out2 = _place_ring_pair(a, b, min_sep)
+    assert out1 == out2
