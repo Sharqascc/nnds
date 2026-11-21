@@ -3913,7 +3913,9 @@ def test_run_uvh_coco_fused_grid_pet_reversed_placeholder_mocked(tmp_path):
 
 @pytest.mark.parametrize("first_x", [10, 40])
 @pytest.mark.parametrize("reverse_candidates", [False, True])
-def test_run_uvh_coco_fused_grid_pet_time_based_second_branch_mocked(tmp_path, first_x, reverse_candidates):
+def test_run_uvh_coco_fused_grid_pet_time_based_second_branch_mocked(
+    tmp_path, first_x, reverse_candidates
+):
     """Keep exported actor identities, windows, and trajectories aligned."""
     import json
     from unittest.mock import patch
@@ -4102,21 +4104,17 @@ def test_run_uvh_coco_fused_grid_pet_time_based_second_branch_mocked(tmp_path, f
 
         for field in ("pet", "pet_s", "pet_time_based"):
             assert row[field] == pytest.approx(1 / 30)
-        assert (
-            row["track_b_entry_time_sec"] - row["track_a_exit_time_sec"]
-        ) == pytest.approx(row["pet"])
+        assert (row["track_b_entry_time_sec"] - row["track_a_exit_time_sec"]) == pytest.approx(
+            row["pet"]
+        )
         assert row["frame"] == 3
         assert row["pet_status"] == "sequential"
         assert row["overlap_duration_s"] == 0
         assert (row["first_actor"], row["second_actor"]) == ("a", "b")
         assert json.loads(row["traj_a_json"])["x"] == first_x
         assert json.loads(row["traj_b_json"])["x"] == second_x
-        assert row["world_traj_i"] == (
-            f"track_{expected_ids[0] * 1000 + expected_segments[0]}"
-        )
-        assert row["world_traj_j"] == (
-            f"track_{expected_ids[1] * 1000 + expected_segments[1]}"
-        )
+        assert row["world_traj_i"] == (f"track_{expected_ids[0] * 1000 + expected_segments[0]}")
+        assert row["world_traj_j"] == (f"track_{expected_ids[1] * 1000 + expected_segments[1]}")
 
 
 def test_run_uvh_coco_fused_grid_pet_orig_same_mocked(tmp_path):
