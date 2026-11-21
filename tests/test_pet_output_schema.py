@@ -163,7 +163,7 @@ def test_events_to_dataframe_propagates_b_exit_time_sec():
 
 
 def test_uvh_backend_computes_b_exit_time_sec_with_fps_divisor():
-    """AST: track_b_exit_time_sec must be computed as float(b_exit / fps).
+    """AST: track_b_exit_time_sec must be computed as float(second_exit / fps).
 
     The existing existence-only AST test catches field deletion, but not
     a wrong divisor (e.g., float(b_exit / 60.0) or float(b_exit / 25.0)
@@ -185,7 +185,7 @@ def test_uvh_backend_computes_b_exit_time_sec_with_fps_divisor():
         for k, v in zip(node.keys, node.values, strict=True):
             if isinstance(k, ast.Constant) and k.value == "track_b_exit_time_sec":
                 found = True
-                # Expected shape: float(b_exit / fps)
+                # Expected shape: float(second_exit / fps)
                 assert isinstance(v, ast.Call), (
                     f"track_b_exit_time_sec: expected float(...), got {ast.unparse(v)}"
                 )
@@ -199,8 +199,8 @@ def test_uvh_backend_computes_b_exit_time_sec_with_fps_divisor():
                 assert isinstance(inner, ast.BinOp) and isinstance(inner.op, ast.Div), (
                     f"expected division expression, got {ast.unparse(inner)}"
                 )
-                assert isinstance(inner.left, ast.Name) and inner.left.id == "b_exit", (
-                    f"expected b_exit as numerator, got {ast.unparse(inner.left)}"
+                assert isinstance(inner.left, ast.Name) and inner.left.id == "second_exit", (
+                    f"expected second_exit as numerator, got {ast.unparse(inner.left)}"
                 )
                 assert isinstance(inner.right, ast.Name) and inner.right.id == "fps", (
                     f"expected fps as divisor, got {ast.unparse(inner.right)}"

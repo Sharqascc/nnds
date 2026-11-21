@@ -3911,8 +3911,12 @@ def test_run_uvh_coco_fused_grid_pet_reversed_placeholder_mocked(tmp_path):
     assert len(result["pet_events"]) == 1
 
 
-def test_run_uvh_coco_fused_grid_pet_time_based_second_branch_mocked(tmp_path):
-    """Cover time-based PET branch b_exit <= a_entry (line 645)."""
+@pytest.mark.parametrize("first_x", [10, 40])
+@pytest.mark.parametrize("reverse_candidates", [False, True])
+def test_run_uvh_coco_fused_grid_pet_time_based_second_branch_mocked(
+    tmp_path, first_x, reverse_candidates
+):
+    """Keep exported actor identities, windows, and trajectories aligned."""
     import json
     from unittest.mock import patch
 
@@ -3996,7 +4000,7 @@ def test_run_uvh_coco_fused_grid_pet_time_based_second_branch_mocked(tmp_path):
             pass
 
     def fake_split_tracks(tracks, **kwargs):
-        return {
+        split = {
             1001: [
                 TrackPoint(frame=0, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
                 TrackPoint(frame=1, x=10, y=10, cls_id=2, cls_name="car", conf=0.9),
@@ -4009,11 +4013,12 @@ def test_run_uvh_coco_fused_grid_pet_time_based_second_branch_mocked(tmp_path):
             ],
         }
 
+        if reverse_candidates:
+            return dict(reversed(list(split.items())))
+        return split
+
     def entry_exit_side_effect(points, cx, cy, half_size):
-        if points[0].x == 10:
-            return (3, 4)
-        else:
-            return (1, 2)
+        return (1, 2) if points[0].x == first_x else (3, 4)
 
     with (
         patch("src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.YOLO", FakeYOLO),
@@ -4049,11 +4054,8 @@ def test_run_uvh_coco_fused_grid_pet_time_based_second_branch_mocked(tmp_path):
             side_effect=entry_exit_side_effect,
         ),
         patch(
-            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._compute_pet_from_windows",
-            return_value=(1.5, "a", "b", 1),
-        ),
-        patch(
-            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._track_to_json", return_value="{}"
+            "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet._track_to_json",
+            side_effect=lambda points, *args: json.dumps({"x": points[0].x}),
         ),
         patch(
             "src.analysis.grid_trajectory.uvh_coco_fused_grid_pet.classify_conflict_geometry",
@@ -4077,8 +4079,42 @@ def test_run_uvh_coco_fused_grid_pet_time_based_second_branch_mocked(tmp_path):
             backend="auto",
             show_progress=False,
         )
+    import pandas as pd
+
     assert len(result["pet_events"]) == 1
-    assert result["pet_events"][0]["pet_time_based"] == pytest.approx((3 - 2) / 30.0)
+    event = result["pet_events"][0]
+    csv = pd.read_csv(tmp_path / "out.csv")
+    assert len(csv) == 1
+
+    expected_ids = (1, 2) if first_x == 10 else (2, 1)
+    expected_segments = (1, 2) if first_x == 10 else (2, 1)
+    second_x = 40 if first_x == 10 else 10
+
+    for row in (event, csv.iloc[0].to_dict()):
+        assert (row["track_a"], row["track_b"]) == expected_ids
+        assert (row["orig_track_a"], row["orig_track_b"]) == expected_ids
+        assert (row["seg_a"], row["seg_b"]) == expected_segments
+        assert row["track_a_entry_frame"] == 1
+        assert row["track_a_exit_frame"] == 2
+        assert row["track_b_entry_frame"] == 3
+        assert row["track_b_exit_frame"] == 4
+        assert row["track_a_exit_time_sec"] == pytest.approx(2 / 30)
+        assert row["track_b_entry_time_sec"] == pytest.approx(3 / 30)
+        assert row["track_b_exit_time_sec"] == pytest.approx(4 / 30)
+
+        for field in ("pet", "pet_s", "pet_time_based"):
+            assert row[field] == pytest.approx(1 / 30)
+        assert (row["track_b_entry_time_sec"] - row["track_a_exit_time_sec"]) == pytest.approx(
+            row["pet"]
+        )
+        assert row["frame"] == 3
+        assert row["pet_status"] == "sequential"
+        assert row["overlap_duration_s"] == 0
+        assert (row["first_actor"], row["second_actor"]) == ("a", "b")
+        assert json.loads(row["traj_a_json"])["x"] == first_x
+        assert json.loads(row["traj_b_json"])["x"] == second_x
+        assert row["world_traj_i"] == (f"track_{expected_ids[0] * 1000 + expected_segments[0]}")
+        assert row["world_traj_j"] == (f"track_{expected_ids[1] * 1000 + expected_segments[1]}")
 
 
 def test_run_uvh_coco_fused_grid_pet_orig_same_mocked(tmp_path):
