@@ -9,8 +9,8 @@ def test_uvh_exports_structured_pet_fields():
     expected_fields = [
         '"pet_s": structured_result.pet_s',
         '"pet_status": structured_result.pet_status',
-        '"first_actor": structured_result.first_actor',
-        '"second_actor": structured_result.second_actor',
+        '"first_actor": "a"',
+        '"second_actor": "b"',
         '"overlap_duration_s": structured_result.overlap_duration_s',
     ]
 

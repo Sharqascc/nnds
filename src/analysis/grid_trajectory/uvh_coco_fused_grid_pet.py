@@ -974,9 +974,13 @@ def run_uvh_coco_fused_grid_pet(
             if first_placeholder == "a":
                 first_id = track_a_id
                 second_id = track_b_id
+                first_entry, first_exit = a_entry, a_exit
+                second_entry, second_exit = b_entry, b_exit
             else:
                 first_id = track_b_id
                 second_id = track_a_id
+                first_entry, first_exit = b_entry, b_exit
+                second_entry, second_exit = a_entry, a_exit
 
             # The `pet > 0` guard is stricter than docs/ANNOTATION_GUIDE.md
             # (which permits PET = 0 for zero-gap sequential events). Kept
@@ -1022,8 +1026,10 @@ def run_uvh_coco_fused_grid_pet(
                         "pet_time_based": pet_time_based,  # time-based PET
                         "pet_s": structured_result.pet_s,
                         "pet_status": structured_result.pet_status,
-                        "first_actor": structured_result.first_actor,
-                        "second_actor": structured_result.second_actor,
+                        # Actor labels refer to exported track_a/track_b,
+                        # ordered by passage: first, then second.
+                        "first_actor": "a",
+                        "second_actor": "b",
                         "overlap_duration_s": structured_result.overlap_duration_s,
                         "frame": int(frame_ref),
                         "track_a": int(orig_a),
@@ -1045,13 +1051,13 @@ def run_uvh_coco_fused_grid_pet(
                             pts_b if first_id == track_a_id else pts_a, gates
                         ),
                         "grid_cell": grid_cell,
-                        "track_a_entry_frame": int(a_entry),
-                        "track_a_exit_frame": int(a_exit),
-                        "track_a_exit_time_sec": float(a_exit / fps),
-                        "track_b_entry_frame": int(b_entry),
-                        "track_b_entry_time_sec": float(b_entry / fps),
-                        "track_b_exit_frame": int(b_exit),
-                        "track_b_exit_time_sec": float(b_exit / fps),
+                        "track_a_entry_frame": int(first_entry),
+                        "track_a_exit_frame": int(first_exit),
+                        "track_a_exit_time_sec": float(first_exit / fps),
+                        "track_b_entry_frame": int(second_entry),
+                        "track_b_entry_time_sec": float(second_entry / fps),
+                        "track_b_exit_frame": int(second_exit),
+                        "track_b_exit_time_sec": float(second_exit / fps),
                         "world_traj_i": f"track_{first_id}",
                         "world_traj_j": f"track_{second_id}",
                         "traj_a_json": _track_to_json(
