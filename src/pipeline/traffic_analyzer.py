@@ -506,6 +506,14 @@ def run_video_to_pet(
     else:
         raise ValueError(f"Unsupported detector: {detector}")
 
+    if detector == "uvh-coco-fused" and isinstance(result, dict) and "pet_csv" in result:
+        # The UVH backend owns its richer CSV schema. Do not overwrite it
+        # with the generic event projection, including for empty results.
+        backend_csv = Path(result["pet_csv"])
+        if backend_csv.resolve() != Path(out_csv_path).resolve():
+            raise ValueError("UVH backend returned an unexpected PET CSV path")
+        return pd.read_csv(backend_csv)
+
     events = _extract_events(result)
     return _write_events_to_csv(events, out_csv_path)
 
