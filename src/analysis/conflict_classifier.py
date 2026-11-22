@@ -55,17 +55,18 @@ def _get_velocity_vector(
 
 
 def _angle_between(v1: tuple[float, float], v2: tuple[float, float]) -> float:
-    """Angle between two 2D vectors in degrees [0, 180]."""
-    dot = v1[0] * v2[0] + v1[1] * v2[1]
-    mag1 = math.hypot(*v1)
-    mag2 = math.hypot(*v2)
-    if mag1 == 0 or mag2 == 0:
+    """Angle in degrees for finite 2D vectors; zero vectors return 0."""
+    if not all(math.isfinite(value) for value in (*v1, *v2)):
+        raise ValueError("Vectors must contain finite numbers.")
+    scale1 = max(abs(v1[0]), abs(v1[1]))
+    scale2 = max(abs(v2[0]), abs(v2[1]))
+    if scale1 == 0 or scale2 == 0:
         return 0.0
-    denominator = mag1 * mag2
-    if denominator == 0.0:  # underflow protection
-        return 0.0
-    cos_theta = max(-1.0, min(1.0, dot / denominator))
-    return math.degrees(math.acos(cos_theta))
+    ax, ay = (v1[0] / scale1, v1[1] / scale1)
+    bx, by = (v2[0] / scale2, v2[1] / scale2)
+    cross = ax * by - ay * bx
+    dot = ax * bx + ay * by
+    return math.degrees(math.atan2(abs(cross), dot))
 
 
 def classify_conflict_geometry(
@@ -89,6 +90,10 @@ def classify_conflict_geometry(
 
     v_a = _get_velocity_vector(pts_a, conflict_frame, window=5)
     v_b = _get_velocity_vector(pts_b, conflict_frame, window=5)
+
+    # Invalid velocity components cannot support a geometric label.
+    if not all(math.isfinite(value) for value in (*v_a, *v_b)):
+        return "other"
 
     if v_a == (0, 0) or v_b == (0, 0):
         return "other"
