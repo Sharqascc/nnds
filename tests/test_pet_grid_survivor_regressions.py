@@ -38,10 +38,7 @@ def test_default_downsampling_retains_all_world_samples():
 
     intervals = logger.build_intervals()
     assert len(intervals) == 1
-    actual = [
-        (sample.t, sample.x, sample.y)
-        for sample in intervals[0].world_samples
-    ]
+    actual = [(sample.t, sample.x, sample.y) for sample in intervals[0].world_samples]
     assert actual == [
         (0.0, 0.0, 10.0),
         (0.1, 1.0, 11.0),
@@ -69,10 +66,7 @@ def test_out_of_order_samples_are_sorted_by_frame():
     interval = intervals[0]
     assert interval.t_enter == pytest.approx(0.0)
     assert interval.t_exit == pytest.approx(0.3)
-    assert [
-        (sample.t, sample.x, sample.y)
-        for sample in interval.world_samples
-    ] == [
+    assert [(sample.t, sample.x, sample.y) for sample in interval.world_samples] == [
         (0.0, 0.0, 10.0),
         (0.1, 1.0, 11.0),
         (0.2, 2.0, 12.0),
