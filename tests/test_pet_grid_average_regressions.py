@@ -28,8 +28,20 @@ def numpy_mean(values):
 
 @pytest.mark.parametrize(
     "counts,expected",
-    [([], 0.0), ([4], 4.0), ([2, 4], 3.0), ([1, 2, 3], 2.0)],
-    ids=["empty", "one-track", "two-tracks", "three-tracks"],
+    [
+        ([], 0.0),
+        ([4], 4.0),
+        ([2, 4], 3.0),
+        ([1, 2, 3], 2.0),
+        ([1, 2], 1.5),
+    ],
+    ids=[
+        "empty",
+        "one-track",
+        "two-tracks",
+        "three-tracks",
+        "fractional-average",
+    ],
 )
 def test_average_samples_three_way(counts, expected):
     # Empty input follows the logger's explicit zero convention.
